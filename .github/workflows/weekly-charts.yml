@@ -1,11 +1,11 @@
 name: Weekly Metro Charts
 
 on:
+  # Runs every Thursday at 12:05 AM Eastern (handles EDT/EST with two cron lines)
   schedule:
-    # Run at 12:05 AM ET every Thursday (after Wednesday data)
     - cron: "5 4 * * 4"  # 12:05am ET during EDT (UTC-4)
     - cron: "5 5 * * 4"  # 12:05am ET during EST (UTC-5)
-  workflow_dispatch:  # Allow manual trigger for testing
+  workflow_dispatch: {}   # Allow manual trigger for testing
 
 jobs:
   download-data:
@@ -22,12 +22,13 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pandas pyarrow requests tqdm
+          pip install -r requirements.txt
 
       - name: Download Redfin data
         run: |
+          mkdir -p data
           python scripts/download_data.py --output data --force
-          
+
       - name: Upload data artifact
         uses: actions/upload-artifact@v4
         with:
@@ -41,12 +42,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [0, 1]  # 8 parallel jobs
-    
+        # === TESTING ===
+        # Two shards (0 and 1) to split the small test list
+        # === PRODUCTION: change to [0,1,2,3,4,5,6,7] (8 shards) ===
+        shard: [0, 1]
     env:
       TZ: America/New_York
       REMOTE_BASE: ${{ secrets.REMOTE_BASE }}
-      
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -71,39 +74,37 @@ jobs:
         id: date
         run: echo "DATE=$(TZ='America/New_York' date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
 
-      - name: Make shard city list
+      - name: Make shard city list (TEST)
         run: |
-          # Extract cities for this shard (every 2nd city starting from shard number)
-          awk -v shard=${{ matrix.shard }} '
-            !/^#/ && NF > 0 && (NR-1) % 2 == shard { print }
-          ' test_cities.txt > cities_shard.txt
-          
-          echo "Shard ${{ matrix.shard }} processing $(wc -l < cities_shard.txt) cities"
-          head -5 cities_shard.txt
+          # TESTING: split test_cities.txt between 2 shards (mod 2)
+          # PRODUCTION: switch file to cities.txt and (NR-1) % 8
+          awk -v shard=${{ matrix.shard }} 'NF && $0 !~ /^#/ && (NR-1) % 2 == shard' test_cities.txt > cities_shard.txt
+          echo "Shard ${{ matrix.shard }} cities: $(wc -l < cities_shard.txt)"
+          head -50 cities_shard.txt || true
 
       - name: Generate charts (this shard)
         run: |
+          mkdir -p out/reports
           python scripts/make_charts.py \
             --date "${{ steps.date.outputs.DATE }}" \
             --cities cities_shard.txt \
             --out "out/reports/" \
             --no-download \
             --no-national
-        continue-on-error: true  # Don't fail the whole job for individual chart failures
 
       - name: List generated charts
         run: |
-          echo "Generated charts:"
-          find out/reports -name "*.png" | wc -l
-          du -sh out/reports/ || echo "No charts generated"
+          echo "Total images created:"
+          find out/reports -name '*.png' | wc -l || true
+          du -sh out/reports/ || true
 
       - name: Upload charts artifact
         uses: actions/upload-artifact@v4
         with:
           name: charts-shard-${{ matrix.shard }}
           path: out/reports/
-          retention-days: 1
           if-no-files-found: warn
+          retention-days: 1
 
   upload-to-server:
     needs: generate-charts
@@ -111,14 +112,14 @@ jobs:
     env:
       TZ: America/New_York
       REMOTE_BASE: ${{ secrets.REMOTE_BASE }}
-      
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Compute today's folder (Eastern)
         id: date
-        run: echo "DATE=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+        run: echo "DATE=$(TZ='America/New_York' date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
 
       - name: Download all chart artifacts
         uses: actions/download-artifact@v4
@@ -130,28 +131,26 @@ jobs:
       - name: Count total charts
         run: |
           echo "Total charts generated:"
-          find out/reports -name "*.png" | wc -l
+          find out/reports -name '*.png' | wc -l || true
           echo "Total size:"
-          du -sh out/reports/
+          du -sh out/reports/ || true
 
       - name: Install lftp
         run: sudo apt-get update && sudo apt-get install -y lftp
 
-      - name: Upload via SFTP
+      - name: Upload via SFTP (SSH key)
         env:
           HOST: ${{ secrets.SFTP_HOST }}
           USER: ${{ secrets.SFTP_USER }}
           KEY: ${{ secrets.SFTP_KEY }}
         run: |
-          # Setup SSH key
           mkdir -p ~/.ssh
           echo "$KEY" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          
-          # Create known_hosts to avoid prompt
+          # Avoid host prompt
           ssh-keyscan -H $HOST >> ~/.ssh/known_hosts 2>/dev/null || true
 
-          # Upload with lftp
+          # Ensure remote date dir exists, then mirror the day
           lftp -e "
             set sftp:auto-confirm yes;
             set sftp:connect-program 'ssh -i ~/.ssh/id_rsa';
@@ -159,11 +158,12 @@ jobs:
             set net:timeout 60;
             set net:reconnect-interval-base 5;
             open -u $USER,dummy sftp://$HOST;
+            mkdir -p ${REMOTE_BASE}/${{ steps.date.outputs.DATE }};
             mirror -R --only-newer --parallel=4 --verbose \
               out/reports/${{ steps.date.outputs.DATE }}/ \
               ${REMOTE_BASE}/${{ steps.date.outputs.DATE }}/;
             bye
-          " || echo "Upload completed with warnings"
+          " || echo "Upload finished with warnings"
 
       - name: Generate summary report
         run: |
@@ -171,22 +171,12 @@ jobs:
           echo "" >> summary.md
           echo "**Date:** ${{ steps.date.outputs.DATE }}" >> summary.md
           echo "" >> summary.md
-          
-          total_charts=$(find out/reports -name "*.png" | wc -l)
-          total_cities=$(find out/reports -type d -mindepth 2 | wc -l)
-          
+          total_charts=$(find out/reports -name '*.png' | wc -l || echo 0)
+          total_cities=$(find out/reports -mindepth 2 -type d | wc -l || echo 0)
           echo "### Statistics" >> summary.md
           echo "- Total charts generated: $total_charts" >> summary.md
           echo "- Total cities processed: $total_cities" >> summary.md
-          echo "- Expected charts: $((927 * 12))" >> summary.md
-          echo "" >> summary.md
-          
-          if [ $total_charts -lt $((927 * 12)) ]; then
-            echo "⚠️ Warning: Some charts may have failed to generate" >> summary.md
-          else
-            echo "✅ All charts generated successfully" >> summary.md
-          fi
-          
+          echo "- Expected (test run): variable" >> summary.md
           cat summary.md
 
       - name: Upload summary
