@@ -7,6 +7,12 @@ from pathlib import Path
 from matplotlib import pyplot as plt
 from matplotlib import font_manager as fm
 
+import os
+os.environ.setdefault("MPLBACKEND", "Agg")
+os.environ.setdefault("MPLCONFIGDIR", str(Path(".cache/matplotlib")))
+Path(os.environ["MPLCONFIGDIR"]).mkdir(parents=True, exist_ok=True)
+
+
 def _load_abc_oracle():
     font_dir = Path(__file__).resolve().parent / "assets" / "fonts" / "abc-oracle"
     found = []
