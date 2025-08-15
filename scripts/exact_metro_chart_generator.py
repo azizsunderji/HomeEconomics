@@ -31,24 +31,34 @@ COLORS = {
     'light_green': '#C6DCCB'
 }
 
-# Font files - EXACT from Denver
-FONT_FILES = [
-    '/Users/azizsunderji/Dropbox/Home Economics/Brand assets/OracleFont/Oracle Aziz Sunderji/Desktop/ABCOracle-Book.otf',
-    '/Users/azizsunderji/Dropbox/Home Economics/Brand assets/OracleFont/Oracle Aziz Sunderji/Desktop/ABCOracle-Bold.otf',
-    '/Users/azizsunderji/Dropbox/Home Economics/Brand assets/OracleFont/Oracle Aziz Sunderji/Desktop/ABCOracle-Medium.otf',
-    '/Users/azizsunderji/Dropbox/Home Economics/Brand assets/OracleFont/Oracle Aziz Sunderji/Desktop/ABCOracle-Regular.otf'
-]
+# Fonts are registered globally in make_charts._load_abc_oracle().
+# Do NOT hard-code user-specific font paths here.
 
 def setup_fonts():
-    """Setup fonts exactly as in Denver code"""
-    try:
-        for font_file in FONT_FILES:
-            if os.path.exists(font_file):
-                fm.fontManager.addfont(font_file)
-        
-        plt.rcParams['font.family'] = 'ABC Oracle'
-        plt.rcParams['font.sans-serif'] = ['ABC Oracle', 'Arial', 'sans-serif']
-        plt.rcParams['font.size'] = 18
+    """
+    Respect the globally registered fonts.
+    Optionally allow a local override by setting HE_FONT_DIR to a folder
+    containing ABC Oracle .otf/.ttf files (for local dev only).
+    """
+    import os
+    from pathlib import Path
+    from matplotlib import pyplot as plt
+    from matplotlib import font_manager as fm
+
+    # Optional local override (no effect in CI unless set)
+    env_dir = os.environ.get("HE_FONT_DIR")
+    if env_dir:
+        font_dir = Path(env_dir)
+        if font_dir.exists():
+            for p in list(font_dir.glob("*.ttf")) + list(font_dir.glob("*.otf")):
+                try:
+                    fm.fontManager.addfont(str(p))
+                except Exception:
+                    pass  # ignore any bad files
+
+    # Do not set plt.rcParams['font.family'] here; the loader already did.
+    plt.rcParams["font.size"] = 18
+
     except Exception as e:
         print(f"Could not load Oracle font: {e}")
         plt.rcParams['font.sans-serif'] = ['Arial', 'sans-serif']
