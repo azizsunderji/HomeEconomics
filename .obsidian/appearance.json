@@ -1,0 +1,11 @@
+{
+  "accentColor": "#0bb4ff",
+  "theme": "obsidian",
+  "translucency": false,
+  "cssTheme": "",
+  "enabledCssSnippets": [
+    "Bold",
+    "Bold copy 2",
+    "Bold3"
+  ]
+}

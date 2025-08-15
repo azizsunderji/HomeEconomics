@@ -1,0 +1,65 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+.venv
+.env
+
+# Data files
+data/
+*.parquet
+*.tsv
+*.tsv.gz
+*.csv
+
+# Output files
+out/
+output/
+metro_charts*/
+*.png
+*.jpg
+*.pdf
+
+# Secrets and configs
+secrets.txt
+secrets_template_filled.txt
+.env
+.env.local
+config.local.py
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+*.log
+logs/
+*.err
+
+# Test files
+test_cities.txt
+test_*.py
+scratch/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Coverage
+.coverage
+htmlcov/
+*.cover
+.pytest_cache/
+
+# Distribution
+dist/
+build/
+*.egg-info/

@@ -1,0 +1,4 @@
+- Enterprise: could you build a white label product for eg Compass
+- E-book—eg, "How to buy a home" (with Leonard S?)
+- Likes idea of printed book
+- 

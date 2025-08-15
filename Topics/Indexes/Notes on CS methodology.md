@@ -1,0 +1,20 @@
+
+Useful for [[Housing Market Rolls into Spring on a Weak Footing]]
+
+Price Anomalies. If there is a large change in the prices of a sales pair relative to the statistical distribution of all price changes in the area, then it is possible that the home was remodeled, rebuilt, or neglected in some manner during the period from the first sale to the second sale. If there were no physical changes to the property, there may have been a recording error in one of the sale prices, or an excessive price change caused by idiosyncratic, non-market factors. Since the indices seek to measure homes of constant quality, the methodology applies smaller weights to homes that appear to have changed in quality or sales that are otherwise not representative of market price trends. High Turnover Frequency. Data related to homes that sell more than once within six months are excluded from the calculation of any indices. Historical and statistical data indicate that sales made within a short interval often indicate that one of the transactions 1) is not arms-length, 2) precedes or follows the redevelopment of a property, or 3) is a fraudulent transaction. Time Interval Adjustments. Sales pairs are also weighted based on the time interval between the first and second sales. If a sales pair interval is longer, then it is more likely that a house may have experienced physical changes. Sales pairs with longer intervals are, therefore, given less weight than sales pairs with shorter intervals. Initial Home Value. Each sales pair is assigned a weight equal to the first sale price to ensure that the indices track the aggregate/average value of all homes in a market.
+
+The composite home price indices are analogous to a cap-weighted equity index, where the aggregate value of housing stock represents the total capitalization of all of the metro areas included in the composite.
+
+in making the composite, They weight each metro area according to the census estimates of number of units x average prices
+
+Therefore, New York is more important than Austin
+
+The S&P CoreLogic Case-Shiller Home Price Indices are based on observed changes in individual home prices. The main variable used for index calculation is the price change between two arms-length sales of the same single-family home. Home price data are gathered after that information becomes publicly available at local deed recording offices across the country. For each home sale transaction, a search is conducted to find information regarding any previous sale for the same house. If an earlier transaction is found, the two transactions are paired and are considered a “sale pair”. Sale pairs are designed to yield the price change for the same house, while holding the quality and size of each house constant.
+
+Transactions where the seller may be a real estate developer (based on the seller’s name) are also excluded since it is likely that this is the sale of a newly constructed home built on a previously vacant or occupied lot or a rebuilt existing home. 
+
+Depending on these factors and the completeness of deed information, the percentage of sales identified and eliminated from the pairing process because there may have been substantial physical changes to the property usually ranges from 0% to 15%.
+
+Although the number of sale pairs that are downweighted depends on the statistical distribution of price changes across all of the sale pairs, in large metro area markets, typically 85% to 90% of pairs are assigned a weight of one (no down-weighting), 5% to 8% are assigned a weight between one and one-half, and 5% to 8% are assigned a weight between one-half and zero.
+
+Seasonal Adjustment The S&P CoreLogic Case-Shiller home price indexes are calculated on a non-seasonally adjusted (NSA) basis, so they include the effects of seasonal fluctuations on each market’s price level. Seasonally adjusted (SA) versions of the NSA indexes are also provided to track market price trends with seasonal fluctuations removed. The seasonally adjusted indexes are calculated by applying the U.S. Census Bureau’s X-13ARIMA-SEATS seasonal adjustment program to the NSA indexes.

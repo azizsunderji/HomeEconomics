@@ -1,0 +1,13 @@
+# Core dependencies for chart generation
+pandas==2.1.4
+numpy==1.26.2
+matplotlib==3.8.2
+pyarrow==14.0.2  # For parquet files
+
+# Orchestration and utilities
+click==8.1.7
+python-dateutil==2.9.0.post0
+requests==2.31.0  # For downloading data
+
+# Optional: Progress tracking
+tqdm==4.66.1
