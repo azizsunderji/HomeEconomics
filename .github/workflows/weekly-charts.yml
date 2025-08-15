@@ -83,14 +83,19 @@ jobs:
           head -50 cities_shard.txt || true
 
       - name: Generate charts (this shard)
+        env:
+          PYTHONPATH: ${{ github.workspace }}
         run: |
           mkdir -p out/reports
-          python scripts/make_charts.py \
+          echo "Generating charts for $(wc -l < cities_shard.txt) cities…"
+          python -m scripts.make_charts \
             --date "${{ steps.date.outputs.DATE }}" \
             --cities cities_shard.txt \
             --out "out/reports/" \
             --no-download \
             --no-national
+        continue-on-error: true
+
 
       - name: List generated charts
         run: |
