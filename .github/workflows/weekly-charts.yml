@@ -1,38 +1,42 @@
-name: Weekly Housing Market Data
+name: Weekly Metro Charts
 
 on:
-  workflow_dispatch:
+  # Runs every Thursday at 12:05 AM Eastern (handles EDT/EST with two cron lines)
   schedule:
-    - cron: '0 6 * * 3'  # every Wednesday at 6am UTC
+    - cron: "5 4 * * 4"  # 12:05am ET during EDT (UTC-4)
+    - cron: "5 5 * * 4"  # 12:05am ET during EST (UTC-5)
+  workflow_dispatch: {}   # Allow manual trigger for testing
 
 jobs:
   download-data:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pandas pyarrow
+          pip install -r requirements.txt
 
       - name: Download Redfin data
         run: |
           mkdir -p data
-          wget -O data/weekly_housing_market_data.parquet \
-            https://redfin-public-data-url/path/to/weekly_housing_market_data.parquet
+          python scripts/download_data.py --output data --force
 
-      - uses: actions/upload-artifact@v4
+      - name: Upload data artifact
+        uses: actions/upload-artifact@v4
         with:
           name: redfin-data
           path: data/weekly_housing_market_data.parquet
           retention-days: 1
 
+      # (A) Prove what the downloader actually fetched
       - name: Inspect Redfin parquet max date
         run: |
           python - << 'PY'
@@ -44,47 +48,200 @@ paths = sorted(
 )
 
 def max_date(df):
-    for c in ("period_end", "date", "week_end", "week_date", "period"):
+    for c in ("period_end","date","week_end","week_date","period"):
         if c in df.columns:
             return pd.to_datetime(df[c]).max()
 
+found = False
 for p in paths:
     try:
         df = pd.read_parquet(p)
         md = max_date(df)
         if md is not None:
-            print(f"{p} => max={md.date()} rows={len(df)}")
+            print(f"{p} -> max={md.date()} rows={len(df)}")
+            found = True
     except Exception as e:
         print(f"Skip {p}: {e}")
+
+if not found:
+    print("No parquet files found under out/data or data")
 PY
 
   generate-charts:
     needs: download-data
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # === TESTING ===
+        # Two shards (0 and 1) to split the small test list
+        # === PRODUCTION: change to [0,1,2,3,4,5,6,7] (8 shards) ===
+        shard: [0, 1]
+    env:
+      TZ: America/New_York
+      REMOTE_BASE: ${{ secrets.REMOTE_BASE }}
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pandas pyarrow matplotlib seaborn
+          pip install -r requirements.txt
 
-      - uses: actions/download-artifact@v4
+      - name: Download data artifact
+        uses: actions/download-artifact@v4
         with:
           name: redfin-data
           path: data
 
-      - name: Generate charts
+      # (B) Prove what the chart job sees before charting
+      - name: Verify data freshness before charting
         run: |
-          python scripts/generate_charts.py data/weekly_housing_market_data.parquet
+          python - << 'PY'
+import glob, pandas as pd
 
-      - uses: actions/upload-artifact@v4
+paths = sorted(
+    glob.glob("out/data/**/*.parquet", recursive=True)
+    + glob.glob("data/**/*.parquet", recursive=True)
+)
+
+dates = []
+for p in paths:
+    try:
+        df = pd.read_parquet(p)
+        for c in ("period_end","date","week_end","week_date","period"):
+            if c in df.columns:
+                dates.append(pd.to_datetime(df[c]).max())
+                break
+    except Exception:
+        pass
+
+print("LATEST ANY:", max(dates).date() if dates else "none")
+PY
+
+      - name: Compute today's folder (Eastern)
+        id: date
+        run: echo "DATE=$(TZ='America/New_York' date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+
+      - name: Make shard city list (TEST)
+        run: |
+          # TESTING: split test_cities.txt between 2 shards (mod 2)
+          # PRODUCTION: switch file to cities.txt and (NR-1) % 8
+          awk -v shard=${{ matrix.shard }} 'NF && $0 !~ /^#/ && (NR-1) % 2 == shard' test_cities.txt > cities_shard.txt
+          echo "Shard ${{ matrix.shard }} cities: $(wc -l < cities_shard.txt)"
+          head -50 cities_shard.txt || true
+
+      - name: Generate charts (this shard)
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+        run: |
+          mkdir -p out/reports
+          echo "Generating charts for $(wc -l < cities_shard.txt) cities…"
+          python -m scripts.make_charts \
+            --date "${{ steps.date.outputs.DATE }}" \
+            --cities cities_shard.txt \
+            --out "out/reports/" \
+            --no-download \
+            --no-national
+        continue-on-error: true
+
+      - name: List generated charts
+        run: |
+          echo "Total images created:"
+          find out/reports -name '*.png' | wc -l || true
+          du -sh out/reports/ || true
+
+      - name: Upload charts artifact
+        uses: actions/upload-artifact@v4
         with:
-          name: charts
-          path: charts
+          name: charts-shard-${{ matrix.shard }}
+          path: out/reports/
+          if-no-files-found: warn
+          retention-days: 1
+
+  upload-to-server:
+    needs: generate-charts
+    runs-on: ubuntu-latest
+    env:
+      TZ: America/New_York
+      REMOTE_BASE: ${{ secrets.REMOTE_BASE }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Compute today's folder (Eastern)
+        id: date
+        run: echo "DATE=$(TZ='America/New_York' date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+
+      - name: Download all chart artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: charts-shard-*
+          path: out/reports/
+          merge-multiple: true
+
+      - name: Count total charts
+        run: |
+          echo "Total charts generated:"
+          find out/reports -name '*.png' | wc -l || true
+          echo "Total size:"
+          du -sh out/reports/ || true
+
+      - name: Install lftp
+        run: sudo apt-get update && sudo apt-get install -y lftp
+
+      - name: Upload via SFTP (SSH key)
+        env:
+          HOST: ${{ secrets.SFTP_HOST }}
+          USER: ${{ secrets.SFTP_USER }}
+          KEY: ${{ secrets.SFTP_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$KEY" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          # Avoid host prompt
+          ssh-keyscan -H $HOST >> ~/.ssh/known_hosts 2>/dev/null || true
+
+          # Ensure remote date dir exists, then mirror the day
+          lftp -e "
+            set sftp:auto-confirm yes;
+            set sftp:connect-program 'ssh -i ~/.ssh/id_rsa';
+            set net:max-retries 3;
+            set net:timeout 60;
+            set net:reconnect-interval-base 5;
+            open -u $USER,dummy sftp://$HOST;
+            mkdir -p ${REMOTE_BASE}/${{ steps.date.outputs.DATE }};
+            mirror -R --only-newer --parallel=4 --verbose \
+              out/reports/${{ steps.date.outputs.DATE }}/ \
+              ${REMOTE_BASE}/${{ steps.date.outputs.DATE }}/;
+            bye
+          " || echo "Upload finished with warnings"
+
+      - name: Generate summary report
+        run: |
+          echo "## Weekly Chart Generation Report" > summary.md
+          echo "" >> summary.md
+          echo "**Date:** ${{ steps.date.outputs.DATE }}" >> summary.md
+          echo "" >> summary.md
+          total_charts=$(find out/reports -name '*.png' | wc -l || echo 0)
+          total_cities=$(find out/reports -mindepth 2 -type d | wc -l || echo 0)
+          echo "### Statistics" >> summary.md
+          echo "- Total charts generated: $total_charts" >> summary.md
+          echo "- Total cities processed: $total_cities" >> summary.md
+          echo "- Expected (test run): variable" >> summary.md
+          cat summary.md
+
+      - name: Upload summary
+        uses: actions/upload-artifact@v4
+        with:
+          name: generation-summary
+          path: summary.md
           retention-days: 7
