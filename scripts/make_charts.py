@@ -15,6 +15,36 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from chart_adapter import render_city, render_national
 from download_data import download_redfin_data
 
+# --- Load ABC Oracle from the repo (runs in CI and locally) ---
+from pathlib import Path
+from matplotlib import pyplot as plt
+from matplotlib import font_manager as fm
+
+def _load_abc_oracle():
+    font_dir = Path(__file__).resolve().parent / "assets" / "fonts" / "abc-oracle"
+    found_names = []
+    if font_dir.exists():
+        for p in list(font_dir.glob("*.ttf")) + list(font_dir.glob("*.otf")):
+            try:
+                fm.fontManager.addfont(str(p))
+                # get the internal family name from the file
+                found_names.append(fm.FontProperties(fname=str(p)).get_name())
+            except Exception as e:
+                print(f"Font load skipped {p}: {e}")
+    if found_names:
+        # de-dupe preserving order
+        family = list(dict.fromkeys(found_names))
+        plt.rcParams["font.family"] = family[0]
+        plt.rcParams["font.sans-serif"] = family + ["Arial", "DejaVu Sans"]
+        print("Loaded ABC Oracle fonts:", ", ".join(family))
+    else:
+        print(f"WARNING: No ABC Oracle fonts found at {font_dir}")
+
+_load_abc_oracle()
+# --- end font loader ---
+
+
+
 def today_eastern() -> str:
     et = tz.gettz("America/New_York")
     return datetime.now(et).strftime("%Y-%m-%d")
