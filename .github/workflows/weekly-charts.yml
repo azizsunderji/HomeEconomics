@@ -36,46 +36,15 @@ jobs:
           path: data/weekly_housing_market_data.parquet
           retention-days: 1
 
-      # (A) Prove what the downloader actually fetched
-      - name: Inspect Redfin parquet max date
-        run: |
-          python - << 'PY'
-import glob, pandas as pd
-
-paths = sorted(
-    glob.glob("out/data/**/*.parquet", recursive=True)
-    + glob.glob("data/**/*.parquet", recursive=True)
-)
-
-def max_date(df):
-    for c in ("period_end","date","week_end","week_date","period"):
-        if c in df.columns:
-            return pd.to_datetime(df[c]).max()
-
-found = False
-for p in paths:
-    try:
-        df = pd.read_parquet(p)
-        md = max_date(df)
-        if md is not None:
-            print(f"{p} -> max={md.date()} rows={len(df)}")
-            found = True
-    except Exception as e:
-        print(f"Skip {p}: {e}")
-
-if not found:
-    print("No parquet files found under out/data or data")
-PY
-
   generate-charts:
     needs: download-data
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        # === TESTING ===
+        # TEST: two shards
         shard: [0, 1]
-        # === PRODUCTION: change to [0,1,2,3,4,5,6,7] (8 shards) ===
+        # PROD: [0,1,2,3,4,5,6,7]
     env:
       TZ: America/New_York
       REMOTE_BASE: ${{ secrets.REMOTE_BASE }}
@@ -100,39 +69,14 @@ PY
           name: redfin-data
           path: data
 
-      # (B) Prove what the chart job sees before charting
-      - name: Verify data freshness before charting
-        run: |
-          python - << 'PY'
-import glob, pandas as pd
-
-paths = sorted(
-    glob.glob("out/data/**/*.parquet", recursive=True)
-    + glob.glob("data/**/*.parquet", recursive=True)
-)
-
-dates = []
-for p in paths:
-    try:
-        df = pd.read_parquet(p)
-        for c in ("period_end","date","week_end","week_date","period"):
-            if c in df.columns:
-                dates.append(pd.to_datetime(df[c]).max())
-                break
-    except Exception:
-        pass
-
-print("LATEST ANY:", max(dates).date() if dates else "none")
-PY
-
       - name: Compute today's folder (Eastern)
         id: date
         run: echo "DATE=$(TZ='America/New_York' date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
 
       - name: Make shard city list (TEST)
         run: |
-          # TESTING: split test_cities.txt between 2 shards (mod 2)
-          # PRODUCTION: switch file to cities.txt and (NR-1) % 8
+          # TEST: split test_cities.txt between 2 shards (mod 2)
+          # PROD: switch file to cities.txt and modulo to 8
           awk -v shard=${{ matrix.shard }} 'NF && $0 !~ /^#/ && (NR-1) % 2 == shard' test_cities.txt > cities_shard.txt
           echo "Shard ${{ matrix.shard }} cities: $(wc -l < cities_shard.txt)"
           head -50 cities_shard.txt || true
@@ -209,7 +153,7 @@ PY
           # Avoid host prompt
           ssh-keyscan -H $HOST >> ~/.ssh/known_hosts 2>/dev/null || true
 
-          # Ensure remote date dir exists, then mirror the day
+          # Mirror the date folder
           lftp -e "
             set sftp:auto-confirm yes;
             set sftp:connect-program 'ssh -i ~/.ssh/id_rsa';
