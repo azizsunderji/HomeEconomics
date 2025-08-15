@@ -74,9 +74,8 @@ PY
       fail-fast: false
       matrix:
         # === TESTING ===
-        # Two shards (0 and 1) to split the small test list
-        # === PRODUCTION: change to [0,1,2,3,4,5,6,7] (8 shards) ===
         shard: [0, 1]
+        # === PRODUCTION: change to [0,1,2,3,4,5,6,7] (8 shards) ===
     env:
       TZ: America/New_York
       REMOTE_BASE: ${{ secrets.REMOTE_BASE }}
