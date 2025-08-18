@@ -2,6 +2,41 @@
 # scripts/make_charts.py
 from __future__ import annotations
 
+# --- ABC Oracle font loader (must be first) ---
+from pathlib import Path
+from matplotlib import pyplot as plt
+from matplotlib import font_manager as fm
+
+import os
+os.environ.setdefault("MPLBACKEND", "Agg")
+os.environ.setdefault("MPLCONFIGDIR", str(Path(".cache/matplotlib")))
+Path(os.environ["MPLCONFIGDIR"]).mkdir(parents=True, exist_ok=True)
+
+
+def _load_abc_oracle():
+    font_dir = Path(__file__).resolve().parent / "assets" / "fonts" / "abc-oracle"
+    found = []
+    if font_dir.exists():
+        for p in list(font_dir.glob("*.ttf")) + list(font_dir.glob("*.otf")):
+            fm.fontManager.addfont(str(p))
+            found.append(fm.FontProperties(fname=str(p)).get_name())
+    if found:
+        # de-dupe while preserving order
+        families = list(dict.fromkeys(found))
+        fam = families[0]
+        plt.rcParams["font.family"] = fam
+        plt.rcParams["font.sans-serif"] = families + ["Arial", "DejaVu Sans"]
+        # hard assert so we see a clear message in logs
+        fm.findfont(fm.FontProperties(family=fam), fallback_to_default=False)
+        print("FONT DEBUG loaded:", ", ".join(families))
+    else:
+        print(f"WARNING: No ABC Oracle fonts found at {font_dir}")
+
+_load_abc_oracle()
+# --- end loader ---
+
+
+
 import sys
 import os
 from pathlib import Path
@@ -14,6 +49,10 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from chart_adapter import render_city, render_national
 from download_data import download_redfin_data
+
+
+
+
 
 def today_eastern() -> str:
     et = tz.gettz("America/New_York")
