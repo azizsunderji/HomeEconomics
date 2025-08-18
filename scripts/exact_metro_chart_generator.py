@@ -497,7 +497,7 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
         x_label = f'{metric_name.title()} {normalized_unit_label if normalized_unit_label else ""}'
         ax_hist1.set_xlabel(x_label, fontsize=20, fontweight='normal', color=COLORS['black'], labelpad=10)
         ax_hist1.set_ylabel('Number of Metros', fontsize=20, fontweight='normal', color=COLORS['black'], labelpad=15)
-        ax_hist1.text(0.0, 1.15, f'Current {metric_name.title()} ({percentile:.0f}th percentile)', 
+        ax_hist1.text(0.0, 1.15, f'Comparison Against National Data: Current Level ({percentile:.0f}th percentile)', 
                       transform=ax_hist1.transAxes, fontsize=22, fontweight='bold', ha='left', va='top', color=COLORS['black'])
         
         ax_hist1.grid(True, alpha=0.3, axis='y')
@@ -622,7 +622,7 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
             x_label_change = f'3-Month Change in {metric_name.title()}'
             ax_hist2.set_xlabel(x_label_change, fontsize=20, fontweight='normal', color=COLORS['black'], labelpad=10)
             ax_hist2.set_ylabel('Number of Metros', fontsize=20, fontweight='normal', color=COLORS['black'], labelpad=15)
-            ax_hist2.text(0.0, 1.15, f'3-Month Change ({percentile_change:.0f}th percentile)', 
+            ax_hist2.text(0.0, 1.15, f'Comparison Against National Data: 3-Month Change ({percentile_change:.0f}th percentile)', 
                           transform=ax_hist2.transAxes, fontsize=22, fontweight='bold', ha='left', va='top', color=COLORS['black'])
             
             ax_hist2.grid(True, alpha=0.3, axis='y')
