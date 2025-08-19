@@ -278,13 +278,15 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
     
     # Apply formatters based on metric type
     max_value = metric_data[column_name].max()
-    if is_percentage or unit_label == "%":
-        # Format as percentage for percentage metrics
-        # Check if values are stored as decimals (< 1) or percentages (> 1)
-        if max_value < 1:
+    if is_percentage:
+        # Sale to List Ratio is stored as a decimal ratio (e.g., 0.98 for 98%)
+        if column_name == "AVERAGE_SALE_TO_LIST_RATIO":
             ax_history.yaxis.set_major_formatter(FuncFormatter(lambda x, p: f'{x*100:.0f}%'))
         else:
             ax_history.yaxis.set_major_formatter(FuncFormatter(lambda x, p: f'{x:.0f}%'))
+    elif unit_label == "%":
+        # Metrics with % unit are stored as decimals (0.10 for 10%)
+        ax_history.yaxis.set_major_formatter(FuncFormatter(lambda x, p: f'{x*100:.0f}%'))
     elif max_value > 5000 and unit_label != "$":
         # Format with 'k' for thousands for large numbers
         ax_history.yaxis.set_major_formatter(FuncFormatter(format_thousands))
@@ -417,13 +419,15 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
     ax_ranking.set_xlim(-0.5, len(sorted_years) - 0.5)
     
     # Apply formatters based on metric type
-    if is_percentage or unit_label == "%":
-        # Format as percentage for percentage metrics
-        # Check if values are stored as decimals (< 1) or percentages (> 1)
-        if max(sorted_values) < 1:
+    if is_percentage:
+        # Sale to List Ratio is stored as a decimal ratio (e.g., 0.98 for 98%)
+        if column_name == "AVERAGE_SALE_TO_LIST_RATIO":
             ax_ranking.yaxis.set_major_formatter(FuncFormatter(lambda x, p: f'{x*100:.0f}%'))
         else:
             ax_ranking.yaxis.set_major_formatter(FuncFormatter(lambda x, p: f'{x:.0f}%'))
+    elif unit_label == "%":
+        # Metrics with % unit are stored as decimals (0.10 for 10%)
+        ax_ranking.yaxis.set_major_formatter(FuncFormatter(lambda x, p: f'{x*100:.0f}%'))
     elif max(sorted_values) > 5000 and unit_label != "$":
         # Format with 'k' for thousands for large numbers
         ax_ranking.yaxis.set_major_formatter(FuncFormatter(format_thousands))
