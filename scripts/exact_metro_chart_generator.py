@@ -276,9 +276,17 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
     ax_history.xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
     ax_history.xaxis.set_minor_locator(plt.NullLocator())
     
-    # Apply thousands formatter for large numbers (like Active Listings)
+    # Apply formatters based on metric type
     max_value = metric_data[column_name].max()
-    if max_value > 5000 and unit_label != "$" and not is_percentage:
+    if is_percentage or unit_label == "%":
+        # Format as percentage for percentage metrics
+        # Check if values are stored as decimals (< 1) or percentages (> 1)
+        if max_value < 1:
+            ax_history.yaxis.set_major_formatter(FuncFormatter(lambda x, p: f'{x*100:.0f}%'))
+        else:
+            ax_history.yaxis.set_major_formatter(FuncFormatter(lambda x, p: f'{x:.0f}%'))
+    elif max_value > 5000 and unit_label != "$":
+        # Format with 'k' for thousands for large numbers
         ax_history.yaxis.set_major_formatter(FuncFormatter(format_thousands))
 
     ax_history.grid(True, alpha=0.3, axis="y")
@@ -408,8 +416,16 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
     ax_ranking.tick_params(axis="both", colors=COLORS["black"], labelsize=16)
     ax_ranking.set_xlim(-0.5, len(sorted_years) - 0.5)
     
-    # Apply thousands formatter for large numbers
-    if max(sorted_values) > 5000 and unit_label != "$" and not is_percentage:
+    # Apply formatters based on metric type
+    if is_percentage or unit_label == "%":
+        # Format as percentage for percentage metrics
+        # Check if values are stored as decimals (< 1) or percentages (> 1)
+        if max(sorted_values) < 1:
+            ax_ranking.yaxis.set_major_formatter(FuncFormatter(lambda x, p: f'{x*100:.0f}%'))
+        else:
+            ax_ranking.yaxis.set_major_formatter(FuncFormatter(lambda x, p: f'{x:.0f}%'))
+    elif max(sorted_values) > 5000 and unit_label != "$":
+        # Format with 'k' for thousands for large numbers
         ax_ranking.yaxis.set_major_formatter(FuncFormatter(format_thousands))
 
     for spine in ax_ranking.spines.values():
@@ -494,27 +510,74 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
         color=COLORS["black"],
     )
 
-    # Value labels
+    # Value labels with smart positioning to avoid overlap
     current_label = f"{change:+.{decimals}f} {unit_label}"
     historical_label = f"{avg_historical_change:+.{decimals}f} {unit_label}"
 
-    ax_momentum.text(
-        triangle_width + 0.05,
-        change,
-        current_label,
-        fontsize=18,
-        va="center",
-        color=COLORS["black"],
-        fontweight="bold",
-    )
-    ax_momentum.text(
-        triangle_width + 0.05,
-        avg_historical_change,
-        historical_label,
-        fontsize=16,
-        va="center",
-        color=COLORS["blue"],
-    )
+    # Check if labels would overlap and adjust positions
+    label_separation_threshold = abs(change - avg_historical_change)
+    max_abs_change = max(abs(change), abs(avg_historical_change))
+    
+    # If values are very close (less than 10% of the max value), adjust positions
+    if max_abs_change > 0 and label_separation_threshold < max_abs_change * 0.15:
+        # Position labels to avoid overlap
+        if change > avg_historical_change:
+            # Current is above historical - shift current up slightly
+            ax_momentum.text(
+                triangle_width + 0.05,
+                change,
+                current_label,
+                fontsize=18,
+                va="bottom",  # Align to bottom of text at the change value
+                color=COLORS["black"],
+                fontweight="bold",
+            )
+            ax_momentum.text(
+                triangle_width + 0.05,
+                avg_historical_change,
+                historical_label,
+                fontsize=16,
+                va="top",  # Align to top of text at the historical value
+                color=COLORS["blue"],
+            )
+        else:
+            # Historical is above current - shift historical up slightly
+            ax_momentum.text(
+                triangle_width + 0.05,
+                change,
+                current_label,
+                fontsize=18,
+                va="top",  # Align to top of text at the change value
+                color=COLORS["black"],
+                fontweight="bold",
+            )
+            ax_momentum.text(
+                triangle_width + 0.05,
+                avg_historical_change,
+                historical_label,
+                fontsize=16,
+                va="bottom",  # Align to bottom of text at the historical value
+                color=COLORS["blue"],
+            )
+    else:
+        # Values are far enough apart, use center alignment
+        ax_momentum.text(
+            triangle_width + 0.05,
+            change,
+            current_label,
+            fontsize=18,
+            va="center",
+            color=COLORS["black"],
+            fontweight="bold",
+        )
+        ax_momentum.text(
+            triangle_width + 0.05,
+            avg_historical_change,
+            historical_label,
+            fontsize=16,
+            va="center",
+            color=COLORS["blue"],
+        )
 
     legend_elements = [
         Patch(facecolor="none", edgecolor=COLORS["black"], hatch="///", label="Current Period"),
