@@ -562,7 +562,29 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
 
     current_data = metro_data_all.dropna(subset=[column_name]).copy()
 
-    if normalize_for_histogram:
+    # For Active Listings and Weeks of Supply, normalize to 5-year average
+    if column_name in ["ACTIVE_LISTINGS", "WEEKS_OF_SUPPLY"]:
+        # Calculate 5-year average for each metro
+        five_years_ago = latest_date - timedelta(days=365*5)
+        historical_data = df[
+            (df["REGION_TYPE_ID"] == -2)
+            & (df["DURATION"] == "4 weeks")
+            & (df["PERIOD_END"] >= five_years_ago)
+            & (df["PERIOD_END"] <= latest_date)
+            & (df["REGION_NAME"] != "All Redfin Metros")
+        ].copy()
+        
+        # Calculate average for each metro
+        avg_by_metro = historical_data.groupby("REGION_NAME")[column_name].mean().reset_index()
+        avg_by_metro.columns = ["REGION_NAME", "avg_5yr"]
+        
+        # Merge with current data
+        current_data = current_data.merge(avg_by_metro, on="REGION_NAME", how="left")
+        
+        # Calculate percentage of 5-year average
+        current_data["normalized_value"] = (current_data[column_name] / current_data["avg_5yr"]) * 100
+        values_for_hist = current_data["normalized_value"].dropna()
+    elif normalize_for_histogram:
         current_data["normalized_value"] = normalize_metric_for_histograms(
             current_data, column_name, normalize_for_histogram
         )
@@ -577,7 +599,7 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
 
     target_row = current_data[current_data["REGION_NAME"] == metro_name]
     if len(target_row) > 0:
-        if normalize_for_histogram:
+        if column_name in ["ACTIVE_LISTINGS", "WEEKS_OF_SUPPLY"] or normalize_for_histogram:
             target_value_hist = target_row["normalized_value"].iloc[0]
         else:
             target_value_hist = target_row[column_name].iloc[0]
@@ -628,18 +650,22 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
         ax_hist1.axvline(median_val, color=COLORS["gray"], linestyle=":", linewidth=1, alpha=0.7)
 
         # Legend
-        target_label = format_value(
-            target_value_hist if normalize_for_histogram else latest_value,
-            normalized_unit_label if normalize_for_histogram else unit_label,
-            decimals,
-            is_percentage,
-        )
-        median_label = format_value(
-            median_val,
-            normalized_unit_label if normalize_for_histogram else unit_label,
-            decimals,
-            is_percentage,
-        )
+        if column_name in ["ACTIVE_LISTINGS", "WEEKS_OF_SUPPLY"]:
+            target_label = f"{target_value_hist:.0f}%"
+            median_label = f"{median_val:.0f}%"
+        else:
+            target_label = format_value(
+                target_value_hist if normalize_for_histogram else latest_value,
+                normalized_unit_label if normalize_for_histogram else unit_label,
+                decimals,
+                is_percentage,
+            )
+            median_label = format_value(
+                median_val,
+                normalized_unit_label if normalize_for_histogram else unit_label,
+                decimals,
+                is_percentage,
+            )
 
         legend_elements = [
             Rectangle((0, 0), 1, 1, facecolor=COLORS["black"], alpha=1.0, label=f"{metro_display}: {target_label}"),
@@ -659,7 +685,10 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
         )
 
         # Formatting
-        x_label = f'{metric_name.title()} {normalized_unit_label if normalize_for_histogram else ""}'
+        if column_name in ["ACTIVE_LISTINGS", "WEEKS_OF_SUPPLY"]:
+            x_label = "% of 5-Year Average"
+        else:
+            x_label = f'{metric_name.title()} {normalized_unit_label if normalize_for_histogram else ""}'
         ax_hist1.set_xlabel(x_label, fontsize=20, fontweight="normal", color=COLORS["black"], labelpad=10)
         ax_hist1.set_ylabel("Number of Metros", fontsize=20, fontweight="normal", color=COLORS["black"], labelpad=15)
         # Add main title for BOTH histograms (only once)
@@ -675,10 +704,14 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
             color=COLORS["black"],
         )
         # Add subtitle with specific information
+        if column_name in ["ACTIVE_LISTINGS", "WEEKS_OF_SUPPLY"]:
+            subtitle_text = f"Current vs 5-Year Average ({percentile:.0f}th percentile)"
+        else:
+            subtitle_text = f"Current Level ({percentile:.0f}th percentile)"
         ax_hist1.text(
             0.0,
             1.12,
-            f"Current Level ({percentile:.0f}th percentile)",
+            subtitle_text,
             transform=ax_hist1.transAxes,
             fontsize=18,
             fontweight="normal",
@@ -716,16 +749,22 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
         how="inner",
     )
 
-    if normalize_for_histogram:
+    # For Active Listings and Weeks of Supply, calculate percentage change
+    if column_name in ["ACTIVE_LISTINGS", "WEEKS_OF_SUPPLY"]:
+        change_df["current_value"] = change_df[column_name]
+        change_df["past_value"] = change_df[f"{column_name}_past"]
+        # Calculate percentage change
+        change_df["change_3m"] = ((change_df["current_value"] - change_df["past_value"]) / change_df["past_value"]) * 100
+    elif normalize_for_histogram:
         change_df["current_value"] = change_df["normalized_value"]
         change_df["past_value"] = normalize_metric_for_histograms(
             change_df, f"{column_name}_past", normalize_for_histogram
         )
+        change_df["change_3m"] = change_df["current_value"] - change_df["past_value"]
     else:
         change_df["current_value"] = change_df[column_name]
         change_df["past_value"] = change_df[f"{column_name}_past"]
-
-    change_df["change_3m"] = change_df["current_value"] - change_df["past_value"]
+        change_df["change_3m"] = change_df["current_value"] - change_df["past_value"]
 
     target_row = change_df[change_df["REGION_NAME"] == metro_name]
     if len(target_row) > 0:
@@ -792,18 +831,22 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
             median_change = np.median(change_values_filtered)
             ax_hist2.axvline(median_change, color=COLORS["gray"], linestyle=":", linewidth=1, alpha=0.7)
 
-            target_change_label = format_value(
-                target_change,
-                normalized_unit_label if normalize_for_histogram else unit_label,
-                decimals,
-                is_percentage,
-            )
-            median_change_label = format_value(
-                median_change,
-                normalized_unit_label if normalize_for_histogram else unit_label,
-                decimals,
-                is_percentage,
-            )
+            if column_name in ["ACTIVE_LISTINGS", "WEEKS_OF_SUPPLY"]:
+                target_change_label = f"{target_change:+.1f}%"
+                median_change_label = f"{median_change:+.1f}%"
+            else:
+                target_change_label = format_value(
+                    target_change,
+                    normalized_unit_label if normalize_for_histogram else unit_label,
+                    decimals,
+                    is_percentage,
+                )
+                median_change_label = format_value(
+                    median_change,
+                    normalized_unit_label if normalize_for_histogram else unit_label,
+                    decimals,
+                    is_percentage,
+                )
 
             legend_elements = [
                 Rectangle((0, 0), 1, 1, facecolor=COLORS["black"], alpha=1.0, label=f"{metro_display}: {target_change_label}"),
@@ -822,8 +865,12 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
                 edgecolor="none",
             )
 
+            if column_name in ["ACTIVE_LISTINGS", "WEEKS_OF_SUPPLY"]:
+                x_label_hist2 = "3-Month % Change"
+            else:
+                x_label_hist2 = f"3-Month Change in {metric_name.title()}"
             ax_hist2.set_xlabel(
-                f"3-Month Change in {metric_name.title()}",
+                x_label_hist2,
                 fontsize=20,
                 fontweight="normal",
                 color=COLORS["black"],
@@ -831,10 +878,14 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
             )
             ax_hist2.set_ylabel("Number of Metros", fontsize=20, fontweight="normal", color=COLORS["black"], labelpad=15)
             # Only add subtitle (main title already shown above first histogram)
+            if column_name in ["ACTIVE_LISTINGS", "WEEKS_OF_SUPPLY"]:
+                subtitle_text_hist2 = f"3-Month % Change ({percentile_change:.0f}th percentile)"
+            else:
+                subtitle_text_hist2 = f"3-Month Change ({percentile_change:.0f}th percentile)"
             ax_hist2.text(
                 0.0,
                 1.12,
-                f"3-Month Change ({percentile_change:.0f}th percentile)",
+                subtitle_text_hist2,
                 transform=ax_hist2.transAxes,
                 fontsize=18,
                 fontweight="normal",
