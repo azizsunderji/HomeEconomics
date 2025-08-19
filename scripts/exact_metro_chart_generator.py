@@ -21,6 +21,7 @@ import matplotlib.patches as mpatches
 from matplotlib import gridspec
 from matplotlib.patches import Rectangle, Patch
 from matplotlib.lines import Line2D
+from matplotlib.ticker import FuncFormatter
 
 # Color palette - EXACT from Denver
 COLORS = {
@@ -43,6 +44,13 @@ def setup_fonts():
     (Optional) If HE_FONT_DIR is set locally, the loader in make_charts.py will pick it up.
     """
     plt.rcParams["font.size"] = 18  # keep Denver-ish sizing; family comes from the global loader
+
+
+def format_thousands(x, pos):
+    """Format axis labels to use 'k' for thousands"""
+    if x >= 1000:
+        return f'{int(x/1000)}k'
+    return f'{int(x)}'
 
 
 def format_value(value, unit_label, decimals, is_percentage):
@@ -267,6 +275,11 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
     ax_history.xaxis.set_major_locator(mdates.YearLocator())
     ax_history.xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
     ax_history.xaxis.set_minor_locator(plt.NullLocator())
+    
+    # Apply thousands formatter for large numbers (like Active Listings)
+    max_value = metric_data[column_name].max()
+    if max_value > 5000 and unit_label != "$" and not is_percentage:
+        ax_history.yaxis.set_major_formatter(FuncFormatter(format_thousands))
 
     ax_history.grid(True, alpha=0.3, axis="y")
     ax_history.tick_params(axis="both", colors=COLORS["black"], labelsize=16)
@@ -297,7 +310,7 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
         framealpha=1.0,
         facecolor=COLORS["background"],
         edgecolor="none",
-        bbox_to_anchor=(1, 1.25),
+        bbox_to_anchor=(1, 1.30),  # Moved up slightly to avoid overlap
     )
 
     # ============================
@@ -391,6 +404,10 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
     ax_ranking.tick_params(axis="both", which="both", length=0)
     ax_ranking.tick_params(axis="both", colors=COLORS["black"], labelsize=16)
     ax_ranking.set_xlim(-0.5, len(sorted_years) - 0.5)
+    
+    # Apply thousands formatter for large numbers
+    if max(sorted_values) > 5000 and unit_label != "$" and not is_percentage:
+        ax_ranking.yaxis.set_major_formatter(FuncFormatter(format_thousands))
 
     for spine in ax_ranking.spines.values():
         spine.set_visible(False)
@@ -550,12 +567,12 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
     else:
         values_for_hist = current_data[column_name]
 
-    # Remove outliers
+    # Remove outliers - use more aggressive filtering for better visualization
     q1 = values_for_hist.quantile(0.25)
     q3 = values_for_hist.quantile(0.75)
     iqr = q3 - q1
-    lower_bound = q1 - 2.5 * iqr
-    upper_bound = q3 + 2.5 * iqr
+    lower_bound = q1 - 1.5 * iqr  # Changed from 2.5 to 1.5 for tighter bounds
+    upper_bound = q3 + 1.5 * iqr  # Changed from 2.5 to 1.5 for tighter bounds
 
     target_row = current_data[current_data["REGION_NAME"] == metro_name]
     if len(target_row) > 0:
@@ -634,13 +651,26 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
         x_label = f'{metric_name.title()} {normalized_unit_label if normalize_for_histogram else ""}'
         ax_hist1.set_xlabel(x_label, fontsize=20, fontweight="normal", color=COLORS["black"], labelpad=10)
         ax_hist1.set_ylabel("Number of Metros", fontsize=20, fontweight="normal", color=COLORS["black"], labelpad=15)
+        # Add main title for histogram section
         ax_hist1.text(
-            0.0,
-            1.15,
-            f"Comparison Against National Data: Current Level ({percentile:.0f}th percentile)",
+            0.5,
+            1.25,
+            "Comparison Against National Data",
             transform=ax_hist1.transAxes,
             fontsize=22,
             fontweight="bold",
+            ha="center",
+            va="top",
+            color=COLORS["black"],
+        )
+        # Add subtitle with specific information
+        ax_hist1.text(
+            0.0,
+            1.12,
+            f"Current Level ({percentile:.0f}th percentile)",
+            transform=ax_hist1.transAxes,
+            fontsize=18,
+            fontweight="normal",
             ha="left",
             va="top",
             color=COLORS["black"],
@@ -699,8 +729,8 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
             q3_change = np.percentile(change_values, 75)
             iqr_change = q3_change - q1_change
 
-            lower_bound_change = q1_change - 2.5 * iqr_change
-            upper_bound_change = q3_change + 2.5 * iqr_change
+            lower_bound_change = q1_change - 1.5 * iqr_change  # Changed from 2.5 to 1.5
+            upper_bound_change = q3_change + 1.5 * iqr_change  # Changed from 2.5 to 1.5
 
             if target_change < lower_bound_change:
                 lower_bound_change = target_change - abs(target_change) * 0.1 - 1
@@ -778,13 +808,26 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
                 labelpad=10,
             )
             ax_hist2.set_ylabel("Number of Metros", fontsize=20, fontweight="normal", color=COLORS["black"], labelpad=15)
+            # Add main title for histogram section (matching first histogram)
             ax_hist2.text(
-                0.0,
-                1.15,
-                f"Comparison Against National Data: 3-Month Change ({percentile_change:.0f}th percentile)",
+                0.5,
+                1.25,
+                "Comparison Against National Data",
                 transform=ax_hist2.transAxes,
                 fontsize=22,
                 fontweight="bold",
+                ha="center",
+                va="top",
+                color=COLORS["black"],
+            )
+            # Add subtitle with specific information
+            ax_hist2.text(
+                0.0,
+                1.12,
+                f"3-Month Change ({percentile_change:.0f}th percentile)",
+                transform=ax_hist2.transAxes,
+                fontsize=18,
+                fontweight="normal",
                 ha="left",
                 va="top",
                 color=COLORS["black"],
