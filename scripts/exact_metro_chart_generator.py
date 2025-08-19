@@ -570,10 +570,10 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
     else:
         values_for_hist = current_data[column_name]
 
-    # Remove outliers - use percentile-based filtering for better visualization
-    # Use 2nd and 98th percentile as bounds to exclude extreme outliers
-    lower_bound = values_for_hist.quantile(0.02)
-    upper_bound = values_for_hist.quantile(0.98)
+    # Remove outliers - use aggressive percentile-based filtering
+    # Use 5th and 95th percentile as initial bounds
+    lower_percentile_bound = values_for_hist.quantile(0.05)
+    upper_percentile_bound = values_for_hist.quantile(0.95)
 
     target_row = current_data[current_data["REGION_NAME"] == metro_name]
     if len(target_row) > 0:
@@ -582,21 +582,31 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
         else:
             target_value_hist = target_row[column_name].iloc[0]
 
-        # Expand bounds to include target if needed
-        if target_value_hist < lower_bound:
-            lower_bound = target_value_hist * 0.9
-        if target_value_hist > upper_bound:
-            upper_bound = target_value_hist * 1.1
+        # Calculate reasonable bounds around the majority of data
+        # Don't expand bounds too much just to include the target
+        median_val = values_for_hist.median()
+        iqr = values_for_hist.quantile(0.75) - values_for_hist.quantile(0.25)
+        
+        # Set bounds based on IQR but constrained by percentiles
+        lower_bound = max(lower_percentile_bound, median_val - 3 * iqr)
+        upper_bound = min(upper_percentile_bound, median_val + 3 * iqr)
+        
+        # Only slightly expand if target is outside but close
+        if target_value_hist < lower_bound and target_value_hist > lower_percentile_bound * 0.5:
+            lower_bound = target_value_hist - iqr * 0.2
+        if target_value_hist > upper_bound and target_value_hist < upper_percentile_bound * 1.5:
+            upper_bound = target_value_hist + iqr * 0.2
 
         values_filtered = values_for_hist[
             (values_for_hist >= lower_bound) & (values_for_hist <= upper_bound)
         ]
 
-        # Histogram
-        n_bins = 100
+        # Histogram with explicit range
+        n_bins = min(50, len(values_filtered.unique()))  # Fewer bins for cleaner look
         counts, bins, patches = ax_hist1.hist(
             values_filtered,
             bins=n_bins,
+            range=(lower_bound, upper_bound),  # Explicitly set the range
             color=COLORS["blue"],
             alpha=0.3,
             edgecolor=COLORS["blue"],
@@ -726,30 +736,40 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
         change_values = change_values[~np.isnan(change_values)]
 
         if len(change_values) > 0 and np.std(change_values) > 0:
+            # Use aggressive percentile-based filtering
+            lower_percentile = np.percentile(change_values, 5)
+            upper_percentile = np.percentile(change_values, 95)
+            
+            # Calculate IQR for reasonable expansion
             q1_change = np.percentile(change_values, 25)
             q3_change = np.percentile(change_values, 75)
             iqr_change = q3_change - q1_change
+            median_change = np.median(change_values)
 
-            # Use percentile-based bounds for better outlier removal
-            lower_bound_change = np.percentile(change_values, 2)
-            upper_bound_change = np.percentile(change_values, 98)
+            # Set bounds based on IQR but constrained by percentiles
+            lower_bound_change = max(lower_percentile, median_change - 3 * iqr_change)
+            upper_bound_change = min(upper_percentile, median_change + 3 * iqr_change)
 
-            if target_change < lower_bound_change:
-                lower_bound_change = target_change - abs(target_change) * 0.1 - 1
-            if target_change > upper_bound_change:
-                upper_bound_change = target_change + abs(target_change) * 0.1 + 1
+            # Only slightly expand if target is outside but close
+            if target_change < lower_bound_change and target_change > lower_percentile - iqr_change:
+                lower_bound_change = target_change - iqr_change * 0.2
+            if target_change > upper_bound_change and target_change < upper_percentile + iqr_change:
+                upper_bound_change = target_change + iqr_change * 0.2
 
             change_values_filtered = change_values[
                 (change_values >= lower_bound_change) & (change_values <= upper_bound_change)
             ]
         else:
             change_values_filtered = change_values
+            lower_bound_change = change_values.min()
+            upper_bound_change = change_values.max()
 
         if len(change_values_filtered) > 0:
-            n_bins = 100
+            n_bins = min(50, len(np.unique(change_values_filtered)))  # Fewer bins
             counts, bins, patches = ax_hist2.hist(
                 change_values_filtered,
                 bins=n_bins,
+                range=(lower_bound_change, upper_bound_change),  # Explicitly set range
                 color=COLORS["blue"],
                 alpha=0.7,
                 edgecolor=COLORS["blue"],
