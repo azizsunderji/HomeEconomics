@@ -366,9 +366,12 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
         zorder=3,
     )
 
-    # Add value labels
+    # Add value labels with 'k' formatting for large numbers
     for i, (bar, val) in enumerate(zip(bars, sorted_values)):
-        label = format_value(val, unit_label, decimals, is_percentage)
+        if val > 5000 and unit_label != "$" and not is_percentage:
+            label = format_thousands(val, None)
+        else:
+            label = format_value(val, unit_label, decimals, is_percentage)
         ax_ranking.text(
             bar.get_x() + bar.get_width() / 2,
             bar.get_height() + max(sorted_values) * 0.02,
@@ -567,12 +570,10 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
     else:
         values_for_hist = current_data[column_name]
 
-    # Remove outliers - use more aggressive filtering for better visualization
-    q1 = values_for_hist.quantile(0.25)
-    q3 = values_for_hist.quantile(0.75)
-    iqr = q3 - q1
-    lower_bound = q1 - 1.5 * iqr  # Changed from 2.5 to 1.5 for tighter bounds
-    upper_bound = q3 + 1.5 * iqr  # Changed from 2.5 to 1.5 for tighter bounds
+    # Remove outliers - use percentile-based filtering for better visualization
+    # Use 2nd and 98th percentile as bounds to exclude extreme outliers
+    lower_bound = values_for_hist.quantile(0.02)
+    upper_bound = values_for_hist.quantile(0.98)
 
     target_row = current_data[current_data["REGION_NAME"] == metro_name]
     if len(target_row) > 0:
@@ -651,10 +652,10 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
         x_label = f'{metric_name.title()} {normalized_unit_label if normalize_for_histogram else ""}'
         ax_hist1.set_xlabel(x_label, fontsize=20, fontweight="normal", color=COLORS["black"], labelpad=10)
         ax_hist1.set_ylabel("Number of Metros", fontsize=20, fontweight="normal", color=COLORS["black"], labelpad=15)
-        # Add main title for histogram section
+        # Add main title for BOTH histograms (only once)
         ax_hist1.text(
             0.5,
-            1.25,
+            1.40,  # Increased spacing from histogram
             "Comparison Against National Data",
             transform=ax_hist1.transAxes,
             fontsize=22,
@@ -729,8 +730,9 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
             q3_change = np.percentile(change_values, 75)
             iqr_change = q3_change - q1_change
 
-            lower_bound_change = q1_change - 1.5 * iqr_change  # Changed from 2.5 to 1.5
-            upper_bound_change = q3_change + 1.5 * iqr_change  # Changed from 2.5 to 1.5
+            # Use percentile-based bounds for better outlier removal
+            lower_bound_change = np.percentile(change_values, 2)
+            upper_bound_change = np.percentile(change_values, 98)
 
             if target_change < lower_bound_change:
                 lower_bound_change = target_change - abs(target_change) * 0.1 - 1
@@ -808,19 +810,7 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
                 labelpad=10,
             )
             ax_hist2.set_ylabel("Number of Metros", fontsize=20, fontweight="normal", color=COLORS["black"], labelpad=15)
-            # Add main title for histogram section (matching first histogram)
-            ax_hist2.text(
-                0.5,
-                1.25,
-                "Comparison Against National Data",
-                transform=ax_hist2.transAxes,
-                fontsize=22,
-                fontweight="bold",
-                ha="center",
-                va="top",
-                color=COLORS["black"],
-            )
-            # Add subtitle with specific information
+            # Only add subtitle (main title already shown above first histogram)
             ax_hist2.text(
                 0.0,
                 1.12,
