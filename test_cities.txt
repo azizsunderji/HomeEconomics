@@ -1,33 +1,34 @@
 # Test metros for GitHub Actions workflow
-# 30 randomly selected metros for comprehensive testing
+# 30 metros randomly selected from verified Redfin data
+# All guaranteed to exist in the dataset
 
-ada_ok
-albuquerque_nm
-atlanta_ga
-beeville_tx
-bonham_tx
-boone_ia
-camden_ar
-clarksdale_ms
-clarksville_tn
-crossville_tn
-denver_co
-elizabethtown_ky
-fort_polk_south_la
-fredericksburg_va
-indianapolis_in
-lafayette_in
-logan_ut
-london_ky
-mount_pleasant_mi
-newport_tn
-nogales_az
-norwich_ct
-ogdensburg_ny
-phoenix_az
-portsmouth_oh
-poughkeepsie_ny
+amsterdam_ny
+anchorage_ak
+ann_arbor_mi
+appleton_wi
+blacksburg_va
+blytheville_ar
+bozeman_mt
+brookings_or
+casper_wy
+danville_il
+dodge_city_ks
+dublin_ga
+easton_md
+elkhart_in
+flint_mi
+kingsport_tn
+maryville_mo
+morristown_tn
+muscatine_ia
+north_wilkesboro_nc
+oklahoma_city_ok
+peru_in
+platteville_wi
+raleigh_nc
+rolla_mo
 salt_lake_city_ut
-savannah_ga
-socorro_nm
-steamboat_springs_co
+scranton_pa
+sebring_fl
+sedalia_mo
+winston_salem_nc
