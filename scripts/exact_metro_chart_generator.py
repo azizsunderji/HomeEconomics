@@ -760,13 +760,13 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
         ax_hist1.set_ylabel("Number of Metros", fontsize=20, fontweight="normal", color=COLORS["black"], labelpad=15)
         # Add main title for BOTH histograms (only once)
         ax_hist1.text(
-            0.5,
+            0.0,
             1.40,  # Increased spacing from histogram
             "Comparison Against National Data",
             transform=ax_hist1.transAxes,
             fontsize=22,
             fontweight="bold",
-            ha="center",
+            ha="left",
             va="top",
             color=COLORS["black"],
         )
