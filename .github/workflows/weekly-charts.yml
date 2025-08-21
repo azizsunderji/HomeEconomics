@@ -42,9 +42,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # TEST: 8 shards for 30 cities (~4 cities per shard)
-        shard: [0, 1, 2, 3, 4, 5, 6, 7]
-        # PROD: [0,1,2,3,4,5,6,7]
+        # PROD: 32 shards for 927 metros (~29 metros per shard)
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31]
     env:
       TZ: America/New_York
       REMOTE_BASE: ${{ secrets.REMOTE_BASE }}
@@ -73,11 +72,10 @@ jobs:
         id: date
         run: echo "DATE=$(TZ='America/New_York' date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
 
-      - name: Make shard city list (TEST)
+      - name: Make shard city list (PROD)
         run: |
-          # TEST: split test_cities.txt between 8 shards (mod 8)
-          # PROD: switch file to cities.txt and keep modulo 8
-          awk -v shard=${{ matrix.shard }} 'NF && $0 !~ /^#/ && (NR-1) % 8 == shard' test_cities.txt > cities_shard.txt
+          # PROD: split cities.txt between 32 shards (mod 32)
+          awk -v shard=${{ matrix.shard }} 'NF && $0 !~ /^#/ && (NR-1) % 32 == shard' cities.txt > cities_shard.txt
           echo "Shard ${{ matrix.shard }} cities: $(wc -l < cities_shard.txt)"
           head -50 cities_shard.txt || true
 
@@ -179,7 +177,7 @@ jobs:
           echo "### Statistics" >> summary.md
           echo "- Total charts generated: $total_charts" >> summary.md
           echo "- Total cities processed: $total_cities" >> summary.md
-          echo "- Expected (test run): variable" >> summary.md
+          echo "- Expected: 927 metros × 12 metrics = 11,124 charts" >> summary.md
           cat summary.md
 
       - name: Upload summary
