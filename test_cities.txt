@@ -1,3 +1,33 @@
-albany_ga
-denver_co
+# Test metros for GitHub Actions workflow
+# 30 randomly selected metros for comprehensive testing
+
+ada_ok
+albuquerque_nm
 atlanta_ga
+beeville_tx
+bonham_tx
+boone_ia
+camden_ar
+clarksdale_ms
+clarksville_tn
+crossville_tn
+denver_co
+elizabethtown_ky
+fort_polk_south_la
+fredericksburg_va
+indianapolis_in
+lafayette_in
+logan_ut
+london_ky
+mount_pleasant_mi
+newport_tn
+nogales_az
+norwich_ct
+ogdensburg_ny
+phoenix_az
+portsmouth_oh
+poughkeepsie_ny
+salt_lake_city_ut
+savannah_ga
+socorro_nm
+steamboat_springs_co

@@ -42,8 +42,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # TEST: two shards
-        shard: [0, 1]
+        # TEST: 8 shards for 30 cities (~4 cities per shard)
+        shard: [0, 1, 2, 3, 4, 5, 6, 7]
         # PROD: [0,1,2,3,4,5,6,7]
     env:
       TZ: America/New_York
@@ -75,9 +75,9 @@ jobs:
 
       - name: Make shard city list (TEST)
         run: |
-          # TEST: split test_cities.txt between 2 shards (mod 2)
-          # PROD: switch file to cities.txt and modulo to 8
-          awk -v shard=${{ matrix.shard }} 'NF && $0 !~ /^#/ && (NR-1) % 2 == shard' test_cities.txt > cities_shard.txt
+          # TEST: split test_cities.txt between 8 shards (mod 8)
+          # PROD: switch file to cities.txt and keep modulo 8
+          awk -v shard=${{ matrix.shard }} 'NF && $0 !~ /^#/ && (NR-1) % 8 == shard' test_cities.txt > cities_shard.txt
           echo "Shard ${{ matrix.shard }} cities: $(wc -l < cities_shard.txt)"
           head -50 cities_shard.txt || true
 
