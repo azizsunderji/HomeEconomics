@@ -628,6 +628,13 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
     ].copy()
 
     current_data = metro_data_all.dropna(subset=[column_name]).copy()
+    
+    # Filter out very small markets (< 5 homes sold per week) for more meaningful percentiles
+    # This ensures we're comparing against active markets, not tiny ones with minimal activity
+    MIN_HOMES_SOLD = 5
+    if "ADJUSTED_AVERAGE_HOMES_SOLD" in metro_data_all.columns:
+        active_markets = metro_data_all[metro_data_all["ADJUSTED_AVERAGE_HOMES_SOLD"] >= MIN_HOMES_SOLD]["REGION_NAME"]
+        current_data = current_data[current_data["REGION_NAME"].isin(active_markets)]
 
     # For Active Listings and Weeks of Supply, normalize to 5-year average
     if column_name in ["ACTIVE_LISTINGS", "WEEKS_OF_SUPPLY"]:
@@ -815,6 +822,11 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
         suffixes=("", "_past"),
         how="inner",
     )
+    
+    # Apply same market size filter to change histogram
+    if "ADJUSTED_AVERAGE_HOMES_SOLD" in metro_data_all.columns:
+        active_markets = metro_data_all[metro_data_all["ADJUSTED_AVERAGE_HOMES_SOLD"] >= MIN_HOMES_SOLD]["REGION_NAME"]
+        change_df = change_df[change_df["REGION_NAME"].isin(active_markets)]
 
     # For Active Listings and Weeks of Supply, calculate percentage change
     if column_name in ["ACTIVE_LISTINGS", "WEEKS_OF_SUPPLY"]:
