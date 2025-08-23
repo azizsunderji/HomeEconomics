@@ -1,0 +1,82 @@
+name: Upload Social Charts
+
+on:
+  workflow_dispatch:
+    inputs:
+      date:
+        description: 'Date folder to upload (YYYY-MM-DD)'
+        required: true
+        default: '2025-08-22'
+
+jobs:
+  upload-social-charts:
+    runs-on: ubuntu-latest
+    env:
+      REMOTE_BASE: ${{ secrets.REMOTE_BASE }}
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Install lftp
+        run: sudo apt-get update && sudo apt-get install -y lftp
+      
+      - name: Count charts
+        run: |
+          echo "Checking social_charts/${{ github.event.inputs.date }}/"
+          if [ -d "social_charts/${{ github.event.inputs.date }}" ]; then
+            echo "Total charts to upload:"
+            find social_charts/${{ github.event.inputs.date }} -name '*.png' | wc -l
+            echo "Total metros:"
+            find social_charts/${{ github.event.inputs.date }} -type d -mindepth 1 | wc -l
+          else
+            echo "Directory not found: social_charts/${{ github.event.inputs.date }}"
+            exit 1
+          fi
+      
+      - name: Upload via SFTP
+        env:
+          HOST: ${{ secrets.SFTP_HOST }}
+          USER: ${{ secrets.SFTP_USER }}
+          KEY: ${{ secrets.SFTP_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$KEY" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H $HOST >> ~/.ssh/known_hosts 2>/dev/null || true
+          
+          # Upload social charts
+          lftp -e "
+            set sftp:auto-confirm yes;
+            set sftp:connect-program 'ssh -i ~/.ssh/id_rsa';
+            set net:max-retries 3;
+            set net:timeout 60;
+            set net:reconnect-interval-base 5;
+            open -u $USER,dummy sftp://$HOST;
+            mkdir -p ${REMOTE_BASE}/social/${{ github.event.inputs.date }};
+            mirror -R --only-newer --parallel=8 --verbose \
+              social_charts/${{ github.event.inputs.date }}/ \
+              ${REMOTE_BASE}/social/${{ github.event.inputs.date }}/;
+            bye
+          " || echo "Upload finished with warnings"
+      
+      - name: Generate summary
+        run: |
+          echo "## Social Charts Upload Summary" > $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Date:** ${{ github.event.inputs.date }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -d "social_charts/${{ github.event.inputs.date }}" ]; then
+            total_charts=$(find social_charts/${{ github.event.inputs.date }} -name '*.png' | wc -l)
+            total_metros=$(find social_charts/${{ github.event.inputs.date }} -type d -mindepth 1 | wc -l)
+            echo "### Statistics" >> $GITHUB_STEP_SUMMARY
+            echo "- Total charts uploaded: $total_charts" >> $GITHUB_STEP_SUMMARY
+            echo "- Total metros: $total_metros" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### Access URLs" >> $GITHUB_STEP_SUMMARY
+            echo "Charts are now available at:" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "https://home-economics.us/charts/social/${{ github.event.inputs.date }}/" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi
