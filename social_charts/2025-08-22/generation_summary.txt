@@ -1,0 +1,16 @@
+Social Media Charts Generation Summary
+Generated: 2025-08-22 23:52:10.551599
+Total metros: 927
+Metrics per metro: 12
+Total charts attempted: 11124
+Successful: 11119
+Failed: 5
+Success rate: 100.0%
+Time elapsed: 492.7 minutes
+
+Metros with failures:
+  San Antonio, TX metro area: off_market_in_2_weeks
+  Dallas, TX metro area: off_market_in_2_weeks
+  Boise City, ID metro area: off_market_in_2_weeks
+  Atlanta, GA metro area: off_market_in_2_weeks
+  Fort Worth, TX metro area: off_market_in_2_weeks
