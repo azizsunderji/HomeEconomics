@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Chart Spec Editor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #1a1a1a;
+            color: #e0e0e0;
+            display: flex;
+            height: 100vh;
+        }
+        
+        .sidebar {
+            width: 350px;
+            background: #2a2a2a;
+            padding: 20px;
+            overflow-y: auto;
+            border-right: 1px solid #444;
+        }
+        
+        .main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .chart-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #1a1a1a;
+            padding: 20px;
+            overflow: auto;
+        }
+        
+        #chart-display {
+            max-width: 100%;
+            max-height: 100%;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+        
+        h1 {
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: #0BB4FF;
+        }
+        
+        h2 {
+            font-size: 16px;
+            margin: 20px 0 10px;
+            color: #FEC439;
+            border-bottom: 1px solid #444;
+            padding-bottom: 5px;
+        }
+        
+        .control-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            font-size: 12px;
+            margin-bottom: 5px;
+            color: #aaa;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+            margin-bottom: 5px;
+        }
+        
+        input[type="number"], input[type="text"], select, input[type="file"] {
+            width: 100%;
+            padding: 6px;
+            background: #333;
+            border: 1px solid #555;
+            color: #e0e0e0;
+            border-radius: 4px;
+        }
+        
+        .value-display {
+            font-size: 11px;
+            color: #888;
+            text-align: right;
+        }
+        
+        .two-col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        
+        button {
+            width: 100%;
+            padding: 10px;
+            margin-top: 10px;
+            background: #0BB4FF;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        
+        button:hover {
+            background: #0990cc;
+        }
+        
+        button:disabled {
+            background: #555;
+            cursor: not-allowed;
+        }
+        
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        
+        .status.success {
+            background: #67A27533;
+            border: 1px solid #67A275;
+        }
+        
+        .status.error {
+            background: #F4743B33;
+            border: 1px solid #F4743B;
+        }
+        
+        .status.info {
+            background: #0BB4FF33;
+            border: 1px solid #0BB4FF;
+        }
+        
+        #json-output {
+            width: 100%;
+            height: 150px;
+            background: #1a1a1a;
+            color: #67A275;
+            border: 1px solid #444;
+            padding: 10px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 11px;
+            resize: vertical;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #444;
+            border-top-color: #0BB4FF;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .file-info {
+            background: #333;
+            padding: 8px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-size: 12px;
+        }
+        
+        #chart-selector {
+            background: #444;
+            padding: 5px;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <h1>📊 Live Chart Editor</h1>
+        
+        <h2>Chart File</h2>
+        <div class="control-group">
+            <label>Select Chart Python File</label>
+            <select id="chart-selector">
+                <option value="">-- Select a chart file --</option>
+            </select>
+            <input type="file" id="file-input" accept=".py" style="display: none;">
+            <button onclick="document.getElementById('file-input').click()">📂 Browse for .py file</button>
+            <div id="file-info" class="file-info" style="display: none;"></div>
+        </div>
+        
+        <button id="load-btn" onclick="loadChart()">🔄 Load Chart</button>
+        
+        <div id="status"></div>
+        
+        <h2>Font</h2>
+        <div class="control-group">
+            <label>Font Family</label>
+            <select id="font">
+                <option value="ABC Oracle">ABC Oracle</option>
+                <option value="Arial">Arial</option>
+                <option value="Helvetica">Helvetica</option>
+                <option value="Times New Roman">Times New Roman</option>
+                <option value="Georgia">Georgia</option>
+            </select>
+        </div>
+        
+        <h2>Dimensions</h2>
+        <div class="two-col">
+            <div class="control-group">
+                <label>Width (inches)</label>
+                <input type="number" id="width" value="12" step="0.5" min="4" max="20">
+            </div>
+            <div class="control-group">
+                <label>Height (inches)</label>
+                <input type="number" id="height" value="12" step="0.5" min="4" max="20">
+            </div>
+        </div>
+        <div class="control-group">
+            <label>DPI</label>
+            <input type="number" id="dpi" value="100" step="10" min="50" max="300">
+        </div>
+        
+        <h2>Margins (0-1)</h2>
+        <div class="two-col">
+            <div class="control-group">
+                <label>Top</label>
+                <input type="range" id="top" min="0.5" max="0.99" step="0.01" value="0.85">
+                <div class="value-display" id="top-val">0.85</div>
+            </div>
+            <div class="control-group">
+                <label>Bottom</label>
+                <input type="range" id="bottom" min="0.01" max="0.5" step="0.01" value="0.08">
+                <div class="value-display" id="bottom-val">0.08</div>
+            </div>
+            <div class="control-group">
+                <label>Left</label>
+                <input type="range" id="left" min="0.01" max="0.4" step="0.01" value="0.08">
+                <div class="value-display" id="left-val">0.08</div>
+            </div>
+            <div class="control-group">
+                <label>Right</label>
+                <input type="range" id="right" min="0.6" max="0.99" step="0.01" value="0.95">
+                <div class="value-display" id="right-val">0.95</div>
+            </div>
+        </div>
+        
+        <h2>Title Positions (Y)</h2>
+        <div class="control-group">
+            <label>Main Title Y</label>
+            <input type="range" id="main_y" min="0.80" max="0.99" step="0.005" value="0.96">
+            <div class="value-display" id="main_y-val">0.96</div>
+        </div>
+        <div class="control-group">
+            <label>Metro Title Y</label>
+            <input type="range" id="metro_y" min="0.75" max="0.98" step="0.005" value="0.92">
+            <div class="value-display" id="metro_y-val">0.92</div>
+        </div>
+        <div class="control-group">
+            <label>Subtitle Y</label>
+            <input type="range" id="subtitle_y" min="0.70" max="0.97" step="0.005" value="0.88">
+            <div class="value-display" id="subtitle_y-val">0.88</div>
+        </div>
+        
+        <h2>Font Sizes</h2>
+        <div class="two-col">
+            <div class="control-group">
+                <label>Title (4-40)</label>
+                <input type="range" id="title_size" min="4" max="40" value="14">
+                <div class="value-display" id="title_size-val">14</div>
+            </div>
+            <div class="control-group">
+                <label>Metro (4-40)</label>
+                <input type="range" id="metro_size" min="4" max="40" value="12">
+                <div class="value-display" id="metro_size-val">12</div>
+            </div>
+            <div class="control-group">
+                <label>Subtitle (4-30)</label>
+                <input type="range" id="subtitle_size" min="4" max="30" value="10">
+                <div class="value-display" id="subtitle_size-val">10</div>
+            </div>
+            <div class="control-group">
+                <label>Labels (4-30)</label>
+                <input type="range" id="label_size" min="4" max="30" value="10">
+                <div class="value-display" id="label_size-val">10</div>
+            </div>
+            <div class="control-group">
+                <label>Ticks (4-25)</label>
+                <input type="range" id="tick_size" min="4" max="25" value="9">
+                <div class="value-display" id="tick_size-val">9</div>
+            </div>
+        </div>
+        
+        <h2>Panel Spacing</h2>
+        <div class="two-col">
+            <div class="control-group">
+                <label>H-Space</label>
+                <input type="range" id="hspace" min="0.0" max="1.0" step="0.05" value="0.50">
+                <div class="value-display" id="hspace-val">0.50</div>
+            </div>
+            <div class="control-group">
+                <label>V-Space</label>
+                <input type="range" id="wspace" min="0.0" max="1.0" step="0.05" value="0.35">
+                <div class="value-display" id="wspace-val">0.35</div>
+            </div>
+        </div>
+        
+        <h2>Actions</h2>
+        <button onclick="updateChart()" id="update-btn" disabled>🎨 Update Chart</button>
+        <button onclick="copySpec()">📋 Copy Spec JSON</button>
+        <button onclick="downloadSpec()">💾 Save chartspec.json</button>
+        
+        <h2>JSON Output</h2>
+        <textarea id="json-output" readonly></textarea>
+    </div>
+    
+    <div class="main">
+        <div class="chart-container">
+            <img id="chart-display" src="" alt="Load a chart to begin" style="display: none;">
+            <div id="placeholder" style="color: #666; font-size: 18px;">
+                Load a Python chart file to begin editing
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Current spec
+        let spec = {
+            width: 12,
+            height: 12,
+            dpi: 100,
+            font: 'ABC Oracle',
+            top: 0.85,
+            bottom: 0.08,
+            left: 0.08,
+            right: 0.95,
+            main_y: 0.96,
+            metro_y: 0.92,
+            subtitle_y: 0.88,
+            title_size: 14,
+            metro_size: 12,
+            subtitle_size: 10,
+            label_size: 10,
+            tick_size: 9,
+            hspace: 0.50,
+            wspace: 0.35,
+            bg: '#F6F7F3',
+            fg: '#3D3733',
+            brand_blue: '#0BB4FF',
+            brand_yellow: '#FEC439',
+            brand_green: '#67A275',
+            brand_red: '#F4743B',
+            titles: {
+                main_y: 0.96,
+                metro_y: 0.92,
+                subtitle_y: 0.88
+            }
+        };
+        
+        let currentChartFile = null;
+        let isUpdating = false;
+        
+        // Load available charts on startup
+        async function loadChartList() {
+            try {
+                const response = await fetch('http://localhost:5555/list_charts');
+                const data = await response.json();
+                
+                const selector = document.getElementById('chart-selector');
+                selector.innerHTML = '<option value="">-- Select a chart file --</option>';
+                
+                data.charts.forEach(chart => {
+                    const option = document.createElement('option');
+                    option.value = chart.path;
+                    option.textContent = chart.name;
+                    selector.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Could not load chart list:', error);
+            }
+        }
+        
+        // File input handler
+        document.getElementById('file-input').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file && file.name.endsWith('.py')) {
+                currentChartFile = file.path || file.name;
+                document.getElementById('file-info').textContent = `Selected: ${file.name}`;
+                document.getElementById('file-info').style.display = 'block';
+            }
+        });
+        
+        // Chart selector handler
+        document.getElementById('chart-selector').addEventListener('change', function(e) {
+            if (e.target.value) {
+                currentChartFile = e.target.value;
+                document.getElementById('file-info').textContent = `Selected: ${e.target.value.split('/').pop()}`;
+                document.getElementById('file-info').style.display = 'block';
+            }
+        });
+        
+        async function loadChart() {
+            if (!currentChartFile) {
+                showStatus('Please select a chart file first', 'error');
+                return;
+            }
+            
+            showStatus('Loading chart...', 'info');
+            
+            try {
+                const response = await fetch('http://localhost:5555/load_chart', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({file_path: currentChartFile})
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showStatus(`Chart loaded: ${data.file}`, 'success');
+                    document.getElementById('update-btn').disabled = false;
+                    updateChart();
+                } else {
+                    showStatus(data.error || 'Failed to load chart', 'error');
+                }
+            } catch (error) {
+                showStatus(`Error: ${error.message}`, 'error');
+            }
+        }
+        
+        async function updateChart() {
+            if (isUpdating) return;
+            isUpdating = true;
+            
+            document.getElementById('update-btn').disabled = true;
+            document.getElementById('update-btn').innerHTML = '<span class="loading"></span> Updating...';
+            
+            try {
+                const response = await fetch('http://localhost:5555/generate_chart', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({spec: spec})
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('chart-display').src = data.image;
+                    document.getElementById('chart-display').style.display = 'block';
+                    document.getElementById('placeholder').style.display = 'none';
+                    showStatus('Chart updated', 'success');
+                } else {
+                    showStatus(data.error || 'Failed to generate chart', 'error');
+                    if (data.traceback) {
+                        console.error(data.traceback);
+                    }
+                }
+            } catch (error) {
+                showStatus(`Error: ${error.message}`, 'error');
+            } finally {
+                document.getElementById('update-btn').disabled = false;
+                document.getElementById('update-btn').innerHTML = '🎨 Update Chart';
+                isUpdating = false;
+            }
+        }
+        
+        function updateSpec() {
+            // Read all values
+            spec.width = parseFloat(document.getElementById('width').value);
+            spec.height = parseFloat(document.getElementById('height').value);
+            spec.dpi = parseInt(document.getElementById('dpi').value);
+            spec.font = document.getElementById('font').value;
+            spec.top = parseFloat(document.getElementById('top').value);
+            spec.bottom = parseFloat(document.getElementById('bottom').value);
+            spec.left = parseFloat(document.getElementById('left').value);
+            spec.right = parseFloat(document.getElementById('right').value);
+            spec.title_size = parseInt(document.getElementById('title_size').value);
+            spec.metro_size = parseInt(document.getElementById('metro_size').value);
+            spec.subtitle_size = parseInt(document.getElementById('subtitle_size').value);
+            spec.label_size = parseInt(document.getElementById('label_size').value);
+            spec.tick_size = parseInt(document.getElementById('tick_size').value);
+            spec.hspace = parseFloat(document.getElementById('hspace').value);
+            spec.wspace = parseFloat(document.getElementById('wspace').value);
+            
+            // Update title positions
+            spec.titles = {
+                main_y: parseFloat(document.getElementById('main_y').value),
+                metro_y: parseFloat(document.getElementById('metro_y').value),
+                subtitle_y: parseFloat(document.getElementById('subtitle_y').value)
+            };
+            
+            // Update value displays
+            ['top', 'bottom', 'left', 'right', 'main_y', 'metro_y', 'subtitle_y', 'hspace', 'wspace'].forEach(key => {
+                const display = document.getElementById(key + '-val');
+                if (display) {
+                    const value = key.includes('_y') ? spec.titles[key] : spec[key];
+                    display.textContent = value.toFixed(3);
+                }
+            });
+            
+            ['title_size', 'metro_size', 'subtitle_size', 'label_size', 'tick_size'].forEach(key => {
+                const display = document.getElementById(key + '-val');
+                if (display) {
+                    display.textContent = spec[key];
+                }
+            });
+            
+            // Update JSON
+            updateJSON();
+            
+            // Auto-update chart if loaded
+            if (currentChartFile && !isUpdating) {
+                clearTimeout(window.updateTimeout);
+                window.updateTimeout = setTimeout(() => updateChart(), 500);
+            }
+        }
+        
+        function updateJSON() {
+            document.getElementById('json-output').value = JSON.stringify(spec, null, 2);
+        }
+        
+        function showStatus(message, type = 'info') {
+            const status = document.getElementById('status');
+            status.className = `status ${type}`;
+            status.textContent = message;
+            
+            if (type === 'success') {
+                setTimeout(() => {
+                    status.textContent = '';
+                    status.className = '';
+                }, 3000);
+            }
+        }
+        
+        function copySpec() {
+            const json = document.getElementById('json-output').value;
+            navigator.clipboard.writeText(json).then(() => {
+                showStatus('Spec copied to clipboard!', 'success');
+            });
+        }
+        
+        async function downloadSpec() {
+            try {
+                const response = await fetch('http://localhost:5555/save_spec', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        spec: spec,
+                        filename: 'chartspec.json'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showStatus(`Spec saved to ${data.filename}`, 'success');
+                    
+                    // Also trigger browser download
+                    const blob = new Blob([JSON.stringify(spec, null, 2)], {type: 'application/json'});
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'chartspec.json';
+                    a.click();
+                    URL.revokeObjectURL(url);
+                }
+            } catch (error) {
+                showStatus(`Error saving: ${error.message}`, 'error');
+            }
+        }
+        
+        // Add event listeners to all controls
+        ['width', 'height', 'dpi', 'font', 'top', 'bottom', 'left', 'right',
+         'title_size', 'metro_size', 'subtitle_size', 'label_size', 'tick_size',
+         'main_y', 'metro_y', 'subtitle_y', 'hspace', 'wspace'].forEach(id => {
+            const elem = document.getElementById(id);
+            if (elem) {
+                elem.addEventListener('input', updateSpec);
+            }
+        });
+        
+        // Initial setup
+        updateSpec();
+        loadChartList();
+        
+        // Show initial message
+        showStatus('Select a chart file and click "Load Chart" to begin', 'info');
+    </script>
+</body>
+</html>

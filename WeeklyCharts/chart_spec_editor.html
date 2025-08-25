@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chart Spec Visual Editor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #1a1a1a;
+            color: #e0e0e0;
+            display: flex;
+            height: 100vh;
+        }
+        
+        .sidebar {
+            width: 320px;
+            background: #2a2a2a;
+            padding: 20px;
+            overflow-y: auto;
+            border-right: 1px solid #444;
+        }
+        
+        .main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .canvas-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #1a1a1a;
+            padding: 20px;
+            overflow: auto;
+        }
+        
+        canvas {
+            background: #F6F7F3;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+        
+        h1 {
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: #0BB4FF;
+        }
+        
+        h2 {
+            font-size: 16px;
+            margin: 20px 0 10px;
+            color: #FEC439;
+            border-bottom: 1px solid #444;
+            padding-bottom: 5px;
+        }
+        
+        .control-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            font-size: 12px;
+            margin-bottom: 5px;
+            color: #aaa;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+            margin-bottom: 5px;
+        }
+        
+        input[type="number"], input[type="text"], select {
+            width: 100%;
+            padding: 6px;
+            background: #333;
+            border: 1px solid #555;
+            color: #e0e0e0;
+            border-radius: 4px;
+        }
+        
+        .value-display {
+            font-size: 11px;
+            color: #888;
+            text-align: right;
+        }
+        
+        .two-col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        
+        button {
+            width: 100%;
+            padding: 10px;
+            margin-top: 10px;
+            background: #0BB4FF;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        
+        button:hover {
+            background: #0990cc;
+        }
+        
+        .preset-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .preset-btn {
+            padding: 8px;
+            background: #444;
+            margin-top: 0;
+        }
+        
+        .preset-btn:hover {
+            background: #555;
+        }
+        
+        #json-output {
+            width: 100%;
+            height: 200px;
+            background: #1a1a1a;
+            color: #67A275;
+            border: 1px solid #444;
+            padding: 10px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 11px;
+            resize: vertical;
+        }
+        
+        .info {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.7);
+            padding: 10px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        
+        .guide-line {
+            stroke: #FF0000;
+            stroke-width: 0.5;
+            stroke-dasharray: 2,2;
+            opacity: 0.5;
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <h1>📊 Chart Spec Editor</h1>
+        
+        <div class="preset-buttons">
+            <button class="preset-btn" onclick="loadPreset('social')">📷 Social Media</button>
+            <button class="preset-btn" onclick="loadPreset('mobile')">📱 Mobile</button>
+        </div>
+        
+        <h2>Dimensions</h2>
+        <div class="two-col">
+            <div class="control-group">
+                <label>Width (inches)</label>
+                <input type="number" id="width" value="12" step="0.5" min="4" max="20">
+            </div>
+            <div class="control-group">
+                <label>Height (inches)</label>
+                <input type="number" id="height" value="12" step="0.5" min="4" max="20">
+            </div>
+        </div>
+        <div class="control-group">
+            <label>DPI</label>
+            <input type="number" id="dpi" value="100" step="10" min="50" max="300">
+        </div>
+        
+        <h2>Margins (0-1)</h2>
+        <div class="two-col">
+            <div class="control-group">
+                <label>Top</label>
+                <input type="range" id="top" min="0.6" max="0.99" step="0.01" value="0.85">
+                <div class="value-display" id="top-val">0.85</div>
+            </div>
+            <div class="control-group">
+                <label>Bottom</label>
+                <input type="range" id="bottom" min="0.01" max="0.4" step="0.01" value="0.08">
+                <div class="value-display" id="bottom-val">0.08</div>
+            </div>
+            <div class="control-group">
+                <label>Left</label>
+                <input type="range" id="left" min="0.01" max="0.3" step="0.01" value="0.08">
+                <div class="value-display" id="left-val">0.08</div>
+            </div>
+            <div class="control-group">
+                <label>Right</label>
+                <input type="range" id="right" min="0.7" max="0.99" step="0.01" value="0.95">
+                <div class="value-display" id="right-val">0.95</div>
+            </div>
+        </div>
+        
+        <h2>Title Positions (Y)</h2>
+        <div class="control-group">
+            <label>Main Title Y</label>
+            <input type="range" id="main_y" min="0.85" max="0.99" step="0.005" value="0.96">
+            <div class="value-display" id="main_y-val">0.96</div>
+        </div>
+        <div class="control-group">
+            <label>Metro Title Y</label>
+            <input type="range" id="metro_y" min="0.80" max="0.98" step="0.005" value="0.92">
+            <div class="value-display" id="metro_y-val">0.92</div>
+        </div>
+        <div class="control-group">
+            <label>Subtitle Y</label>
+            <input type="range" id="subtitle_y" min="0.75" max="0.95" step="0.005" value="0.88">
+            <div class="value-display" id="subtitle_y-val">0.88</div>
+        </div>
+        
+        <h2>Font Sizes</h2>
+        <div class="two-col">
+            <div class="control-group">
+                <label>Title</label>
+                <input type="number" id="title_size" value="14" min="8" max="30">
+            </div>
+            <div class="control-group">
+                <label>Metro</label>
+                <input type="number" id="metro_size" value="12" min="8" max="25">
+            </div>
+            <div class="control-group">
+                <label>Subtitle</label>
+                <input type="number" id="subtitle_size" value="10" min="6" max="20">
+            </div>
+            <div class="control-group">
+                <label>Labels</label>
+                <input type="number" id="label_size" value="10" min="6" max="18">
+            </div>
+        </div>
+        
+        <h2>Panel Spacing</h2>
+        <div class="two-col">
+            <div class="control-group">
+                <label>H-Space</label>
+                <input type="range" id="hspace" min="0.1" max="0.8" step="0.05" value="0.50">
+                <div class="value-display" id="hspace-val">0.50</div>
+            </div>
+            <div class="control-group">
+                <label>V-Space</label>
+                <input type="range" id="wspace" min="0.1" max="0.6" step="0.05" value="0.35">
+                <div class="value-display" id="wspace-val">0.35</div>
+            </div>
+        </div>
+        
+        <h2>Export</h2>
+        <button onclick="copySpec()">📋 Copy JSON to Clipboard</button>
+        <button onclick="downloadSpec()">💾 Download chartspec.json</button>
+        
+        <h2>JSON Output</h2>
+        <textarea id="json-output" readonly></textarea>
+    </div>
+    
+    <div class="main">
+        <div class="canvas-container">
+            <canvas id="chart-canvas"></canvas>
+        </div>
+        <div class="info">
+            <div id="dimensions-info"></div>
+        </div>
+    </div>
+    
+    <script>
+        const canvas = document.getElementById('chart-canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Brand colors
+        const colors = {
+            bg: '#F6F7F3',
+            fg: '#3D3733',
+            blue: '#0BB4FF',
+            yellow: '#FEC439',
+            green: '#67A275',
+            red: '#F4743B'
+        };
+        
+        // Current spec
+        let spec = {
+            width: 12,
+            height: 12,
+            dpi: 100,
+            top: 0.85,
+            bottom: 0.08,
+            left: 0.08,
+            right: 0.95,
+            main_y: 0.96,
+            metro_y: 0.92,
+            subtitle_y: 0.88,
+            title_size: 14,
+            metro_size: 12,
+            subtitle_size: 10,
+            label_size: 10,
+            hspace: 0.50,
+            wspace: 0.35
+        };
+        
+        // Presets
+        const presets = {
+            social: {
+                width: 12, height: 12, dpi: 100,
+                top: 0.85, bottom: 0.08, left: 0.08, right: 0.95,
+                main_y: 0.96, metro_y: 0.92, subtitle_y: 0.88,
+                title_size: 14, metro_size: 12, subtitle_size: 10, label_size: 10,
+                hspace: 0.50, wspace: 0.35
+            },
+            mobile: {
+                width: 8, height: 14, dpi: 100,
+                top: 0.92, bottom: 0.05, left: 0.08, right: 0.92,
+                main_y: 0.96, metro_y: 0.93, subtitle_y: 0.90,
+                title_size: 20, metro_size: 18, subtitle_size: 14, label_size: 12,
+                hspace: 0.35, wspace: 0
+            }
+        };
+        
+        function updateSpec() {
+            // Read all values
+            Object.keys(spec).forEach(key => {
+                const elem = document.getElementById(key);
+                if (elem) {
+                    spec[key] = elem.type === 'range' || elem.type === 'number' 
+                        ? parseFloat(elem.value) 
+                        : elem.value;
+                }
+            });
+            
+            // Update value displays
+            ['top', 'bottom', 'left', 'right', 'main_y', 'metro_y', 'subtitle_y', 'hspace', 'wspace'].forEach(key => {
+                const display = document.getElementById(key + '-val');
+                if (display) {
+                    display.textContent = spec[key].toFixed(3);
+                }
+            });
+            
+            // Update canvas
+            drawChart();
+            
+            // Update JSON
+            updateJSON();
+        }
+        
+        function drawChart() {
+            // Set canvas size
+            const pixelWidth = spec.width * spec.dpi;
+            const pixelHeight = spec.height * spec.dpi;
+            
+            canvas.width = pixelWidth;
+            canvas.height = pixelHeight;
+            canvas.style.width = Math.min(pixelWidth, 800) + 'px';
+            canvas.style.height = Math.min(pixelHeight, 800) + 'px';
+            
+            // Clear canvas
+            ctx.fillStyle = colors.bg;
+            ctx.fillRect(0, 0, pixelWidth, pixelHeight);
+            
+            // Draw margins
+            const marginLeft = spec.left * pixelWidth;
+            const marginRight = spec.right * pixelWidth;
+            const marginTop = (1 - spec.top) * pixelHeight;
+            const marginBottom = (1 - spec.bottom) * pixelHeight;
+            
+            // Draw margin guides
+            ctx.strokeStyle = 'rgba(255, 0, 0, 0.2)';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([5, 5]);
+            ctx.strokeRect(marginLeft, marginTop, marginRight - marginLeft, marginBottom - marginTop);
+            ctx.setLineDash([]);
+            
+            // Draw titles
+            ctx.textAlign = 'center';
+            ctx.fillStyle = colors.fg;
+            
+            // Main title
+            ctx.font = `bold ${spec.title_size * spec.dpi/12}px Arial`;
+            ctx.fillText('MEDIAN SALE PRICE', pixelWidth/2, (1 - spec.main_y) * pixelHeight);
+            
+            // Metro title
+            ctx.fillStyle = colors.blue;
+            ctx.font = `${spec.metro_size * spec.dpi/12}px Arial`;
+            ctx.fillText('DENVER, CO METRO AREA', pixelWidth/2, (1 - spec.metro_y) * pixelHeight);
+            
+            // Subtitle
+            ctx.fillStyle = colors.fg;
+            ctx.globalAlpha = 0.7;
+            ctx.font = `${spec.subtitle_size * spec.dpi/12}px Arial`;
+            ctx.fillText('Data based on 4 week window captured November 24, 2024', 
+                        pixelWidth/2, (1 - spec.subtitle_y) * pixelHeight);
+            ctx.globalAlpha = 1;
+            
+            // Draw grid layout (3x2)
+            const gridTop = marginTop;
+            const gridBottom = marginBottom;
+            const gridLeft = marginLeft;
+            const gridRight = marginRight;
+            
+            const gridWidth = gridRight - gridLeft;
+            const gridHeight = gridBottom - gridTop;
+            
+            // Height ratios: [1.2, 0.9, 0.9]
+            const totalHeightRatio = 1.2 + 0.9 + 0.9;
+            const row1Height = (1.2 / totalHeightRatio) * gridHeight * (1 - spec.hspace);
+            const row2Height = (0.9 / totalHeightRatio) * gridHeight * (1 - spec.hspace);
+            const row3Height = (0.9 / totalHeightRatio) * gridHeight * (1 - spec.hspace);
+            
+            const vGap = (gridHeight * spec.hspace) / 2;
+            const hGap = (gridWidth * spec.wspace) / 2;
+            
+            const colWidth = (gridWidth - hGap) / 2;
+            
+            // Draw panels
+            ctx.strokeStyle = colors.blue;
+            ctx.globalAlpha = 0.3;
+            ctx.lineWidth = 2;
+            
+            // Panel 1: Full width top
+            ctx.strokeRect(gridLeft, gridTop, gridWidth, row1Height);
+            drawPanelContent(gridLeft, gridTop, gridWidth, row1Height, 'Time Series');
+            
+            // Panel 2: Left middle
+            const row2Y = gridTop + row1Height + vGap;
+            ctx.strokeRect(gridLeft, row2Y, colWidth, row2Height);
+            drawPanelContent(gridLeft, row2Y, colWidth, row2Height, 'Bar Chart');
+            
+            // Panel 3: Right middle
+            ctx.strokeRect(gridLeft + colWidth + hGap, row2Y, colWidth, row2Height);
+            drawPanelContent(gridLeft + colWidth + hGap, row2Y, colWidth, row2Height, 'Histogram');
+            
+            // Panel 4: Left bottom
+            const row3Y = row2Y + row2Height + vGap;
+            ctx.strokeRect(gridLeft, row3Y, colWidth, row3Height);
+            drawPanelContent(gridLeft, row3Y, colWidth, row3Height, 'Momentum');
+            
+            // Panel 5: Right bottom
+            ctx.strokeRect(gridLeft + colWidth + hGap, row3Y, colWidth, row3Height);
+            drawPanelContent(gridLeft + colWidth + hGap, row3Y, colWidth, row3Height, '3-Mo Change');
+            
+            ctx.globalAlpha = 1;
+            
+            // Update dimensions info
+            document.getElementById('dimensions-info').innerHTML = 
+                `📐 ${pixelWidth} × ${pixelHeight}px @ ${spec.dpi} DPI<br>` +
+                `📏 ${spec.width}" × ${spec.height}"`;
+        }
+        
+        function drawPanelContent(x, y, width, height, title) {
+            // Draw panel title
+            ctx.fillStyle = colors.fg;
+            ctx.font = `${spec.label_size * spec.dpi/12}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.fillText(title, x + width/2, y + 30);
+            
+            // Draw sample chart
+            ctx.strokeStyle = colors.blue;
+            ctx.fillStyle = colors.blue;
+            ctx.globalAlpha = 0.2;
+            
+            const chartY = y + height/2;
+            const chartLeft = x + width * 0.1;
+            const chartWidth = width * 0.8;
+            
+            // Simple wave
+            ctx.beginPath();
+            ctx.moveTo(chartLeft, chartY);
+            for (let i = 0; i <= 20; i++) {
+                const px = chartLeft + (i/20) * chartWidth;
+                const py = chartY + Math.sin(i/3) * height * 0.2;
+                ctx.lineTo(px, py);
+            }
+            ctx.lineTo(chartLeft + chartWidth, chartY);
+            ctx.lineTo(chartLeft, chartY);
+            ctx.fill();
+            
+            ctx.globalAlpha = 0.6;
+            ctx.beginPath();
+            ctx.moveTo(chartLeft, chartY);
+            for (let i = 0; i <= 20; i++) {
+                const px = chartLeft + (i/20) * chartWidth;
+                const py = chartY + Math.sin(i/3) * height * 0.2;
+                ctx.lineTo(px, py);
+            }
+            ctx.stroke();
+            
+            ctx.globalAlpha = 1;
+            ctx.textAlign = 'left';
+        }
+        
+        function updateJSON() {
+            const chartSpec = {
+                width: spec.width,
+                height: spec.height,
+                dpi: spec.dpi,
+                bg: colors.bg,
+                fg: colors.fg,
+                brand_blue: colors.blue,
+                brand_yellow: colors.yellow,
+                brand_green: colors.green,
+                brand_red: colors.red,
+                font: "ABC Oracle",
+                base_fontsize: 10,
+                title_size: spec.title_size,
+                metro_size: spec.metro_size,
+                subtitle_size: spec.subtitle_size,
+                label_size: spec.label_size,
+                tick_size: spec.label_size - 1,
+                top: spec.top,
+                right: spec.right,
+                bottom: spec.bottom,
+                left: spec.left,
+                grid_rows: 3,
+                grid_cols: 2,
+                height_ratios: [1.2, 0.9, 0.9],
+                width_ratios: [1, 1],
+                hspace: spec.hspace,
+                wspace: spec.wspace,
+                titles: {
+                    main_y: spec.main_y,
+                    metro_y: spec.metro_y,
+                    subtitle_y: spec.subtitle_y
+                }
+            };
+            
+            document.getElementById('json-output').value = JSON.stringify(chartSpec, null, 2);
+        }
+        
+        function loadPreset(name) {
+            if (presets[name]) {
+                spec = {...presets[name]};
+                // Update all inputs
+                Object.keys(spec).forEach(key => {
+                    const elem = document.getElementById(key);
+                    if (elem) {
+                        elem.value = spec[key];
+                    }
+                });
+                updateSpec();
+            }
+        }
+        
+        function copySpec() {
+            const json = document.getElementById('json-output').value;
+            navigator.clipboard.writeText(json).then(() => {
+                alert('Spec copied to clipboard!');
+            });
+        }
+        
+        function downloadSpec() {
+            const json = document.getElementById('json-output').value;
+            const blob = new Blob([json], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'chartspec.json';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+        
+        // Add event listeners
+        Object.keys(spec).forEach(key => {
+            const elem = document.getElementById(key);
+            if (elem) {
+                elem.addEventListener('input', updateSpec);
+            }
+        });
+        
+        // Initial draw
+        updateSpec();
+    </script>
+</body>
+</html>

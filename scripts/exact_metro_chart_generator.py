@@ -73,6 +73,11 @@ def normalize_metric_for_histograms(df, column_name, normalization_type, histori
             return (df[column_name] / df["ACTIVE_LISTINGS"]) * 1000
         else:
             return df[column_name]
+    elif normalization_type == "per_100_active":
+        if "ACTIVE_LISTINGS" in df.columns:
+            return (df[column_name] / df["ACTIVE_LISTINGS"]) * 100
+        else:
+            return df[column_name]
     elif normalization_type == "percent_of_new":
         if "ADJUSTED_AVERAGE_NEW_LISTINGS" in df.columns:
             return (df[column_name] / df["ADJUSTED_AVERAGE_NEW_LISTINGS"]) * 100
@@ -85,6 +90,102 @@ def normalize_metric_for_histograms(df, column_name, normalization_type, histori
             return df[column_name]
     else:
         return df[column_name]
+
+
+def get_smart_y_limits(data_values, column_name=None):
+    """Calculate smart y-axis limits for better variation visibility"""
+    import numpy as np
+    
+    # Convert to numpy array if it's a list
+    data_values = np.array(data_values)
+    
+    # Handle empty or invalid data
+    if len(data_values) == 0 or np.all(np.isnan(data_values)):
+        return 0, 1
+    
+    # Filter out NaN values
+    data_values = data_values[~np.isnan(data_values)]
+    if len(data_values) == 0:
+        return 0, 1
+    
+    data_min = np.min(data_values)
+    data_max = np.max(data_values)
+    data_range = data_max - data_min
+    data_mean = np.mean(data_values)
+    
+    # Metrics that should zoom in to show variation
+    tight_range_metrics = [
+        'AVERAGE_SALE_TO_LIST_RATIO',
+        'MEDIAN_DAYS_TO_CLOSE',
+        'MEDIAN_DAYS_ON_MARKET',
+        'AGE_OF_INVENTORY'
+    ]
+    
+    if column_name in tight_range_metrics:
+        # Use tighter bounds to show variation
+        if column_name == 'AVERAGE_SALE_TO_LIST_RATIO':
+            # Sale to List Ratio needs special handling
+            padding = min(data_range * 0.5, abs(data_mean) * 0.02)
+            if padding == 0:
+                padding = 0.01
+            y_min = data_min - padding
+            y_max = data_max + padding
+        else:
+            # For time-based metrics, don't force zero
+            padding = data_range * 0.3 if data_range / data_mean < 0.2 else data_range * 0.2
+            y_min = data_min - padding
+            y_max = data_max + padding
+            # But don't go below 0 for time metrics
+            if column_name in ['MEDIAN_DAYS_TO_CLOSE', 'MEDIAN_DAYS_ON_MARKET', 'AGE_OF_INVENTORY']:
+                y_min = max(0, y_min)
+    else:
+        # Default - standard padding
+        y_min = 0 if data_min >= 0 and data_min < data_mean * 0.3 else data_min * 0.9
+        y_max = data_max * 1.1
+    
+    return y_min, y_max
+
+
+def get_bar_chart_y_limits(values, column_name=None):
+    """Calculate y-axis limits for bar charts with headroom for labels"""
+    import numpy as np
+    
+    # Convert to numpy array if it's a list
+    values = np.array(values)
+    
+    # Handle empty or invalid data
+    if len(values) == 0 or np.all(np.isnan(values)):
+        return 0, 1
+    
+    # Filter out NaN values
+    values = values[~np.isnan(values)]
+    if len(values) == 0:
+        return 0, 1
+    
+    data_min = np.min(values)
+    data_max = np.max(values)
+    
+    # Always ensure 20% headroom for value labels
+    y_max = data_max * 1.2
+    
+    # Special handling for Sale to List Ratio and time metrics
+    if column_name == 'AVERAGE_SALE_TO_LIST_RATIO':
+        y_min = data_min * 0.9  # Show variation
+    elif column_name in ['MEDIAN_DAYS_TO_CLOSE', 'MEDIAN_DAYS_ON_MARKET']:
+        y_min = data_min * 0.8  # Show variation but not misleading
+    else:
+        y_min = 0 if data_min >= 0 else data_min * 0.8
+    
+    # Ensure positive metrics don't go below 0
+    positive_metrics = [
+        'MEDIAN_DAYS_TO_CLOSE', 'MEDIAN_DAYS_ON_MARKET', 'AGE_OF_INVENTORY',
+        'MEDIAN_SALE_PRICE', 'ACTIVE_LISTINGS', 'ADJUSTED_AVERAGE_NEW_LISTINGS',
+        'ADJUSTED_AVERAGE_HOMES_SOLD', 'OFF_MARKET_IN_TWO_WEEKS', 'WEEKS_OF_SUPPLY'
+    ]
+    if column_name in positive_metrics:
+        y_min = max(0, y_min)
+    
+    return y_min, y_max
 
 
 def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
@@ -109,8 +210,18 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
     normalize_for_histogram = metric_config.get("normalize_for_histogram", None)
     normalized_unit_label = metric_config.get("normalized_unit_label", None)
 
-    # Get metro display name (city only, no "metro area")
-    metro_display = metro_name.split(",")[0] if "," in metro_name else metro_name
+    # Get metro display name with state abbreviation
+    if "," in metro_name:
+        city_part = metro_name.split(",")[0]
+        # Extract state from "City, ST metro area" format
+        state_match = metro_name.split(",")[1].strip()
+        if " metro area" in state_match:
+            state_abbr = state_match.replace(" metro area", "").strip()
+        else:
+            state_abbr = state_match.strip()[:2].upper()
+        metro_display = f"{city_part} Metro, {state_abbr}"
+    else:
+        metro_display = metro_name
 
     # Filter for this metro
     metric_data = df[
@@ -129,12 +240,12 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
     # Create figure - EXACT dimensions from Denver
     fig = plt.figure(figsize=(9, 26), facecolor=COLORS["background"])
 
-    # Create GridSpec - EXACT from Denver
+    # Create GridSpec - adjusted for additional subtitle line and decorative lines
     gs = gridspec.GridSpec(
         5,
         1,
         height_ratios=[2.5, 1.5, 1.2, 2, 2],
-        top=0.88,
+        top=0.84,  # Reduced further to accommodate lines and spacing
         bottom=0.02,
         left=0.12,
         right=0.95,
@@ -152,13 +263,45 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
         fontweight="bold",
         color=COLORS["black"],
     )
+    
+    # Add thin line above metro name
+    fig.add_artist(plt.Line2D(
+        [0.15, 0.85], [0.965, 0.965],
+        transform=fig.transFigure,
+        color=COLORS["gray"],
+        linewidth=0.5,
+        alpha=0.5
+    ))
+    
+    # Subtitle with metro name - now in blue with more space
     fig.text(
         0.5,
-        0.965,
-        f'{metro_display} Metro • {latest_date.strftime("%B %d, %Y")}',
+        0.958,  # Moved down just a tiny bit
+        metro_display.upper(),  # Make metro name ALL CAPS
         ha="center",
         va="top",
-        fontsize=20,
+        fontsize=22,  # Slightly larger
+        fontweight="bold",  # Make it bold
+        color=COLORS["blue"],  # Use blue for emphasis
+    )
+    
+    # Add thin line below metro name
+    fig.add_artist(plt.Line2D(
+        [0.15, 0.85], [0.940, 0.940],
+        transform=fig.transFigure,
+        color=COLORS["gray"],
+        linewidth=0.5,
+        alpha=0.5
+    ))
+    
+    # Date info with more space from metro name
+    fig.text(
+        0.5,
+        0.925,  # More space from metro name
+        f'Data based on 4 week window captured {latest_date.strftime("%B %d, %Y")}',
+        ha="center",
+        va="top",
+        fontsize=16,
         color=COLORS["gray"],
     )
 
@@ -253,16 +396,24 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
     )
 
     # Format - EXACT from Denver
+    # Add units to y-axis label for Age of Inventory
+    if column_name == "AGE_OF_INVENTORY":
+        y_label = f"{metric_name.title()} (days)"
+    elif unit_label and unit_label not in ["%", "$"]:
+        y_label = f"{metric_name.title()} ({unit_label})"
+    else:
+        y_label = f"{metric_name.title()}"
+    
     ax_history.set_ylabel(
-        f"{metric_name.title()}",
-        fontsize=20,
+        y_label,
+        fontsize=18,  # Reduced from 20
         fontweight="normal",
         color=COLORS["black"],
         labelpad=15,
     )
     ax_history.text(
-        0.0,
-        1.12,
+        -0.08,  # Align with y-axis labels
+        1.18,  # Moved up from 1.12
         "Historical Trend: Weekly Data",
         transform=ax_history.transAxes,
         fontsize=22,
@@ -287,10 +438,20 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
     elif unit_label == "%":
         # Metrics with % unit are stored as decimals (0.10 for 10%)
         ax_history.yaxis.set_major_formatter(FuncFormatter(lambda x, p: f'{x*100:.0f}%'))
+    elif column_name == "ADJUSTED_AVERAGE_HOMES_SOLD":
+        # Homes Sold should always show integers
+        ax_history.yaxis.set_major_formatter(FuncFormatter(lambda x, p: f'{int(x):,}'))
+    elif unit_label == "$":
+        # Format median sale price as thousands
+        ax_history.yaxis.set_major_formatter(FuncFormatter(lambda x, p: f'${int(x/1000)}K' if x >= 1000 else f'${int(x)}'))
     elif max_value > 5000 and unit_label != "$":
         # Format with 'k' for thousands for large numbers
         ax_history.yaxis.set_major_formatter(FuncFormatter(format_thousands))
 
+    # Apply smart y-axis limits
+    y_min, y_max = get_smart_y_limits(metric_data[column_name].values, column_name)
+    ax_history.set_ylim(y_min, y_max)
+    
     ax_history.grid(True, alpha=0.3, axis="y")
     ax_history.tick_params(axis="both", colors=COLORS["black"], labelsize=16)
     ax_history.tick_params(axis="y", which="both", length=0)
@@ -320,7 +481,7 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
         framealpha=1.0,
         facecolor=COLORS["background"],
         edgecolor="none",
-        bbox_to_anchor=(1, 1.30),  # Moved up slightly to avoid overlap
+        bbox_to_anchor=(1, 1.14),  # Adjusted for new title position
     )
 
     # ============================
@@ -376,9 +537,27 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
         zorder=3,
     )
 
-    # Add value labels with 'k' formatting for large numbers
+    # Add value labels with consistent formatting
     for i, (bar, val) in enumerate(zip(bars, sorted_values)):
-        if val > 5000 and unit_label != "$" and not is_percentage:
+        if column_name == "WEEKS_OF_SUPPLY":
+            # Weeks of Supply should show integers
+            label = f"{int(val)}"
+        elif column_name == "AVERAGE_SALE_TO_LIST_RATIO":
+            # Sale to List Ratio: always show as percentage with 1 decimal
+            label = f"{val*100:.1f}%"
+        elif unit_label == "$":
+            # Median Sale Price should show as thousands
+            label = f"\${int(val/1000)}K" if val >= 1000 else f"\${int(val)}"
+        elif column_name == "PERCENT_ACTIVE_LISTINGS_WITH_PRICE_DROPS":
+            # This metric is stored as decimal (0.25 = 25%)
+            label = f"{val*100:.{decimals}f}%"
+        elif column_name == "OFF_MARKET_IN_TWO_WEEKS":
+            # This metric is stored as whole numbers
+            label = f"{val:.{decimals}f}%"
+        elif unit_label == "%":
+            # Generic percentage handling
+            label = f"{val:.{decimals}f}%"
+        elif val > 5000 and unit_label != "$" and not is_percentage:
             label = format_thousands(val, None)
         else:
             label = format_value(val, unit_label, decimals, is_percentage)
@@ -395,14 +574,14 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
 
     ax_ranking.set_ylabel(
         f"{metric_name.title()}",
-        fontsize=20,
+        fontsize=18,  # Reduced from 20
         fontweight="normal",
         color=COLORS["black"],
         labelpad=15,
     )
     ax_ranking.text(
-        0.0,
-        1.3,
+        -0.08,  # Align with y-axis labels
+        1.36,  # Moved up from 1.3
         f'Historical Comparison: Same Week ({latest_date.strftime("%B %d")})',
         transform=ax_ranking.transAxes,
         fontsize=22,
@@ -418,6 +597,10 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
     ax_ranking.tick_params(axis="both", colors=COLORS["black"], labelsize=16)
     ax_ranking.set_xlim(-0.5, len(sorted_years) - 0.5)
     
+    # Apply smart y-axis limits for bar chart
+    y_min, y_max = get_bar_chart_y_limits(sorted_values, column_name)
+    ax_ranking.set_ylim(y_min, y_max)
+    
     # Apply formatters based on metric type
     if is_percentage:
         # Sale to List Ratio is stored as a decimal ratio (e.g., 0.98 for 98%)
@@ -425,9 +608,18 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
             ax_ranking.yaxis.set_major_formatter(FuncFormatter(lambda x, p: f'{x*100:.0f}%'))
         else:
             ax_ranking.yaxis.set_major_formatter(FuncFormatter(lambda x, p: f'{x:.0f}%'))
-    elif unit_label == "%":
-        # Metrics with % unit are stored as decimals (0.10 for 10%)
+    elif column_name == "OFF_MARKET_IN_TWO_WEEKS":
+        # OFF_MARKET_IN_TWO_WEEKS is stored as counts, not percentages
+        ax_ranking.yaxis.set_major_formatter(FuncFormatter(lambda x, p: f'{int(x):,}'))
+    elif column_name == "PERCENT_ACTIVE_LISTINGS_WITH_PRICE_DROPS":
+        # This metric is stored as decimals (0.10 for 10%)
         ax_ranking.yaxis.set_major_formatter(FuncFormatter(lambda x, p: f'{x*100:.0f}%'))
+    elif unit_label == "%":
+        # Generic percentage handling
+        ax_ranking.yaxis.set_major_formatter(FuncFormatter(lambda x, p: f'{x*100:.0f}%'))
+    elif unit_label == "$":
+        # Format median sale price y-axis as thousands
+        ax_ranking.yaxis.set_major_formatter(FuncFormatter(lambda x, p: f'${int(x/1000)}K' if x >= 1000 else f'${int(x)}'))
     elif max(sorted_values) > 5000 and unit_label != "$":
         # Format with 'k' for thousands for large numbers
         ax_ranking.yaxis.set_major_formatter(FuncFormatter(format_thousands))
@@ -503,8 +695,8 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
     ax_momentum.add_patch(triangle_current)
 
     ax_momentum.text(
-        0.0,
-        1.35,
+        -0.08,  # Align with y-axis labels
+        1.40,  # Moved up from 1.35
         "Momentum: 3-Month Change",
         transform=ax_momentum.transAxes,
         fontsize=22,
@@ -515,24 +707,86 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
     )
 
     # Value labels with smart positioning to avoid overlap
-    current_label = f"{change:+.{decimals}f} {unit_label}"
-    historical_label = f"{avg_historical_change:+.{decimals}f} {unit_label}"
+    # Format labels based on metric type
+    if unit_label == "$":
+        # Format as thousands for median sale price
+        if abs(change) >= 1000:
+            current_label = f"{'+' if change > 0 else ('-' if change < 0 else '')}\${abs(int(change/1000))}K"
+        else:
+            current_label = f"{'+' if change > 0 else ('-' if change < 0 else '')}\${abs(int(change))}"
+        if abs(avg_historical_change) >= 1000:
+            historical_label = f"{'+' if avg_historical_change > 0 else ('-' if avg_historical_change < 0 else '')}\${abs(int(avg_historical_change/1000))}K"
+        else:
+            historical_label = f"{'+' if avg_historical_change > 0 else ('-' if avg_historical_change < 0 else '')}\${abs(int(avg_historical_change))}"
+    elif column_name == "AVERAGE_SALE_TO_LIST_RATIO":
+        # Sale to List Ratio should show as percentage change
+        current_label = f"{change*100:+.1f}pp"
+        historical_label = f"{avg_historical_change*100:+.1f}pp"
+    elif column_name == "PERCENT_ACTIVE_LISTINGS_WITH_PRICE_DROPS":
+        # This metric is stored as decimal, change is in decimal form
+        current_label = f"{change*100:+.1f}pp"
+        historical_label = f"{avg_historical_change*100:+.1f}pp"
+    elif column_name == "OFF_MARKET_IN_TWO_WEEKS":
+        # This metric is stored as counts, change is in count difference
+        current_label = f"{change:+.0f}"
+        historical_label = f"{avg_historical_change:+.0f}"
+    elif unit_label == "%":
+        # Generic percentage handling
+        current_label = f"{change*100:+.1f}pp"
+        historical_label = f"{avg_historical_change*100:+.1f}pp"
+    else:
+        current_label = f"{change:+.{decimals}f} {unit_label}"
+        historical_label = f"{avg_historical_change:+.{decimals}f} {unit_label}"
 
-    # Check if labels would overlap and adjust positions
-    label_separation_threshold = abs(change - avg_historical_change)
-    max_abs_change = max(abs(change), abs(avg_historical_change))
+    # Improved overlap prevention based on national charts implementation
+    # Calculate the scale first (needed for text height estimation)
+    if column_name == "AVERAGE_SALE_TO_LIST_RATIO":
+        max_abs_change = max(abs(change), abs(avg_historical_change))
+        y_max = max(max_abs_change * 2, 0.005)
+        y_max_with_space = y_max * 1.6
+    else:
+        max_abs_change = max(abs(change), abs(avg_historical_change))
+        min_height = abs(latest_value) * 0.1
+        y_max = min_height if max_abs_change < min_height else max_abs_change * 1.3
+        y_max_with_space = y_max * 1.6
     
-    # If values are very close (less than 10% of the max value), adjust positions
-    if max_abs_change > 0 and label_separation_threshold < max_abs_change * 0.15:
-        # Position labels to avoid overlap
+    # Estimate text height in data coordinates (conservative estimate)
+    text_height_estimate = y_max * 0.12
+    
+    # Calculate the gap between the two values
+    value_gap = abs(change - avg_historical_change)
+    
+    # Check if labels would overlap and adjust positions
+    if value_gap < text_height_estimate * 0.6:
+        # Values are EXTREMELY close - must offset horizontally to prevent any overlap
+        # Place them side by side
+        ax_momentum.text(
+            triangle_width + 0.05,
+            change,
+            current_label,
+            fontsize=18,
+            va="center",
+            color=COLORS["black"],
+            fontweight="bold",
+        )
+        ax_momentum.text(
+            triangle_width + 0.25,
+            avg_historical_change,
+            historical_label,
+            fontsize=16,
+            va="center",
+            color=COLORS["blue"],
+        )
+    elif value_gap < text_height_estimate * 1.5:
+        # Values are moderately close - use vertical alignment
         if change > avg_historical_change:
-            # Current is above historical - shift current up slightly
+            # Current is higher - align current to bottom, historical to top
             ax_momentum.text(
                 triangle_width + 0.05,
                 change,
                 current_label,
                 fontsize=18,
-                va="bottom",  # Align to bottom of text at the change value
+                va="bottom",
                 color=COLORS["black"],
                 fontweight="bold",
             )
@@ -541,17 +795,17 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
                 avg_historical_change,
                 historical_label,
                 fontsize=16,
-                va="top",  # Align to top of text at the historical value
+                va="top",
                 color=COLORS["blue"],
             )
         else:
-            # Historical is above current - shift historical up slightly
+            # Historical is higher - align historical to bottom, current to top
             ax_momentum.text(
                 triangle_width + 0.05,
                 change,
                 current_label,
                 fontsize=18,
-                va="top",  # Align to top of text at the change value
+                va="top",
                 color=COLORS["black"],
                 fontweight="bold",
             )
@@ -560,7 +814,7 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
                 avg_historical_change,
                 historical_label,
                 fontsize=16,
-                va="bottom",  # Align to bottom of text at the historical value
+                va="bottom",
                 color=COLORS["blue"],
             )
     else:
@@ -597,15 +851,10 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
         framealpha=1.0,
         facecolor=COLORS["background"],
         edgecolor="none",
-        bbox_to_anchor=(1, 1.25),
+        bbox_to_anchor=(1, 1.34),  # Adjusted for new title position
     )
 
-    # Limits
-    max_abs_change = max(abs(change), abs(avg_historical_change))
-    min_height = abs(latest_value) * 0.1
-    y_max = min_height if max_abs_change < min_height else max_abs_change * 1.3
-    y_max_with_space = y_max * 1.6
-
+    # Y-axis limits already calculated above for overlap prevention
     ax_momentum.set_xlim(-0.1, 1.3)
     ax_momentum.set_ylim(-y_max, y_max_with_space)
 
@@ -629,12 +878,11 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
 
     current_data = metro_data_all.dropna(subset=[column_name]).copy()
     
-    # Filter out very small markets (< 5 homes sold per week) for more meaningful percentiles
-    # This ensures we're comparing against active markets, not tiny ones with minimal activity
-    MIN_HOMES_SOLD = 5
-    if "ADJUSTED_AVERAGE_HOMES_SOLD" in metro_data_all.columns:
-        active_markets = metro_data_all[metro_data_all["ADJUSTED_AVERAGE_HOMES_SOLD"] >= MIN_HOMES_SOLD]["REGION_NAME"]
-        current_data = current_data[current_data["REGION_NAME"].isin(active_markets)]
+    # Filter out invalid values for Median Days to Close (< 1 day is unrealistic)
+    if column_name == "MEDIAN_DAYS_TO_CLOSE":
+        current_data = current_data[current_data[column_name] >= 1].copy()
+    
+    # No longer filtering out small markets - include all metros in histograms
 
     # For Active Listings and Weeks of Supply, normalize to 5-year average
     if column_name in ["ACTIVE_LISTINGS", "WEEKS_OF_SUPPLY"]:
@@ -753,9 +1001,10 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
             frameon=True,
             fancybox=False,
             shadow=False,
-            framealpha=1.0,
+            framealpha=0.8,  # Made semi-transparent
             facecolor=COLORS["background"],
             edgecolor="none",
+            bbox_to_anchor=(1, 1.20),  # Moved further up to avoid overlap with bars
         )
 
         # Formatting
@@ -764,11 +1013,11 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
         else:
             x_label = f'{metric_name.title()} {normalized_unit_label if normalize_for_histogram else ""}'
         ax_hist1.set_xlabel(x_label, fontsize=20, fontweight="normal", color=COLORS["black"], labelpad=10)
-        ax_hist1.set_ylabel("Number of Metros", fontsize=20, fontweight="normal", color=COLORS["black"], labelpad=15)
+        ax_hist1.set_ylabel("Number of Metros", fontsize=18, fontweight="normal", color=COLORS["black"], labelpad=15)
         # Add main title for BOTH histograms (only once)
         ax_hist1.text(
-            0.0,
-            1.40,  # Increased spacing from histogram
+            -0.08,  # Align with y-axis labels
+            1.45,  # Moved up from 1.40
             "Comparison Against National Data",
             transform=ax_hist1.transAxes,
             fontsize=22,
@@ -783,8 +1032,8 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
         else:
             subtitle_text = f"Current Level ({percentile:.0f}th percentile)"
         ax_hist1.text(
-            0.0,
-            1.12,
+            -0.08,  # Align with y-axis labels
+            1.24,  # Moved up further to create more space
             subtitle_text,
             transform=ax_hist1.transAxes,
             fontsize=18,
@@ -796,6 +1045,27 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
 
         ax_hist1.grid(True, alpha=0.3, axis="y")
         ax_hist1.tick_params(axis="both", colors=COLORS["black"], labelsize=16)
+        
+        # Format x-axis based on metric type for first histogram
+        if unit_label == "$":
+            # Format as thousands with K for median sale price
+            ax_hist1.xaxis.set_major_formatter(FuncFormatter(lambda x, p: f'\${int(x/1000)}K' if x >= 1000 else f'\${int(x)}'))
+        elif unit_label == "%" or column_name == "PERCENT_ACTIVE_LISTINGS_WITH_PRICE_DROPS":
+            # Format as percentage - data is stored as decimal so multiply by 100
+            ax_hist1.xaxis.set_major_formatter(FuncFormatter(lambda x, p: f'{x*100:.0f}%'))
+        elif column_name == "OFF_MARKET_IN_TWO_WEEKS":
+            # OFF_MARKET_IN_TWO_WEEKS stored as counts
+            ax_hist1.xaxis.set_major_formatter(FuncFormatter(lambda x, p: f'{int(x):,}'))
+        elif is_percentage and column_name == "AVERAGE_SALE_TO_LIST_RATIO":
+            # Format Sale to List Ratio as percentage
+            ax_hist1.xaxis.set_major_formatter(FuncFormatter(lambda x, p: f'{x*100:.0f}%'))
+        elif column_name in ["ACTIVE_LISTINGS", "WEEKS_OF_SUPPLY"]:
+            # These are already formatted as % of 5-year average
+            ax_hist1.xaxis.set_major_formatter(FuncFormatter(lambda x, p: f'{x:.0f}%'))
+        elif normalize_for_histogram == "per_100_active":
+            # Normalized as % of active
+            ax_hist1.xaxis.set_major_formatter(FuncFormatter(lambda x, p: f'{x:.0f}%'))
+        
         for spine in ax_hist1.spines.values():
             spine.set_visible(False)
 
@@ -823,10 +1093,7 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
         how="inner",
     )
     
-    # Apply same market size filter to change histogram
-    if "ADJUSTED_AVERAGE_HOMES_SOLD" in metro_data_all.columns:
-        active_markets = metro_data_all[metro_data_all["ADJUSTED_AVERAGE_HOMES_SOLD"] >= MIN_HOMES_SOLD]["REGION_NAME"]
-        change_df = change_df[change_df["REGION_NAME"].isin(active_markets)]
+    # No longer filtering out small markets - include all metros in change histogram
 
     # For Active Listings and Weeks of Supply, calculate percentage change
     if column_name in ["ACTIVE_LISTINGS", "WEEKS_OF_SUPPLY"]:
@@ -939,9 +1206,10 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
                 frameon=True,
                 fancybox=False,
                 shadow=False,
-                framealpha=1.0,
+                framealpha=0.8,  # Made semi-transparent
                 facecolor=COLORS["background"],
                 edgecolor="none",
+                bbox_to_anchor=(1, 1.20),  # Moved further up to avoid overlap with bars
             )
 
             if column_name in ["ACTIVE_LISTINGS", "WEEKS_OF_SUPPLY"]:
@@ -955,15 +1223,15 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
                 color=COLORS["black"],
                 labelpad=10,
             )
-            ax_hist2.set_ylabel("Number of Metros", fontsize=20, fontweight="normal", color=COLORS["black"], labelpad=15)
+            ax_hist2.set_ylabel("Number of Metros", fontsize=18, fontweight="normal", color=COLORS["black"], labelpad=15)
             # Only add subtitle (main title already shown above first histogram)
             if column_name in ["ACTIVE_LISTINGS", "WEEKS_OF_SUPPLY"]:
                 subtitle_text_hist2 = f"3-Month % Change ({percentile_change:.0f}th percentile)"
             else:
                 subtitle_text_hist2 = f"3-Month Change ({percentile_change:.0f}th percentile)"
             ax_hist2.text(
-                0.0,
-                1.12,
+                -0.08,  # Align with y-axis labels
+                1.24,  # Moved up further to create more space
                 subtitle_text_hist2,
                 transform=ax_hist2.transAxes,
                 fontsize=18,
@@ -975,6 +1243,27 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
 
             ax_hist2.grid(True, alpha=0.3, axis="y")
             ax_hist2.tick_params(axis="both", colors=COLORS["black"], labelsize=16)
+            
+            # Format x-axis based on metric type for 3-month change histogram
+            if unit_label == "$":
+                # Format as thousands for median sale price changes
+                ax_hist2.xaxis.set_major_formatter(FuncFormatter(lambda x, p: f'{"" if x >= 0 else "-"}\\${abs(int(x/1000))}K' if abs(x) >= 1000 else f'{"" if x >= 0 else "-"}\\${abs(int(x))}'))
+            elif column_name in ["ACTIVE_LISTINGS", "WEEKS_OF_SUPPLY"]:
+                # These are already formatted as percentage changes
+                ax_hist2.xaxis.set_major_formatter(FuncFormatter(lambda x, p: f'{x:.0f}%'))
+            elif unit_label == "%" or column_name == "PERCENT_ACTIVE_LISTINGS_WITH_PRICE_DROPS":
+                # Format as percentage points - data is stored as decimal so multiply by 100
+                ax_hist2.xaxis.set_major_formatter(FuncFormatter(lambda x, p: f'{x*100:.0f}pp'))
+            elif column_name == "OFF_MARKET_IN_TWO_WEEKS":
+                # OFF_MARKET_IN_TWO_WEEKS changes as count differences
+                ax_hist2.xaxis.set_major_formatter(FuncFormatter(lambda x, p: f'{int(x):,}'))
+            elif is_percentage and column_name == "AVERAGE_SALE_TO_LIST_RATIO":
+                # Format Sale to List Ratio changes as percentage points
+                ax_hist2.xaxis.set_major_formatter(FuncFormatter(lambda x, p: f'{x*100:.0f}pp'))
+            elif normalize_for_histogram == "per_100_active":
+                # Changes in normalized values (already in %)
+                ax_hist2.xaxis.set_major_formatter(FuncFormatter(lambda x, p: f'{x:.0f}pp'))
+            
             for spine in ax_hist2.spines.values():
                 spine.set_visible(False)
 

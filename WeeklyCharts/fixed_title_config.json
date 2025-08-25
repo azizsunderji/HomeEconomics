@@ -1,0 +1,42 @@
+{
+  "title": {
+    "y": 0.94,
+    "size": 20,
+    "weight": "bold"
+  },
+  "metro": {
+    "y": 0.895,
+    "size": 16,
+    "weight": "bold"
+  },
+  "subtitle": {
+    "y": 0.855,
+    "size": 10,
+    "weight": "normal"
+  },
+  "line1": {
+    "y": 0.905,
+    "width": 0.6
+  },
+  "line2": {
+    "y": 0.885,
+    "width": 0.6
+  },
+  "section_titles": {
+    "size": 12,
+    "y_offset": 1.08
+  },
+  "bar_labels": {
+    "size": 10
+  },
+  "histogram_titles": {
+    "size": 12,
+    "y_offset": 1.08
+  },
+  "spacing": {
+    "hspace": 0.45,
+    "wspace": 0.30,
+    "top": 0.88,
+    "bottom": 0.08
+  }
+}

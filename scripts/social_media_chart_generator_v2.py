@@ -238,7 +238,7 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
     current_day = latest_date.day
 
     # Create figure for social media - 1200x1200 square at high resolution
-    fig = plt.figure(figsize=(12, 12), facecolor=COLORS["background"], dpi=300)
+    fig = plt.figure(figsize=(12, 12), facecolor=COLORS["background"], dpi=100)
 
     # Create GridSpec for social media layout with fixed spacing
     gs = gridspec.GridSpec(
@@ -1289,7 +1289,7 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
     # Save figure - exactly 3600x3600 pixels for high-res social media
     plt.savefig(
         output_filename,
-        dpi=300,  # High resolution for sharpness
+        dpi=100,  # Match mobile chart resolution
         bbox_inches=None,  # Don't adjust bounds, keep exact size
         facecolor=COLORS["background"],
         pad_inches=0,  # No padding to maintain exact size

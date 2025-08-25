@@ -1,0 +1,56 @@
+{
+  "width": 12.0,
+  "height": 12.0,
+  "dpi": 100,
+  "bg": "#F6F7F3",
+  "fg": "#3D3733",
+  "brand_blue": "#0BB4FF",
+  "brand_yellow": "#FEC439",
+  "brand_green": "#67A275",
+  "brand_light_green": "#C6DCCB",
+  "brand_red": "#F4743B",
+  "brand_light_red": "#FBCAB5",
+  "font": "ABC Oracle",
+  "base_fontsize": 10.0,
+  "title_size": 14,
+  "metro_size": 12,
+  "subtitle_size": 10,
+  "label_size": 10,
+  "tick_size": 9,
+  "top": 0.85,
+  "right": 0.95,
+  "bottom": 0.08,
+  "left": 0.08,
+  "grid_rows": 3,
+  "grid_cols": 2,
+  "height_ratios": [
+    1.2,
+    0.9,
+    0.9
+  ],
+  "width_ratios": [
+    1,
+    1
+  ],
+  "hspace": 0.5,
+  "wspace": 0.35,
+  "grid": true,
+  "grid_axis": "y",
+  "grid_alpha": 0.3,
+  "x_tick_rotation": 0,
+  "titles": {
+    "main_y": 0.98,
+    "metro_y": 0.94,
+    "subtitle_y": 0.9
+  },
+  "legend": {
+    "loc": "best",
+    "ncol": 1,
+    "frameon": false,
+    "fontsize": 9,
+    "handlelength": 1.4,
+    "columnspacing": 1.2
+  },
+  "annotations": [],
+  "repel_annotations": true
+}

@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Chart Designer - Working Version</title>
+</head>
+<body style="margin: 0; padding: 20px; font-family: Arial;">
+    <h1>Chart Designer</h1>
+    
+    <div style="margin: 20px 0;">
+        <button onclick="testButton()">Test Alert</button>
+        <button onclick="addTextElement()">Add Text</button>
+        <button onclick="addLineElement()">Add Line</button>
+        <button onclick="loadTitleTemplate()">Load Title Template</button>
+        <button onclick="clearCanvas()">Clear All</button>
+    </div>
+    
+    <div id="canvas" style="width: 600px; height: 600px; background: #F6F7F3; border: 2px solid #000; position: relative;">
+        <!-- Elements will be added here -->
+    </div>
+    
+    <div style="margin: 20px 0;">
+        <h3>Selected Element Properties:</h3>
+        <div id="properties">
+            <p>Click an element to select it</p>
+        </div>
+    </div>
+    
+    <div id="status" style="color: green;"></div>
+    
+    <script>
+        console.log('Script starting');
+        
+        let elements = [];
+        let elementCounter = 0;
+        let selectedElement = null;
+        let isDragging = false;
+        let dragStart = {x: 0, y: 0};
+        let elementStart = {x: 0, y: 0};
+        
+        function testButton() {
+            alert('Buttons work!');
+        }
+        
+        function updateStatus(msg) {
+            document.getElementById('status').innerHTML = msg;
+            console.log(msg);
+        }
+        
+        function addTextElement() {
+            const element = {
+                id: elementCounter++,
+                type: 'text',
+                text: 'New Text',
+                x: 300,
+                y: 100 + (elements.length * 30),
+                fontSize: 16,
+                color: '#000000'
+            };
+            elements.push(element);
+            updateStatus('Added text element');
+            renderElements();
+        }
+        
+        function addLineElement() {
+            const element = {
+                id: elementCounter++,
+                type: 'line',
+                x: 100,
+                y: 100 + (elements.length * 30),
+                width: 400,
+                height: 1,
+                color: '#000000'
+            };
+            elements.push(element);
+            updateStatus('Added line element');
+            renderElements();
+        }
+        
+        function loadTitleTemplate() {
+            elements = [];
+            elementCounter = 0;
+            
+            // Add title elements
+            elements.push({
+                id: elementCounter++,
+                type: 'text',
+                text: 'NEW LISTINGS',
+                x: 300,
+                y: 50,
+                fontSize: 24,
+                color: '#000000'
+            });
+            
+            elements.push({
+                id: elementCounter++,
+                type: 'line',
+                x: 100,
+                y: 75,
+                width: 400,
+                height: 1,
+                color: '#000000'
+            });
+            
+            elements.push({
+                id: elementCounter++,
+                type: 'text',
+                text: 'DENVER METRO, CO',
+                x: 300,
+                y: 95,
+                fontSize: 18,
+                color: '#0BB4FF'
+            });
+            
+            elements.push({
+                id: elementCounter++,
+                type: 'line',
+                x: 100,
+                y: 115,
+                width: 400,
+                height: 1,
+                color: '#000000'
+            });
+            
+            elements.push({
+                id: elementCounter++,
+                type: 'text',
+                text: 'Data based on 4 week window',
+                x: 300,
+                y: 140,
+                fontSize: 12,
+                color: '#808080'
+            });
+            
+            updateStatus('Loaded title template with ' + elements.length + ' elements');
+            renderElements();
+        }
+        
+        function clearCanvas() {
+            if (confirm('Clear all elements?')) {
+                elements = [];
+                selectedElement = null;
+                renderElements();
+                updateStatus('Cleared all elements');
+            }
+        }
+        
+        function renderElements() {
+            const canvas = document.getElementById('canvas');
+            
+            // Clear existing elements
+            while (canvas.firstChild) {
+                canvas.removeChild(canvas.firstChild);
+            }
+            
+            // Add each element
+            elements.forEach(element => {
+                const div = document.createElement('div');
+                div.style.position = 'absolute';
+                div.style.cursor = 'move';
+                div.setAttribute('data-id', element.id);
+                
+                if (element.type === 'text') {
+                    div.innerHTML = element.text;
+                    div.style.left = element.x + 'px';
+                    div.style.top = element.y + 'px';
+                    div.style.fontSize = element.fontSize + 'px';
+                    div.style.color = element.color;
+                    div.style.transform = 'translateX(-50%)';
+                    div.style.whiteSpace = 'nowrap';
+                }
+                else if (element.type === 'line') {
+                    div.style.left = element.x + 'px';
+                    div.style.top = element.y + 'px';
+                    div.style.width = element.width + 'px';
+                    div.style.height = element.height + 'px';
+                    div.style.background = element.color;
+                }
+                
+                // Add selection indicator
+                if (selectedElement && selectedElement.id === element.id) {
+                    div.style.outline = '2px dashed blue';
+                    div.style.outlineOffset = '2px';
+                }
+                
+                // Add click handler
+                div.onclick = function(e) {
+                    selectElement(element);
+                    e.stopPropagation();
+                };
+                
+                // Add drag handlers
+                div.onmousedown = function(e) {
+                    startDrag(e, element);
+                    e.preventDefault();
+                };
+                
+                canvas.appendChild(div);
+            });
+        }
+        
+        function selectElement(element) {
+            selectedElement = element;
+            renderElements();
+            showProperties();
+            updateStatus('Selected element: ' + element.type);
+        }
+        
+        function showProperties() {
+            const props = document.getElementById('properties');
+            
+            if (!selectedElement) {
+                props.innerHTML = '<p>Click an element to select it</p>';
+                return;
+            }
+            
+            let html = '<table>';
+            html += '<tr><td>Type:</td><td>' + selectedElement.type + '</td></tr>';
+            html += '<tr><td>X:</td><td><input type="number" value="' + selectedElement.x + '" onchange="updateProp(\'x\', this.value)"></td></tr>';
+            html += '<tr><td>Y:</td><td><input type="number" value="' + selectedElement.y + '" onchange="updateProp(\'y\', this.value)"></td></tr>';
+            
+            if (selectedElement.type === 'text') {
+                html += '<tr><td>Text:</td><td><input type="text" value="' + selectedElement.text + '" onchange="updateProp(\'text\', this.value)"></td></tr>';
+                html += '<tr><td>Size:</td><td><input type="number" value="' + selectedElement.fontSize + '" onchange="updateProp(\'fontSize\', this.value)"></td></tr>';
+            }
+            else if (selectedElement.type === 'line') {
+                html += '<tr><td>Width:</td><td><input type="number" value="' + selectedElement.width + '" onchange="updateProp(\'width\', this.value)"></td></tr>';
+            }
+            
+            html += '<tr><td>Color:</td><td><input type="color" value="' + selectedElement.color + '" onchange="updateProp(\'color\', this.value)"></td></tr>';
+            html += '</table>';
+            html += '<button onclick="deleteSelected()">Delete Element</button>';
+            
+            props.innerHTML = html;
+        }
+        
+        function updateProp(prop, value) {
+            if (!selectedElement) return;
+            
+            if (prop === 'x' || prop === 'y' || prop === 'fontSize' || prop === 'width') {
+                selectedElement[prop] = parseInt(value);
+            } else {
+                selectedElement[prop] = value;
+            }
+            
+            renderElements();
+            updateStatus('Updated ' + prop + ' to ' + value);
+        }
+        
+        function deleteSelected() {
+            if (!selectedElement) return;
+            
+            elements = elements.filter(e => e.id !== selectedElement.id);
+            selectedElement = null;
+            renderElements();
+            showProperties();
+            updateStatus('Deleted element');
+        }
+        
+        function startDrag(e, element) {
+            isDragging = true;
+            selectedElement = element;
+            dragStart.x = e.clientX;
+            dragStart.y = e.clientY;
+            elementStart.x = element.x;
+            elementStart.y = element.y;
+            updateStatus('Dragging...');
+        }
+        
+        document.onmousemove = function(e) {
+            if (!isDragging || !selectedElement) return;
+            
+            const dx = e.clientX - dragStart.x;
+            const dy = e.clientY - dragStart.y;
+            
+            selectedElement.x = elementStart.x + dx;
+            selectedElement.y = elementStart.y + dy;
+            
+            renderElements();
+        };
+        
+        document.onmouseup = function() {
+            if (isDragging) {
+                isDragging = false;
+                updateStatus('Drag complete');
+            }
+        };
+        
+        // Initial status
+        updateStatus('Designer loaded successfully');
+    </script>
+</body>
+</html>

@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Simple Chart Designer</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            display: flex;
+            height: 100vh;
+        }
+        
+        #sidebar {
+            width: 200px;
+            background: #f0f0f0;
+            padding: 20px;
+        }
+        
+        button {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            cursor: pointer;
+        }
+        
+        #canvas-area {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #e0e0e0;
+        }
+        
+        #canvas {
+            width: 600px;
+            height: 600px;
+            background: #F6F7F3;
+            position: relative;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .element {
+            position: absolute;
+            cursor: move;
+            user-select: none;
+        }
+        
+        .element.selected {
+            outline: 2px dashed blue;
+        }
+        
+        #properties {
+            width: 250px;
+            background: #f0f0f0;
+            padding: 20px;
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 5px;
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div id="sidebar">
+        <h3>Add Elements</h3>
+        <button onclick="addText()">Add Text</button>
+        <button onclick="addLine()">Add Line</button>
+        <button onclick="loadTemplate()">Load Template</button>
+        <hr>
+        <button onclick="exportConfig()">Export Config</button>
+        <button onclick="clearAll()">Clear All</button>
+    </div>
+    
+    <div id="canvas-area">
+        <div id="canvas"></div>
+    </div>
+    
+    <div id="properties">
+        <h3>Properties</h3>
+        <div id="props-content">
+            <p>Select an element</p>
+        </div>
+    </div>
+    
+    <script>
+        let elements = [];
+        let selectedElement = null;
+        let idCounter = 0;
+        let isDragging = false;
+        let dragOffset = {x: 0, y: 0};
+        
+        function addText() {
+            const element = {
+                id: idCounter++,
+                type: 'text',
+                content: 'New Text',
+                x: 300,
+                y: 100 + elements.length * 30,
+                fontSize: 16,
+                color: '#000000'
+            };
+            elements.push(element);
+            render();
+            selectElement(element);
+        }
+        
+        function addLine() {
+            const element = {
+                id: idCounter++,
+                type: 'line',
+                x: 100,
+                y: 100 + elements.length * 30,
+                width: 400,
+                color: '#000000'
+            };
+            elements.push(element);
+            render();
+            selectElement(element);
+        }
+        
+        function loadTemplate() {
+            elements = [
+                {id: idCounter++, type: 'text', content: 'NEW LISTINGS', x: 300, y: 50, fontSize: 24, color: '#000000'},
+                {id: idCounter++, type: 'line', x: 100, y: 80, width: 400, color: '#000000'},
+                {id: idCounter++, type: 'text', content: 'DENVER METRO, CO', x: 300, y: 100, fontSize: 18, color: '#0BB4FF'},
+                {id: idCounter++, type: 'line', x: 100, y: 120, width: 400, color: '#000000'},
+                {id: idCounter++, type: 'text', content: 'Data based on 4 week window', x: 300, y: 150, fontSize: 12, color: '#808080'}
+            ];
+            render();
+        }
+        
+        function render() {
+            const canvas = document.getElementById('canvas');
+            canvas.innerHTML = '';
+            
+            elements.forEach(el => {
+                const div = document.createElement('div');
+                div.className = 'element' + (el === selectedElement ? ' selected' : '');
+                div.dataset.id = el.id;
+                
+                if (el.type === 'text') {
+                    div.textContent = el.content;
+                    div.style.fontSize = el.fontSize + 'px';
+                    div.style.color = el.color;
+                    div.style.left = el.x + 'px';
+                    div.style.top = el.y + 'px';
+                    div.style.transform = 'translateX(-50%)';
+                } else if (el.type === 'line') {
+                    div.style.left = el.x + 'px';
+                    div.style.top = el.y + 'px';
+                    div.style.width = el.width + 'px';
+                    div.style.height = '1px';
+                    div.style.background = el.color;
+                }
+                
+                div.addEventListener('mousedown', startDrag);
+                canvas.appendChild(div);
+            });
+        }
+        
+        function selectElement(element) {
+            selectedElement = element;
+            render();
+            showProperties();
+        }
+        
+        function showProperties() {
+            const props = document.getElementById('props-content');
+            if (!selectedElement) {
+                props.innerHTML = '<p>Select an element</p>';
+                return;
+            }
+            
+            let html = `
+                <label>X: <input type="number" value="${selectedElement.x}" onchange="updateProp('x', this.value)"></label>
+                <label>Y: <input type="number" value="${selectedElement.y}" onchange="updateProp('y', this.value)"></label>
+            `;
+            
+            if (selectedElement.type === 'text') {
+                html += `
+                    <label>Text: <input value="${selectedElement.content}" onchange="updateProp('content', this.value)"></label>
+                    <label>Size: <input type="number" value="${selectedElement.fontSize}" onchange="updateProp('fontSize', this.value)"></label>
+                `;
+            } else if (selectedElement.type === 'line') {
+                html += `
+                    <label>Width: <input type="number" value="${selectedElement.width}" onchange="updateProp('width', this.value)"></label>
+                `;
+            }
+            
+            html += `
+                <label>Color: <input type="color" value="${selectedElement.color}" onchange="updateProp('color', this.value)"></label>
+                <button onclick="deleteElement()">Delete</button>
+            `;
+            
+            props.innerHTML = html;
+        }
+        
+        function updateProp(prop, value) {
+            if (!selectedElement) return;
+            if (prop === 'x' || prop === 'y' || prop === 'fontSize' || prop === 'width') {
+                selectedElement[prop] = parseInt(value);
+            } else {
+                selectedElement[prop] = value;
+            }
+            render();
+            showProperties();
+        }
+        
+        function deleteElement() {
+            if (!selectedElement) return;
+            elements = elements.filter(el => el.id !== selectedElement.id);
+            selectedElement = null;
+            render();
+            showProperties();
+        }
+        
+        function startDrag(e) {
+            const id = parseInt(e.target.dataset.id);
+            const element = elements.find(el => el.id === id);
+            if (!element) return;
+            
+            selectElement(element);
+            isDragging = true;
+            
+            const rect = e.target.parentElement.getBoundingClientRect();
+            dragOffset.x = e.clientX - rect.left - element.x;
+            dragOffset.y = e.clientY - rect.top - element.y;
+            
+            e.preventDefault();
+        }
+        
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging || !selectedElement) return;
+            
+            const canvas = document.getElementById('canvas');
+            const rect = canvas.getBoundingClientRect();
+            
+            selectedElement.x = e.clientX - rect.left - dragOffset.x;
+            selectedElement.y = e.clientY - rect.top - dragOffset.y;
+            
+            render();
+            showProperties();
+        });
+        
+        document.addEventListener('mouseup', () => {
+            isDragging = false;
+        });
+        
+        function exportConfig() {
+            const config = JSON.stringify(elements, null, 2);
+            const blob = new Blob([config], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'chart-config.json';
+            a.click();
+        }
+        
+        function clearAll() {
+            if (confirm('Clear all elements?')) {
+                elements = [];
+                selectedElement = null;
+                render();
+                showProperties();
+            }
+        }
+        
+        // Initialize
+        render();
+    </script>
+</body>
+</html>

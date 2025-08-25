@@ -34,6 +34,10 @@ from datetime import datetime
 import logging
 from concurrent.futures import ProcessPoolExecutor, as_completed
 import time
+import warnings
+
+# Suppress matplotlib warnings about legend positioning
+warnings.filterwarnings('ignore', message='.*posx and posy should be finite values.*')
 
 # Add scripts directory to path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -81,7 +85,7 @@ def process_metro(args):
             }
             
             # Output filename
-            output_file = metro_dir / f"{metric['name']}_social.png"
+            output_file = metro_dir / f"{metric['name']}.png"
             
             # Generate chart using new function
             success = create_exact_metro_chart(df, metro_name, metric_config, str(output_file))
@@ -102,6 +106,15 @@ def process_metro(args):
 def main():
     """Generate social media charts for all metros"""
     
+    # Parse command-line arguments for sharding
+    import argparse
+    parser = argparse.ArgumentParser(description='Generate social media charts')
+    parser.add_argument('--shard', type=int, default=None,
+                        help='Shard number for parallel processing')
+    parser.add_argument('--total-shards', type=int, default=32,
+                        help='Total number of shards')
+    args = parser.parse_args()
+    
     # Configuration - use relative path for GitHub Actions
     output_base = Path('social_charts')
     date_str = datetime.now().strftime('%Y-%m-%d')
@@ -119,12 +132,20 @@ def main():
     df['PERIOD_END'] = pd.to_datetime(df['PERIOD_END'])
     
     # Get all unique metros (excluding national aggregate)
-    metros = df[
+    all_metros = df[
         (df['REGION_TYPE_ID'] == -2) & 
         (df['REGION_NAME'] != 'All Redfin Metros')
     ]['REGION_NAME'].unique()
     
-    logger.info(f"Found {len(metros)} metros to process")
+    # Apply sharding if specified
+    if args.shard is not None:
+        # Filter metros for this shard using modulo (same as mobile charts)
+        metros = [m for i, m in enumerate(sorted(all_metros)) if i % args.total_shards == args.shard]
+        logger.info(f"Shard {args.shard}/{args.total_shards}: Processing {len(metros)} of {len(all_metros)} metros")
+    else:
+        metros = all_metros
+        logger.info(f"Found {len(metros)} metros to process")
+    
     logger.info(f"Generating {len(METRICS)} metrics per metro")
     logger.info(f"Total charts to generate: {len(metros) * len(METRICS)}")
     

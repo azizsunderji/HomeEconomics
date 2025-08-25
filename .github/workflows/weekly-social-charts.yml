@@ -8,8 +8,42 @@ on:
   workflow_dispatch: {}   # Allow manual trigger for testing
 
 jobs:
-  generate-social-charts:
+  download-data:
     runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Download Redfin data
+        run: |
+          mkdir -p data
+          python scripts/download_data.py --output data --force
+
+      - name: Upload data artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: redfin-data-social
+          path: data/weekly_housing_market_data.parquet
+          retention-days: 1
+
+  generate-social-charts:
+    needs: download-data
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # 32 shards for 927 metros (~29 metros per shard)
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31]
     env:
       TZ: America/New_York
       
@@ -27,23 +61,62 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Download latest data
-        run: |
-          mkdir -p data
-          python scripts/download_data.py --output data --force
+      - name: Download data artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: redfin-data-social
+          path: data
 
       - name: Compute today's folder (Eastern)
         id: date
         run: echo "DATE=$(TZ='America/New_York' date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
 
-      - name: Generate social media charts
+      - name: Generate social media charts (this shard)
         env:
           PYTHONPATH: ${{ github.workspace }}
         run: |
-          python scripts/generate_all_social_charts.py
+          python scripts/generate_all_social_charts.py \
+            --shard ${{ matrix.shard }} \
+            --total-shards 32
         continue-on-error: true
 
       - name: Count generated charts
+        run: |
+          echo "Shard ${{ matrix.shard }} social charts generated:"
+          find social_charts/${{ steps.date.outputs.DATE }} -name "*.png" | wc -l || true
+          echo "Total size:"
+          du -sh social_charts/${{ steps.date.outputs.DATE }}/ || true
+
+      - name: Upload charts artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: social-charts-shard-${{ matrix.shard }}
+          path: social_charts/
+          if-no-files-found: warn
+          retention-days: 1
+
+  upload-to-server:
+    needs: generate-social-charts
+    runs-on: ubuntu-latest
+    env:
+      TZ: America/New_York
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Compute today's folder (Eastern)
+        id: date
+        run: echo "DATE=$(TZ='America/New_York' date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+
+      - name: Download all chart artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: social-charts-shard-*
+          path: social_charts/
+          merge-multiple: true
+
+      - name: Count total charts
         run: |
           echo "Total social charts generated:"
           find social_charts/${{ steps.date.outputs.DATE }} -name "*.png" | wc -l || true

@@ -1,0 +1,66 @@
+{
+  "title": {
+    "type": "text",
+    "visible": true,
+    "props": {
+      "text": "NEW LISTINGS",
+      "x": 0.5,
+      "y": 0.94,
+      "size": 24,
+      "weight": "bold",
+      "ha": "center",
+      "va": "top",
+      "color": "#3D3733"
+    }
+  },
+  "line1": {
+    "type": "line",
+    "visible": true,
+    "props": {
+      "x1": 0.2,
+      "x2": 0.8,
+      "y": 0.91,
+      "color": "#3D3733",
+      "width": 0.5
+    }
+  },
+  "metro": {
+    "type": "text",
+    "visible": true,
+    "props": {
+      "text": "DENVER METRO, CO",
+      "x": 0.5,
+      "y": 0.895,
+      "size": 18,
+      "weight": "bold",
+      "ha": "center",
+      "va": "center",
+      "color": "#0BB4FF"
+    }
+  },
+  "line2": {
+    "type": "line",
+    "visible": true,
+    "props": {
+      "x1": 0.2,
+      "x2": 0.8,
+      "y": 0.88,
+      "color": "#3D3733",
+      "width": 0.5
+    }
+  },
+  "subtitle": {
+    "type": "text",
+    "visible": true,
+    "props": {
+      "text": "Data based on 4 week window captured August 24, 2025",
+      "x": 0.5,
+      "y": 0.86,
+      "size": 11,
+      "weight": "normal",
+      "ha": "center",
+      "va": "top",
+      "color": "#808080"
+    }
+  }
+}

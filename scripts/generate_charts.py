@@ -14,6 +14,7 @@ import logging
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from exact_metro_chart_generator import create_exact_metro_chart
+from social_media_chart_generator import create_social_media_chart
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -38,8 +39,8 @@ METRICS = [
         'unit': '',
         'decimals': 0,
         'is_percentage': False,
-        'normalize_for_histogram': None,
-        'normalized_unit_label': None
+        'normalize_for_histogram': 'per_100_active',
+        'normalized_unit_label': '% of Active'
     },
     {
         'name': 'active_listings',
@@ -68,8 +69,8 @@ METRICS = [
         'unit': '',
         'decimals': 0,
         'is_percentage': False,
-        'normalize_for_histogram': None,
-        'normalized_unit_label': None
+        'normalize_for_histogram': 'per_100_active',
+        'normalized_unit_label': '% of Active'
     },
     {
         'name': 'pending_sales',
@@ -85,8 +86,8 @@ METRICS = [
         'name': 'off_market_in_2_weeks',
         'display_name': 'Off Market in 2 Weeks',
         'column': 'OFF_MARKET_IN_TWO_WEEKS',
-        'unit': '%',
-        'decimals': 1,
+        'unit': '',  # It's a count, not a percentage
+        'decimals': 0,
         'is_percentage': False,
         'normalize_for_histogram': None,
         'normalized_unit_label': None
@@ -166,7 +167,8 @@ def slug_to_metro_name(slug: str) -> str:
     # Return in Redfin format
     return f"{city}, {state} metro area"
 
-def render_city(city_slug: str, date: str, out_dir: str, metrics: list = None) -> None:
+def render_city(city_slug: str, date: str, out_dir: str, metrics: list = None, 
+                chart_type: str = 'mobile') -> None:
     """
     Generate charts for a single city
     
@@ -175,13 +177,14 @@ def render_city(city_slug: str, date: str, out_dir: str, metrics: list = None) -
         date: Date string (YYYY-MM-DD)
         out_dir: Output directory path
         metrics: List of metric names to generate (or None for all)
+        chart_type: Type of chart to generate ('mobile' or 'social')
     """
     # Load data (should be cached in production)
-    data_file = Path('data') / 'weekly_housing_market_data.parquet'
+    data_file = Path(__file__).parent.parent / 'data' / 'weekly_housing_market_data.parquet'
     if not data_file.exists():
         raise FileNotFoundError(f"Data file not found: {data_file}")
     
-    logger.info(f"Generating charts for {city_slug}")
+    logger.info(f"Generating {chart_type} charts for {city_slug}")
     
     # Load data
     df = pd.read_parquet(data_file)
@@ -202,22 +205,35 @@ def render_city(city_slug: str, date: str, out_dir: str, metrics: list = None) -
     
     for metric in metrics_to_gen:
         try:
-            # Create metric config for exact generator
+            # Create metric config for generator
             metric_config = {
                 'name': metric['display_name'],
                 'column': metric['column'],
                 'unit': metric['unit'],
                 'decimals': metric['decimals'],
                 'is_percentage': metric['is_percentage'],
-                'normalize_for_histogram': metric['normalize_for_histogram'],
-                'normalized_unit_label': metric['normalized_unit_label']
             }
             
-            # Output filename
-            output_file = out_path / f"{city_slug}_{metric['name']}_mobile.png"
+            if chart_type == 'mobile':
+                # Add extra fields for mobile charts
+                metric_config['normalize_for_histogram'] = metric['normalize_for_histogram']
+                metric_config['normalized_unit_label'] = metric['normalized_unit_label']
+                
+                # Output filename
+                output_file = out_path / f"{city_slug}_{metric['name']}_mobile.png"
+                
+                # Generate mobile chart
+                success = create_exact_metro_chart(df, metro_name, metric_config, str(output_file))
             
-            # Generate chart
-            success = create_exact_metro_chart(df, metro_name, metric_config, str(output_file))
+            elif chart_type == 'social':
+                # Output filename
+                output_file = out_path / f"{city_slug}_{metric['name']}_social.png"
+                
+                # Generate social media chart
+                success = create_social_media_chart(df, metro_name, metric_config, str(output_file))
+            
+            else:
+                raise ValueError(f"Unknown chart type: {chart_type}")
             
             if success:
                 successful += 1
@@ -230,7 +246,7 @@ def render_city(city_slug: str, date: str, out_dir: str, metrics: list = None) -
             failed += 1
             logger.error(f"  ✗ {metric['display_name']}: {str(e)}")
     
-    logger.info(f"  Completed {city_slug}: {successful} success, {failed} failed")
+    logger.info(f"  Completed {city_slug} ({chart_type}): {successful} success, {failed} failed")
 
 def render_national(date: str, out_dir: str, metrics: list = None) -> None:
     """
@@ -252,12 +268,26 @@ def main():
     parser.add_argument('--out', type=str, default='out/reports',
                        help='Output directory')
     parser.add_argument('--metrics', nargs='+', help='Specific metrics to generate')
+    parser.add_argument('--type', type=str, default='mobile', choices=['mobile', 'social', 'both'],
+                       help='Chart type to generate: mobile (email), social (square), or both')
     
     args = parser.parse_args()
     
     try:
-        render_city(args.city, args.date, f"{args.out}/{args.date}/{args.city}", args.metrics)
-        print(f"✅ Charts generated for {args.city}")
+        if args.type == 'both':
+            # Generate both mobile and social charts
+            render_city(args.city, args.date, f"{args.out}/{args.date}/{args.city}/mobile", 
+                       args.metrics, chart_type='mobile')
+            render_city(args.city, args.date, f"{args.out}/{args.date}/{args.city}/social", 
+                       args.metrics, chart_type='social')
+            print(f"✅ Both mobile and social charts generated for {args.city}")
+        else:
+            # Generate single type
+            output_dir = f"{args.out}/{args.date}/{args.city}"
+            if args.type == 'social':
+                output_dir += "/social"
+            render_city(args.city, args.date, output_dir, args.metrics, chart_type=args.type)
+            print(f"✅ {args.type.capitalize()} charts generated for {args.city}")
         return 0
     except Exception as e:
         print(f"❌ Error: {e}", file=sys.stderr)

@@ -1,0 +1,116 @@
+2025-08-22 15:39:22,776 - INFO - Loading data...
+2025-08-22 15:39:25,619 - INFO - Found 927 metros to process
+2025-08-22 15:39:25,619 - INFO - Generating 12 metrics per metro
+2025-08-22 15:39:25,619 - INFO - Total charts to generate: 11124
+2025-08-22 15:39:25,619 - INFO - Using 8 parallel workers
+2025-08-22 15:45:16,222 - INFO - Progress: 10/927 metros (1.1%) - Est. remaining: 535.8 min
+2025-08-22 15:50:37,104 - INFO - Progress: 20/927 metros (2.2%) - Est. remaining: 507.5 min
+2025-08-22 15:56:32,538 - INFO - Progress: 30/927 metros (3.2%) - Est. remaining: 511.7 min
+2025-08-22 16:07:09,557 - INFO - Progress: 40/927 metros (4.3%) - Est. remaining: 615.0 min
+2025-08-22 16:18:34,298 - INFO - Progress: 50/927 metros (5.4%) - Est. remaining: 686.6 min
+2025-08-22 16:26:11,240 - INFO - Progress: 60/927 metros (6.5%) - Est. remaining: 675.7 min
+2025-08-22 16:34:36,108 - INFO - Progress: 70/927 metros (7.6%) - Est. remaining: 675.5 min
+2025-08-22 16:40:22,533 - INFO - Progress: 80/927 metros (8.6%) - Est. remaining: 645.3 min
+2025-08-22 16:46:20,628 - INFO - Progress: 90/927 metros (9.7%) - Est. remaining: 622.3 min
+2025-08-22 16:51:56,287 - INFO - Progress: 100/927 metros (10.8%) - Est. remaining: 599.7 min
+2025-08-22 16:57:20,532 - INFO - Progress: 110/927 metros (11.9%) - Est. remaining: 578.7 min
+2025-08-22 17:02:49,536 - INFO - Progress: 120/927 metros (12.9%) - Est. remaining: 560.9 min
+2025-08-22 17:08:12,229 - INFO - Progress: 130/927 metros (14.0%) - Est. remaining: 544.3 min
+2025-08-22 17:13:00,440 - INFO - Progress: 140/927 metros (15.1%) - Est. remaining: 526.1 min
+2025-08-22 17:17:47,824 - INFO - Progress: 150/927 metros (16.2%) - Est. remaining: 509.6 min
+2025-08-22 17:23:05,655 - INFO - Progress: 160/927 metros (17.3%) - Est. remaining: 497.0 min
+2025-08-22 17:28:17,218 - INFO - Progress: 170/927 metros (18.3%) - Est. remaining: 484.7 min
+2025-08-22 17:33:35,332 - INFO - Progress: 180/927 metros (19.4%) - Est. remaining: 473.8 min
+2025-08-22 17:38:24,367 - INFO - Progress: 190/927 metros (20.5%) - Est. remaining: 461.5 min
+2025-08-22 17:43:28,337 - INFO - Progress: 200/927 metros (21.6%) - Est. remaining: 450.9 min
+2025-08-22 17:48:43,970 - INFO - Progress: 210/927 metros (22.7%) - Est. remaining: 441.5 min
+2025-08-22 17:53:46,954 - INFO - Progress: 220/927 metros (23.7%) - Est. remaining: 431.8 min
+2025-08-22 17:58:53,954 - INFO - Progress: 230/927 metros (24.8%) - Est. remaining: 422.7 min
+2025-08-22 18:04:11,077 - INFO - Progress: 240/927 metros (25.9%) - Est. remaining: 414.4 min
+2025-08-22 18:08:56,023 - INFO - Progress: 250/927 metros (27.0%) - Est. remaining: 404.9 min
+2025-08-22 18:13:46,432 - INFO - Progress: 260/927 metros (28.0%) - Est. remaining: 396.0 min
+2025-08-22 18:18:51,081 - INFO - Progress: 270/927 metros (29.1%) - Est. remaining: 387.9 min
+2025-08-22 18:24:05,215 - INFO - Progress: 280/927 metros (30.2%) - Est. remaining: 380.5 min
+2025-08-22 18:29:06,963 - INFO - Progress: 290/927 metros (31.3%) - Est. remaining: 372.7 min
+2025-08-22 18:34:13,784 - INFO - Progress: 300/927 metros (32.4%) - Est. remaining: 365.3 min
+2025-08-22 18:39:30,298 - INFO - Progress: 310/927 metros (33.4%) - Est. remaining: 358.4 min
+2025-08-22 18:44:31,545 - INFO - Progress: 320/927 metros (34.5%) - Est. remaining: 351.1 min
+2025-08-22 18:49:37,215 - INFO - Progress: 330/927 metros (35.6%) - Est. remaining: 344.1 min
+2025-08-22 18:54:51,106 - INFO - Progress: 340/927 metros (36.7%) - Est. remaining: 337.4 min
+2025-08-22 18:59:54,069 - INFO - Progress: 350/927 metros (37.8%) - Est. remaining: 330.5 min
+2025-08-22 19:05:11,657 - INFO - Progress: 360/927 metros (38.8%) - Est. remaining: 324.1 min
+2025-08-22 19:10:12,316 - INFO - Progress: 370/927 metros (39.9%) - Est. remaining: 317.3 min
+2025-08-22 19:15:32,771 - INFO - Progress: 380/927 metros (41.0%) - Est. remaining: 311.1 min
+2025-08-22 19:21:02,173 - INFO - Progress: 390/927 metros (42.1%) - Est. remaining: 305.1 min
+2025-08-22 19:26:22,010 - INFO - Progress: 400/927 metros (43.1%) - Est. remaining: 299.0 min
+2025-08-22 19:31:47,836 - INFO - Progress: 410/927 metros (44.2%) - Est. remaining: 293.0 min
+2025-08-22 19:37:22,247 - INFO - Progress: 420/927 metros (45.3%) - Est. remaining: 287.2 min
+2025-08-22 19:42:41,400 - INFO - Progress: 430/927 metros (46.4%) - Est. remaining: 281.2 min
+2025-08-22 19:47:45,678 - INFO - Progress: 440/927 metros (47.5%) - Est. remaining: 274.9 min
+2025-08-22 19:52:56,461 - INFO - Progress: 450/927 metros (48.5%) - Est. remaining: 268.7 min
+2025-08-22 19:58:09,777 - INFO - Progress: 460/927 metros (49.6%) - Est. remaining: 262.7 min
+2025-08-22 20:03:23,608 - INFO - Progress: 470/927 metros (50.7%) - Est. remaining: 256.7 min
+2025-08-22 20:08:40,163 - INFO - Progress: 480/927 metros (51.8%) - Est. remaining: 250.7 min
+2025-08-22 20:13:46,806 - INFO - Progress: 490/927 metros (52.9%) - Est. remaining: 244.7 min
+2025-08-22 20:19:02,008 - INFO - Progress: 500/927 metros (53.9%) - Est. remaining: 238.8 min
+2025-08-22 20:24:19,705 - INFO - Progress: 510/927 metros (55.0%) - Est. remaining: 232.9 min
+2025-08-22 20:29:30,770 - INFO - Progress: 520/927 metros (56.1%) - Est. remaining: 227.0 min
+2025-08-22 20:34:06,809 - INFO - Progress: 530/927 metros (57.2%) - Est. remaining: 220.7 min
+2025-08-22 20:39:00,837 - INFO - Progress: 540/927 metros (58.3%) - Est. remaining: 214.7 min
+2025-08-22 20:43:24,475 - INFO - Progress: 550/927 metros (59.3%) - Est. remaining: 208.4 min
+2025-08-22 20:47:59,335 - INFO - Progress: 560/927 metros (60.4%) - Est. remaining: 202.2 min
+2025-08-22 20:52:34,238 - INFO - Progress: 570/927 metros (61.5%) - Est. remaining: 196.1 min
+2025-08-22 20:57:37,075 - INFO - Progress: 580/927 metros (62.6%) - Est. remaining: 190.4 min
+2025-08-22 21:02:46,038 - INFO - Progress: 590/927 metros (63.6%) - Est. remaining: 184.7 min
+2025-08-22 21:07:23,418 - INFO - Progress: 600/927 metros (64.7%) - Est. remaining: 178.7 min
+2025-08-22 21:12:02,362 - INFO - Progress: 610/927 metros (65.8%) - Est. remaining: 172.8 min
+2025-08-22 21:16:45,388 - INFO - Progress: 620/927 metros (66.9%) - Est. remaining: 167.0 min
+2025-08-22 21:22:05,784 - INFO - Progress: 630/927 metros (68.0%) - Est. remaining: 161.5 min
+2025-08-22 21:27:17,481 - INFO - Progress: 640/927 metros (69.0%) - Est. remaining: 156.0 min
+2025-08-22 21:32:25,936 - INFO - Progress: 650/927 metros (70.1%) - Est. remaining: 150.4 min
+2025-08-22 21:37:00,566 - INFO - Progress: 660/927 metros (71.2%) - Est. remaining: 144.7 min
+2025-08-22 21:42:10,709 - INFO - Progress: 670/927 metros (72.3%) - Est. remaining: 139.1 min
+2025-08-22 21:47:27,611 - INFO - Progress: 680/927 metros (73.4%) - Est. remaining: 133.7 min
+2025-08-22 21:52:12,764 - INFO - Progress: 690/927 metros (74.4%) - Est. remaining: 128.0 min
+2025-08-22 21:56:59,126 - INFO - Progress: 700/927 metros (75.5%) - Est. remaining: 122.4 min
+2025-08-22 22:02:01,214 - INFO - Progress: 710/927 metros (76.6%) - Est. remaining: 116.9 min
+2025-08-22 22:07:05,197 - INFO - Progress: 720/927 metros (77.7%) - Est. remaining: 111.5 min
+2025-08-22 22:12:16,904 - INFO - Progress: 730/927 metros (78.7%) - Est. remaining: 106.0 min
+2025-08-22 22:17:09,955 - INFO - Progress: 740/927 metros (79.8%) - Est. remaining: 100.5 min
+2025-08-22 22:22:48,501 - INFO - Progress: 750/927 metros (80.9%) - Est. remaining: 95.2 min
+2025-08-22 22:27:38,497 - INFO - Progress: 760/927 metros (82.0%) - Est. remaining: 89.7 min
+2025-08-22 22:33:06,379 - INFO - Progress: 770/927 metros (83.1%) - Est. remaining: 84.3 min
+2025-08-22 22:37:54,776 - INFO - Progress: 780/927 metros (84.1%) - Est. remaining: 78.9 min
+2025-08-22 22:43:00,492 - INFO - Progress: 790/927 metros (85.2%) - Est. remaining: 73.5 min
+2025-08-22 22:48:03,233 - INFO - Progress: 800/927 metros (86.3%) - Est. remaining: 68.0 min
+2025-08-22 22:53:09,996 - INFO - Progress: 810/927 metros (87.4%) - Est. remaining: 62.7 min
+2025-08-22 22:58:11,424 - INFO - Progress: 820/927 metros (88.5%) - Est. remaining: 57.3 min
+2025-08-22 23:03:06,850 - INFO - Progress: 830/927 metros (89.5%) - Est. remaining: 51.9 min
+2025-08-22 23:08:36,075 - INFO - Progress: 840/927 metros (90.6%) - Est. remaining: 46.5 min
+2025-08-22 23:13:17,041 - INFO - Progress: 850/927 metros (91.7%) - Est. remaining: 41.1 min
+2025-08-22 23:18:10,678 - INFO - Progress: 860/927 metros (92.8%) - Est. remaining: 35.7 min
+2025-08-22 23:22:49,379 - INFO - Progress: 870/927 metros (93.9%) - Est. remaining: 30.4 min
+2025-08-22 23:27:55,886 - INFO - Progress: 880/927 metros (94.9%) - Est. remaining: 25.0 min
+2025-08-22 23:33:04,092 - INFO - Progress: 890/927 metros (96.0%) - Est. remaining: 19.7 min
+2025-08-22 23:38:36,914 - INFO - Progress: 900/927 metros (97.1%) - Est. remaining: 14.4 min
+2025-08-22 23:43:51,219 - INFO - Progress: 910/927 metros (98.2%) - Est. remaining: 9.0 min
+2025-08-22 23:48:39,355 - INFO - Progress: 920/927 metros (99.2%) - Est. remaining: 3.7 min
+No valid data for OFF_MARKET_IN_TWO_WEEKS in Dallas, TX metro area
+No valid data for OFF_MARKET_IN_TWO_WEEKS in San Antonio, TX metro area
+No valid data for OFF_MARKET_IN_TWO_WEEKS in Atlanta, GA metro area
+No valid data for OFF_MARKET_IN_TWO_WEEKS in Fort Worth, TX metro area
+No valid data for OFF_MARKET_IN_TWO_WEEKS in Boise City, ID metro area
+2025-08-22 23:52:10,533 - INFO - ==================================================
+2025-08-22 23:52:10,533 - INFO - Generation complete in 492.7 minutes
+2025-08-22 23:52:10,533 - INFO - Total successful: 11119
+2025-08-22 23:52:10,533 - INFO - Total failed: 5
+2025-08-22 23:52:10,533 - INFO - Success rate: 100.0%
+2025-08-22 23:52:10,535 - INFO - Output directory: /Users/azizsunderji/Dropbox/Home Economics/HomeEconomics/social_charts/2025-08-22
+2025-08-22 23:52:10,535 - INFO - 
+Metros with failures (5):
+2025-08-22 23:52:10,536 - INFO -   San Antonio, TX metro area: off_market_in_2_weeks
+2025-08-22 23:52:10,536 - INFO -   Dallas, TX metro area: off_market_in_2_weeks
+2025-08-22 23:52:10,537 - INFO -   Boise City, ID metro area: off_market_in_2_weeks
+2025-08-22 23:52:10,538 - INFO -   Atlanta, GA metro area: off_market_in_2_weeks
+2025-08-22 23:52:10,539 - INFO -   Fort Worth, TX metro area: off_market_in_2_weeks
+2025-08-22 23:52:10,554 - INFO - Summary saved to: /Users/azizsunderji/Dropbox/Home Economics/HomeEconomics/social_charts/2025-08-22/generation_summary.txt

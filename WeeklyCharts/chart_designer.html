@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visual Chart Designer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #1a1a1a;
+            color: #fff;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+        }
+        
+        /* Left Toolbar */
+        #toolbar {
+            width: 200px;
+            background: #2a2a2a;
+            padding: 20px;
+            border-right: 1px solid #444;
+            overflow-y: auto;
+        }
+        
+        #toolbar h3 {
+            font-size: 14px;
+            margin-bottom: 15px;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .tool-button {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 10px;
+            background: #3a3a3a;
+            border: 1px solid #555;
+            color: #fff;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 14px;
+        }
+        
+        .tool-button:hover {
+            background: #4a4a4a;
+            transform: translateY(-1px);
+        }
+        
+        .tool-button:active {
+            transform: translateY(0);
+        }
+        
+        /* Center Canvas Area */
+        #canvas-container {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            background: #222;
+            background-image: 
+                linear-gradient(0deg, transparent 24%, rgba(255, 255, 255, .02) 25%, rgba(255, 255, 255, .02) 26%, transparent 27%, transparent 74%, rgba(255, 255, 255, .02) 75%, rgba(255, 255, 255, .02) 76%, transparent 77%, transparent),
+                linear-gradient(90deg, transparent 24%, rgba(255, 255, 255, .02) 25%, rgba(255, 255, 255, .02) 26%, transparent 27%, transparent 74%, rgba(255, 255, 255, .02) 75%, rgba(255, 255, 255, .02) 76%, transparent 77%, transparent);
+            background-size: 50px 50px;
+        }
+        
+        #chart-canvas {
+            background: #F6F7F3;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            cursor: move;
+            position: relative;
+        }
+        
+        .canvas-wrapper {
+            position: relative;
+            transform-origin: center;
+        }
+        
+        /* Right Properties Panel */
+        #properties-panel {
+            width: 300px;
+            background: #2a2a2a;
+            padding: 20px;
+            border-left: 1px solid #444;
+            overflow-y: auto;
+        }
+        
+        #properties-panel h3 {
+            font-size: 14px;
+            margin-bottom: 20px;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .property-group {
+            margin-bottom: 20px;
+        }
+        
+        .property-label {
+            font-size: 12px;
+            color: #aaa;
+            margin-bottom: 5px;
+            display: block;
+        }
+        
+        .property-input {
+            width: 100%;
+            padding: 8px;
+            background: #3a3a3a;
+            border: 1px solid #555;
+            color: #fff;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        .property-input:focus {
+            outline: none;
+            border-color: #0BB4FF;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+            margin: 10px 0;
+        }
+        
+        .color-presets {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 8px;
+            margin-top: 10px;
+        }
+        
+        .color-preset {
+            width: 40px;
+            height: 40px;
+            border-radius: 4px;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: transform 0.2s;
+        }
+        
+        .color-preset:hover {
+            transform: scale(1.1);
+        }
+        
+        .color-preset.selected {
+            border-color: #fff;
+        }
+        
+        /* Top Bar */
+        #top-bar {
+            position: absolute;
+            top: 0;
+            left: 200px;
+            right: 300px;
+            height: 50px;
+            background: #2a2a2a;
+            border-bottom: 1px solid #444;
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            z-index: 100;
+        }
+        
+        .top-button {
+            padding: 8px 16px;
+            margin-right: 10px;
+            background: #3a3a3a;
+            border: 1px solid #555;
+            color: #fff;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        
+        .top-button:hover {
+            background: #4a4a4a;
+        }
+        
+        /* Zoom controls */
+        .zoom-controls {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .zoom-label {
+            font-size: 13px;
+            color: #aaa;
+        }
+        
+        /* Chart Elements (on canvas) */
+        .chart-element {
+            position: absolute;
+            cursor: move;
+            user-select: none;
+        }
+        
+        .chart-element.selected {
+            outline: 2px dashed #0BB4FF;
+            outline-offset: 4px;
+        }
+        
+        .chart-element.dragging {
+            opacity: 0.7;
+        }
+        
+        .element-text {
+            white-space: nowrap;
+        }
+        
+        .element-line {
+            height: 1px;
+            background: #3D3733;
+        }
+        
+        /* No elements message */
+        .no-selection {
+            color: #666;
+            text-align: center;
+            padding: 40px 20px;
+        }
+        
+        /* Delete button */
+        .delete-button {
+            width: 100%;
+            padding: 10px;
+            background: #d73a49;
+            border: none;
+            color: #fff;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 20px;
+            font-size: 14px;
+        }
+        
+        .delete-button:hover {
+            background: #cb2431;
+        }
+    </style>
+</head>
+<body>
+    <!-- Left Toolbar -->
+    <div id="toolbar">
+        <h3>Elements</h3>
+        <button class="tool-button" onclick="addElement('text')">+ Add Text</button>
+        <button class="tool-button" onclick="addElement('line')">+ Add Line</button>
+        <button class="tool-button" onclick="addElement('timeseries')">+ Time Series</button>
+        <button class="tool-button" onclick="addElement('barchart')">+ Bar Chart</button>
+        <button class="tool-button" onclick="addElement('histogram')">+ Histogram</button>
+        
+        <h3 style="margin-top: 30px">Templates</h3>
+        <button class="tool-button" onclick="loadTemplate('title')">Load Title Section</button>
+        <button class="tool-button" onclick="loadTemplate('social')">Load Social Layout</button>
+    </div>
+    
+    <!-- Top Bar -->
+    <div id="top-bar">
+        <button class="top-button" onclick="saveConfig()">Save Config</button>
+        <button class="top-button" onclick="loadConfig()">Load Config</button>
+        <button class="top-button" onclick="exportPNG()">Export PNG</button>
+        <button class="top-button" onclick="generatePython()">Generate Python</button>
+        <button class="top-button" onclick="clearCanvas()">Clear All</button>
+        
+        <div class="zoom-controls">
+            <span class="zoom-label">Zoom:</span>
+            <input type="range" id="zoom-slider" min="25" max="150" value="50" onchange="setZoom(this.value)">
+            <span id="zoom-value">50%</span>
+        </div>
+    </div>
+    
+    <!-- Center Canvas -->
+    <div id="canvas-container">
+        <div class="canvas-wrapper" id="canvas-wrapper">
+            <canvas id="chart-canvas" width="1200" height="1200"></canvas>
+            <div id="elements-container" style="position: absolute; top: 0; left: 0; width: 1200px; height: 1200px; pointer-events: none;">
+                <!-- Elements will be added here -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- Right Properties Panel -->
+    <div id="properties-panel">
+        <div id="properties-content">
+            <div class="no-selection">
+                <p>Select an element to edit its properties</p>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Color palette
+        const COLORS = {
+            blue: "#0BB4FF",
+            yellow: "#FEC439",
+            cream: "#F6F7F3",
+            red: "#F4743B",
+            lightRed: "#FBCAB5",
+            black: "#3D3733",
+            gray: "#808080",
+            green: "#67A275",
+            lightGreen: "#C6DCCB"
+        };
+        
+        // Chart elements data
+        let elements = [];
+        let selectedElement = null;
+        let elementIdCounter = 0;
+        let isDragging = false;
+        let dragOffset = { x: 0, y: 0 };
+        let currentZoom = 0.5;
+        
+        // Initialize canvas
+        const canvas = document.getElementById('chart-canvas');
+        const ctx = canvas.getContext('2d');
+        const elementsContainer = document.getElementById('elements-container');
+        
+        // Add element function
+        function addElement(type) {
+            const element = {
+                id: elementIdCounter++,
+                type: type,
+                x: 600, // Center of 1200px canvas
+                y: 300 + (elements.length * 50), // Stack elements
+                selected: false
+            };
+            
+            // Set default properties based on type
+            switch(type) {
+                case 'text':
+                    element.text = 'New Text';
+                    element.fontSize = 16;
+                    element.fontWeight = 'normal';
+                    element.color = COLORS.black;
+                    element.fontFamily = 'sans-serif';
+                    element.align = 'center';
+                    break;
+                case 'line':
+                    element.width = 400;
+                    element.height = 1;
+                    element.color = COLORS.black;
+                    break;
+                case 'timeseries':
+                    element.width = 800;
+                    element.height = 300;
+                    element.placeholder = 'Time Series Chart';
+                    break;
+                case 'barchart':
+                    element.width = 400;
+                    element.height = 200;
+                    element.placeholder = 'Bar Chart';
+                    break;
+                case 'histogram':
+                    element.width = 400;
+                    element.height = 200;
+                    element.placeholder = 'Histogram';
+                    break;
+            }
+            
+            elements.push(element);
+            renderCanvas();
+            selectElement(element);
+        }
+        
+        // Render canvas
+        function renderCanvas() {
+            // Clear canvas
+            ctx.fillStyle = COLORS.cream;
+            ctx.fillRect(0, 0, 1200, 1200);
+            
+            // Clear HTML elements
+            elementsContainer.innerHTML = '';
+            
+            // Render each element
+            elements.forEach(element => {
+                const div = document.createElement('div');
+                div.className = 'chart-element' + (element.selected ? ' selected' : '');
+                div.style.left = element.x + 'px';
+                div.style.top = element.y + 'px';
+                div.style.pointerEvents = 'auto';
+                div.dataset.elementId = element.id;
+                
+                switch(element.type) {
+                    case 'text':
+                        div.className += ' element-text';
+                        div.textContent = element.text;
+                        div.style.fontSize = element.fontSize + 'px';
+                        div.style.fontWeight = element.fontWeight;
+                        div.style.color = element.color;
+                        div.style.fontFamily = element.fontFamily;
+                        div.style.transform = `translateX(-50%)`;
+                        break;
+                    case 'line':
+                        div.className += ' element-line';
+                        div.style.width = element.width + 'px';
+                        div.style.height = element.height + 'px';
+                        div.style.background = element.color;
+                        div.style.transform = `translateX(-50%)`;
+                        break;
+                    case 'timeseries':
+                    case 'barchart':
+                    case 'histogram':
+                        div.style.width = element.width + 'px';
+                        div.style.height = element.height + 'px';
+                        div.style.border = '2px dashed #999';
+                        div.style.background = 'rgba(255,255,255,0.5)';
+                        div.style.display = 'flex';
+                        div.style.alignItems = 'center';
+                        div.style.justifyContent = 'center';
+                        div.style.color = '#666';
+                        div.style.fontSize = '14px';
+                        div.style.transform = `translate(-50%, -50%)`;
+                        div.textContent = element.placeholder;
+                        break;
+                }
+                
+                // Add drag handlers
+                div.addEventListener('mousedown', startDrag);
+                
+                elementsContainer.appendChild(div);
+            });
+        }
+        
+        // Select element
+        function selectElement(element) {
+            elements.forEach(el => el.selected = false);
+            element.selected = true;
+            selectedElement = element;
+            renderCanvas();
+            showProperties(element);
+        }
+        
+        // Show properties panel for selected element
+        function showProperties(element) {
+            const panel = document.getElementById('properties-content');
+            
+            let html = `
+                <h3>Properties</h3>
+                <div class="property-group">
+                    <label class="property-label">Type</label>
+                    <input class="property-input" value="${element.type}" disabled>
+                </div>
+                <div class="property-group">
+                    <label class="property-label">X Position</label>
+                    <input type="number" class="property-input" value="${element.x}" onchange="updateProperty('x', this.value)">
+                </div>
+                <div class="property-group">
+                    <label class="property-label">Y Position</label>
+                    <input type="number" class="property-input" value="${element.y}" onchange="updateProperty('y', this.value)">
+                </div>
+            `;
+            
+            // Type-specific properties
+            if (element.type === 'text') {
+                html += `
+                    <div class="property-group">
+                        <label class="property-label">Text</label>
+                        <input class="property-input" value="${element.text}" onchange="updateProperty('text', this.value)">
+                    </div>
+                    <div class="property-group">
+                        <label class="property-label">Font Size</label>
+                        <input type="range" min="10" max="50" value="${element.fontSize}" onchange="updateProperty('fontSize', this.value)">
+                        <span>${element.fontSize}px</span>
+                    </div>
+                    <div class="property-group">
+                        <label class="property-label">Font Weight</label>
+                        <select class="property-input" onchange="updateProperty('fontWeight', this.value)">
+                            <option value="normal" ${element.fontWeight === 'normal' ? 'selected' : ''}>Normal</option>
+                            <option value="bold" ${element.fontWeight === 'bold' ? 'selected' : ''}>Bold</option>
+                        </select>
+                    </div>
+                `;
+            } else if (element.type === 'line') {
+                html += `
+                    <div class="property-group">
+                        <label class="property-label">Width</label>
+                        <input type="number" class="property-input" value="${element.width}" onchange="updateProperty('width', this.value)">
+                    </div>
+                    <div class="property-group">
+                        <label class="property-label">Thickness</label>
+                        <input type="range" min="1" max="5" value="${element.height}" onchange="updateProperty('height', this.value)">
+                    </div>
+                `;
+            } else {
+                html += `
+                    <div class="property-group">
+                        <label class="property-label">Width</label>
+                        <input type="number" class="property-input" value="${element.width}" onchange="updateProperty('width', this.value)">
+                    </div>
+                    <div class="property-group">
+                        <label class="property-label">Height</label>
+                        <input type="number" class="property-input" value="${element.height}" onchange="updateProperty('height', this.value)">
+                    </div>
+                `;
+            }
+            
+            // Color selector for text and lines
+            if (element.type === 'text' || element.type === 'line') {
+                html += `
+                    <div class="property-group">
+                        <label class="property-label">Color</label>
+                        <div class="color-presets">
+                            ${Object.entries(COLORS).map(([name, color]) => 
+                                `<div class="color-preset ${element.color === color ? 'selected' : ''}" 
+                                     style="background: ${color}" 
+                                     onclick="updateProperty('color', '${color}')"
+                                     title="${name}"></div>`
+                            ).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+            
+            html += `<button class="delete-button" onclick="deleteElement()">Delete Element</button>`;
+            
+            panel.innerHTML = html;
+        }
+        
+        // Update property
+        function updateProperty(prop, value) {
+            if (!selectedElement) return;
+            
+            if (prop === 'x' || prop === 'y' || prop === 'fontSize' || prop === 'width' || prop === 'height') {
+                selectedElement[prop] = parseInt(value);
+            } else {
+                selectedElement[prop] = value;
+            }
+            
+            renderCanvas();
+            showProperties(selectedElement);
+        }
+        
+        // Delete element
+        function deleteElement() {
+            if (!selectedElement) return;
+            elements = elements.filter(el => el.id !== selectedElement.id);
+            selectedElement = null;
+            renderCanvas();
+            document.getElementById('properties-content').innerHTML = '<div class="no-selection"><p>Select an element to edit its properties</p></div>';
+        }
+        
+        // Drag functionality
+        function startDrag(e) {
+            const elementId = parseInt(e.target.dataset.elementId);
+            const element = elements.find(el => el.id === elementId);
+            if (!element) return;
+            
+            selectElement(element);
+            isDragging = true;
+            
+            const rect = elementsContainer.getBoundingClientRect();
+            const scale = currentZoom;
+            dragOffset.x = (e.clientX - rect.left) / scale - element.x;
+            dragOffset.y = (e.clientY - rect.top) / scale - element.y;
+            
+            e.target.classList.add('dragging');
+        }
+        
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging || !selectedElement) return;
+            
+            const rect = elementsContainer.getBoundingClientRect();
+            const scale = currentZoom;
+            selectedElement.x = Math.round((e.clientX - rect.left) / scale - dragOffset.x);
+            selectedElement.y = Math.round((e.clientY - rect.top) / scale - dragOffset.y);
+            
+            // Constrain to canvas
+            selectedElement.x = Math.max(0, Math.min(1200, selectedElement.x));
+            selectedElement.y = Math.max(0, Math.min(1200, selectedElement.y));
+            
+            renderCanvas();
+            showProperties(selectedElement);
+        });
+        
+        document.addEventListener('mouseup', () => {
+            if (isDragging) {
+                isDragging = false;
+                document.querySelectorAll('.dragging').forEach(el => {
+                    el.classList.remove('dragging');
+                });
+            }
+        });
+        
+        // Zoom functionality
+        function setZoom(value) {
+            currentZoom = value / 100;
+            const wrapper = document.getElementById('canvas-wrapper');
+            wrapper.style.transform = `scale(${currentZoom})`;
+            document.getElementById('zoom-value').textContent = value + '%';
+        }
+        
+        // Load template
+        function loadTemplate(type) {
+            if (type === 'title') {
+                elements = [];
+                
+                // Title
+                elements.push({
+                    id: elementIdCounter++,
+                    type: 'text',
+                    x: 600,
+                    y: 120,
+                    text: 'NEW LISTINGS',
+                    fontSize: 24,
+                    fontWeight: 'bold',
+                    color: COLORS.black,
+                    fontFamily: 'sans-serif',
+                    align: 'center',
+                    selected: false
+                });
+                
+                // Line above metro
+                elements.push({
+                    id: elementIdCounter++,
+                    type: 'line',
+                    x: 600,
+                    y: 145,
+                    width: 600,
+                    height: 1,
+                    color: COLORS.black,
+                    selected: false
+                });
+                
+                // Metro name
+                elements.push({
+                    id: elementIdCounter++,
+                    type: 'text',
+                    x: 600,
+                    y: 165,
+                    text: 'DENVER METRO, CO',
+                    fontSize: 18,
+                    fontWeight: 'bold',
+                    color: COLORS.blue,
+                    fontFamily: 'sans-serif',
+                    align: 'center',
+                    selected: false
+                });
+                
+                // Line below metro
+                elements.push({
+                    id: elementIdCounter++,
+                    type: 'line',
+                    x: 600,
+                    y: 185,
+                    width: 600,
+                    height: 1,
+                    color: COLORS.black,
+                    selected: false
+                });
+                
+                // Subtitle
+                elements.push({
+                    id: elementIdCounter++,
+                    type: 'text',
+                    x: 600,
+                    y: 210,
+                    text: 'Data based on 4 week window captured August 24, 2025',
+                    fontSize: 11,
+                    fontWeight: 'normal',
+                    color: COLORS.gray,
+                    fontFamily: 'sans-serif',
+                    align: 'center',
+                    selected: false
+                });
+                
+                renderCanvas();
+            }
+        }
+        
+        // Save configuration
+        function saveConfig() {
+            const config = {
+                elements: elements,
+                canvasSize: { width: 1200, height: 1200 },
+                background: COLORS.cream
+            };
+            
+            const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'chart-config.json';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+        
+        // Load configuration
+        function loadConfig() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = (e) => {
+                const file = e.target.files[0];
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const config = JSON.parse(event.target.result);
+                        elements = config.elements || [];
+                        renderCanvas();
+                    } catch (err) {
+                        alert('Error loading configuration: ' + err.message);
+                    }
+                };
+                reader.readAsText(file);
+            };
+            input.click();
+        }
+        
+        // Export PNG
+        function exportPNG() {
+            // Create a temporary canvas
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = 1200;
+            tempCanvas.height = 1200;
+            const tempCtx = tempCanvas.getContext('2d');
+            
+            // Draw background
+            tempCtx.fillStyle = COLORS.cream;
+            tempCtx.fillRect(0, 0, 1200, 1200);
+            
+            // Draw each element
+            elements.forEach(element => {
+                tempCtx.save();
+                
+                switch(element.type) {
+                    case 'text':
+                        tempCtx.font = `${element.fontWeight} ${element.fontSize}px ${element.fontFamily}`;
+                        tempCtx.fillStyle = element.color;
+                        tempCtx.textAlign = 'center';
+                        tempCtx.textBaseline = 'middle';
+                        tempCtx.fillText(element.text, element.x, element.y);
+                        break;
+                    case 'line':
+                        tempCtx.fillStyle = element.color;
+                        tempCtx.fillRect(element.x - element.width/2, element.y, element.width, element.height);
+                        break;
+                }
+                
+                tempCtx.restore();
+            });
+            
+            // Download
+            tempCanvas.toBlob((blob) => {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'chart-design.png';
+                a.click();
+                URL.revokeObjectURL(url);
+            });
+        }
+        
+        // Generate Python code
+        function generatePython() {
+            let code = `import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
+
+# Create figure
+fig = plt.figure(figsize=(12, 12), facecolor='#F6F7F3', dpi=100)
+ax = fig.add_axes([0, 0, 1, 1])
+ax.set_xlim(0, 1200)
+ax.set_ylim(0, 1200)
+ax.axis('off')
+
+# Colors
+COLORS = ${JSON.stringify(COLORS, null, 4)}
+
+# Add elements
+`;
+            
+            elements.forEach(element => {
+                if (element.type === 'text') {
+                    code += `ax.text(${element.x}, ${1200 - element.y}, "${element.text}",
+    fontsize=${element.fontSize}, fontweight='${element.fontWeight}',
+    ha='center', va='center', color='${element.color}',
+    transform=None)
+`;
+                } else if (element.type === 'line') {
+                    code += `ax.add_patch(mpatches.Rectangle((${element.x - element.width/2}, ${1200 - element.y}), 
+    ${element.width}, ${element.height}, 
+    facecolor='${element.color}', edgecolor='none'))
+`;
+                }
+            });
+            
+            code += `
+# Save figure
+plt.savefig('output.png', dpi=100, bbox_inches=None, facecolor='#F6F7F3', pad_inches=0)
+plt.show()`;
+            
+            // Create download
+            const blob = new Blob([code], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'chart_code.py';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+        
+        // Clear canvas
+        function clearCanvas() {
+            if (confirm('Clear all elements? This cannot be undone.')) {
+                elements = [];
+                selectedElement = null;
+                renderCanvas();
+                document.getElementById('properties-content').innerHTML = '<div class="no-selection"><p>Select an element to edit its properties</p></div>';
+            }
+        }
+        
+        // Initialize
+        setZoom(50);
+        renderCanvas();
+    </script>
+</body>
+</html>
