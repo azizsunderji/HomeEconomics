@@ -1,0 +1,107 @@
+name: Weekly Social Media Charts
+
+on:
+  # Runs every Thursday at 2:00 AM Eastern (after main charts complete)
+  schedule:
+    - cron: "0 6 * * 4"  # 2:00am ET during EDT (UTC-4)
+    - cron: "0 7 * * 4"  # 2:00am ET during EST (UTC-5)
+  workflow_dispatch: {}   # Allow manual trigger for testing
+
+jobs:
+  generate-social-charts:
+    runs-on: ubuntu-latest
+    env:
+      TZ: America/New_York
+      
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Download latest data
+        run: |
+          mkdir -p data
+          python scripts/download_data.py --output data --force
+
+      - name: Compute today's folder (Eastern)
+        id: date
+        run: echo "DATE=$(TZ='America/New_York' date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+
+      - name: Generate social media charts
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+        run: |
+          python scripts/generate_all_social_charts.py
+        continue-on-error: true
+
+      - name: Count generated charts
+        run: |
+          echo "Total social charts generated:"
+          find social_charts/${{ steps.date.outputs.DATE }} -name "*.png" | wc -l || true
+          echo "Total size:"
+          du -sh social_charts/${{ steps.date.outputs.DATE }}/ || true
+
+      - name: Install lftp
+        run: sudo apt-get update && sudo apt-get install -y lftp
+
+      - name: Upload via SFTP (SSH key)
+        env:
+          HOST: ${{ secrets.SFTP_HOST }}
+          USER: ${{ secrets.SFTP_USER }}
+          KEY: ${{ secrets.SFTP_KEY }}
+          REMOTE_BASE: ${{ secrets.REMOTE_BASE }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$KEY" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          # Avoid host prompt
+          ssh-keyscan -H $HOST >> ~/.ssh/known_hosts 2>/dev/null || true
+
+          # Mirror to live/social folder
+          lftp -e "
+            set sftp:auto-confirm yes;
+            set sftp:connect-program 'ssh -i ~/.ssh/id_rsa';
+            set net:max-retries 3;
+            set net:timeout 60;
+            set net:reconnect-interval-base 5;
+            open -u $USER,dummy sftp://$HOST;
+            mkdir -p ${REMOTE_BASE}/live/social;
+            mirror -R --only-newer --parallel=4 --verbose \
+              social_charts/${{ steps.date.outputs.DATE }}/ \
+              ${REMOTE_BASE}/live/social/;
+            bye
+          " || echo "Upload finished with warnings"
+
+      - name: Generate summary report
+        run: |
+          echo "## Social Media Chart Generation Report" > summary.md
+          echo "" >> summary.md
+          echo "**Date:** ${{ steps.date.outputs.DATE }}" >> summary.md
+          echo "" >> summary.md
+          total_charts=$(find social_charts/${{ steps.date.outputs.DATE }} -name "*.png" | wc -l || echo 0)
+          total_metros=$(find social_charts/${{ steps.date.outputs.DATE }} -mindepth 1 -maxdepth 1 -type d | wc -l || echo 0)
+          echo "### Statistics" >> summary.md
+          echo "- Total charts generated: $total_charts" >> summary.md
+          echo "- Total metros processed: $total_metros" >> summary.md
+          echo "- Expected: 927 metros × 12 metrics = 11,124 charts" >> summary.md
+          echo "" >> summary.md
+          echo "### Sample URLs" >> summary.md
+          echo "- https://www.home-economics.us/live/social/denver_co_metro_area/active_listings.png" >> summary.md
+          echo "- https://www.home-economics.us/live/social/seattle_wa_metro_area/median_sale_price.png" >> summary.md
+          cat summary.md
+
+      - name: Upload summary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: social-generation-summary
+          path: summary.md
+          retention-days: 7

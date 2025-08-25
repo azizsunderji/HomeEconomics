@@ -151,7 +151,7 @@ jobs:
           # Avoid host prompt
           ssh-keyscan -H $HOST >> ~/.ssh/known_hosts 2>/dev/null || true
 
-          # Mirror the date folder
+          # Mirror to live/mobile folder
           lftp -e "
             set sftp:auto-confirm yes;
             set sftp:connect-program 'ssh -i ~/.ssh/id_rsa';
@@ -159,10 +159,10 @@ jobs:
             set net:timeout 60;
             set net:reconnect-interval-base 5;
             open -u $USER,dummy sftp://$HOST;
-            mkdir -p ${REMOTE_BASE}/${{ steps.date.outputs.DATE }};
+            mkdir -p ${REMOTE_BASE}/live/mobile;
             mirror -R --only-newer --parallel=4 --verbose \
               out/reports/${{ steps.date.outputs.DATE }}/ \
-              ${REMOTE_BASE}/${{ steps.date.outputs.DATE }}/;
+              ${REMOTE_BASE}/live/mobile/;
             bye
           " || echo "Upload finished with warnings"
 
