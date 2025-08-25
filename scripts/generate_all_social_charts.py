@@ -38,6 +38,8 @@ import warnings
 
 # Suppress matplotlib warnings about legend positioning
 warnings.filterwarnings('ignore', message='.*posx and posy should be finite values.*')
+warnings.filterwarnings('ignore', category=UserWarning)
+warnings.filterwarnings('ignore', category=RuntimeWarning)
 
 # Add scripts directory to path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -58,6 +60,12 @@ logger = logging.getLogger(__name__)
 
 def process_metro(args):
     """Process a single metro - designed for parallel execution"""
+    # Suppress matplotlib warnings in worker processes
+    import warnings
+    warnings.filterwarnings('ignore', message='.*posx and posy should be finite values.*')
+    warnings.filterwarnings('ignore', category=UserWarning)
+    warnings.filterwarnings('ignore', category=RuntimeWarning)
+    
     metro_name, df, metrics, output_dir = args
     
     # Create safe filename from metro name
@@ -99,7 +107,10 @@ def process_metro(args):
         except Exception as e:
             failed += 1
             failed_metrics.append(metric['name'])
-            logger.debug(f"  Error in {metro_name} - {metric['name']}: {str(e)}")
+            logger.error(f"  Error in {metro_name} - {metric['name']}: {str(e)}")
+            # Log full traceback for debugging
+            import traceback
+            logger.debug(f"  Traceback: {traceback.format_exc()}")
     
     return metro_name, successful, failed, failed_metrics
 
