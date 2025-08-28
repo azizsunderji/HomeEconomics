@@ -399,11 +399,17 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
         html += f'''            <tr data-percentile="{row['market_percentile']:.1f}" '''
         html += f'data-metro="{row["metro_name"].lower()}" '
         html += f'data-current="{row["current_value"]}" '
-        html += f'data-month1="{row["changes"].get("1month", 0) or 0:.2f}" '
-        html += f'data-month3="{row["changes"].get("3month", 0) or 0:.2f}" '
-        html += f'data-month6="{row["changes"].get("6month", 0) or 0:.2f}" '
-        html += f'data-year1="{row["changes"].get("1year", 0) or 0:.2f}" '
-        html += f'data-year3="{row["changes"].get("3year", 0) or 0:.2f}">\n'
+        # Use 'null' for missing data, actual number for real values
+        month1_val = row["changes"].get("1month")
+        html += f'data-month1="{month1_val:.2f if month1_val is not None else "null"}" '
+        month3_val = row["changes"].get("3month")
+        html += f'data-month3="{month3_val:.2f if month3_val is not None else "null"}" '
+        month6_val = row["changes"].get("6month")
+        html += f'data-month6="{month6_val:.2f if month6_val is not None else "null"}" '
+        year1_val = row["changes"].get("1year")
+        html += f'data-year1="{year1_val:.2f if year1_val is not None else "null"}" '
+        year3_val = row["changes"].get("3year")
+        html += f'data-year3="{year3_val:.2f if year3_val is not None else "null"}">\n'
         
         html += f'                <td class="rank">{i}</td>\n'
         html += f'                <td class="metro">{row["metro_name"]}</td>\n'
@@ -487,8 +493,18 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
                         bVal.localeCompare(aVal);
                 }} else {{
                     // Get numeric values from data attributes
-                    aVal = parseFloat(a.dataset[column]) || -999;
-                    bVal = parseFloat(b.dataset[column]) || -999;
+                    // Handle 'null' string as missing data
+                    const aStr = a.dataset[column];
+                    const bStr = b.dataset[column];
+                    
+                    // For descending: valid numbers first, then nulls
+                    // For ascending: nulls first, then valid numbers
+                    if (aStr === 'null' && bStr === 'null') return 0;
+                    if (aStr === 'null') return sortAscending ? -1 : 1;
+                    if (bStr === 'null') return sortAscending ? 1 : -1;
+                    
+                    const aVal = parseFloat(aStr);
+                    const bVal = parseFloat(bStr);
                     
                     console.log('Comparing:', aVal, 'vs', bVal);
                     
