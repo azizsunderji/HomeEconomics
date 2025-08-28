@@ -179,10 +179,15 @@ def calculate_market_size(df):
     """Calculate 5-year average homes sold for market sizing."""
     # Get last 5 years of data (260 weeks)
     recent_data = df.tail(260)
-    if 'ADJUSTED_AVERAGE_HOMES_SOLD' in recent_data.columns:
-        avg = recent_data['ADJUSTED_AVERAGE_HOMES_SOLD'].mean()
-        return avg if pd.notna(avg) else 0
-    return 0
+    if 'ADJUSTED_AVERAGE_HOMES_SOLD' in recent_data.columns and len(recent_data) > 0:
+        try:
+            avg = float(recent_data['ADJUSTED_AVERAGE_HOMES_SOLD'].mean())
+            if np.isnan(avg):
+                return 0.0
+            return avg
+        except (TypeError, ValueError):
+            return 0.0
+    return 0.0
 
 def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date_str):
     """Generate HTML page for a single metric."""
@@ -582,10 +587,15 @@ def main():
     # Only load the columns we need for efficiency
     needed_cols = ['REGION_NAME', 'REGION_TYPE', 'PERIOD_END', 'ADJUSTED_AVERAGE_HOMES_SOLD'] + list(METRICS.keys())
     
-    # Check which columns actually exist in the file
-    all_cols = pd.read_parquet(args.data_path, columns=['REGION_NAME']).columns  # Quick load to get column names
+    # Load the full dataframe first
     df_full = pd.read_parquet(args.data_path)
+    
+    # Check which columns actually exist
     available_cols = [col for col in needed_cols if col in df_full.columns]
+    missing_cols = [col for col in needed_cols if col not in df_full.columns]
+    
+    if missing_cols:
+        print(f"Warning: Missing columns: {missing_cols}")
     
     print(f"Loading {len(available_cols)} columns...")
     df = df_full[available_cols].copy()
