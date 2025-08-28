@@ -478,7 +478,7 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
                 if (arrow) arrow.textContent = '';
             }});
             
-            const currentTh = document.querySelector(`th[data-sort="${{column}}"]`);
+            const currentTh = document.querySelector(\`th[data-sort="\${{column}}"]\`);
             if (currentTh) {{
                 currentTh.classList.add('sorted');
                 const arrow = currentTh.querySelector('.arrow');
