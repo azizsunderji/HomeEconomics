@@ -402,15 +402,15 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
         html += f'data-current="{row["current_value"]}" '
         # Use 'null' for missing data, actual number for real values
         month1_val = row["changes"].get("1month")
-        html += f'data-month1="{month1_val:.2f if month1_val is not None else "null"}" '
+        html += f'data-month1="{month1_val:.2f}" ' if month1_val is not None else 'data-month1="null" '
         month3_val = row["changes"].get("3month")
-        html += f'data-month3="{month3_val:.2f if month3_val is not None else "null"}" '
+        html += f'data-month3="{month3_val:.2f}" ' if month3_val is not None else 'data-month3="null" '
         month6_val = row["changes"].get("6month")
-        html += f'data-month6="{month6_val:.2f if month6_val is not None else "null"}" '
+        html += f'data-month6="{month6_val:.2f}" ' if month6_val is not None else 'data-month6="null" '
         year1_val = row["changes"].get("1year")
-        html += f'data-year1="{year1_val:.2f if year1_val is not None else "null"}" '
+        html += f'data-year1="{year1_val:.2f}" ' if year1_val is not None else 'data-year1="null" '
         year3_val = row["changes"].get("3year")
-        html += f'data-year3="{year3_val:.2f if year3_val is not None else "null"}">\n'
+        html += f'data-year3="{year3_val:.2f}">\n' if year3_val is not None else 'data-year3="null">\n'
         
         html += f'                <td class="rank">{i}</td>\n'
         html += f'                <td class="metro">{row["metro_name"]}</td>\n'
