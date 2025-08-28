@@ -78,7 +78,8 @@ METRICS = {
     'OFF_MARKET_IN_TWO_WEEKS': {
         'display': 'Off Market in 2 Weeks',
         'format': 'percent',
-        'slug': 'off_market_in_2_weeks'
+        'slug': 'off_market_in_2_weeks',
+        'multiplier': 100  # Data is stored as decimal, needs *100 for percentage
     },
     'MEDIAN_DAYS_TO_CLOSE': {
         'display': 'Days to Close',
@@ -88,12 +89,14 @@ METRICS = {
     'AVERAGE_SALE_TO_LIST_RATIO': {
         'display': 'Sale to List Ratio',
         'format': 'percent',
-        'slug': 'sale_to_list_ratio'
+        'slug': 'sale_to_list_ratio',
+        'multiplier': 100  # Data is stored as decimal, needs *100 for percentage
     },
     'PERCENT_ACTIVE_LISTINGS_WITH_PRICE_DROPS': {
         'display': 'Price Drops',
         'format': 'percent',
         'slug': 'pct_listings_w__price_drops'
+        # This one is already stored as percentage, no multiplier needed
     },
     'AGE_OF_INVENTORY': {
         'display': 'Age of Inventory',
@@ -102,10 +105,13 @@ METRICS = {
     }
 }
 
-def format_value(value, format_type):
+def format_value(value, format_type, multiplier=1):
     """Format values for display."""
     if pd.isna(value):
         return '—'
+    
+    # Apply multiplier if provided
+    value = value * multiplier
     
     if format_type == 'currency':
         if value >= 1000000:
@@ -368,6 +374,7 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
         </div>
         
         <div class="filter">
+            <input type="text" id="searchBox" placeholder="Search metros..." onkeyup="searchTable()" style="padding: 4px 8px; border: 1px solid #DADFCE; background: white; font-family: inherit; font-size: 12px; margin-right: 10px;">
             <label>Show:</label>
             <select id="marketFilter" onchange="filterTable()">
                 <option value="10">Large Markets (Top 10%)</option>
@@ -416,7 +423,8 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
         html += f'                <td class="metro">{row["metro_name"]}</td>\n'
         
         # Current value with class for targeting
-        current_val = format_value(row['current_value'], metric_info['format'])
+        multiplier = metric_info.get('multiplier', 1)
+        current_val = format_value(row['current_value'], metric_info['format'], multiplier)
         html += f'                <td class="number current-value">{current_val}</td>\n'
         
         # Change columns - no initial coloring
@@ -585,20 +593,29 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
             return (bgColor === '#3D3733' || bgColor === '#6B635C') ? '#F6F7F3' : '#3D3733';
         }}
         
-        // Filter table by market size
+        // Filter table by market size and search
         function filterTable() {{
             const filter = parseFloat(document.getElementById('marketFilter').value);
+            const searchTerm = document.getElementById('searchBox').value.toLowerCase();
             const tbody = document.querySelector('#rankingsTable tbody');
             tbody.innerHTML = '';
             
             let rank = 1;
             allRows.forEach(row => {{
                 const percentile = parseFloat(row.dataset.percentile);
-                if (percentile <= filter) {{
+                const metroName = row.dataset.metro;
+                const matchesSearch = !searchTerm || metroName.includes(searchTerm);
+                
+                if (percentile <= filter && matchesSearch) {{
                     row.querySelector('.rank').textContent = rank++;
                     tbody.appendChild(row);
                 }}
             }});
+        }}
+        
+        // Search function
+        function searchTable() {{
+            filterTable();  // Reuse filter function which now handles search too
         }}
     </script>
 </body>
