@@ -1,4 +1,4 @@
-name: Weekly Metro Rankings
+name: "Weekly Metro Rankings"
 
 on:
   # Runs every Thursday at 3:30 AM Eastern (after charts complete)
@@ -40,7 +40,7 @@ import pandas as pd
 print('Converting TSV to Parquet...')
 df = pd.read_csv('data/weekly_housing_market_data.tsv', sep='\t', low_memory=False)
 df.to_parquet('data/weekly_housing_market_data.parquet', engine='pyarrow')
-print(f'Loaded {len(df)} rows, {df["region"].nunique()} unique regions')
+print(f'Loaded {len(df)} rows, {df["REGION_NAME"].nunique()} unique regions')
 EOF
 
       - name: Generate ranking pages
