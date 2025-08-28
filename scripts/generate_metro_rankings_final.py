@@ -79,7 +79,7 @@ METRICS = {
         'display': 'Off Market in 2 Weeks',
         'format': 'percent',
         'slug': 'off_market_in_2_weeks',
-        'multiplier': 100  # Data is stored as decimal, needs *100 for percentage
+        'is_calculated': True  # This is a count that needs to be converted to percentage
     },
     'MEDIAN_DAYS_TO_CLOSE': {
         'display': 'Days to Close',
@@ -696,11 +696,42 @@ def main():
                 continue
                 
             latest_data = metro_data.iloc[-1]
-            if pd.isna(latest_data[metric_key]):
-                continue
+            
+            # Special handling for OFF_MARKET_IN_TWO_WEEKS - calculate as percentage
+            if metric_key == 'OFF_MARKET_IN_TWO_WEEKS':
+                if pd.isna(latest_data[metric_key]) or pd.isna(latest_data.get('ADJUSTED_AVERAGE_NEW_LISTINGS')):
+                    continue
+                if latest_data['ADJUSTED_AVERAGE_NEW_LISTINGS'] == 0:
+                    continue
+                # Calculate as percentage of new listings
+                current_value = (latest_data[metric_key] / latest_data['ADJUSTED_AVERAGE_NEW_LISTINGS']) * 100
+            else:
+                if pd.isna(latest_data[metric_key]):
+                    continue
+                current_value = latest_data[metric_key]
             
             # Calculate changes
-            changes = calculate_changes(metro_data, metric_key, periods)
+            if metric_key == 'OFF_MARKET_IN_TWO_WEEKS':
+                # For OFF_MARKET_IN_TWO_WEEKS, calculate percentage for each period
+                changes = {}
+                for period_name, weeks in periods.items():
+                    if len(metro_data) > weeks:
+                        past_data = metro_data.iloc[-weeks-1]
+                        latest = metro_data.iloc[-1]
+                        
+                        if (pd.notna(past_data[metric_key]) and pd.notna(past_data.get('ADJUSTED_AVERAGE_NEW_LISTINGS')) and
+                            pd.notna(latest[metric_key]) and pd.notna(latest.get('ADJUSTED_AVERAGE_NEW_LISTINGS')) and
+                            past_data['ADJUSTED_AVERAGE_NEW_LISTINGS'] > 0 and latest['ADJUSTED_AVERAGE_NEW_LISTINGS'] > 0):
+                            
+                            past_pct = (past_data[metric_key] / past_data['ADJUSTED_AVERAGE_NEW_LISTINGS']) * 100
+                            current_pct = (latest[metric_key] / latest['ADJUSTED_AVERAGE_NEW_LISTINGS']) * 100
+                            changes[period_name] = current_pct - past_pct  # Percentage point change
+                        else:
+                            changes[period_name] = None
+                    else:
+                        changes[period_name] = None
+            else:
+                changes = calculate_changes(metro_data, metric_key, periods)
             
             # Get market percentile
             percentile = sizes_df[sizes_df['metro'] == metro]['percentile'].values
@@ -711,7 +742,7 @@ def main():
             
             rankings_data.append({
                 'metro_name': metro.replace(' metro area', ''),
-                'current_value': latest_data[metric_key],
+                'current_value': current_value,
                 'changes': changes,
                 'market_percentile': market_percentile
             })
