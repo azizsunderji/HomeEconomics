@@ -180,7 +180,8 @@ def calculate_market_size(df):
     # Get last 5 years of data (260 weeks)
     recent_data = df.tail(260)
     if 'ADJUSTED_AVERAGE_HOMES_SOLD' in recent_data.columns:
-        return recent_data['ADJUSTED_AVERAGE_HOMES_SOLD'].mean()
+        avg = recent_data['ADJUSTED_AVERAGE_HOMES_SOLD'].mean()
+        return avg if pd.notna(avg) else 0
     return 0
 
 def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date_str):
@@ -608,7 +609,9 @@ def main():
     
     # Calculate percentiles for market sizing
     sizes_df = pd.DataFrame(list(market_sizes.items()), columns=['metro', 'avg_homes_sold'])
-    sizes_df['percentile'] = sizes_df['avg_homes_sold'].rank(pct=True) * 100
+    # Handle NaN and zero values before ranking
+    sizes_df['avg_homes_sold'] = sizes_df['avg_homes_sold'].fillna(0)
+    sizes_df['percentile'] = sizes_df['avg_homes_sold'].rank(pct=True, method='dense') * 100
     sizes_df['percentile'] = 100 - sizes_df['percentile']  # Invert so 1 = largest
     
     # Time periods for changes (in weeks)
