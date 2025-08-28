@@ -35,13 +35,13 @@ jobs:
           gunzip -c data/temp.gz > data/weekly_housing_market_data.tsv
           
           # Convert to parquet for efficiency
-          python -c "
+          python << 'EOF'
 import pandas as pd
 print('Converting TSV to Parquet...')
 df = pd.read_csv('data/weekly_housing_market_data.tsv', sep='\t', low_memory=False)
 df.to_parquet('data/weekly_housing_market_data.parquet', engine='pyarrow')
-print(f'Loaded {len(df)} rows, {df[\"region\"].nunique()} unique regions')
-"
+print(f'Loaded {len(df)} rows, {df["region"].nunique()} unique regions')
+EOF
 
       - name: Generate ranking pages
         run: |
