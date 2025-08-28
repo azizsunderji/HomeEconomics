@@ -1,0 +1,106 @@
+name: Weekly Metro Rankings
+
+on:
+  # Runs every Thursday at 3:30 AM Eastern (after charts complete)
+  schedule:
+    - cron: "30 7 * * 4"  # 3:30am ET during EDT (UTC-4)
+    - cron: "30 8 * * 4"  # 3:30am ET during EST (UTC-5)
+  workflow_dispatch: {}   # Allow manual trigger for testing
+
+jobs:
+  generate-rankings:
+    runs-on: ubuntu-latest
+    env:
+      TZ: America/New_York
+      
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pandas pyarrow numpy
+
+      - name: Download latest Redfin data
+        run: |
+          mkdir -p data
+          # Download from Redfin's S3 bucket
+          wget -q -O data/temp.gz https://redfin-public-data.s3.us-west-2.amazonaws.com/redfin_covid19/weekly_housing_market_data_most_recent.tsv000.gz
+          gunzip -c data/temp.gz > data/weekly_housing_market_data.tsv
+          
+          # Convert to parquet for efficiency
+          python -c "
+import pandas as pd
+print('Converting TSV to Parquet...')
+df = pd.read_csv('data/weekly_housing_market_data.tsv', sep='\t', low_memory=False)
+df.to_parquet('data/weekly_housing_market_data.parquet', engine='pyarrow')
+print(f'Loaded {len(df)} rows, {df[\"region\"].nunique()} unique regions')
+"
+
+      - name: Generate ranking pages
+        run: |
+          python scripts/generate_metro_rankings.py --output-dir rankings
+          
+          # Count generated files
+          echo "Generated files:"
+          ls -la rankings/*.html | wc -l
+          echo "Total size:"
+          du -sh rankings/
+
+      - name: Install lftp for SFTP upload
+        run: sudo apt-get update && sudo apt-get install -y lftp
+
+      - name: Upload to server via SFTP
+        env:
+          HOST: ${{ secrets.SFTP_HOST }}
+          USER: ${{ secrets.SFTP_USER }}
+          KEY: ${{ secrets.SFTP_KEY }}
+          REMOTE_BASE: ${{ secrets.REMOTE_BASE }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$KEY" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H $HOST >> ~/.ssh/known_hosts 2>/dev/null || true
+
+          # Upload ranking pages
+          lftp -e "
+            set sftp:auto-confirm yes;
+            set sftp:connect-program 'ssh -i ~/.ssh/id_rsa';
+            set net:max-retries 3;
+            set net:timeout 60;
+            open -u $USER,dummy sftp://$HOST;
+            mkdir -p ${REMOTE_BASE}/live/rankings;
+            mirror -R --only-newer --parallel=2 --verbose \
+              rankings/ \
+              ${REMOTE_BASE}/live/rankings/;
+            bye
+          " || echo "Upload finished with warnings"
+
+      - name: Generate summary
+        run: |
+          echo "## Metro Rankings Generation Report" > summary.md
+          echo "" >> summary.md
+          echo "**Date:** $(date +'%Y-%m-%d %H:%M %Z')" >> summary.md
+          echo "" >> summary.md
+          echo "### Files Generated" >> summary.md
+          echo "- Total HTML files: $(ls rankings/*.html | wc -l)" >> summary.md
+          echo "- Total size: $(du -sh rankings/ | cut -f1)" >> summary.md
+          echo "" >> summary.md
+          echo "### Sample URLs" >> summary.md
+          echo "- https://www.home-economics.us/live/rankings/" >> summary.md
+          echo "- https://www.home-economics.us/live/rankings/median_sale_price.html" >> summary.md
+          echo "- https://www.home-economics.us/live/rankings/active_listings.html" >> summary.md
+          cat summary.md
+
+      - name: Upload summary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rankings-summary
+          path: summary.md
+          retention-days: 7
