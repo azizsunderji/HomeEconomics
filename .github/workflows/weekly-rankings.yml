@@ -45,8 +45,8 @@ jobs:
 
       - name: Generate ranking pages
         run: |
-          # Use v2 with clickable headers and better UX
-          python scripts/generate_metro_rankings_v2.py --output-dir rankings
+          # Use v3 with fixed market sizing and working sorting
+          python scripts/generate_metro_rankings_v3.py --output-dir rankings
           
           # Count generated files
           echo "Generated files:"
