@@ -216,9 +216,9 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
             color: #3D3733;
             font-size: 13px;
             line-height: 1.4;
-            padding: 15px;
-            max-width: 1400px;
-            margin: 0 auto;
+            padding: 0;
+            max-width: none;
+            margin: 0;
         }}
         
         h1 {{
@@ -298,6 +298,7 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
             top: 0;
             background: white;
             white-space: nowrap;
+            z-index: 10;
         }}
         
         th:hover {{
@@ -414,9 +415,9 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
         html += f'                <td class="rank">{i}</td>\n'
         html += f'                <td class="metro">{row["metro_name"]}</td>\n'
         
-        # Current value
+        # Current value with class for targeting
         current_val = format_value(row['current_value'], metric_info['format'])
-        html += f'                <td class="number">{current_val}</td>\n'
+        html += f'                <td class="number current-value">{current_val}</td>\n'
         
         # Change columns - no initial coloring
         for period_key, period_name in [('1month', 'month1'), ('3month', 'month3'), 
@@ -522,9 +523,32 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
             
             // Apply coloring to sorted column only
             if (column === 'current') {{
-                // Color the current value column based on metric type
-                // For now, we'll leave current column uncolored since it's not a change percentage
-                // You could add metric-specific coloring here if needed
+                // Color the current value column using a value-based gradient
+                allRows.forEach(row => {{
+                    const td = row.querySelector('.current-value');
+                    if (td) {{
+                        const value = parseFloat(row.dataset.current);
+                        if (!isNaN(value)) {{
+                            // Create a gradient based on relative position in sorted list
+                            const allValues = allRows.map(r => parseFloat(r.dataset.current)).filter(v => !isNaN(v));
+                            const max = Math.max(...allValues);
+                            const min = Math.min(...allValues);
+                            const range = max - min;
+                            const percent = range > 0 ? ((value - min) / range) * 100 : 50;
+                            
+                            // Apply gradient from cream (low) to blue (high)
+                            let bgColor;
+                            if (percent <= 20) bgColor = '#DADFCE';  // Cream
+                            else if (percent <= 40) bgColor = '#E8F4FF';  // Very light blue
+                            else if (percent <= 60) bgColor = '#C6E4FF';  // Light blue  
+                            else if (percent <= 80) bgColor = '#8CCFFF';  // Medium blue
+                            else bgColor = '#0BB4FF';  // Full blue
+                            
+                            td.style.backgroundColor = bgColor;
+                            td.style.color = (bgColor === '#0BB4FF' || bgColor === '#8CCFFF') ? '#F6F7F3' : '#3D3733';
+                        }}
+                    }}
+                }});
             }} else if (column !== 'metro') {{
                 // Color the change column that's being sorted
                 allRows.forEach(row => {{
