@@ -45,8 +45,8 @@ jobs:
 
       - name: Generate ranking pages
         run: |
-          # Use safe version with better error handling
-          python scripts/generate_metro_rankings_safe.py --output-dir rankings
+          # Use v2 with clickable headers and better UX
+          python scripts/generate_metro_rankings_v2.py --output-dir rankings
           
           # Count generated files
           echo "Generated files:"
