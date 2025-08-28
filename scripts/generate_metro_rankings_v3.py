@@ -405,23 +405,29 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
         html += f'data-current="{row["current_value"]}" '
         html += f'data-metro="{row["metro_name"].lower()}" '
         
-        # Add data for each change period
-        for period in ['1month', '3month', '6month', '1year', '3year']:
-            val = row['changes'].get(period, 0) or 0
-            # Use consistent attribute names
-            attr_name = period.replace('month', 'month').replace('year', 'year')
-            html += f'data-{attr_name}="{val:.2f}" '
+        # Add data for each change period - MUST match header data-sort values
+        html += f'data-month1="{row["changes"].get("1month", 0) or 0:.2f}" '
+        html += f'data-month3="{row["changes"].get("3month", 0) or 0:.2f}" '
+        html += f'data-month6="{row["changes"].get("6month", 0) or 0:.2f}" '
+        html += f'data-year1="{row["changes"].get("1year", 0) or 0:.2f}" '
+        html += f'data-year3="{row["changes"].get("3year", 0) or 0:.2f}" '
         
         html += f'>\n'
         html += f'                <td class="rank">{i}</td>\n'
         html += f'                <td class="metro">{row["metro_name"]}</td>\n'
         html += f'                <td class="number col-current">{current_val}</td>\n'
         
-        # Add change columns with proper class names
-        for period in ['1month', '3month', '6month', '1year', '3year']:
-            change_val = row['changes'].get(period)
+        # Add change columns with class names matching data-sort values
+        periods_map = [
+            ('1month', 'month1'),
+            ('3month', 'month3'),
+            ('6month', 'month6'),
+            ('1year', 'year1'),
+            ('3year', 'year3')
+        ]
+        for data_key, col_class in periods_map:
+            change_val = row['changes'].get(data_key)
             change_text = format_change(change_val)
-            col_class = period.replace('month', 'month').replace('year', 'year')
             html += f'                <td class="number col-{col_class}">{change_text}</td>\n'
         
         html += '            </tr>\n'
@@ -455,6 +461,8 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
         
         // Sort by column
         function sortBy(column) {{
+            console.log('Sorting by:', column); // Debug
+            
             // Toggle direction if same column
             if (currentSort === column) {{
                 sortAscending = !sortAscending;
