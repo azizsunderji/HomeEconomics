@@ -146,6 +146,10 @@ METRICS = [
 
 def slug_to_metro_name(slug: str) -> str:
     """Convert city slug back to Redfin metro name format"""
+    # Handle special case for national data
+    if slug == 'all_redfin_metros':
+        return 'All Redfin Metros'
+    
     # Split by underscore
     parts = slug.rsplit('_', 1)  # Split from right to get state
     if len(parts) != 2:
