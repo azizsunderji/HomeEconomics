@@ -1,7 +1,9 @@
 # Metro areas from Redfin data
 # Auto-generated from weekly_housing_market_data.parquet
-# Total: 927 metros (excluding aggregate)
+# Total: 928 metros (including national aggregate)
+# National aggregate added as first entry
 
+all_redfin_metros
 aberdeen_sd
 aberdeen_wa
 abilene_tx
