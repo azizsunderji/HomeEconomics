@@ -159,6 +159,8 @@ def calculate_market_size(metro_data):
         metro_data = metro_data[metro_data['DURATION'] == '4 weeks'].copy()
     
     # Get last 5 years of data
+    # Ensure PERIOD_END is datetime
+    metro_data['PERIOD_END'] = pd.to_datetime(metro_data['PERIOD_END'])
     latest_date = metro_data['PERIOD_END'].max()
     five_years_ago = latest_date - pd.Timedelta(days=365*5)
     recent_data = metro_data[metro_data['PERIOD_END'] > five_years_ago]
@@ -581,9 +583,12 @@ def main():
     metros_df = df[df['REGION_TYPE'] == 'metro'].copy()
     print(f"Found {len(metros_df['REGION_NAME'].unique())} unique metros")
     
+    # Ensure PERIOD_END is datetime
+    metros_df['PERIOD_END'] = pd.to_datetime(metros_df['PERIOD_END'])
+    
     # Get latest date
     latest_date = metros_df['PERIOD_END'].max()
-    date_str = pd.to_datetime(latest_date).strftime('%B %d, %Y')
+    date_str = latest_date.strftime('%B %d, %Y')
     
     # Calculate market sizes properly
     print("Calculating market sizes (5-year total homes sold)...")
