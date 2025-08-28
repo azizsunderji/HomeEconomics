@@ -212,7 +212,7 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
         
         body {{
             font-family: 'Oracle', -apple-system, system-ui, sans-serif;
-            background: #F6F7F3;
+            background: white;
             color: #3D3733;
             font-size: 13px;
             line-height: 1.4;
@@ -274,7 +274,7 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
         select {{
             padding: 4px 8px;
             border: 1px solid #DADFCE;
-            background: #F6F7F3;
+            background: white;
             font-family: inherit;
             font-size: 12px;
             color: #3D3733;
@@ -296,7 +296,7 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
             user-select: none;
             position: sticky;
             top: 0;
-            background: #F6F7F3;
+            background: white;
             white-space: nowrap;
         }}
         
@@ -412,21 +412,14 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
         current_val = format_value(row['current_value'], metric_info['format'])
         html += f'                <td class="number">{current_val}</td>\n'
         
-        # Change columns
+        # Change columns - no initial coloring
         for period_key, period_name in [('1month', 'month1'), ('3month', 'month3'), 
                                         ('6month', 'month6'), ('1year', 'year1'), ('3year', 'year3')]:
             change_val = row['changes'].get(period_key)
             change_text = format_change(change_val)
             
-            # Apply color if there's a change
-            style = ''
-            if change_val is not None and change_val != 0:
-                bg_color = get_color_for_change(change_val)
-                if bg_color:
-                    text_color = get_text_color(bg_color)
-                    style = f' style="background-color: {bg_color}; color: {text_color};"'
-            
-            html += f'                <td class="number change-{period_name}"{style}>{change_text}</td>\n'
+            # No initial styling - colors will be applied by JavaScript when sorted
+            html += f'                <td class="number change-{period_name}">{change_text}</td>\n'
         
         html += '            </tr>\n'
     
@@ -434,7 +427,8 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
     </table>
     
     <div class="footer">
-        Data updated: {date_str} | Source: Redfin | <a href="https://www.home-economics.us">Home Economics</a>
+        <strong>Data:</strong> Redfin weekly housing market data | <strong>Updated:</strong> {date_str} | <strong>Methodology:</strong> Based on rolling 4-week windows<br>
+        <a href="https://www.home-economics.us">Home Economics</a>
     </div>
     
     <script>
@@ -502,16 +496,21 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
                 }}
             }});
             
-            // Clear current coloring
+            // Clear all coloring from all columns
             document.querySelectorAll('td').forEach(td => {{
-                if (td.className.includes('change-')) {{
+                if (td.className.includes('change-') || td.className.includes('number')) {{
                     td.style.backgroundColor = '';
                     td.style.color = '';
                 }}
             }});
             
             // Apply coloring to sorted column only
-            if (column !== 'current' && column !== 'metro') {{
+            if (column === 'current') {{
+                // Color the current value column based on metric type
+                // For now, we'll leave current column uncolored since it's not a change percentage
+                // You could add metric-specific coloring here if needed
+            }} else if (column !== 'metro') {{
+                // Color the change column that's being sorted
                 allRows.forEach(row => {{
                     const value = parseFloat(row.dataset[column]) || 0;
                     if (value !== 0) {{
