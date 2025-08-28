@@ -1,6 +1,6 @@
-name: "Weekly Metro Rankings"
+name: Weekly Metro Rankings
 
-on:
+"on":
   # Runs every Thursday at 3:30 AM Eastern (after charts complete)
   schedule:
     - cron: "30 7 * * 4"  # 3:30am ET during EDT (UTC-4)
@@ -36,12 +36,12 @@ jobs:
           
           # Convert to parquet for efficiency
           python << 'EOF'
-import pandas as pd
-print('Converting TSV to Parquet...')
-df = pd.read_csv('data/weekly_housing_market_data.tsv', sep='\t', low_memory=False)
-df.to_parquet('data/weekly_housing_market_data.parquet', engine='pyarrow')
-print(f'Loaded {len(df)} rows, {df["REGION_NAME"].nunique()} unique regions')
-EOF
+          import pandas as pd
+          print('Converting TSV to Parquet...')
+          df = pd.read_csv('data/weekly_housing_market_data.tsv', sep='\t', low_memory=False)
+          df.to_parquet('data/weekly_housing_market_data.parquet', engine='pyarrow')
+          print(f'Loaded {len(df)} rows, {df["REGION_NAME"].nunique()} unique regions')
+          EOF
 
       - name: Generate ranking pages
         run: |
