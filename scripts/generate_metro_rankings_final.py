@@ -165,6 +165,165 @@ def calculate_changes(df, metric, periods):
     
     return changes
 
+def get_region_for_metro(metro_name):
+    """Categorize metro into region based on state."""
+    # Extract state from metro name
+    if ',' in metro_name:
+        state = metro_name.split(',')[1].strip().split()[0]
+    else:
+        return 'Other'
+    
+    # Regional mappings
+    northeast = ['NY', 'NJ', 'PA', 'CT', 'MA', 'RI', 'VT', 'NH', 'ME']
+    southeast = ['FL', 'GA', 'SC', 'NC', 'VA', 'WV', 'KY', 'TN', 'AL', 'MS', 'AR', 'LA']
+    midwest = ['OH', 'MI', 'IN', 'IL', 'WI', 'MN', 'IA', 'MO', 'ND', 'SD', 'NE', 'KS']
+    southwest = ['TX', 'OK', 'NM', 'AZ']
+    west = ['CA', 'OR', 'WA', 'NV', 'ID', 'UT', 'CO', 'WY', 'MT']
+    
+    if state in northeast:
+        return 'Northeast'
+    elif state in southeast:
+        return 'Southeast'
+    elif state in midwest:
+        return 'Midwest'
+    elif state in southwest:
+        return 'Southwest'
+    elif state in west:
+        return 'West'
+    else:
+        return 'Other'
+
+def generate_metric_summary(rankings_data, metric_key, metric_info):
+    """Generate insightful summary text for a metric."""
+    # Group metros by region
+    regional_data = {}
+    state_data = {}
+    
+    for metro in rankings_data:
+        # Get region
+        region = get_region_for_metro(metro['metro_name'])
+        if region not in regional_data:
+            regional_data[region] = []
+        regional_data[region].append(metro)
+        
+        # Get state
+        if ',' in metro['metro_name']:
+            state = metro['metro_name'].split(',')[1].strip().split()[0]
+            if state not in state_data:
+                state_data[state] = []
+            state_data[state].append(metro)
+    
+    # Analyze trends
+    summary_parts = []
+    
+    # Find top/bottom metros by current value
+    top_5 = rankings_data[:5]
+    bottom_5 = rankings_data[-5:]
+    
+    # Regional trends analysis
+    regional_trends = {}
+    for region, metros in regional_data.items():
+        if len(metros) >= 3:  # Only analyze regions with enough data
+            # Get median changes for different time periods
+            changes_1m = [m['changes'].get('1month', 0) for m in metros if m['changes'].get('1month') is not None]
+            changes_3m = [m['changes'].get('3month', 0) for m in metros if m['changes'].get('3month') is not None]
+            changes_1y = [m['changes'].get('1year', 0) for m in metros if m['changes'].get('1year') is not None]
+            
+            if changes_3m:
+                regional_trends[region] = {
+                    'median_3m': np.median(changes_3m),
+                    'median_1y': np.median(changes_1y) if changes_1y else None,
+                    'count': len(metros)
+                }
+    
+    # State-level notable trends
+    state_trends = {}
+    for state, metros in state_data.items():
+        if len(metros) >= 2:  # States with multiple metros
+            changes_3m = [m['changes'].get('3month', 0) for m in metros if m['changes'].get('3month') is not None]
+            if changes_3m:
+                avg_change = np.mean(changes_3m)
+                if abs(avg_change) > 5:  # Notable change threshold
+                    state_trends[state] = avg_change
+    
+    # Build summary text based on metric type
+    metric_name = metric_info['display'].lower()
+    
+    # Opening - describe current levels
+    if metric_key == 'MEDIAN_SALE_PRICE':
+        top_metros = ', '.join([m['metro_name'].split(',')[0] for m in top_5[:3]])
+        summary_parts.append(f"Home prices are currently highest in {top_metros}, with values exceeding ${int(top_5[0]['current_value']/1000)}K.")
+    elif metric_key == 'ACTIVE_LISTINGS':
+        summary_parts.append(f"Active inventory varies dramatically across markets, with {top_5[0]['metro_name'].split(',')[0]} showing {int(top_5[0]['current_value']):,} active listings.")
+    elif metric_key == 'OFF_MARKET_IN_TWO_WEEKS':
+        summary_parts.append(f"Market velocity shows {top_5[0]['metro_name'].split(',')[0]} leading with {top_5[0]['current_value']:.1f}% of homes going off market within two weeks.")
+    
+    # Regional trends
+    trending_regions = []
+    declining_regions = []
+    for region, trend in regional_trends.items():
+        if trend['median_3m'] > 3:
+            trending_regions.append((region, trend['median_3m']))
+        elif trend['median_3m'] < -3:
+            declining_regions.append((region, trend['median_3m']))
+    
+    if trending_regions:
+        trending_regions.sort(key=lambda x: x[1], reverse=True)
+        region_text = trending_regions[0][0]
+        change = trending_regions[0][1]
+        summary_parts.append(f"The {region_text} is showing strong growth with a median {change:.1f}% increase over the past 3 months.")
+    
+    if declining_regions:
+        declining_regions.sort(key=lambda x: x[1])
+        region_text = declining_regions[0][0]
+        change = abs(declining_regions[0][1])
+        summary_parts.append(f"The {region_text} has seen declines, with a median {change:.1f}% decrease over 3 months.")
+    
+    # State-specific notable changes
+    if state_trends:
+        sorted_states = sorted(state_trends.items(), key=lambda x: abs(x[1]), reverse=True)[:2]
+        for state, change in sorted_states:
+            state_name = {'FL': 'Florida', 'TX': 'Texas', 'CA': 'California', 'NY': 'New York', 
+                         'AZ': 'Arizona', 'NV': 'Nevada', 'CO': 'Colorado', 'WA': 'Washington',
+                         'OR': 'Oregon', 'GA': 'Georgia', 'NC': 'North Carolina', 'TN': 'Tennessee'}.get(state, state)
+            if change > 0:
+                summary_parts.append(f"{state_name} metros are experiencing notable increases, averaging {change:.1f}% growth over 3 months.")
+            else:
+                summary_parts.append(f"{state_name} metros have cooled, with an average {abs(change):.1f}% decline over 3 months.")
+    
+    # Time horizon analysis - look for trend reversals
+    metros_with_reversal = []
+    for metro in rankings_data[:50]:  # Focus on larger markets
+        if (metro['changes'].get('1year') and metro['changes'].get('3month') and 
+            metro['changes'].get('1year') * metro['changes'].get('3month') < 0):  # Different signs = reversal
+            metros_with_reversal.append(metro)
+    
+    if len(metros_with_reversal) >= 3:
+        examples = ', '.join([m['metro_name'].split(',')[0] for m in metros_with_reversal[:3]])
+        summary_parts.append(f"Several markets including {examples} have reversed their year-over-year trends in recent months.")
+    
+    # Notable individual metros
+    outliers = []
+    for metro in rankings_data:
+        if metro['changes'].get('3month'):
+            if abs(metro['changes']['3month']) > 15:  # Very large change
+                outliers.append((metro['metro_name'], metro['changes']['3month']))
+    
+    if outliers:
+        outliers.sort(key=lambda x: abs(x[1]), reverse=True)
+        metro_name = outliers[0][0].split(',')[0]
+        change = outliers[0][1]
+        if change > 0:
+            summary_parts.append(f"{metro_name} stands out with an exceptional {change:.1f}% increase over 3 months.")
+        else:
+            summary_parts.append(f"{metro_name} has experienced a significant {abs(change):.1f}% decline over 3 months.")
+    
+    # Join all parts into a paragraph
+    if summary_parts:
+        return ' '.join(summary_parts)
+    else:
+        return f"The {metric_name} metric shows varied performance across markets with regional differences becoming more pronounced."
+
 def calculate_market_size(metro_data):
     """Calculate total homes sold over last 5 years."""
     # Use 4-week duration data for consistency
@@ -185,6 +344,9 @@ def calculate_market_size(metro_data):
 
 def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date_str):
     """Generate HTML page with simple, working sorting."""
+    
+    # Generate summary text
+    summary_text = generate_metric_summary(rankings_data, metric_key, metric_info)
     
     # Build metric navigation buttons
     metric_buttons = []
@@ -275,6 +437,59 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
             align-items: center;
             gap: 8px;
             font-size: 12px;
+        }}
+        
+        .summary-box {{
+            background: #F8F9FA;
+            border: 1px solid #DADFCE;
+            border-radius: 4px;
+            margin: 15px 0;
+            overflow: hidden;
+        }}
+        
+        .summary-toggle {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 15px;
+            cursor: pointer;
+            user-select: none;
+            background: transparent;
+            transition: background 0.2s;
+        }}
+        
+        .summary-toggle:hover {{
+            background: #F0F0EC;
+        }}
+        
+        .summary-toggle-text {{
+            font-size: 14px;
+            color: #6B635C;
+            font-weight: 500;
+        }}
+        
+        .summary-arrow {{
+            transition: transform 0.3s;
+            color: #6B635C;
+        }}
+        
+        .summary-content {{
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+            padding: 0 15px;
+        }}
+        
+        .summary-content.expanded {{
+            max-height: 500px;
+            padding: 0 15px 15px 15px;
+            transition: max-height 0.3s ease-in;
+        }}
+        
+        .summary-text {{
+            font-size: 14px;
+            line-height: 1.6;
+            color: #3D3733;
         }}
         
         select {{
@@ -382,6 +597,16 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
                 <option value="50">Mid-Size Markets (Top 50%)</option>
                 <option value="100">All Markets</option>
             </select>
+        </div>
+    </div>
+    
+    <div class="summary-box">
+        <div class="summary-toggle" onclick="toggleSummary()">
+            <span class="summary-toggle-text">Market Analysis Summary</span>
+            <span class="summary-arrow" id="summaryArrow">▼</span>
+        </div>
+        <div class="summary-content" id="summaryContent">
+            <p class="summary-text">{summary_text}</p>
         </div>
     </div>
     
@@ -616,6 +841,20 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
         // Search function
         function searchTable() {{
             filterTable();  // Reuse filter function which now handles search too
+        }}
+        
+        // Toggle summary box
+        function toggleSummary() {{
+            const content = document.getElementById('summaryContent');
+            const arrow = document.getElementById('summaryArrow');
+            
+            if (content.classList.contains('expanded')) {{
+                content.classList.remove('expanded');
+                arrow.style.transform = 'rotate(0deg)';
+            }} else {{
+                content.classList.add('expanded');
+                arrow.style.transform = 'rotate(180deg)';
+            }}
         }}
     </script>
 </body>
