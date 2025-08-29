@@ -137,7 +137,9 @@ def format_change(value):
     return f'{sign}{value:.1f}%'
 
 def calculate_changes(df, metric, periods):
-    """Calculate percentage changes for different time periods."""
+    """Calculate percentage changes for different time periods using date-based approach."""
+    from datetime import timedelta
+    
     changes = {}
     
     # Use only 4-week duration data for consistency
@@ -149,16 +151,35 @@ def calculate_changes(df, metric, periods):
     if len(df) == 0:
         return {p: None for p in periods}
     
-    latest = df.iloc[-1][metric]
-    if pd.isna(latest):
+    latest_row = df.iloc[-1]
+    latest_value = latest_row[metric]
+    latest_date = latest_row['PERIOD_END']
+    
+    if pd.isna(latest_value):
         return {p: None for p in periods}
     
-    for period_name, weeks in periods.items():
-        if len(df) > weeks:
-            past_value = df.iloc[-weeks-1][metric]
-            if pd.notna(past_value) and past_value != 0:
-                change = ((latest - past_value) / past_value) * 100
-                changes[period_name] = change
+    # Define target dates for each period (matching MobileCharts approach)
+    target_dates = {
+        '1month': latest_date - timedelta(days=30),
+        '3month': latest_date - timedelta(days=90),
+        '6month': latest_date - timedelta(days=180),
+        '1year': latest_date - timedelta(days=365),
+        '3year': latest_date - timedelta(days=365*3)
+    }
+    
+    for period_name in periods.keys():
+        if period_name in target_dates:
+            target_date = target_dates[period_name]
+            # Find the closest data point at or before the target date
+            past_data = df[df['PERIOD_END'] <= target_date]
+            
+            if len(past_data) > 0:
+                past_value = past_data.iloc[-1][metric]
+                if pd.notna(past_value) and past_value != 0:
+                    change = ((latest_value - past_value) / past_value) * 100
+                    changes[period_name] = change
+                else:
+                    changes[period_name] = None
             else:
                 changes[period_name] = None
         else:
@@ -194,13 +215,31 @@ def get_region_for_metro(metro_name):
     else:
         return 'Other'
 
-def generate_metric_summary(rankings_data, metric_key, metric_info, segment_name="All Markets"):
-    """Generate insightful summary text for a metric."""
+def generate_metric_summary(rankings_data, metric_key, metric_info, segment_name="All Markets", sizes_df=None):
+    """Generate insightful summary text for a metric.
+    
+    Args:
+        rankings_data: List of metro rankings
+        metric_key: The metric being analyzed
+        metric_info: Metric configuration
+        segment_name: Market segment description
+        sizes_df: DataFrame with market sizes for biasing towards larger markets
+    """
+    # Find national-level data (All Redfin Metros)
+    national_data = None
+    for metro in rankings_data:
+        if metro['metro_name'] == 'All Redfin Metros':
+            national_data = metro
+            break
+    
     # Group metros by region
     regional_data = {}
     state_data = {}
     
     for metro in rankings_data:
+        if metro['metro_name'] == 'All Redfin Metros':
+            continue  # Skip national aggregate
+            
         # Get region
         region = get_region_for_metro(metro['metro_name'])
         if region not in regional_data:
@@ -226,16 +265,21 @@ def generate_metric_summary(rankings_data, metric_key, metric_info, segment_name
     for region, metros in regional_data.items():
         if len(metros) >= 3:  # Only analyze regions with enough data
             # Get median changes for different time periods
-            changes_1m = [m['changes'].get('1month', 0) for m in metros if m['changes'].get('1month') is not None]
-            changes_3m = [m['changes'].get('3month', 0) for m in metros if m['changes'].get('3month') is not None]
-            changes_1y = [m['changes'].get('1year', 0) for m in metros if m['changes'].get('1year') is not None]
+            changes_1m = [m['changes'].get('1month') for m in metros if m['changes'].get('1month') is not None]
+            changes_3m = [m['changes'].get('3month') for m in metros if m['changes'].get('3month') is not None]
+            changes_1y = [m['changes'].get('1year') for m in metros if m['changes'].get('1year') is not None]
             
             if changes_3m:
+                median_val = np.median(changes_3m)
                 regional_trends[region] = {
-                    'median_3m': np.median(changes_3m),
+                    'median_3m': median_val,
                     'median_1y': np.median(changes_1y) if changes_1y else None,
                     'count': len(metros)
                 }
+                # Debug logging for Northeast
+                if region == 'Northeast' and segment_name == 'major markets (top 25%)':
+                    print(f"DEBUG Northeast in {segment_name}: {len(changes_3m)} metros, median={median_val:.1f}%")
+                    print(f"  Values: {sorted(changes_3m)[:5]}...{sorted(changes_3m)[-5:]}")
     
     # State-level notable trends - use median and filter outliers
     state_trends = {}
@@ -253,7 +297,7 @@ def generate_metric_summary(rankings_data, metric_key, metric_info, segment_name
                 valid_metros.append(m)
             
             if len(valid_metros) >= 3:  # Still need 3 valid metros
-                changes_3m = [m['changes'].get('3month', 0) for m in valid_metros if m['changes'].get('3month') is not None]
+                changes_3m = [m['changes'].get('3month') for m in valid_metros if m['changes'].get('3month') is not None]
                 if changes_3m:
                     # Use median instead of mean to be robust against outliers
                     median_change = np.median(changes_3m)
@@ -262,6 +306,69 @@ def generate_metric_summary(rankings_data, metric_key, metric_info, segment_name
     
     # Build summary text based on metric type
     metric_name = metric_info['display'].lower()
+    
+    # Add national context if available
+    if national_data:
+        # For volume metrics - only report changes, not levels
+        if metric_key in ['ACTIVE_LISTINGS', 'HOMES_SOLD', 'NEW_LISTINGS', 'PENDING_SALES']:
+            if national_data['changes'].get('3month') is not None:
+                change_3m = national_data['changes']['3month']
+                change_1y = national_data['changes'].get('1year', 0)
+                
+                # Check if 1-month and 3-month align for "recent months" language
+                change_1m = national_data['changes'].get('1month', 0)
+                if change_1m and change_3m and (change_1m * change_3m > 0):  # Same sign
+                    time_phrase = "in recent months"
+                else:
+                    time_phrase = "over the past three months"
+                
+                # Format the metric name properly
+                if metric_key == 'ACTIVE_LISTINGS':
+                    metric_desc = "active inventory"
+                elif metric_key == 'HOMES_SOLD':
+                    metric_desc = "home sales"
+                elif metric_key == 'NEW_LISTINGS':
+                    metric_desc = "new listings"
+                elif metric_key == 'PENDING_SALES':
+                    metric_desc = "pending sales"
+                else:
+                    metric_desc = metric_name
+                
+                if abs(change_3m) > 1:
+                    if change_3m > 0:
+                        summary_parts.append(f"Nationally, {metric_desc} increased {abs(change_3m):.1f}% {time_phrase}.")
+                    else:
+                        summary_parts.append(f"Nationally, {metric_desc} decreased {abs(change_3m):.1f}% {time_phrase}.")
+                
+                # Add year-over-year context
+                if change_1y and abs(change_1y) > 2:
+                    if change_1y > 0:
+                        summary_parts.append(f"Year-over-year, {metric_desc} is up {abs(change_1y):.1f}%.")
+                    else:
+                        summary_parts.append(f"Year-over-year, {metric_desc} is down {abs(change_1y):.1f}%.")
+        else:
+            # For non-volume metrics, show current value
+            if metric_key == 'MEDIAN_SALE_PRICE':
+                price = national_data['current_value']
+                if price >= 1000000:
+                    price_str = f"${price/1000000:.1f} million"
+                else:
+                    price_str = f"${int(price/1000)}K"
+                summary_parts.append(f"Nationally, the median sale price stands at {price_str}.")
+            elif metric_key == 'WEEKS_OF_SUPPLY':
+                summary_parts.append(f"Nationally, there are {national_data['current_value']:.1f} weeks of supply.")
+            elif metric_key == 'MEDIAN_DAYS_ON_MARKET':
+                summary_parts.append(f"Nationally, homes spend a median of {int(national_data['current_value'])} days on market.")
+            elif metric_key == 'OFF_MARKET_IN_TWO_WEEKS':
+                summary_parts.append(f"Nationally, {national_data['current_value']:.1f}% of homes go off market within two weeks.")
+            elif metric_key == 'MEDIAN_DAYS_TO_CLOSE':
+                summary_parts.append(f"Nationally, the median time to close is {int(national_data['current_value'])} days.")
+            elif metric_key == 'SALE_TO_LIST_RATIO':
+                summary_parts.append(f"Nationally, homes sell at {national_data['current_value']:.1f}% of list price.")
+            elif metric_key == 'PERCENT_ACTIVE_LISTINGS_WITH_PRICE_DROPS':
+                summary_parts.append(f"Nationally, {national_data['current_value']:.1f}% of active listings have reduced prices.")
+            elif metric_key == 'AGE_OF_INVENTORY':
+                summary_parts.append(f"Nationally, inventory averages {int(national_data['current_value'])} days on market.")
     
     # Opening - describe current levels
     if metric_key == 'MEDIAN_SALE_PRICE':
@@ -347,33 +454,130 @@ def generate_metric_summary(rankings_data, metric_key, metric_info, segment_name
             else:
                 summary_parts.append(f"{state_name} metros have cooled, with an average {abs(change):.1f}% decline over 3 months.")
     
-    # Time horizon analysis - look for trend reversals
-    metros_with_reversal = []
-    for metro in rankings_data[:50]:  # Focus on larger markets
-        if (metro['changes'].get('1year') and metro['changes'].get('3month') and 
-            metro['changes'].get('1year') * metro['changes'].get('3month') < 0):  # Different signs = reversal
-            metros_with_reversal.append(metro)
+    # Time horizon analysis - look for inflection points using 6-month vs 3-month comparison
+    # Bias towards larger markets when selecting examples
+    turning_positive = []  # Was falling 6 months ago, now rising
+    turning_negative = []  # Was rising 6 months ago, now falling
     
-    if len(metros_with_reversal) >= 3:
-        examples = ', '.join([m['metro_name'].split(',')[0] for m in metros_with_reversal[:3]])
-        summary_parts.append(f"Several markets including {examples} have reversed their year-over-year trends in recent months.")
+    # Get market sizes for weighting if available
+    market_sizes = {}
+    if sizes_df is not None:
+        for _, row in sizes_df.iterrows():
+            clean_name = row['metro'].replace(' metro area', '')
+            market_sizes[clean_name] = row['total_homes']
     
-    # Notable individual metros - be more selective
+    for metro in rankings_data[:100]:  # Look at more metros to find large market inflections
+        if metro['metro_name'] == 'All Redfin Metros':
+            continue
+            
+        month6_change = metro['changes'].get('6month')
+        month3_change = metro['changes'].get('3month')
+        month1_change = metro['changes'].get('1month')
+        
+        # Look for inflection between 6-month and 3-month periods
+        if month6_change is not None and month3_change is not None:
+            # Only consider meaningful changes (>1% difference)
+            if abs(month6_change) > 1 or abs(month3_change) > 1:
+                # Add state if outside top 10%
+                if metro['market_percentile'] > 10:
+                    metro_name = metro['metro_name']
+                else:
+                    metro_name = metro['metro_name'].split(',')[0] if ',' in metro['metro_name'] else metro['metro_name']
+                
+                # Get market size for this metro (default to 0 if not found)
+                market_size = market_sizes.get(metro['metro_name'], 0)
+                
+                # Turning positive: was negative 6 months ago, positive now
+                if month6_change < -1 and month3_change > 1:
+                    turning_positive.append((metro_name, month6_change, month3_change, market_size))
+                # Turning negative: was positive 6 months ago, negative now
+                elif month6_change > 1 and month3_change < -1:
+                    turning_negative.append((metro_name, month6_change, month3_change, market_size))
+    
+    # Report markets turning positive - sort by market size to bias towards larger markets
+    if turning_positive:
+        # Sort by market size (descending) to prioritize large markets
+        turning_positive.sort(key=lambda x: x[3], reverse=True)
+        examples = []
+        for metro_name, mo6_chg, mo3_chg, market_size in turning_positive[:3]:
+            examples.append(metro_name)
+        
+        examples_str = ', '.join(examples)
+        
+        if metric_key == 'MEDIAN_SALE_PRICE':
+            summary_parts.append(f"Markets including {examples_str} have turned positive after months of decline.")
+        else:
+            metric_term = metric_name.replace('median ', '').replace('percent ', '')
+            summary_parts.append(f"Markets including {examples_str} are showing renewed growth after recent declines.")
+    
+    # Report markets turning negative - sort by market size to bias towards larger markets
+    if turning_negative:
+        # Sort by market size (descending) to prioritize large markets
+        turning_negative.sort(key=lambda x: x[3], reverse=True)
+        examples = []
+        for metro_name, mo6_chg, mo3_chg, market_size in turning_negative[:3]:
+            examples.append(metro_name)
+        
+        examples_str = ', '.join(examples)
+        
+        if metric_key == 'MEDIAN_SALE_PRICE':
+            summary_parts.append(f"Markets including {examples_str} have shifted to decline after sustained growth.")
+        else:
+            summary_parts.append(f"Markets including {examples_str} have turned negative after recent growth.")
+    
+    # Notable individual metros - bias towards larger markets
     outliers = []
-    for metro in rankings_data[:50]:  # Only check top 50 metros for outliers
+    for metro in rankings_data[:100]:  # Check more metros to find large market outliers
+        if metro['metro_name'] == 'All Redfin Metros':
+            continue
+            
         if metro['changes'].get('3month'):
-            # More strict criteria: 15-50% change (exclude likely errors)
-            if 15 < abs(metro['changes']['3month']) < 50:
-                outliers.append((metro['metro_name'], metro['changes']['3month']))
+            # More strict criteria: 10-50% change (exclude likely errors)
+            if 10 < abs(metro['changes']['3month']) < 50:
+                # Include full name with state if outside top 10%
+                if metro['market_percentile'] > 10:
+                    metro_display = metro['metro_name']
+                else:
+                    metro_display = metro['metro_name'].split(',')[0] if ',' in metro['metro_name'] else metro['metro_name']
+                
+                market_size = market_sizes.get(metro['metro_name'], 0)
+                outliers.append((metro_display, metro['changes']['3month'], metro['changes'].get('1month'), market_size))
     
     if outliers:
-        outliers.sort(key=lambda x: abs(x[1]), reverse=True)
-        metro_name = outliers[0][0].split(',')[0]
-        change = outliers[0][1]
-        if change > 0:
-            summary_parts.append(f"{metro_name} stands out with an exceptional {change:.1f}% increase over 3 months.")
+        # Sort by a combination of change magnitude and market size
+        # This biases towards large markets with significant changes
+        outliers.sort(key=lambda x: abs(x[1]) * (1 + x[3]/1000000), reverse=True)
+        metro_name = outliers[0][0]
+        change_3m = outliers[0][1]
+        change_1m = outliers[0][2]
+        
+        # Check if 1m and 3m align for "recent months"
+        if change_1m and (change_1m * change_3m > 0):
+            time_phrase = "in recent months"
         else:
-            summary_parts.append(f"{metro_name} has experienced a significant {abs(change):.1f}% decline over 3 months.")
+            time_phrase = "over the past three months"
+        
+        if change_3m > 0:
+            summary_parts.append(f"{metro_name} stands out with an exceptional {change_3m:.1f}% increase {time_phrase}.")
+        else:
+            summary_parts.append(f"{metro_name} has experienced a significant {abs(change_3m):.1f}% decline {time_phrase}.")
+    
+    # Add more analysis for richer summaries
+    # Add volatility observation
+    high_volatility_count = sum(1 for m in rankings_data[:50] 
+                                if m['changes'].get('1month') and abs(m['changes']['1month']) > 5)
+    if high_volatility_count > 20:
+        summary_parts.append(f"Market volatility remains elevated with {high_volatility_count} of the top 50 markets showing >5% monthly changes.")
+    
+    # Add spread analysis
+    if len(rankings_data) > 10:
+        top_10_avg = sum(r['current_value'] for r in rankings_data[:10]) / 10
+        bottom_10_avg = sum(r['current_value'] for r in rankings_data[-10:]) / 10
+        if metric_key in ['MEDIAN_SALE_PRICE', 'MEDIAN_DAYS_ON_MARKET', 'WEEKS_OF_SUPPLY']:
+            if top_10_avg > 0 and bottom_10_avg > 0:
+                spread_ratio = top_10_avg / bottom_10_avg
+                if spread_ratio > 3:
+                    summary_parts.append(f"The gap between top and bottom markets continues to widen, with a {spread_ratio:.1f}x difference in values.")
     
     # Join all parts into a paragraph
     if summary_parts:
@@ -399,7 +603,7 @@ def calculate_market_size(metro_data):
         return total
     return 0
 
-def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date_str):
+def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date_str, sizes_df=None):
     """Generate HTML page with simple, working sorting."""
     
     # Generate summaries for different market segments
@@ -419,7 +623,26 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
             segment_data = [r for r in rankings_data if r['market_percentile'] <= float(percentile)]
         
         if segment_data:
-            summaries[percentile] = generate_metric_summary(segment_data[:200], metric_key, metric_info, name)
+            # Debug: Check Northeast metros in Top 25%
+            if percentile == '25' and metric_key == 'MEDIAN_SALE_PRICE':
+                ne_in_segment = []
+                all_percentiles = []
+                for r in segment_data:
+                    all_percentiles.append(r['market_percentile'])
+                    region = get_region_for_metro(r['metro_name'])
+                    if region == 'Northeast' and r['changes'].get('3month') is not None:
+                        ne_in_segment.append((r['metro_name'], r['changes']['3month'], r['market_percentile']))
+                
+                print(f"DEBUG: Segment has {len(segment_data)} total metros")
+                print(f"  Percentile range: {min(all_percentiles):.1f}% to {max(all_percentiles):.1f}%")
+                
+                if ne_in_segment:
+                    ne_changes = [c for _, c, _ in ne_in_segment]
+                    print(f"  Northeast metros: {len(ne_in_segment)}")
+                    print(f"  NE percentiles: {[p for _, _, p in ne_in_segment[:5]]}")
+                    print(f"  Median should be: {np.median(ne_changes):.1f}%")
+            
+            summaries[percentile] = generate_metric_summary(segment_data, metric_key, metric_info, name, sizes_df)
         else:
             summaries[percentile] = f"No data available for {name}."
     
@@ -462,11 +685,26 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
             padding: 0;
             max-width: none;
             margin: 0;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }}
+        
+        .fixed-header {{
+            position: sticky;
+            top: 0;
+            background: white;
+            z-index: 100;
+            padding: 20px;
+            padding-bottom: 0;
+            border-bottom: 1px solid #DADFCE;
+            flex-shrink: 0;
         }}
         
         h1 {{
             font-size: 20px;
-            font-weight: normal;
+            font-weight: bold;
             margin-bottom: 15px;
             color: #3D3733;
         }}
@@ -518,7 +756,7 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
             background: #F8F9FA;
             border: 1px solid #DADFCE;
             border-radius: 4px;
-            margin: 15px 0;
+            margin: 15px 15px 15px 0;
             overflow: hidden;
         }}
         
@@ -574,6 +812,12 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
             font-family: inherit;
             font-size: 12px;
             color: #3D3733;
+        }}
+        
+        .table-container {{
+            flex: 1;
+            overflow-y: auto;
+            padding: 0 20px 20px 20px;
         }}
         
         table {{
@@ -635,11 +879,13 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
         }}
         
         .footer {{
-            margin-top: 20px;
-            padding-top: 15px;
-            border-top: 1px solid #DADFCE;
+            text-align: center;
+            padding: 15px 20px;
             font-size: 11px;
             color: #6B635C;
+            border-top: 1px solid #DADFCE;
+            background: white;
+            flex-shrink: 0;
         }}
         
         .arrow {{
@@ -656,36 +902,39 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
     </style>
 </head>
 <body>
-    <h1>{metric_info['display'].upper()}</h1>
-    
-    <div class="controls">
-        <div class="metrics">
-            {''.join(metric_buttons)}
+    <div class="fixed-header">
+        <h1>{metric_info['display'].upper()}</h1>
+        
+        <div class="controls">
+            <div class="metrics">
+                {''.join(metric_buttons)}
+            </div>
+            
+            <div class="filter">
+                <input type="text" id="searchBox" placeholder="Search metros..." onkeyup="searchTable()" style="padding: 4px 8px; border: 1px solid #DADFCE; background: white; font-family: inherit; font-size: 12px; margin-right: 10px;">
+                <label>Show:</label>
+                <select id="marketFilter" onchange="filterTable()">
+                    <option value="10" selected>Large Markets (Top 10%)</option>
+                    <option value="25">Major Markets (Top 25%)</option>
+                    <option value="50">Mid-Size Markets (Top 50%)</option>
+                    <option value="100">All Markets</option>
+                </select>
+            </div>
         </div>
         
-        <div class="filter">
-            <input type="text" id="searchBox" placeholder="Search metros..." onkeyup="searchTable()" style="padding: 4px 8px; border: 1px solid #DADFCE; background: white; font-family: inherit; font-size: 12px; margin-right: 10px;">
-            <label>Show:</label>
-            <select id="marketFilter" onchange="filterTable()">
-                <option value="10">Large Markets (Top 10%)</option>
-                <option value="25" selected>Major Markets (Top 25%)</option>
-                <option value="50">Mid-Size Markets (Top 50%)</option>
-                <option value="100">All Markets</option>
-            </select>
+        <div class="summary-box">
+            <div class="summary-toggle" onclick="toggleSummary()">
+                <span class="summary-toggle-text">Market Analysis Summary</span>
+                <span class="summary-arrow" id="summaryArrow">▼</span>
+            </div>
+            <div class="summary-content" id="summaryContent">
+                <p class="summary-text" id="summaryText">{summaries.get('10', 'No summary available.')}</p>
+            </div>
         </div>
     </div>
     
-    <div class="summary-box">
-        <div class="summary-toggle" onclick="toggleSummary()">
-            <span class="summary-toggle-text">Market Analysis Summary</span>
-            <span class="summary-arrow" id="summaryArrow">▼</span>
-        </div>
-        <div class="summary-content" id="summaryContent">
-            <p class="summary-text" id="summaryText">{summaries.get('25', 'No summary available.')}</p>
-        </div>
-    </div>
-    
-    <table id="rankingsTable">
+    <div class="table-container">
+        <table id="rankingsTable">
         <thead>
             <tr>
                 <th onclick="sortTable('metro')">#</th>
@@ -750,6 +999,7 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
     
     html += f"""        </tbody>
     </table>
+    </div>
     
     <div class="footer">
         <strong>Data:</strong> Redfin weekly housing market data | <strong>Updated:</strong> {date_str} | <strong>Methodology:</strong> Based on rolling 4-week windows<br>
@@ -770,12 +1020,77 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
             const tbody = document.querySelector('#rankingsTable tbody');
             allRows = Array.from(tbody.querySelectorAll('tr'));
             
-            // Initial sort by current value
-            sortTable('current');
+            // Initial sort by current value with coloring
+            sortTableWithInitialColoring('current');
             
             // Calculate initial medians
             calculateMedians();
         }};
+        
+        // Special function for initial load to apply coloring
+        function sortTableWithInitialColoring(column) {{
+            currentSort = column;
+            sortAscending = false;  // Start with descending
+            
+            // Set arrow for current column
+            const arrow = document.getElementById('arrow-' + column);
+            if (arrow) {{
+                arrow.textContent = '↓';
+            }}
+            
+            // Sort the rows
+            allRows.sort((a, b) => {{
+                const aStr = a.dataset[column];
+                const bStr = b.dataset[column];
+                
+                if (aStr === 'null' && bStr === 'null') return 0;
+                if (aStr === 'null') return 1;
+                if (bStr === 'null') return -1;
+                
+                const aVal = parseFloat(aStr);
+                const bVal = parseFloat(bStr);
+                
+                return bVal - aVal;  // Descending
+            }});
+            
+            // Apply heat mapping to current column using same blue gradient as regular sort
+            allRows.forEach(row => {{
+                const td = row.querySelector('.current-value');
+                if (td) {{
+                    const value = parseFloat(row.dataset.current);
+                    if (!isNaN(value)) {{
+                        const allValues = allRows.map(r => parseFloat(r.dataset.current)).filter(v => !isNaN(v));
+                        const max = Math.max(...allValues);
+                        const min = Math.min(...allValues);
+                        const range = max - min;
+                        const percent = range > 0 ? ((value - min) / range) * 100 : 50;
+                        
+                        // Use same blue gradient as regular sortTable function
+                        let bgColor;
+                        if (percent <= 20) bgColor = '#DADFCE';  // Cream
+                        else if (percent <= 40) bgColor = '#E8F4FF';  // Very light blue
+                        else if (percent <= 60) bgColor = '#C6E4FF';  // Light blue  
+                        else if (percent <= 80) bgColor = '#8CCFFF';  // Medium blue
+                        else bgColor = '#0BB4FF';  // Full blue
+                        
+                        td.style.backgroundColor = bgColor;
+                        td.style.color = (bgColor === '#0BB4FF' || bgColor === '#8CCFFF') ? '#F6F7F3' : '#3D3733';
+                    }}
+                }}
+            }});
+            
+            // Update table
+            const tbody = document.querySelector('#rankingsTable tbody');
+            tbody.innerHTML = '';
+            allRows.forEach((row, index) => {{
+                const rankCell = row.querySelector('.rank');
+                if (rankCell) rankCell.textContent = index + 1;
+                tbody.appendChild(row);
+            }});
+            
+            // Apply the filter after initial sort
+            filterTable();
+        }}
         
         // Simple, bulletproof sorting function
         function sortTable(column) {{
@@ -1106,20 +1421,40 @@ def main():
             
             # Calculate changes
             if metric_key == 'OFF_MARKET_IN_TWO_WEEKS':
-                # For OFF_MARKET_IN_TWO_WEEKS, calculate percentage for each period
+                # For OFF_MARKET_IN_TWO_WEEKS, calculate percentage for each period using date-based approach
+                from datetime import timedelta
                 changes = {}
-                for period_name, weeks in periods.items():
-                    if len(metro_data) > weeks:
-                        past_data = metro_data.iloc[-weeks-1]
-                        latest = metro_data.iloc[-1]
+                
+                latest = metro_data.iloc[-1]
+                latest_date = latest['PERIOD_END']
+                
+                # Define target dates for each period (matching MobileCharts approach)
+                target_dates = {
+                    '1month': latest_date - timedelta(days=30),
+                    '3month': latest_date - timedelta(days=90),
+                    '6month': latest_date - timedelta(days=180),
+                    '1year': latest_date - timedelta(days=365),
+                    '3year': latest_date - timedelta(days=365*3)
+                }
+                
+                for period_name in periods.keys():
+                    if period_name in target_dates:
+                        target_date = target_dates[period_name]
+                        # Find the closest data point at or before the target date
+                        past_data_df = metro_data[metro_data['PERIOD_END'] <= target_date]
                         
-                        if (pd.notna(past_data[metric_key]) and pd.notna(past_data.get('ADJUSTED_AVERAGE_NEW_LISTINGS')) and
-                            pd.notna(latest[metric_key]) and pd.notna(latest.get('ADJUSTED_AVERAGE_NEW_LISTINGS')) and
-                            past_data['ADJUSTED_AVERAGE_NEW_LISTINGS'] > 0 and latest['ADJUSTED_AVERAGE_NEW_LISTINGS'] > 0):
+                        if len(past_data_df) > 0:
+                            past_data = past_data_df.iloc[-1]
                             
-                            past_pct = (past_data[metric_key] / past_data['ADJUSTED_AVERAGE_NEW_LISTINGS']) * 100
-                            current_pct = (latest[metric_key] / latest['ADJUSTED_AVERAGE_NEW_LISTINGS']) * 100
-                            changes[period_name] = current_pct - past_pct  # Percentage point change
+                            if (pd.notna(past_data[metric_key]) and pd.notna(past_data.get('ADJUSTED_AVERAGE_NEW_LISTINGS')) and
+                                pd.notna(latest[metric_key]) and pd.notna(latest.get('ADJUSTED_AVERAGE_NEW_LISTINGS')) and
+                                past_data['ADJUSTED_AVERAGE_NEW_LISTINGS'] > 0 and latest['ADJUSTED_AVERAGE_NEW_LISTINGS'] > 0):
+                                
+                                past_pct = (past_data[metric_key] / past_data['ADJUSTED_AVERAGE_NEW_LISTINGS']) * 100
+                                current_pct = (latest[metric_key] / latest['ADJUSTED_AVERAGE_NEW_LISTINGS']) * 100
+                                changes[period_name] = current_pct - past_pct  # Percentage point change
+                            else:
+                                changes[period_name] = None
                         else:
                             changes[period_name] = None
                     else:
@@ -1145,7 +1480,7 @@ def main():
         rankings_data.sort(key=lambda x: x['current_value'], reverse=True)
         
         # Generate and save HTML
-        html = generate_html_page(rankings_data, metric_key, metric_info, METRICS, date_str)
+        html = generate_html_page(rankings_data, metric_key, metric_info, METRICS, date_str, sizes_df)
         output_file = output_path / f"{metric_info['slug']}.html"
         with open(output_file, 'w') as f:
             f.write(html)
