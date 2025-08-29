@@ -1,0 +1,27 @@
+
+<table>
+<thead>
+<tr>
+<th data-sort="current">Current</th>
+<th data-sort="month1">1 Mo</th>
+</tr>
+</thead>
+<tbody>
+<tr data-current="100" data-month1="5.5"><td>Row 1</td></tr>
+<tr data-current="200" data-month1="-2.3"><td>Row 2</td></tr>
+</tbody>
+</table>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('th[data-sort]').forEach(th => {
+        th.addEventListener('click', function() {
+            const column = this.dataset.sort;
+            console.log('Clicked column:', column);
+            const rows = Array.from(document.querySelectorAll('tbody tr'));
+            rows.forEach(row => {
+                console.log('Row data for', column, ':', row.dataset[column]);
+            });
+        });
+    });
+});
+</script>

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Filter Test</title>
+</head>
+<body>
+    <h1>Filter Debug Test</h1>
+    <p>Testing with sample data to understand the filtering issue</p>
+    
+    <select id="marketFilter" onchange="filterTable()">
+        <option value="10">Top 10%</option>
+        <option value="25">Top 25%</option>
+        <option value="50">Top 50%</option>
+        <option value="100">All Markets</option>
+    </select>
+    
+    <p id="count">Count: 0</p>
+    
+    <table id="testTable">
+        <tbody></tbody>
+    </table>
+    
+    <script>
+        // Create 100 test rows with percentiles from 0.1 to 100
+        const tbody = document.querySelector('#testTable tbody');
+        const allRows = [];
+        
+        for (let i = 1; i <= 100; i++) {
+            const tr = document.createElement('tr');
+            const percentile = (i / 100) * 100;  // This mimics the actual calculation
+            tr.dataset.percentile = percentile.toFixed(1);
+            tr.innerHTML = `<td>Metro ${i}</td><td>Percentile: ${percentile.toFixed(1)}%</td>`;
+            allRows.push(tr);
+        }
+        
+        function filterTable() {
+            const filter = parseFloat(document.getElementById('marketFilter').value);
+            tbody.innerHTML = '';
+            let count = 0;
+            
+            allRows.forEach(row => {
+                const percentile = parseFloat(row.dataset.percentile);
+                console.log(`Row percentile: ${percentile}, Filter: ${filter}, Pass: ${percentile <= filter}`);
+                
+                if (percentile <= filter) {
+                    tbody.appendChild(row);
+                    count++;
+                }
+            });
+            
+            document.getElementById('count').textContent = `Count: ${count} (Should be ${filter === 100 ? 100 : Math.floor(filter)})`; 
+        }
+        
+        // Initial filter
+        filterTable();
+    </script>
+</body>
+</html>

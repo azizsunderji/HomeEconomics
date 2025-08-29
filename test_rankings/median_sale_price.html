@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Median Sale Price - Metro Rankings | Home Economics</title>
+    <style>
+        @font-face {
+            font-family: 'Oracle';
+            src: url('/fonts/Oracle-Regular.woff2') format('woff2'),
+                 url('/fonts/Oracle-Regular.woff') format('woff');
+            font-weight: normal;
+        }
+        
+        @font-face {
+            font-family: 'Oracle';
+            src: url('/fonts/Oracle-Bold.woff2') format('woff2'),
+                 url('/fonts/Oracle-Bold.woff') format('woff');
+            font-weight: bold;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Oracle', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background-color: #F6F7F3;
+            color: #3D3733;
+            line-height: 1.6;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            font-size: 24px;
+            font-weight: normal;
+            margin-bottom: 20px;
+            letter-spacing: -0.5px;
+        }
+        
+        .highlight {
+            color: #0BB4FF;
+        }
+        
+        .controls {
+            margin-bottom: 30px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            align-items: center;
+        }
+        
+        .metric-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        
+        .metric-button {
+            padding: 8px 16px;
+            background: transparent;
+            border: 1px solid #DADFCE;
+            color: #3D3733;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 14px;
+            transition: all 0.2s;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .metric-button:hover {
+            background: #DADFCE;
+        }
+        
+        .metric-button.active {
+            background: #0BB4FF;
+            border-color: #0BB4FF;
+            color: #F6F7F3;
+        }
+        
+        .filters {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            margin-left: auto;
+        }
+        
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .filter-label {
+            font-size: 14px;
+            color: #6B635C;
+        }
+        
+        select {
+            padding: 6px 12px;
+            border: 1px solid #DADFCE;
+            background: #F6F7F3;
+            font-family: inherit;
+            font-size: 14px;
+            color: #3D3733;
+            cursor: pointer;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        th {
+            text-align: left;
+            padding: 12px;
+            border-bottom: 1px solid #DADFCE;
+            font-weight: normal;
+            font-size: 14px;
+            color: #6B635C;
+        }
+        
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #F0F0EC;
+            font-size: 15px;
+        }
+        
+        tr:hover {
+            background: rgba(218, 223, 206, 0.2);
+        }
+        
+        .rank {
+            width: 60px;
+            color: #6B635C;
+        }
+        
+        .metro-name {
+            font-weight: 500;
+        }
+        
+        .metro-name a {
+            color: inherit;
+            text-decoration: none;
+        }
+        
+        .metro-name a:hover {
+            color: #0BB4FF;
+        }
+        
+        .value {
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+        }
+        
+        .change {
+            text-align: right;
+            padding: 8px 12px;
+            font-variant-numeric: tabular-nums;
+            font-size: 14px;
+        }
+        
+        .metadata {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #DADFCE;
+            font-size: 13px;
+            color: #6B635C;
+        }
+        
+        @media (max-width: 768px) {
+            .controls {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .filters {
+                margin-left: 0;
+                flex-direction: column;
+                align-items: flex-start;
+                width: 100%;
+            }
+            
+            table {
+                font-size: 14px;
+            }
+            
+            th, td {
+                padding: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1><span class="highlight">MEDIAN SALE PRICE</span></h1>
+    
+    <div class="controls">
+        <div class="metric-buttons">
+            <a href="median_sale_price.html" class="metric-button active">Price</a>
+            <a href="active_listings.html" class="metric-button ">Listings</a>
+            <a href="weeks_supply.html" class="metric-button ">Supply</a>
+            <a href="homes_sold.html" class="metric-button ">Sold</a>
+            <a href="new_listings.html" class="metric-button ">New</a>
+            <a href="median_days_on_market.html" class="metric-button ">DOM</a>
+            <a href="pending_sales.html" class="metric-button ">Pending</a>
+            <a href="off_market_in_2_weeks.html" class="metric-button ">2 Weeks</a>
+            <a href="median_days_to_close.html" class="metric-button ">Close</a>
+            <a href="sale_to_list_ratio.html" class="metric-button ">Ratio</a>
+            <a href="pct_listings_w__price_drops.html" class="metric-button ">Drops</a>
+            <a href="age_of_inventory.html" class="metric-button ">Age</a>
+        </div>
+        
+        <div class="filters">
+            <div class="filter-group">
+                <span class="filter-label">Sort by:</span>
+                <select id="sortPeriod" onchange="sortTable()">
+                    <option value="current">Current Value</option>
+                    <option value="1month" selected>1 Month Change</option>
+                    <option value="3month">3 Month Change</option>
+                    <option value="6month">6 Month Change</option>
+                    <option value="1year">1 Year Change</option>
+                    <option value="3year">3 Year Change</option>
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <span class="filter-label">Filter:</span>
+                <select id="marketSize" onchange="filterTable()">
+                    <option value="top10">Large Markets (Top 10%)</option>
+                    <option value="top25" selected>Major Markets (Top 25%)</option>
+                    <option value="top50">Mid-Size (Top 50%)</option>
+                    <option value="all">All Markets</option>
+                </select>
+            </div>
+        </div>
+    </div>
+    
+    <table id="rankingsTable">
+        <thead>
+            <tr>
+                <th class="rank">Rank</th>
+                <th>Metro Area</th>
+                <th class="value">Current Value</th>
+                <th class="change">1 Mo</th>
+                <th class="change">3 Mo</th>
+                <th class="change">6 Mo</th>
+                <th class="change">1 Yr</th>
+                <th class="change">3 Yr</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr data-rank="1" data-marketsize="25" data-1month="-8.119321003891669" data-3month="-2.2705560650081082" data-6month="-3.7514948928313494" data-1year="1.935184836839455" data-3year="-1.2443836956792098" data-current="1747111.111111">
+                <td class="rank">1</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/vineyard_haven_ma/median_sale_price.png" target="_blank">Vineyard Haven, MA</a></td>
+                <td class="value">$1,747,111</td>
+                <td class="change" style="background-color: #6B635C; color: #F6F7F3;">-8.1%</td>
+                <td class="change" style="background-color: #A09B95; color: #3D3733;">-2.3%</td>
+                <td class="change" style="background-color: #A09B95; color: #3D3733;">-3.8%</td>
+                <td class="change" style="background-color: #C6E4FF; color: #3D3733;">+1.9%</td>
+                <td class="change" style="background-color: #DADFCE; color: #3D3733;">-1.2%</td>
+            </tr>
+            <tr data-rank="2" data-marketsize="25" data-1month="-4.7002743484224965" data-3month="3.5817339444237923" data-6month="-3.112964100473812" data-1year="0.24464279650428722" data-3year="-4.762209440412746" data-current="1736837.5">
+                <td class="rank">2</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/heber_ut/median_sale_price.png" target="_blank">Heber, UT</a></td>
+                <td class="value">$1,736,838</td>
+                <td class="change" style="background-color: #A09B95; color: #3D3733;">-4.7%</td>
+                <td class="change" style="background-color: #8CCFFF; color: #3D3733;">+3.6%</td>
+                <td class="change" style="background-color: #A09B95; color: #3D3733;">-3.1%</td>
+                <td class="change" style="background-color: #C6E4FF; color: #3D3733;">+0.2%</td>
+                <td class="change" style="background-color: #A09B95; color: #3D3733;">-4.8%</td>
+            </tr>
+            <tr data-rank="3" data-marketsize="25" data-1month="4.5113884887822" data-3month="2.937147163674263" data-6month="-0.8299158867208387" data-1year="1.2317341492986902" data-3year="4.70441712945043" data-current="1632729.166666">
+                <td class="rank">3</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/san_jose_ca/median_sale_price.png" target="_blank">San Jose, CA</a></td>
+                <td class="value">$1,632,729</td>
+                <td class="change" style="background-color: #8CCFFF; color: #3D3733;">+4.5%</td>
+                <td class="change" style="background-color: #8CCFFF; color: #3D3733;">+2.9%</td>
+                <td class="change" style="background-color: #DADFCE; color: #3D3733;">-0.8%</td>
+                <td class="change" style="background-color: #C6E4FF; color: #3D3733;">+1.2%</td>
+                <td class="change" style="background-color: #8CCFFF; color: #3D3733;">+4.7%</td>
+            </tr>
+            <tr data-rank="4" data-marketsize="52.0" data-1month="2.374581939799331" data-3month="-4.622582636047249" data-6month="-3.5550310923440342" data-1year="-3.00797264324416" data-3year="-2.431402301042401" data-current="1530500.0">
+                <td class="rank">4</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/jackson_wy/median_sale_price.png" target="_blank">Jackson, WY</a></td>
+                <td class="value">$1,530,500</td>
+                <td class="change" style="background-color: #8CCFFF; color: #3D3733;">+2.4%</td>
+                <td class="change" style="background-color: #A09B95; color: #3D3733;">-4.6%</td>
+                <td class="change" style="background-color: #A09B95; color: #3D3733;">-3.6%</td>
+                <td class="change" style="background-color: #A09B95; color: #3D3733;">-3.0%</td>
+                <td class="change" style="background-color: #A09B95; color: #3D3733;">-2.4%</td>
+            </tr>
+            <tr data-rank="5" data-marketsize="25" data-1month="-1.1681268251981645" data-3month="1.799557657173838" data-6month="4.14660217099242" data-1year="2.5770349724984234" data-3year="2.6482890391859453" data-current="1480625.0">
+                <td class="rank">5</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/san_francisco_ca/median_sale_price.png" target="_blank">San Francisco, CA</a></td>
+                <td class="value">$1,480,625</td>
+                <td class="change" style="background-color: #DADFCE; color: #3D3733;">-1.2%</td>
+                <td class="change" style="background-color: #C6E4FF; color: #3D3733;">+1.8%</td>
+                <td class="change" style="background-color: #8CCFFF; color: #3D3733;">+4.1%</td>
+                <td class="change" style="background-color: #8CCFFF; color: #3D3733;">+2.6%</td>
+                <td class="change" style="background-color: #8CCFFF; color: #3D3733;">+2.6%</td>
+            </tr>
+            <tr data-rank="6" data-marketsize="25" data-1month="-0.35211267605633806" data-3month="4.064291619162731" data-6month="-4.345021215704232" data-1year="-0.9292313397251935" data-3year="0.2696488293427093" data-current="1415000.0">
+                <td class="rank">6</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/san_rafael_ca/median_sale_price.png" target="_blank">San Rafael, CA</a></td>
+                <td class="value">$1,415,000</td>
+                <td class="change" style="background-color: #DADFCE; color: #3D3733;">-0.4%</td>
+                <td class="change" style="background-color: #8CCFFF; color: #3D3733;">+4.1%</td>
+                <td class="change" style="background-color: #A09B95; color: #3D3733;">-4.3%</td>
+                <td class="change" style="background-color: #DADFCE; color: #3D3733;">-0.9%</td>
+                <td class="change" style="background-color: #C6E4FF; color: #3D3733;">+0.3%</td>
+            </tr>
+            <tr data-rank="7" data-marketsize="25" data-1month="2.4185622016006803" data-3month="0.8359992974781791" data-6month="-1.80360555082716" data-1year="3.1929423105831862" data-3year="1.5587876739934714" data-current="1215708.333333">
+                <td class="rank">7</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/anaheim_ca/median_sale_price.png" target="_blank">Anaheim, CA</a></td>
+                <td class="value">$1,215,708</td>
+                <td class="change" style="background-color: #8CCFFF; color: #3D3733;">+2.4%</td>
+                <td class="change" style="background-color: #C6E4FF; color: #3D3733;">+0.8%</td>
+                <td class="change" style="background-color: #DADFCE; color: #3D3733;">-1.8%</td>
+                <td class="change" style="background-color: #8CCFFF; color: #3D3733;">+3.2%</td>
+                <td class="change" style="background-color: #C6E4FF; color: #3D3733;">+1.6%</td>
+            </tr>
+            <tr data-rank="8" data-marketsize="25" data-1month="-3.4947308103987558" data-3month="-4.995006651927888" data-6month="2.871640276224764" data-1year="2.3753139793096434" data-3year="-1.1394875050021467" data-current="1195478.041666">
+                <td class="rank">8</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/santa_cruz_ca/median_sale_price.png" target="_blank">Santa Cruz, CA</a></td>
+                <td class="value">$1,195,478</td>
+                <td class="change" style="background-color: #A09B95; color: #3D3733;">-3.5%</td>
+                <td class="change" style="background-color: #A09B95; color: #3D3733;">-5.0%</td>
+                <td class="change" style="background-color: #8CCFFF; color: #3D3733;">+2.9%</td>
+                <td class="change" style="background-color: #8CCFFF; color: #3D3733;">+2.4%</td>
+                <td class="change" style="background-color: #DADFCE; color: #3D3733;">-1.1%</td>
+            </tr>
+            <tr data-rank="9" data-marketsize="25" data-1month="-31.28654970760234" data-3month="-0.024003972175919763" data-6month="-2.5759078022948056" data-1year="1.5132766594675555" data-3year="1.0368008900767798" data-current="1175000.0">
+                <td class="rank">9</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/edwards_co/median_sale_price.png" target="_blank">Edwards, CO</a></td>
+                <td class="value">$1,175,000</td>
+                <td class="change" style="background-color: #3D3733; color: #F6F7F3;">-31.3%</td>
+                <td class="change" style="background-color: #DADFCE; color: #3D3733;">-0.0%</td>
+                <td class="change" style="background-color: #A09B95; color: #3D3733;">-2.6%</td>
+                <td class="change" style="background-color: #C6E4FF; color: #3D3733;">+1.5%</td>
+                <td class="change" style="background-color: #C6E4FF; color: #3D3733;">+1.0%</td>
+            </tr>
+            <tr data-rank="10" data-marketsize="25" data-1month="8.209876543209877" data-3month="-3.4296173160483767" data-6month="2.4230820622343163" data-1year="3.5824738054004026" data-3year="2.4110798616449083" data-current="1095625.0">
+                <td class="rank">10</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/key_west_fl/median_sale_price.png" target="_blank">Key West, FL</a></td>
+                <td class="value">$1,095,625</td>
+                <td class="change" style="background-color: #52B9FF; color: #3D3733;">+8.2%</td>
+                <td class="change" style="background-color: #A09B95; color: #3D3733;">-3.4%</td>
+                <td class="change" style="background-color: #8CCFFF; color: #3D3733;">+2.4%</td>
+                <td class="change" style="background-color: #8CCFFF; color: #3D3733;">+3.6%</td>
+                <td class="change" style="background-color: #8CCFFF; color: #3D3733;">+2.4%</td>
+            </tr>
+            <tr data-rank="11" data-marketsize="25" data-1month="-0.2418258452876043" data-3month="-1.198581876517748" data-6month="-2.4892681799019734" data-1year="2.203169516421223" data-3year="0.8318932666908339" data-current="995000.0">
+                <td class="rank">11</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/kahului_hi/median_sale_price.png" target="_blank">Kahului, HI</a></td>
+                <td class="value">$995,000</td>
+                <td class="change" style="background-color: #DADFCE; color: #3D3733;">-0.2%</td>
+                <td class="change" style="background-color: #DADFCE; color: #3D3733;">-1.2%</td>
+                <td class="change" style="background-color: #A09B95; color: #3D3733;">-2.5%</td>
+                <td class="change" style="background-color: #8CCFFF; color: #3D3733;">+2.2%</td>
+                <td class="change" style="background-color: #C6E4FF; color: #3D3733;">+0.8%</td>
+            </tr>
+            <tr data-rank="12" data-marketsize="25" data-1month="-14.62640990075589" data-3month="1.5003832057829358" data-6month="-2.465793735395999" data-1year="3.218798183877203" data-3year="-0.8885300134086336" data-current="992500.0">
+                <td class="rank">12</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/steamboat_springs_co/median_sale_price.png" target="_blank">Steamboat Springs, CO</a></td>
+                <td class="value">$992,500</td>
+                <td class="change" style="background-color: #3D3733; color: #F6F7F3;">-14.6%</td>
+                <td class="change" style="background-color: #C6E4FF; color: #3D3733;">+1.5%</td>
+                <td class="change" style="background-color: #A09B95; color: #3D3733;">-2.5%</td>
+                <td class="change" style="background-color: #8CCFFF; color: #3D3733;">+3.2%</td>
+                <td class="change" style="background-color: #DADFCE; color: #3D3733;">-0.9%</td>
+            </tr>
+            <tr data-rank="13" data-marketsize="25" data-1month="-1.6770186335403725" data-3month="0.5287021184220837" data-6month="2.2916952169190496" data-1year="-4.845745885022908" data-3year="-4.124119349047466" data-current="989375.0">
+                <td class="rank">13</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/napa_ca/median_sale_price.png" target="_blank">Napa, CA</a></td>
+                <td class="value">$989,375</td>
+                <td class="change" style="background-color: #DADFCE; color: #3D3733;">-1.7%</td>
+                <td class="change" style="background-color: #C6E4FF; color: #3D3733;">+0.5%</td>
+                <td class="change" style="background-color: #8CCFFF; color: #3D3733;">+2.3%</td>
+                <td class="change" style="background-color: #A09B95; color: #3D3733;">-4.8%</td>
+                <td class="change" style="background-color: #A09B95; color: #3D3733;">-4.1%</td>
+            </tr>
+            <tr data-rank="14" data-marketsize="25" data-1month="-2.966448445140083" data-3month="-4.811260180198483" data-6month="-1.900792959335551" data-1year="-3.2939817512353975" data-3year="-0.38554992028796864" data-current="988125.0">
+                <td class="rank">14</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/santa_maria_ca/median_sale_price.png" target="_blank">Santa Maria, CA</a></td>
+                <td class="value">$988,125</td>
+                <td class="change" style="background-color: #A09B95; color: #3D3733;">-3.0%</td>
+                <td class="change" style="background-color: #A09B95; color: #3D3733;">-4.8%</td>
+                <td class="change" style="background-color: #DADFCE; color: #3D3733;">-1.9%</td>
+                <td class="change" style="background-color: #A09B95; color: #3D3733;">-3.3%</td>
+                <td class="change" style="background-color: #DADFCE; color: #3D3733;">-0.4%</td>
+            </tr>
+            <tr data-rank="15" data-marketsize="25" data-1month="3.969669937629948" data-3month="-2.5618239350309335" data-6month="4.515012997714134" data-1year="1.737658847455947" data-3year="0.03961265742118503" data-current="971250.0">
+                <td class="rank">15</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/salinas_ca/median_sale_price.png" target="_blank">Salinas, CA</a></td>
+                <td class="value">$971,250</td>
+                <td class="change" style="background-color: #8CCFFF; color: #3D3733;">+4.0%</td>
+                <td class="change" style="background-color: #A09B95; color: #3D3733;">-2.6%</td>
+                <td class="change" style="background-color: #8CCFFF; color: #3D3733;">+4.5%</td>
+                <td class="change" style="background-color: #C6E4FF; color: #3D3733;">+1.7%</td>
+                <td class="change" style="background-color: #C6E4FF; color: #3D3733;">+0.0%</td>
+            </tr>
+            <tr data-rank="16" data-marketsize="25" data-1month="9.815791340579283" data-3month="-1.4538573210507444" data-6month="3.095286074007344" data-1year="3.6297176959316566" data-3year="-2.128003318051832" data-current="967500.0">
+                <td class="rank">16</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/san_luis_obispo_ca/median_sale_price.png" target="_blank">San Luis Obispo, CA</a></td>
+                <td class="value">$967,500</td>
+                <td class="change" style="background-color: #52B9FF; color: #3D3733;">+9.8%</td>
+                <td class="change" style="background-color: #DADFCE; color: #3D3733;">-1.5%</td>
+                <td class="change" style="background-color: #8CCFFF; color: #3D3733;">+3.1%</td>
+                <td class="change" style="background-color: #8CCFFF; color: #3D3733;">+3.6%</td>
+                <td class="change" style="background-color: #A09B95; color: #3D3733;">-2.1%</td>
+            </tr>
+            <tr data-rank="17" data-marketsize="25" data-1month="-1.0146752554850584" data-3month="-3.30497282815446" data-6month="-2.256393798251619" data-1year="-4.969853634489922" data-3year="2.515463918781162" data-current="960562.5">
+                <td class="rank">17</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/breckenridge_co/median_sale_price.png" target="_blank">Breckenridge, CO</a></td>
+                <td class="value">$960,562</td>
+                <td class="change" style="background-color: #DADFCE; color: #3D3733;">-1.0%</td>
+                <td class="change" style="background-color: #A09B95; color: #3D3733;">-3.3%</td>
+                <td class="change" style="background-color: #A09B95; color: #3D3733;">-2.3%</td>
+                <td class="change" style="background-color: #A09B95; color: #3D3733;">-5.0%</td>
+                <td class="change" style="background-color: #8CCFFF; color: #3D3733;">+2.5%</td>
+            </tr>
+            <tr data-rank="18" data-marketsize="25" data-1month="-18.079062680855586" data-3month="3.645325021055685" data-6month="-0.6673624751114371" data-1year="-0.8219464764214246" data-3year="-2.0401604855312474" data-current="867000.0">
+                <td class="rank">18</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/kapaa_hi/median_sale_price.png" target="_blank">Kapaa, HI</a></td>
+                <td class="value">$867,000</td>
+                <td class="change" style="background-color: #3D3733; color: #F6F7F3;">-18.1%</td>
+                <td class="change" style="background-color: #8CCFFF; color: #3D3733;">+3.6%</td>
+                <td class="change" style="background-color: #DADFCE; color: #3D3733;">-0.7%</td>
+                <td class="change" style="background-color: #DADFCE; color: #3D3733;">-0.8%</td>
+                <td class="change" style="background-color: #A09B95; color: #3D3733;">-2.0%</td>
+            </tr>
+            <tr data-rank="19" data-marketsize="25" data-1month="-71.12638815441565" data-3month="-4.216861307947747" data-6month="2.9990358100638073" data-1year="-2.2539581768761705" data-3year="4.678752268439197" data-current="682500.0">
+                <td class="rank">19</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/hailey_id/median_sale_price.png" target="_blank">Hailey, ID</a></td>
+                <td class="value">$682,500</td>
+                <td class="change" style="background-color: #3D3733; color: #F6F7F3;">-71.1%</td>
+                <td class="change" style="background-color: #A09B95; color: #3D3733;">-4.2%</td>
+                <td class="change" style="background-color: #8CCFFF; color: #3D3733;">+3.0%</td>
+                <td class="change" style="background-color: #A09B95; color: #3D3733;">-2.3%</td>
+                <td class="change" style="background-color: #8CCFFF; color: #3D3733;">+4.7%</td>
+            </tr>
+        </tbody>
+    </table>
+    
+    <div class="metadata">
+        <p>Data updated: August 10, 2025 | Source: Redfin | <a href="https://www.home-economics.us">Home Economics</a></p>
+    </div>
+    
+    <script>
+        let currentData = [];
+        
+        function initializeTable() {
+            const rows = document.querySelectorAll('#rankingsTable tbody tr');
+            rows.forEach(row => {
+                currentData.push(row);
+            });
+            filterTable();
+        }
+        
+        function filterTable() {
+            const filterValue = document.getElementById('marketSize').value;
+            const tbody = document.querySelector('#rankingsTable tbody');
+            
+            let thresholds = {
+                'top10': 10,
+                'top25': 25,
+                'top50': 50,
+                'all': 100
+            };
+            
+            let threshold = thresholds[filterValue];
+            let visibleRank = 1;
+            
+            currentData.forEach(row => {
+                const percentile = parseFloat(row.dataset.marketsize);
+                if (percentile <= threshold) {
+                    row.style.display = '';
+                    row.querySelector('.rank').textContent = visibleRank++;
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        }
+        
+        function sortTable() {
+            const sortBy = document.getElementById('sortPeriod').value;
+            const tbody = document.querySelector('#rankingsTable tbody');
+            
+            // Sort the data array
+            currentData.sort((a, b) => {
+                const aVal = parseFloat(a.dataset[sortBy]) || -999;
+                const bVal = parseFloat(b.dataset[sortBy]) || -999;
+                return bVal - aVal;  // Descending order
+            });
+            
+            // Reorder DOM elements
+            currentData.forEach(row => {
+                tbody.appendChild(row);
+            });
+            
+            // Reapply filter and update ranks
+            filterTable();
+        }
+        
+        // Initialize on load
+        initializeTable();
+    </script>
+</body>
+</html>

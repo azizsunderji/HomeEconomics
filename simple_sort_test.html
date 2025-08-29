@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head><title>Test Sorting</title></head>
+<body>
+<table id="test">
+<thead>
+<tr>
+<th onclick="sortTable('current')">Current</th>
+<th onclick="sortTable('month1')">1 Month</th>
+<th onclick="sortTable('month3')">3 Month</th>
+</tr>
+</thead>
+<tbody>
+<tr data-current="500000" data-month1="5.2" data-month3="-2.1">
+<td>Denver</td><td>$500K</td><td>+5.2%</td><td>-2.1%</td>
+</tr>
+<tr data-current="600000" data-month1="-1.5" data-month3="8.3">
+<td>Seattle</td><td>$600K</td><td>-1.5%</td><td>+8.3%</td>
+</tr>
+<tr data-current="400000" data-month1="10.1" data-month3="3.7">
+<td>Austin</td><td>$400K</td><td>+10.1%</td><td>+3.7%</td>
+</tr>
+</tbody>
+</table>
+
+<script>
+function sortTable(column) {
+    console.log('Sorting by:', column);
+    
+    const tbody = document.querySelector('#test tbody');
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+    
+    // Log what we're working with
+    console.log('Found rows:', rows.length);
+    rows.forEach((row, i) => {
+        console.log(`Row ${i} ${column} value:`, row.dataset[column]);
+    });
+    
+    // Sort the rows
+    rows.sort((a, b) => {
+        const aVal = parseFloat(a.dataset[column]) || 0;
+        const bVal = parseFloat(b.dataset[column]) || 0;
+        console.log(`Comparing ${aVal} vs ${bVal}`);
+        return bVal - aVal; // Descending
+    });
+    
+    // Clear and re-append
+    tbody.innerHTML = '';
+    rows.forEach(row => tbody.appendChild(row));
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Median Sale Price Rankings | Home Economics</title>
+    <style>
+        @font-face {
+            font-family: 'Oracle';
+            src: url('https://www.home-economics.us/fonts/Oracle-Regular.woff2') format('woff2'),
+                 url('https://www.home-economics.us/fonts/Oracle-Regular.woff') format('woff');
+            font-weight: normal;
+            font-style: normal;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Oracle', -apple-system, system-ui, sans-serif;
+            background: white;
+            color: #3D3733;
+            font-size: 13px;
+            line-height: 1.4;
+            padding: 0;
+            max-width: none;
+            margin: 0;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .fixed-header {
+            position: sticky;
+            top: 0;
+            background: white;
+            z-index: 100;
+            padding: 20px;
+            padding-bottom: 0;
+            border-bottom: 1px solid #DADFCE;
+            flex-shrink: 0;
+        }
+        
+        h1 {
+            font-size: 20px;
+            font-weight: normal;
+            margin-bottom: 15px;
+            color: #3D3733;
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .metrics {
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+        }
+        
+        .metric-btn {
+            padding: 5px 10px;
+            background: transparent;
+            border: 1px solid #DADFCE;
+            color: #3D3733;
+            text-decoration: none;
+            font-size: 12px;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        
+        .metric-btn:hover {
+            background: #DADFCE;
+        }
+        
+        .metric-btn.active {
+            background: #0BB4FF;
+            border-color: #0BB4FF;
+            color: #F6F7F3;
+        }
+        
+        .filter {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+        }
+        
+        .summary-box {
+            background: #F8F9FA;
+            border: 1px solid #DADFCE;
+            border-radius: 4px;
+            margin: 15px 15px 15px 0;
+            overflow: hidden;
+        }
+        
+        .summary-toggle {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 15px;
+            cursor: pointer;
+            user-select: none;
+            background: transparent;
+            transition: background 0.2s;
+        }
+        
+        .summary-toggle:hover {
+            background: #F0F0EC;
+        }
+        
+        .summary-toggle-text {
+            font-size: 14px;
+            color: #6B635C;
+            font-weight: 500;
+        }
+        
+        .summary-arrow {
+            transition: transform 0.3s;
+            color: #6B635C;
+        }
+        
+        .summary-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+            padding: 0 15px;
+        }
+        
+        .summary-content.expanded {
+            max-height: 500px;
+            padding: 0 15px 15px 15px;
+            transition: max-height 0.3s ease-in;
+        }
+        
+        .summary-text {
+            font-size: 14px;
+            line-height: 1.6;
+            color: #3D3733;
+        }
+        
+        select {
+            padding: 4px 8px;
+            border: 1px solid #DADFCE;
+            background: white;
+            font-family: inherit;
+            font-size: 12px;
+            color: #3D3733;
+        }
+        
+        .table-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0 20px 20px 20px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th {
+            text-align: left;
+            padding: 6px 8px;
+            border-bottom: 1px solid #DADFCE;
+            font-weight: normal;
+            font-size: 11px;
+            color: #6B635C;
+            cursor: pointer;
+            user-select: none;
+            position: sticky;
+            top: 0;
+            background: white;
+            white-space: nowrap;
+            z-index: 10;
+        }
+        
+        th:hover {
+            background: #DADFCE;
+        }
+        
+        th.sorted {
+            background: #E8F4FF;
+            color: #3D3733;
+        }
+        
+        th.number {
+            text-align: right;
+        }
+        
+        td {
+            padding: 5px 8px;
+            border-bottom: 1px solid #F0F0EC;
+            font-size: 12px;
+        }
+        
+        td.number {
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+        }
+        
+        td.rank {
+            color: #6B635C;
+            width: 40px;
+        }
+        
+        td.metro {
+            font-weight: 500;
+        }
+        
+        tr:hover {
+            background: rgba(218, 223, 206, 0.2);
+        }
+        
+        .footer {
+            text-align: center;
+            padding: 15px 20px;
+            font-size: 11px;
+            color: #6B635C;
+            border-top: 1px solid #DADFCE;
+            background: white;
+            flex-shrink: 0;
+        }
+        
+        .arrow {
+            font-size: 10px;
+            margin-left: 2px;
+        }
+        
+        @media (max-width: 768px) {
+            body { font-size: 11px; }
+            th { font-size: 10px; }
+            td { font-size: 11px; padding: 4px 6px; }
+            .metric-btn { font-size: 11px; padding: 4px 8px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="fixed-header">
+        <h1>MEDIAN SALE PRICE</h1>
+        
+        <div class="controls">
+            <div class="metrics">
+                <a href="median_sale_price.html" class="metric-btn active">Median Sale Price</a><a href="active_listings.html" class="metric-btn ">Active Listings</a><a href="weeks_supply.html" class="metric-btn ">Weeks of Supply</a><a href="homes_sold.html" class="metric-btn ">Homes Sold</a><a href="new_listings.html" class="metric-btn ">New Listings</a><a href="median_days_on_market.html" class="metric-btn ">Days on Market</a><a href="pending_sales.html" class="metric-btn ">Pending Sales</a><a href="off_market_in_2_weeks.html" class="metric-btn ">Off Market in 2 Weeks</a><a href="median_days_to_close.html" class="metric-btn ">Days to Close</a><a href="sale_to_list_ratio.html" class="metric-btn ">Sale to List Ratio</a><a href="pct_listings_w__price_drops.html" class="metric-btn ">Price Drops</a><a href="age_of_inventory.html" class="metric-btn ">Age of Inventory</a>
+            </div>
+            
+            <div class="filter">
+                <input type="text" id="searchBox" placeholder="Search metros..." onkeyup="searchTable()" style="padding: 4px 8px; border: 1px solid #DADFCE; background: white; font-family: inherit; font-size: 12px; margin-right: 10px;">
+                <label>Show:</label>
+                <select id="marketFilter" onchange="filterTable()">
+                    <option value="10">Large Markets (Top 10%)</option>
+                    <option value="25" selected>Major Markets (Top 25%)</option>
+                    <option value="50">Mid-Size Markets (Top 50%)</option>
+                    <option value="100">All Markets</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="summary-box">
+            <div class="summary-toggle" onclick="toggleSummary()">
+                <span class="summary-toggle-text">Market Analysis Summary</span>
+                <span class="summary-arrow" id="summaryArrow">▼</span>
+            </div>
+            <div class="summary-content" id="summaryContent">
+                <p class="summary-text" id="summaryText">Home prices among major markets (top 25%) are currently highest in San Francisco, CA, Austin, TX, Denver, CO, with values exceeding $1.2 million.</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="table-container">
+        <table id="rankingsTable">
+        <thead>
+            <tr>
+                <th onclick="sortTable('metro')">#</th>
+                <th onclick="sortTable('metro')">Metro Area <span class="arrow" id="arrow-metro"></span></th>
+                <th class="number" onclick="sortTable('current')">Current <span class="arrow" id="arrow-current"></span></th>
+                <th class="number" onclick="sortTable('month1')">1 Mo <span class="arrow" id="arrow-month1"></span></th>
+                <th class="number" onclick="sortTable('month3')">3 Mo <span class="arrow" id="arrow-month3"></span></th>
+                <th class="number" onclick="sortTable('month6')">6 Mo <span class="arrow" id="arrow-month6"></span></th>
+                <th class="number" onclick="sortTable('year1')">1 Yr <span class="arrow" id="arrow-year1"></span></th>
+                <th class="number" onclick="sortTable('year3')">3 Yr <span class="arrow" id="arrow-year3"></span></th>
+            </tr>
+            <tr id="medianRow" style="background: #F0F0EC; font-size: 11px; color: #6B635C;">
+                <td></td>
+                <td>Median</td>
+                <td class="number" id="median-current">—</td>
+                <td class="number" id="median-month1">—</td>
+                <td class="number" id="median-month3">—</td>
+                <td class="number" id="median-month6">—</td>
+                <td class="number" id="median-year1">—</td>
+                <td class="number" id="median-year3">—</td>
+            </tr>
+        </thead>
+        <tbody>
+            <tr data-percentile="5.0" data-metro="san francisco, ca" data-current="1200000" data-month1="2.50" data-month3="5.20" data-month6="3.10" data-year1="-2.30" data-year3="15.20">
+                <td class="rank">1</td>
+                <td class="metro">San Francisco, CA</td>
+                <td class="number current-value">$1.2M</td>
+                <td class="number change-month1">+2.5%</td>
+                <td class="number change-month3">+5.2%</td>
+                <td class="number change-month6">+3.1%</td>
+                <td class="number change-year1">-2.3%</td>
+                <td class="number change-year3">+15.2%</td>
+            </tr>
+            <tr data-percentile="8.5" data-metro="austin, tx" data-current="450000" data-month1="-1.20" data-month3="-3.50" data-month6="-5.20" data-year1="-8.10" data-year3="25.30">
+                <td class="rank">2</td>
+                <td class="metro">Austin, TX</td>
+                <td class="number current-value">$450K</td>
+                <td class="number change-month1">-1.2%</td>
+                <td class="number change-month3">-3.5%</td>
+                <td class="number change-month6">-5.2%</td>
+                <td class="number change-year1">-8.1%</td>
+                <td class="number change-year3">+25.3%</td>
+            </tr>
+            <tr data-percentile="12.0" data-metro="denver, co" data-current="550000" data-month1="0.80" data-month3="1.50" data-month6="0.50" data-year1="-3.20" data-year3="18.50">
+                <td class="rank">3</td>
+                <td class="metro">Denver, CO</td>
+                <td class="number current-value">$550K</td>
+                <td class="number change-month1">+0.8%</td>
+                <td class="number change-month3">+1.5%</td>
+                <td class="number change-month6">+0.5%</td>
+                <td class="number change-year1">-3.2%</td>
+                <td class="number change-year3">+18.5%</td>
+            </tr>
+        </tbody>
+    </table>
+    </div>
+    
+    <div class="footer">
+        <strong>Data:</strong> Redfin weekly housing market data | <strong>Updated:</strong> 2025-08-22 | <strong>Methodology:</strong> Based on rolling 4-week windows<br>
+        <a href="https://www.home-economics.us">Home Economics</a>
+    </div>
+    
+    <script>
+        // Global state
+        let allRows = [];
+        let currentSort = 'current';
+        let sortAscending = false;
+        
+        // Store summaries for different segments
+        const marketSummaries = {"10": "Home prices among large markets (top 10%) are currently highest in San Francisco, CA, Austin, TX, with values exceeding $1.2 million.", "25": "Home prices among major markets (top 25%) are currently highest in San Francisco, CA, Austin, TX, Denver, CO, with values exceeding $1.2 million.", "50": "Home prices among mid-size markets (top 50%) are currently highest in San Francisco, CA, Austin, TX, Denver, CO, with values exceeding $1.2 million.", "100": "Home prices are currently highest in San Francisco, CA, Austin, TX, Denver, CO, with values exceeding $1.2 million."};
+        
+        // Initialize on page load
+        window.onload = function() {
+            const tbody = document.querySelector('#rankingsTable tbody');
+            allRows = Array.from(tbody.querySelectorAll('tr'));
+            
+            // Initial sort by current value
+            sortTable('current');
+            
+            // Calculate initial medians
+            calculateMedians();
+        };
+        
+        // Simple, bulletproof sorting function
+        function sortTable(column) {
+            console.log('Sorting by:', column);
+            
+            // Toggle sort direction if same column
+            if (currentSort === column) {
+                sortAscending = !sortAscending;
+            } else {
+                sortAscending = false;  // Default to descending
+                currentSort = column;
+            }
+            
+            // Clear all arrows
+            document.querySelectorAll('.arrow').forEach(arrow => {
+                arrow.textContent = '';
+            });
+            
+            // Set current arrow
+            const arrow = document.getElementById('arrow-' + column);
+            if (arrow) {
+                arrow.textContent = sortAscending ? '↑' : '↓';
+            }
+            
+            // Update header styles
+            document.querySelectorAll('th').forEach(th => {
+                th.classList.remove('sorted');
+            });
+            event.target.classList.add('sorted');
+            
+            // Sort the rows
+            allRows.sort((a, b) => {
+                let aVal, bVal;
+                
+                if (column === 'metro') {
+                    aVal = a.dataset.metro;
+                    bVal = b.dataset.metro;
+                    return sortAscending ? 
+                        aVal.localeCompare(bVal) : 
+                        bVal.localeCompare(aVal);
+                } else {
+                    // Get numeric values from data attributes
+                    // Handle 'null' string as missing data
+                    const aStr = a.dataset[column];
+                    const bStr = b.dataset[column];
+                    
+                    // For descending: valid numbers first, then nulls
+                    // For ascending: nulls first, then valid numbers
+                    if (aStr === 'null' && bStr === 'null') return 0;
+                    if (aStr === 'null') return sortAscending ? -1 : 1;
+                    if (bStr === 'null') return sortAscending ? 1 : -1;
+                    
+                    const aVal = parseFloat(aStr);
+                    const bVal = parseFloat(bStr);
+                    
+                    console.log('Comparing:', aVal, 'vs', bVal);
+                    
+                    return sortAscending ? aVal - bVal : bVal - aVal;
+                }
+            });
+            
+            // Clear all coloring from all columns
+            document.querySelectorAll('td').forEach(td => {
+                if (td.className.includes('change-') || td.className.includes('number')) {
+                    td.style.backgroundColor = '';
+                    td.style.color = '';
+                }
+            });
+            
+            // Apply coloring to sorted column only
+            if (column === 'current') {
+                // Color the current value column using a value-based gradient
+                allRows.forEach(row => {
+                    const td = row.querySelector('.current-value');
+                    if (td) {
+                        const value = parseFloat(row.dataset.current);
+                        if (!isNaN(value)) {
+                            // Create a gradient based on relative position in sorted list
+                            const allValues = allRows.map(r => parseFloat(r.dataset.current)).filter(v => !isNaN(v));
+                            const max = Math.max(...allValues);
+                            const min = Math.min(...allValues);
+                            const range = max - min;
+                            const percent = range > 0 ? ((value - min) / range) * 100 : 50;
+                            
+                            // Apply gradient from cream (low) to blue (high)
+                            let bgColor;
+                            if (percent <= 20) bgColor = '#DADFCE';  // Cream
+                            else if (percent <= 40) bgColor = '#E8F4FF';  // Very light blue
+                            else if (percent <= 60) bgColor = '#C6E4FF';  // Light blue  
+                            else if (percent <= 80) bgColor = '#8CCFFF';  // Medium blue
+                            else bgColor = '#0BB4FF';  // Full blue
+                            
+                            td.style.backgroundColor = bgColor;
+                            td.style.color = (bgColor === '#0BB4FF' || bgColor === '#8CCFFF') ? '#F6F7F3' : '#3D3733';
+                        }
+                    }
+                });
+            } else if (column !== 'metro') {
+                // Color the change column that's being sorted
+                allRows.forEach(row => {
+                    const value = parseFloat(row.dataset[column]) || 0;
+                    if (value !== 0) {
+                        const td = row.querySelector('.change-' + column);
+                        if (td) {
+                            const bgColor = getColorForChange(value);
+                            if (bgColor) {
+                                td.style.backgroundColor = bgColor;
+                                td.style.color = getTextColor(bgColor);
+                            }
+                        }
+                    }
+                });
+            }
+            
+            // Re-render the table with filtered rows
+            filterTable();
+        }
+        
+        // Get color for change value
+        function getColorForChange(val) {
+            if (val <= -5) return '#3D3733';
+            if (val <= -2) return '#A09B95';
+            if (val <= 0) return '#DADFCE';
+            if (val <= 2) return '#C6E4FF';
+            if (val <= 5) return '#8CCFFF';
+            return '#0BB4FF';
+        }
+        
+        // Get text color for background
+        function getTextColor(bgColor) {
+            return (bgColor === '#3D3733' || bgColor === '#6B635C') ? '#F6F7F3' : '#3D3733';
+        }
+        
+        // Calculate median of visible rows
+        function calculateMedians() {
+            const tbody = document.querySelector('#rankingsTable tbody');
+            const visibleRows = Array.from(tbody.querySelectorAll('tr'));
+            
+            if (visibleRows.length === 0) return;
+            
+            // Calculate median for each column
+            const columns = ['current', 'month1', 'month3', 'month6', 'year1', 'year3'];
+            
+            columns.forEach(col => {
+                const values = visibleRows
+                    .map(row => {
+                        const val = row.dataset[col];
+                        return val !== 'null' ? parseFloat(val) : null;
+                    })
+                    .filter(v => v !== null && !isNaN(v))
+                    .sort((a, b) => a - b);
+                
+                if (values.length > 0) {
+                    const median = values.length % 2 === 0
+                        ? (values[values.length / 2 - 1] + values[values.length / 2]) / 2
+                        : values[Math.floor(values.length / 2)];
+                    
+                    // Format the median value
+                    let formatted;
+                    if (col === 'current') {
+                        // Format based on metric type
+                        const metricType = 'currency';
+                        const multiplier = 1;
+                        const displayVal = median * multiplier;
+                        
+                        if (metricType === 'currency') {
+                            if (displayVal >= 1000000) {
+                                formatted = '$' + (displayVal / 1000000).toFixed(1) + 'M';
+                            } else if (displayVal >= 1000) {
+                                formatted = '$' + Math.round(displayVal / 1000) + 'K';
+                            } else {
+                                formatted = '$' + Math.round(displayVal);
+                            }
+                        } else if (metricType === 'percent') {
+                            formatted = displayVal.toFixed(1) + '%';
+                        } else {
+                            formatted = displayVal.toFixed(1);
+                        }
+                    } else {
+                        // Change columns - show as percentage
+                        formatted = (median >= 0 ? '+' : '') + median.toFixed(1) + '%';
+                    }
+                    
+                    document.getElementById('median-' + col).textContent = formatted;
+                } else {
+                    document.getElementById('median-' + col).textContent = '—';
+                }
+            });
+        }
+        
+        // Filter table by market size and search
+        function filterTable() {
+            const filter = parseFloat(document.getElementById('marketFilter').value);
+            const searchTerm = document.getElementById('searchBox').value.toLowerCase();
+            const tbody = document.querySelector('#rankingsTable tbody');
+            tbody.innerHTML = '';
+            
+            let rank = 1;
+            allRows.forEach(row => {
+                const percentile = parseFloat(row.dataset.percentile);
+                const metroName = row.dataset.metro;
+                const matchesSearch = !searchTerm || metroName.includes(searchTerm);
+                
+                if (percentile <= filter && matchesSearch) {
+                    row.querySelector('.rank').textContent = rank++;
+                    tbody.appendChild(row);
+                }
+            });
+            
+            // Update medians for visible rows
+            calculateMedians();
+            
+            // Update summary based on selected filter
+            const summaryText = marketSummaries[filter] || marketSummaries['100'];
+            document.getElementById('summaryText').textContent = summaryText;
+        }
+        
+        // Search function
+        function searchTable() {
+            filterTable();  // Reuse filter function which now handles search too
+        }
+        
+        // Toggle summary box
+        function toggleSummary() {
+            const content = document.getElementById('summaryContent');
+            const arrow = document.getElementById('summaryArrow');
+            
+            if (content.classList.contains('expanded')) {
+                content.classList.remove('expanded');
+                arrow.style.transform = 'rotate(0deg)';
+            } else {
+                content.classList.add('expanded');
+                arrow.style.transform = 'rotate(180deg)';
+            }
+        }
+    </script>
+</body>
+</html>

@@ -427,17 +427,20 @@ def generate_metric_summary(rankings_data, metric_key, metric_info, segment_name
     
     if trending_regions:
         trending_regions.sort(key=lambda x: x[1], reverse=True)
-        region_text = trending_regions[0][0]
-        change = trending_regions[0][1]
-        summary_parts.append(f"The {region_text} is showing strong growth with a median {change:.1f}% increase over the past 3 months.")
+        # Find first non-Other region
+        for region_text, change in trending_regions:
+            if region_text != 'Other':
+                summary_parts.append(f"The {region_text} is showing strong growth with a median {change:.1f}% increase over the past 3 months.")
+                break
     
     if declining_regions:
         declining_regions.sort(key=lambda x: x[1])
-        region_text = declining_regions[0][0]
-        # Skip "Other" region as it's not meaningful
-        if region_text != 'Other':
-            change = abs(declining_regions[0][1])
-            summary_parts.append(f"The {region_text} has seen declines, with a median {change:.1f}% decrease over 3 months.")
+        # Find first non-Other region
+        for region_text, change_val in declining_regions:
+            if region_text != 'Other':
+                change = abs(change_val)
+                summary_parts.append(f"The {region_text} has seen declines, with a median {change:.1f}% decrease over 3 months.")
+                break
     
     # State-specific notable changes
     if state_trends:

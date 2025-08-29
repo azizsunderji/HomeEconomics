@@ -1,0 +1,1325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Median Sale Price - Metro Rankings | Home Economics</title>
+    <style>
+        @font-face {
+            font-family: 'Oracle';
+            src: url('/fonts/Oracle-Regular.woff2') format('woff2'),
+                 url('/fonts/Oracle-Regular.woff') format('woff');
+            font-weight: normal;
+        }
+        
+        @font-face {
+            font-family: 'Oracle';
+            src: url('/fonts/Oracle-Bold.woff2') format('woff2'),
+                 url('/fonts/Oracle-Bold.woff') format('woff');
+            font-weight: bold;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Oracle', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background-color: #F6F7F3;
+            color: #3D3733;
+            line-height: 1.6;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            font-size: 24px;
+            font-weight: normal;
+            margin-bottom: 20px;
+            letter-spacing: -0.5px;
+        }
+        
+        .highlight {
+            color: #0BB4FF;
+        }
+        
+        .controls {
+            margin-bottom: 30px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            align-items: center;
+        }
+        
+        .metric-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        
+        .metric-button {
+            padding: 8px 16px;
+            background: transparent;
+            border: 1px solid #DADFCE;
+            color: #3D3733;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 14px;
+            transition: all 0.2s;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .metric-button:hover {
+            background: #DADFCE;
+        }
+        
+        .metric-button.active {
+            background: #0BB4FF;
+            border-color: #0BB4FF;
+            color: #F6F7F3;
+        }
+        
+        .filters {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            margin-left: auto;
+        }
+        
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .filter-label {
+            font-size: 14px;
+            color: #6B635C;
+        }
+        
+        select {
+            padding: 6px 12px;
+            border: 1px solid #DADFCE;
+            background: #F6F7F3;
+            font-family: inherit;
+            font-size: 14px;
+            color: #3D3733;
+            cursor: pointer;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        th {
+            text-align: left;
+            padding: 12px;
+            border-bottom: 1px solid #DADFCE;
+            font-weight: normal;
+            font-size: 14px;
+            color: #6B635C;
+        }
+        
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #F0F0EC;
+            font-size: 15px;
+        }
+        
+        tr:hover {
+            background: rgba(218, 223, 206, 0.2);
+        }
+        
+        .rank {
+            width: 60px;
+            color: #6B635C;
+        }
+        
+        .metro-name {
+            font-weight: 500;
+        }
+        
+        .metro-name a {
+            color: inherit;
+            text-decoration: none;
+        }
+        
+        .metro-name a:hover {
+            color: #0BB4FF;
+        }
+        
+        .value {
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+        }
+        
+        .change {
+            text-align: right;
+            padding: 8px 12px;
+            font-variant-numeric: tabular-nums;
+            font-size: 14px;
+        }
+        
+        .metadata {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #DADFCE;
+            font-size: 13px;
+            color: #6B635C;
+        }
+        
+        @media (max-width: 768px) {
+            .controls {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .filters {
+                margin-left: 0;
+                flex-direction: column;
+                align-items: flex-start;
+                width: 100%;
+            }
+            
+            table {
+                font-size: 14px;
+            }
+            
+            th, td {
+                padding: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1><span class="highlight">MEDIAN SALE PRICE</span></h1>
+    
+    <div class="controls">
+        <div class="metric-buttons">
+            <a href="median_sale_price.html" class="metric-button active">Price</a>
+            <a href="active_listings.html" class="metric-button ">Listings</a>
+            <a href="weeks_supply.html" class="metric-button ">Supply</a>
+            <a href="homes_sold.html" class="metric-button ">Sold</a>
+            <a href="new_listings.html" class="metric-button ">New</a>
+            <a href="median_days_on_market.html" class="metric-button ">DOM</a>
+            <a href="pending_sales.html" class="metric-button ">Pending</a>
+            <a href="off_market_in_2_weeks.html" class="metric-button ">2 Weeks</a>
+            <a href="median_days_to_close.html" class="metric-button ">Close</a>
+            <a href="sale_to_list_ratio.html" class="metric-button ">Ratio</a>
+            <a href="pct_listings_w__price_drops.html" class="metric-button ">Drops</a>
+            <a href="age_of_inventory.html" class="metric-button ">Age</a>
+        </div>
+        
+        <div class="filters">
+            <div class="filter-group">
+                <span class="filter-label">Sort by:</span>
+                <select id="sortPeriod" onchange="sortTable()">
+                    <option value="current">Current Value</option>
+                    <option value="1month" selected>1 Month Change</option>
+                    <option value="3month">3 Month Change</option>
+                    <option value="6month">6 Month Change</option>
+                    <option value="1year">1 Year Change</option>
+                    <option value="3year">3 Year Change</option>
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <span class="filter-label">Filter:</span>
+                <select id="marketSize" onchange="filterTable()">
+                    <option value="top10">Large Markets (Top 10%)</option>
+                    <option value="top25" selected>Major Markets (Top 25%)</option>
+                    <option value="top50">Mid-Size (Top 50%)</option>
+                    <option value="all">All Markets</option>
+                </select>
+            </div>
+        </div>
+    </div>
+    
+    <table id="rankingsTable">
+        <thead>
+            <tr>
+                <th class="rank">Rank</th>
+                <th>Metro Area</th>
+                <th class="value">Current Value</th>
+                <th class="change">1 Mo</th>
+                <th class="change">3 Mo</th>
+                <th class="change">6 Mo</th>
+                <th class="change">1 Yr</th>
+                <th class="change">3 Yr</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr data-rank="1" data-marketsize="97.19525350593312" data-1month="451.49999999999994" data-3month="-59.547677261514785" data-6month="0" data-1year="-71.9929919000584" data-3year="0" data-current="110300.0">
+                <td class="rank">1</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/vidalia_ga/median_sale_price.png" target="_blank">Vidalia, GA</a></td>
+                <td class="value">$110,300</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+451.5%</td>
+                <td class="change" style="background-color: #3D3733; color: #F6F7F3;">-59.5%</td>
+                <td class="change">—</td>
+                <td class="change" style="background-color: #3D3733; color: #F6F7F3;">-72.0%</td>
+                <td class="change">—</td>
+            </tr>
+            <tr data-rank="2" data-marketsize="96.11650485436893" data-1month="184.18604651162792" data-3month="317.06484641638224" data-6month="107.82312925170068" data-1year="0" data-3year="22.2" data-current="611000.0">
+                <td class="rank">2</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/ketchikan_ak/median_sale_price.png" target="_blank">Ketchikan, AK</a></td>
+                <td class="value">$611,000</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+184.2%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+317.1%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+107.8%</td>
+                <td class="change">—</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+22.2%</td>
+            </tr>
+            <tr data-rank="3" data-marketsize="83.06364617044228" data-1month="144.2789968646552" data-3month="-4.430476774704881" data-6month="-0.5741626796491134" data-1year="50.20929366359059" data-3year="13.390810869547831" data-current="283363.636363">
+                <td class="rank">3</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/eagle_pass_tx/median_sale_price.png" target="_blank">Eagle Pass, TX</a></td>
+                <td class="value">$283,364</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+144.3%</td>
+                <td class="change" style="background-color: #A09B95; color: #3D3733;">-4.4%</td>
+                <td class="change" style="background-color: #DADFCE; color: #3D3733;">-0.6%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+50.2%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+13.4%</td>
+            </tr>
+            <tr data-rank="4" data-marketsize="99.02912621359224" data-1month="131.02564102564102" data-3month="-2.32532928614017" data-6month="0" data-1year="0" data-3year="17.091047711714943" data-current="180200.0">
+                <td class="rank">4</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/grenada_ms/median_sale_price.png" target="_blank">Grenada, MS</a></td>
+                <td class="value">$180,200</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+131.0%</td>
+                <td class="change" style="background-color: #A09B95; color: #3D3733;">-2.3%</td>
+                <td class="change">—</td>
+                <td class="change">—</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+17.1%</td>
+            </tr>
+            <tr data-rank="5" data-marketsize="96.97950377562029" data-1month="108.26826826666667" data-3month="-5.342295925478553" data-6month="-3.8021855581216313" data-1year="46.16087109187001" data-3year="27.020757019780223" data-current="115588.888888">
+                <td class="rank">5</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/hope_ar/median_sale_price.png" target="_blank">Hope, AR</a></td>
+                <td class="value">$115,589</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+108.3%</td>
+                <td class="change" style="background-color: #6B635C; color: #F6F7F3;">-5.3%</td>
+                <td class="change" style="background-color: #A09B95; color: #3D3733;">-3.8%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+46.2%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+27.0%</td>
+            </tr>
+            <tr data-rank="6" data-marketsize="94.71413160733549" data-1month="108.07246376782606" data-3month="-13.771771771891897" data-6month="10.459703789036348" data-1year="158.6846846843243" data-3year="355.77777777714283" data-current="239283.333333">
+                <td class="rank">6</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/roanoke_rapids_nc/median_sale_price.png" target="_blank">Roanoke Rapids, NC</a></td>
+                <td class="value">$239,283</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+108.1%</td>
+                <td class="change" style="background-color: #3D3733; color: #F6F7F3;">-13.8%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+10.5%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+158.7%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+355.8%</td>
+            </tr>
+            <tr data-rank="7" data-marketsize="84.03451995685006" data-1month="92.5" data-3month="-13.023255813953488" data-6month="-34.385964912280706" data-1year="-36.76328502415459" data-3year="-51.05627220041129" data-current="130900.0">
+                <td class="rank">7</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/blytheville_ar/median_sale_price.png" target="_blank">Blytheville, AR</a></td>
+                <td class="value">$130,900</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+92.5%</td>
+                <td class="change" style="background-color: #3D3733; color: #F6F7F3;">-13.0%</td>
+                <td class="change" style="background-color: #3D3733; color: #F6F7F3;">-34.4%</td>
+                <td class="change" style="background-color: #3D3733; color: #F6F7F3;">-36.8%</td>
+                <td class="change" style="background-color: #3D3733; color: #F6F7F3;">-51.1%</td>
+            </tr>
+            <tr data-rank="8" data-marketsize="90.61488673139158" data-1month="87.9021879021879" data-3month="105.44966099537187" data-6month="87.8216123502364" data-1year="75.58628983764282" data-3year="42.83198653857442" data-current="365000.0">
+                <td class="rank">8</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/carroll_ia/median_sale_price.png" target="_blank">Carroll, IA</a></td>
+                <td class="value">$365,000</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+87.9%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+105.4%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+87.8%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+75.6%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+42.8%</td>
+            </tr>
+            <tr data-rank="9" data-marketsize="73.7864077669903" data-1month="83.18181818181817" data-3month="1.4889665376019139" data-6month="-10.593455352190793" data-1year="1.3148301782437086" data-3year="39.44636678200692" data-current="201500.0">
+                <td class="rank">9</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/amsterdam_ny/median_sale_price.png" target="_blank">Amsterdam, NY</a></td>
+                <td class="value">$201,500</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+83.2%</td>
+                <td class="change" style="background-color: #C6E4FF; color: #3D3733;">+1.5%</td>
+                <td class="change" style="background-color: #3D3733; color: #F6F7F3;">-10.6%</td>
+                <td class="change" style="background-color: #C6E4FF; color: #3D3733;">+1.3%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+39.4%</td>
+            </tr>
+            <tr data-rank="10" data-marketsize="70.11866235167206" data-1month="81.30081300813008" data-3month="25.497835497835496" data-6month="20.842017507294706" data-1year="37.115829925820954" data-3year="68.35197700331739" data-current="289900.0">
+                <td class="rank">10</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/ozark_al/median_sale_price.png" target="_blank">Ozark, AL</a></td>
+                <td class="value">$289,900</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+81.3%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+25.5%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+20.8%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+37.1%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+68.4%</td>
+            </tr>
+            <tr data-rank="11" data-marketsize="67.63754045307444" data-1month="68.976215098242" data-3month="37.45781556496643" data-6month="48.415029217108405" data-1year="70.06661115736887" data-3year="66.73469387755102" data-current="408500.0">
+                <td class="rank">11</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/mcminnville_tn/median_sale_price.png" target="_blank">McMinnville, TN</a></td>
+                <td class="value">$408,500</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+69.0%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+37.5%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+48.4%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+70.1%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+66.7%</td>
+            </tr>
+            <tr data-rank="12" data-marketsize="71.62891046386193" data-1month="65.81422207556508" data-3month="77.83676177836762" data-6month="44.539325842696634" data-1year="78.72385830132309" data-3year="75.43094043203142" data-current="402000.0">
+                <td class="rank">12</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/midland_mi/median_sale_price.png" target="_blank">Midland, MI</a></td>
+                <td class="value">$402,000</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+65.8%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+77.8%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+44.5%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+78.7%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+75.4%</td>
+            </tr>
+            <tr data-rank="13" data-marketsize="83.1715210355987" data-1month="63.42857142857142" data-3month="10.866141732283465" data-6month="16.73469387755102" data-1year="6.073249884098285" data-3year="33.827256775408586" data-current="286000.0">
+                <td class="rank">13</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/hastings_ne/median_sale_price.png" target="_blank">Hastings, NE</a></td>
+                <td class="value">$286,000</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+63.4%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+10.9%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+16.7%</td>
+                <td class="change" style="background-color: #52B9FF; color: #3D3733;">+6.1%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+33.8%</td>
+            </tr>
+            <tr data-rank="14" data-marketsize="93.41963322545847" data-1month="59.80550168018116" data-3month="200.9259259259259" data-6month="58.80772049841192" data-1year="62.114976929791744" data-3year="84.43204388606614" data-current="325000.0">
+                <td class="rank">14</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/liberal_ks/median_sale_price.png" target="_blank">Liberal, KS</a></td>
+                <td class="value">$325,000</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+59.8%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+200.9%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+58.8%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+62.1%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+84.4%</td>
+            </tr>
+            <tr data-rank="15" data-marketsize="97.6267529665588" data-1month="58.627450979999985" data-3month="-18.66374188815427" data-6month="-13.127177555595592" data-1year="-55.336193142090536" data-3year="10.821917808552435" data-current="134833.333333">
+                <td class="rank">15</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/greenwood_ms/median_sale_price.png" target="_blank">Greenwood, MS</a></td>
+                <td class="value">$134,833</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+58.6%</td>
+                <td class="change" style="background-color: #3D3733; color: #F6F7F3;">-18.7%</td>
+                <td class="change" style="background-color: #3D3733; color: #F6F7F3;">-13.1%</td>
+                <td class="change" style="background-color: #3D3733; color: #F6F7F3;">-55.3%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+10.8%</td>
+            </tr>
+            <tr data-rank="16" data-marketsize="64.18554476806904" data-1month="57.72558714462299" data-3month="34.10169729066676" data-6month="56.213017751734284" data-1year="127.85714285714285" data-3year="34.0265742345465" data-current="319000.0">
+                <td class="rank">16</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/ashland_oh/median_sale_price.png" target="_blank">Ashland, OH</a></td>
+                <td class="value">$319,000</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+57.7%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+34.1%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+56.2%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+127.9%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+34.0%</td>
+            </tr>
+            <tr data-rank="17" data-marketsize="76.91477885652642" data-1month="56.69650078232563" data-3month="48.059701492537314" data-6month="114.9046793760832" data-1year="10.173256330519768" data-3year="16.870876531573987" data-current="310000.0">
+                <td class="rank">17</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/malone_ny/median_sale_price.png" target="_blank">Malone, NY</a></td>
+                <td class="value">$310,000</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+56.7%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+48.1%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+114.9%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+10.2%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+16.9%</td>
+            </tr>
+            <tr data-rank="18" data-marketsize="57.17367853290183" data-1month="56.646310432366406" data-3month="-27.94709737837079" data-6month="8.345652938965149" data-1year="18.472759463310425" data-3year="24.09942145265644" data-current="256508.333333">
+                <td class="rank">18</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/chillicothe_oh/median_sale_price.png" target="_blank">Chillicothe, OH</a></td>
+                <td class="value">$256,508</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+56.6%</td>
+                <td class="change" style="background-color: #3D3733; color: #F6F7F3;">-27.9%</td>
+                <td class="change" style="background-color: #52B9FF; color: #3D3733;">+8.3%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+18.5%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+24.1%</td>
+            </tr>
+            <tr data-rank="19" data-marketsize="78.64077669902913" data-1month="54.166666666666664" data-3month="19.431891542930924" data-6month="9.467455621301776" data-1year="37.100509495136635" data-3year="45.40691010392222" data-current="185000.0">
+                <td class="rank">19</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/taylorville_il/median_sale_price.png" target="_blank">Taylorville, IL</a></td>
+                <td class="value">$185,000</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+54.2%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+19.4%</td>
+                <td class="change" style="background-color: #52B9FF; color: #3D3733;">+9.5%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+37.1%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+45.4%</td>
+            </tr>
+            <tr data-rank="20" data-marketsize="92.4487594390507" data-1month="51.69117647058824" data-3month="2.128712871287129" data-6month="-33.47307320219284" data-1year="21.068075117370892" data-3year="1.9268774703557312" data-current="128937.5">
+                <td class="rank">20</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/camden_ar/median_sale_price.png" target="_blank">Camden, AR</a></td>
+                <td class="value">$128,938</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+51.7%</td>
+                <td class="change" style="background-color: #8CCFFF; color: #3D3733;">+2.1%</td>
+                <td class="change" style="background-color: #3D3733; color: #F6F7F3;">-33.5%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+21.1%</td>
+                <td class="change" style="background-color: #C6E4FF; color: #3D3733;">+1.9%</td>
+            </tr>
+            <tr data-rank="21" data-marketsize="72.16828478964402" data-1month="48.867924528301884" data-3month="27.309398951189994" data-6month="-8.255813953488373" data-1year="29.769736842105267" data-3year="27.752590673575128" data-current="197250.0">
+                <td class="rank">21</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/duncan_ok/median_sale_price.png" target="_blank">Duncan, OK</a></td>
+                <td class="value">$197,250</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+48.9%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+27.3%</td>
+                <td class="change" style="background-color: #6B635C; color: #F6F7F3;">-8.3%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+29.8%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+27.8%</td>
+            </tr>
+            <tr data-rank="22" data-marketsize="92.66450916936354" data-1month="48.74415129054262" data-3month="63.44652406417113" data-6month="63.249396967608554" data-1year="43.42681015607354" data-3year="24.171922655770686" data-current="236874.875">
+                <td class="rank">22</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/albany_ga/median_sale_price.png" target="_blank">Albany, GA</a></td>
+                <td class="value">$236,875</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+48.7%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+63.4%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+63.2%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+43.4%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+24.2%</td>
+            </tr>
+            <tr data-rank="23" data-marketsize="78.85652642934197" data-1month="45.114447452621214" data-3month="35.82123934577287" data-6month="64.14253897550111" data-1year="35.41434124230256" data-3year="37.66154685255645" data-current="737000.0">
+                <td class="rank">23</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/fredericksburg_tx/median_sale_price.png" target="_blank">Fredericksburg, TX</a></td>
+                <td class="value">$737,000</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+45.1%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+35.8%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+64.1%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+35.4%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+37.7%</td>
+            </tr>
+            <tr data-rank="24" data-marketsize="94.92988133764833" data-1month="44.9372609541703" data-3month="84.36326391259816" data-6month="59.60591133030086" data-1year="72.29707021250101" data-3year="222.9665071770335" data-current="675000.0">
+                <td class="rank">24</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/española_nm/median_sale_price.png" target="_blank">Española, NM</a></td>
+                <td class="value">$675,000</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+44.9%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+84.4%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+59.6%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+72.3%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+223.0%</td>
+            </tr>
+            <tr data-rank="25" data-marketsize="80.36677454153183" data-1month="44.50724637652173" data-3month="-10.648117033133953" data-6month="58.2698412695238" data-1year="74.92982456105261" data-3year="3.59071537934086" data-current="166183.333333">
+                <td class="rank">25</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/vincennes_in/median_sale_price.png" target="_blank">Vincennes, IN</a></td>
+                <td class="value">$166,183</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+44.5%</td>
+                <td class="change" style="background-color: #3D3733; color: #F6F7F3;">-10.6%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+58.3%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+74.9%</td>
+                <td class="change" style="background-color: #8CCFFF; color: #3D3733;">+3.6%</td>
+            </tr>
+            <tr data-rank="26" data-marketsize="88.24163969795038" data-1month="42.28208765771925" data-3month="39.69469754113523" data-6month="64.90753399054267" data-1year="81.81818181818183" data-3year="48.78713639971016" data-current="269500.0">
+                <td class="rank">26</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/plainview_tx/median_sale_price.png" target="_blank">Plainview, TX</a></td>
+                <td class="value">$269,500</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+42.3%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+39.7%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+64.9%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+81.8%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+48.8%</td>
+            </tr>
+            <tr data-rank="27" data-marketsize="89.75188781014023" data-1month="41.74047235641439" data-3month="51.65111270638909" data-6month="34.654201636493035" data-1year="69.27083333333334" data-3year="10.966171733046547" data-current="264062.5">
+                <td class="rank">27</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/summerville_ga/median_sale_price.png" target="_blank">Summerville, GA</a></td>
+                <td class="value">$264,062</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+41.7%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+51.7%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+34.7%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+69.3%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+11.0%</td>
+            </tr>
+            <tr data-rank="28" data-marketsize="48.8673139158576" data-1month="40.966984048612304" data-3month="46.09765474817378" data-6month="90.0" data-1year="49.13657770800628" data-3year="38.00116211504939" data-current="475000.0">
+                <td class="rank">28</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/clearlake_ca/median_sale_price.png" target="_blank">Clearlake, CA</a></td>
+                <td class="value">$475,000</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+41.0%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+46.1%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+90.0%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+49.1%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+38.0%</td>
+            </tr>
+            <tr data-rank="29" data-marketsize="72.92340884573895" data-1month="40.23880597014926" data-3month="14.3761412051126" data-6month="-4.705882352941177" data-1year="6.530612244897959" data-3year="10.632285411515365" data-current="234900.0">
+                <td class="rank">29</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/glasgow_ky/median_sale_price.png" target="_blank">Glasgow, KY</a></td>
+                <td class="value">$234,900</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+40.2%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+14.4%</td>
+                <td class="change" style="background-color: #A09B95; color: #3D3733;">-4.7%</td>
+                <td class="change" style="background-color: #52B9FF; color: #3D3733;">+6.5%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+10.6%</td>
+            </tr>
+            <tr data-rank="30" data-marketsize="62.13592233009709" data-1month="39.60179094951427" data-3month="45.241317095173656" data-6month="28.697042366107112" data-1year="64.28571428571429" data-3year="22.782323718006957" data-current="402500.0">
+                <td class="rank">30</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/willmar_mn/median_sale_price.png" target="_blank">Willmar, MN</a></td>
+                <td class="value">$402,500</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+39.6%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+45.2%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+28.7%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+64.3%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+22.8%</td>
+            </tr>
+            <tr data-rank="31" data-marketsize="68.06903991370011" data-1month="38.921622441185164" data-3month="38.4945655019007" data-6month="31.130434782608695" data-1year="68.25141015331091" data-3year="58.873882442829654" data-current="452400.0">
+                <td class="rank">31</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/dickinson_nd/median_sale_price.png" target="_blank">Dickinson, ND</a></td>
+                <td class="value">$452,400</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+38.9%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+38.5%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+31.1%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+68.3%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+58.9%</td>
+            </tr>
+            <tr data-rank="32" data-marketsize="55.87918015102481" data-1month="38.48665768460961" data-3month="40.45780378848218" data-6month="54.21431683742024" data-1year="40.99002154967313" data-3year="36.1709289841052" data-current="507000.0">
+                <td class="rank">32</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/kerrville_tx/median_sale_price.png" target="_blank">Kerrville, TX</a></td>
+                <td class="value">$507,000</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+38.5%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+40.5%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+54.2%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+41.0%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+36.2%</td>
+            </tr>
+            <tr data-rank="33" data-marketsize="70.76591154261057" data-1month="38.36533918810367" data-3month="86.97611536728256" data-6month="32.317538173043694" data-1year="27.543805717798953" data-3year="10.639999999999999" data-current="414900.0">
+                <td class="rank">33</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/watertown_sd/median_sale_price.png" target="_blank">Watertown, SD</a></td>
+                <td class="value">$414,900</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+38.4%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+87.0%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+32.3%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+27.5%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+10.6%</td>
+            </tr>
+            <tr data-rank="34" data-marketsize="81.12189859762675" data-1month="37.56613756613756" data-3month="-8.318144852923352" data-6month="4.0" data-1year="22.93144208037825" data-3year="14.13311872438427" data-current="260000.0">
+                <td class="rank">34</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/greensburg_in/median_sale_price.png" target="_blank">Greensburg, IN</a></td>
+                <td class="value">$260,000</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+37.6%</td>
+                <td class="change" style="background-color: #6B635C; color: #F6F7F3;">-8.3%</td>
+                <td class="change" style="background-color: #8CCFFF; color: #3D3733;">+4.0%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+22.9%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+14.1%</td>
+            </tr>
+            <tr data-rank="35" data-marketsize="85.11326860841424" data-1month="35.738397274843166" data-3month="6.206633165829146" data-6month="-0.6621545403271292" data-1year="-15.653363905448217" data-3year="6.349144582640317" data-current="264189.0">
+                <td class="rank">35</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/yankton_sd/median_sale_price.png" target="_blank">Yankton, SD</a></td>
+                <td class="value">$264,189</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+35.7%</td>
+                <td class="change" style="background-color: #52B9FF; color: #3D3733;">+6.2%</td>
+                <td class="change" style="background-color: #DADFCE; color: #3D3733;">-0.7%</td>
+                <td class="change" style="background-color: #3D3733; color: #F6F7F3;">-15.7%</td>
+                <td class="change" style="background-color: #52B9FF; color: #3D3733;">+6.3%</td>
+            </tr>
+            <tr data-rank="36" data-marketsize="48.75943905070119" data-1month="35.569531795946894" data-3month="29.333333333333332" data-6month="20.693677579905128" data-1year="44.0387716738451" data-3year="14.47650846671695" data-current="194000.0">
+                <td class="rank">36</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/elmira_ny/median_sale_price.png" target="_blank">Elmira, NY</a></td>
+                <td class="value">$194,000</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+35.6%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+29.3%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+20.7%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+44.0%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+14.5%</td>
+            </tr>
+            <tr data-rank="37" data-marketsize="36.24595469255664" data-1month="34.167831318241085" data-3month="37.33905579399141" data-6month="39.42034476226558" data-1year="26.774149097423177" data-3year="43.27316898447355" data-current="460000.0">
+                <td class="rank">37</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/holland_mi/median_sale_price.png" target="_blank">Holland, MI</a></td>
+                <td class="value">$460,000</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+34.2%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+37.3%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+39.4%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+26.8%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+43.3%</td>
+            </tr>
+            <tr data-rank="38" data-marketsize="65.80366774541531" data-1month="33.66203703703704" data-3month="1.8018335684062061" data-6month="4.540681464315458" data-1year="4.949835207648223" data-3year="9.070646014355875" data-current="360887.5">
+                <td class="rank">38</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/vernal_ut/median_sale_price.png" target="_blank">Vernal, UT</a></td>
+                <td class="value">$360,888</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+33.7%</td>
+                <td class="change" style="background-color: #C6E4FF; color: #3D3733;">+1.8%</td>
+                <td class="change" style="background-color: #8CCFFF; color: #3D3733;">+4.5%</td>
+                <td class="change" style="background-color: #8CCFFF; color: #3D3733;">+4.9%</td>
+                <td class="change" style="background-color: #52B9FF; color: #3D3733;">+9.1%</td>
+            </tr>
+            <tr data-rank="39" data-marketsize="65.69579288025889" data-1month="33.58268768367619" data-3month="30.34410844629823" data-6month="33.03533418475947" data-1year="50.23135628868457" data-3year="42.25560487083191" data-current="312500.0">
+                <td class="rank">39</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/seymour_in/median_sale_price.png" target="_blank">Seymour, IN</a></td>
+                <td class="value">$312,500</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+33.6%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+30.3%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+33.0%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+50.2%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+42.3%</td>
+            </tr>
+            <tr data-rank="40" data-marketsize="87.48651564185545" data-1month="33.56888888853334" data-3month="-21.60223300485209" data-6month="-21.736979166875" data-1year="-13.105203047751225" data-3year="-19.53681392257028" data-current="250441.666666">
+                <td class="rank">40</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/picayune_ms/median_sale_price.png" target="_blank">Picayune, MS</a></td>
+                <td class="value">$250,442</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+33.6%</td>
+                <td class="change" style="background-color: #3D3733; color: #F6F7F3;">-21.6%</td>
+                <td class="change" style="background-color: #3D3733; color: #F6F7F3;">-21.7%</td>
+                <td class="change" style="background-color: #3D3733; color: #F6F7F3;">-13.1%</td>
+                <td class="change" style="background-color: #3D3733; color: #F6F7F3;">-19.5%</td>
+            </tr>
+            <tr data-rank="41" data-marketsize="80.7982740021575" data-1month="32.19075246857134" data-3month="65.5949416062608" data-6month="-40.67489114658926" data-1year="16.99463327370304" data-3year="7.283464566929133" data-current="204375.0">
+                <td class="rank">41</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/altus_ok/median_sale_price.png" target="_blank">Altus, OK</a></td>
+                <td class="value">$204,375</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+32.2%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+65.6%</td>
+                <td class="change" style="background-color: #3D3733; color: #F6F7F3;">-40.7%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+17.0%</td>
+                <td class="change" style="background-color: #52B9FF; color: #3D3733;">+7.3%</td>
+            </tr>
+            <tr data-rank="42" data-marketsize="93.09600862998921" data-1month="32.123559995922115" data-3month="18.52738701011379" data-6month="12.460951058660187" data-1year="19.25577769397973" data-3year="62.62792448684553" data-current="324000.0">
+                <td class="rank">42</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/gallup_nm/median_sale_price.png" target="_blank">Gallup, NM</a></td>
+                <td class="value">$324,000</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+32.1%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+18.5%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+12.5%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+19.3%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+62.6%</td>
+            </tr>
+            <tr data-rank="43" data-marketsize="67.20604099244875" data-1month="32.105654761583004" data-3month="-11.128923160389618" data-6month="10.892511398143496" data-1year="-2.8406754795328237" data-3year="6.300161812038825" data-current="273722.916666">
+                <td class="rank">43</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/aberdeen_sd/median_sale_price.png" target="_blank">Aberdeen, SD</a></td>
+                <td class="value">$273,723</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+32.1%</td>
+                <td class="change" style="background-color: #3D3733; color: #F6F7F3;">-11.1%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+10.9%</td>
+                <td class="change" style="background-color: #A09B95; color: #3D3733;">-2.8%</td>
+                <td class="change" style="background-color: #52B9FF; color: #3D3733;">+6.3%</td>
+            </tr>
+            <tr data-rank="44" data-marketsize="83.7108953613808" data-1month="31.91666666588236" data-3month="1.508807664139418" data-6month="14.436979077783423" data-1year="273.7638888866667" data-3year="4.889599126630336" data-current="112129.166666">
+                <td class="rank">44</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/macomb_il/median_sale_price.png" target="_blank">Macomb, IL</a></td>
+                <td class="value">$112,129</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+31.9%</td>
+                <td class="change" style="background-color: #C6E4FF; color: #3D3733;">+1.5%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+14.4%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+273.8%</td>
+                <td class="change" style="background-color: #8CCFFF; color: #3D3733;">+4.9%</td>
+            </tr>
+            <tr data-rank="45" data-marketsize="49.083063646170444" data-1month="31.692757187373555" data-3month="27.181563976472855" data-6month="20.434623813002194" data-1year="24.07868895763416" data-3year="43.287592910234416" data-current="313262.5">
+                <td class="rank">45</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/wilson_nc/median_sale_price.png" target="_blank">Wilson, NC</a></td>
+                <td class="value">$313,262</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+31.7%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+27.2%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+20.4%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+24.1%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+43.3%</td>
+            </tr>
+            <tr data-rank="46" data-marketsize="91.2621359223301" data-1month="31.182845498332718" data-3month="42.71441045218677" data-6month="31.805490926012098" data-1year="54.04067870350229" data-3year="66.67490479082225" data-current="354062.5">
+                <td class="rank">46</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/levelland_tx/median_sale_price.png" target="_blank">Levelland, TX</a></td>
+                <td class="value">$354,062</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+31.2%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+42.7%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+31.8%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+54.0%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+66.7%</td>
+            </tr>
+            <tr data-rank="47" data-marketsize="78.5329018338727" data-1month="30.62130177514793" data-3month="45.015601905074725" data-6month="10.72794532572575" data-1year="25.521228203660044" data-3year="41.28" data-current="220750.0">
+                <td class="rank">47</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/coshocton_oh/median_sale_price.png" target="_blank">Coshocton, OH</a></td>
+                <td class="value">$220,750</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+30.6%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+45.0%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+10.7%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+25.5%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+41.3%</td>
+            </tr>
+            <tr data-rank="48" data-marketsize="50.48543689320388" data-1month="30.620689655172413" data-3month="6.885793202567582" data-6month="7.456839434220449" data-1year="4.258076354277938" data-3year="0.7513797459937496" data-current="378800.0">
+                <td class="rank">48</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/faribault_mn/median_sale_price.png" target="_blank">Faribault, MN</a></td>
+                <td class="value">$378,800</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+30.6%</td>
+                <td class="change" style="background-color: #52B9FF; color: #3D3733;">+6.9%</td>
+                <td class="change" style="background-color: #52B9FF; color: #3D3733;">+7.5%</td>
+                <td class="change" style="background-color: #8CCFFF; color: #3D3733;">+4.3%</td>
+                <td class="change" style="background-color: #C6E4FF; color: #3D3733;">+0.8%</td>
+            </tr>
+            <tr data-rank="49" data-marketsize="65.58791801510247" data-1month="29.925708842765726" data-3month="4.219563473795613" data-6month="-27.76315789473684" data-1year="266.0" data-3year="41.95216548157725" data-current="274500.0">
+                <td class="rank">49</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/mcalester_ok/median_sale_price.png" target="_blank">McAlester, OK</a></td>
+                <td class="value">$274,500</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+29.9%</td>
+                <td class="change" style="background-color: #8CCFFF; color: #3D3733;">+4.2%</td>
+                <td class="change" style="background-color: #3D3733; color: #F6F7F3;">-27.8%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+266.0%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+42.0%</td>
+            </tr>
+            <tr data-rank="50" data-marketsize="63.21467098166128" data-1month="29.03225806451613" data-3month="25.837669406465658" data-6month="54.69613259668509" data-1year="37.19387708827729" data-3year="58.94039735099338" data-current="315000.0">
+                <td class="rank">50</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/orangeburg_sc/median_sale_price.png" target="_blank">Orangeburg, SC</a></td>
+                <td class="value">$315,000</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+29.0%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+25.8%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+54.7%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+37.2%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+58.9%</td>
+            </tr>
+            <tr data-rank="51" data-marketsize="96.65587918015102" data-1month="28.968708031157668" data-3month="-6.70718580279729" data-6month="13.356398851681869" data-1year="14.683346270973907" data-3year="-10.978539780385297" data-current="240075.25">
+                <td class="rank">51</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/troy_al/median_sale_price.png" target="_blank">Troy, AL</a></td>
+                <td class="value">$240,075</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+29.0%</td>
+                <td class="change" style="background-color: #6B635C; color: #F6F7F3;">-6.7%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+13.4%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+14.7%</td>
+                <td class="change" style="background-color: #3D3733; color: #F6F7F3;">-11.0%</td>
+            </tr>
+            <tr data-rank="52" data-marketsize="62.351672060409925" data-1month="28.72027080516767" data-3month="-3.1746031746031744" data-6month="33.955531155640955" data-1year="41.35845085069277" data-3year="25.719192786819622" data-current="244000.0">
+                <td class="rank">52</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/batesville_ar/median_sale_price.png" target="_blank">Batesville, AR</a></td>
+                <td class="value">$244,000</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+28.7%</td>
+                <td class="change" style="background-color: #A09B95; color: #3D3733;">-3.2%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+34.0%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+41.4%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+25.7%</td>
+            </tr>
+            <tr data-rank="53" data-marketsize="91.90938511326861" data-1month="28.497191748896316" data-3month="-20.930232558139537" data-6month="41.42931422985302" data-1year="22.636353700340457" data-3year="43.258426966292134" data-current="255000.0">
+                <td class="rank">53</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/fairfield_ia/median_sale_price.png" target="_blank">Fairfield, IA</a></td>
+                <td class="value">$255,000</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+28.5%</td>
+                <td class="change" style="background-color: #3D3733; color: #F6F7F3;">-20.9%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+41.4%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+22.6%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+43.3%</td>
+            </tr>
+            <tr data-rank="54" data-marketsize="24.487594390507013" data-1month="28.46427649844402" data-3month="47.5490663006054" data-6month="26.200726612170754" data-1year="25.57944483558634" data-3year="42.78997807491935" data-current="1736837.5">
+                <td class="rank">54</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/heber_ut/median_sale_price.png" target="_blank">Heber, UT</a></td>
+                <td class="value">$1,736,838</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+28.5%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+47.5%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+26.2%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+25.6%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+42.8%</td>
+            </tr>
+            <tr data-rank="55" data-marketsize="95.361380798274" data-1month="27.360618756042538" data-3month="11.123608143066022" data-6month="-3.79122305882081" data-1year="-77.40154346543214" data-3year="119.06873614190687" data-current="247000.0">
+                <td class="rank">55</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/fitzgerald_ga/median_sale_price.png" target="_blank">Fitzgerald, GA</a></td>
+                <td class="value">$247,000</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+27.4%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+11.1%</td>
+                <td class="change" style="background-color: #A09B95; color: #3D3733;">-3.8%</td>
+                <td class="change" style="background-color: #3D3733; color: #F6F7F3;">-77.4%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+119.1%</td>
+            </tr>
+            <tr data-rank="56" data-marketsize="87.59439050701187" data-1month="27.209561650342785" data-3month="80.12512996370137" data-6month="78.99626147048828" data-1year="41.34907854714618" data-3year="-0.33641715693973795" data-current="197500.0">
+                <td class="rank">56</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/pampa_tx/median_sale_price.png" target="_blank">Pampa, TX</a></td>
+                <td class="value">$197,500</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+27.2%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+80.1%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+79.0%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+41.3%</td>
+                <td class="change" style="background-color: #DADFCE; color: #3D3733;">-0.3%</td>
+            </tr>
+            <tr data-rank="57" data-marketsize="25.24271844660194" data-1month="27.094409964632483" data-3month="26.2254386336117" data-6month="32.28971447516627" data-1year="35.41649034311153" data-3year="39.6128071486955" data-current="250000.0">
+                <td class="rank">57</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/huntington_wv/median_sale_price.png" target="_blank">Huntington, WV</a></td>
+                <td class="value">$250,000</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+27.1%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+26.2%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+32.3%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+35.4%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+39.6%</td>
+            </tr>
+            <tr data-rank="58" data-marketsize="85.76051779935275" data-1month="27.054421768163266" data-3month="75.8662900180791" data-6month="7.806863112719703" data-1year="-14.482600732967029" data-3year="-10.458995330503328" data-current="155641.666666">
+                <td class="rank">58</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/big_stone_gap_va/median_sale_price.png" target="_blank">Big Stone Gap, VA</a></td>
+                <td class="value">$155,642</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+27.1%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+75.9%</td>
+                <td class="change" style="background-color: #52B9FF; color: #3D3733;">+7.8%</td>
+                <td class="change" style="background-color: #3D3733; color: #F6F7F3;">-14.5%</td>
+                <td class="change" style="background-color: #3D3733; color: #F6F7F3;">-10.5%</td>
+            </tr>
+            <tr data-rank="59" data-marketsize="74.64940668824164" data-1month="26.785563350734154" data-3month="36.94878115584771" data-6month="18.19539274396339" data-1year="47.02206801240866" data-3year="23.076923076923077" data-current="250000.0">
+                <td class="rank">59</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/cortland_ny/median_sale_price.png" target="_blank">Cortland, NY</a></td>
+                <td class="value">$250,000</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+26.8%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+36.9%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+18.2%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+47.0%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+23.1%</td>
+            </tr>
+            <tr data-rank="60" data-marketsize="95.46925566343042" data-1month="26.748971193713704" data-3month="12.084543770158064" data-6month="8.606511957798613" data-1year="120.72072072072073" data-3year="235.84647018505825" data-current="245000.0">
+                <td class="rank">60</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/middlesborough_ky/median_sale_price.png" target="_blank">Middlesborough, KY</a></td>
+                <td class="value">$245,000</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+26.7%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+12.1%</td>
+                <td class="change" style="background-color: #52B9FF; color: #3D3733;">+8.6%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+120.7%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+235.8%</td>
+            </tr>
+            <tr data-rank="61" data-marketsize="33.872707659115434" data-1month="26.285814730536224" data-3month="30.22200310349092" data-6month="40.24361677207777" data-1year="24.100112675727843" data-3year="31.165929720957465" data-current="299350.0">
+                <td class="rank">61</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/dothan_al/median_sale_price.png" target="_blank">Dothan, AL</a></td>
+                <td class="value">$299,350</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+26.3%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+30.2%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+40.2%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+24.1%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+31.2%</td>
+            </tr>
+            <tr data-rank="62" data-marketsize="52.53505933117584" data-1month="26.283472625022192" data-3month="26.34057692799918" data-6month="33.489588028582695" data-1year="30.582010582010582" data-3year="22.473538710459806" data-current="617000.0">
+                <td class="rank">62</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/montrose_co/median_sale_price.png" target="_blank">Montrose, CO</a></td>
+                <td class="value">$617,000</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+26.3%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+26.3%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+33.5%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+30.6%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+22.5%</td>
+            </tr>
+            <tr data-rank="63" data-marketsize="95.25350593311758" data-1month="26.282732952279673" data-3month="1.7762766337340794" data-6month="3.696223814956909" data-1year="1.060516517936292" data-3year="64.42740384615384" data-current="213755.625">
+                <td class="rank">63</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/dumas_tx/median_sale_price.png" target="_blank">Dumas, TX</a></td>
+                <td class="value">$213,756</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+26.3%</td>
+                <td class="change" style="background-color: #C6E4FF; color: #3D3733;">+1.8%</td>
+                <td class="change" style="background-color: #8CCFFF; color: #3D3733;">+3.7%</td>
+                <td class="change" style="background-color: #C6E4FF; color: #3D3733;">+1.1%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+64.4%</td>
+            </tr>
+            <tr data-rank="64" data-marketsize="47.24919093851133" data-1month="25.985418464193273" data-3month="24.990562605662436" data-6month="67.93225991949396" data-1year="49.91488706365503" data-3year="10.594578218252588" data-current="730085.5">
+                <td class="rank">64</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/sandpoint_id/median_sale_price.png" target="_blank">Sandpoint, ID</a></td>
+                <td class="value">$730,086</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+26.0%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+25.0%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+67.9%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+49.9%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+10.6%</td>
+            </tr>
+            <tr data-rank="65" data-marketsize="64.07766990291262" data-1month="25.261380322819377" data-3month="1.9517150709214701" data-6month="21.3068828211604" data-1year="37.763242893798434" data-3year="12.410884891401455" data-current="355429.166666">
+                <td class="rank">65</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/washington_nc/median_sale_price.png" target="_blank">Washington, NC</a></td>
+                <td class="value">$355,429</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+25.3%</td>
+                <td class="change" style="background-color: #C6E4FF; color: #3D3733;">+2.0%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+21.3%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+37.8%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+12.4%</td>
+            </tr>
+            <tr data-rank="66" data-marketsize="85.86839266450917" data-1month="25.088010235049346" data-3month="47.38805970149254" data-6month="11.935011571340858" data-1year="30.70093200242652" data-3year="47.022332506203476" data-current="296250.0">
+                <td class="rank">66</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/natchitoches_la/median_sale_price.png" target="_blank">Natchitoches, LA</a></td>
+                <td class="value">$296,250</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+25.1%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+47.4%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+11.9%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+30.7%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+47.0%</td>
+            </tr>
+            <tr data-rank="67" data-marketsize="71.84466019417476" data-1month="24.570274914089346" data-3month="3.571285714285714" data-6month="-10.988459177409455" data-1year="1.3347552832170544" data-3year="2.184496124031008" data-current="362499.5">
+                <td class="rank">67</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/blackfoot_id/median_sale_price.png" target="_blank">Blackfoot, ID</a></td>
+                <td class="value">$362,500</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+24.6%</td>
+                <td class="change" style="background-color: #8CCFFF; color: #3D3733;">+3.6%</td>
+                <td class="change" style="background-color: #3D3733; color: #F6F7F3;">-11.0%</td>
+                <td class="change" style="background-color: #C6E4FF; color: #3D3733;">+1.3%</td>
+                <td class="change" style="background-color: #8CCFFF; color: #3D3733;">+2.2%</td>
+            </tr>
+            <tr data-rank="68" data-marketsize="55.44768069039914" data-1month="24.137931034482758" data-3month="27.523308427531447" data-6month="32.54786450662739" data-1year="66.1858049624928" data-3year="80.45112781954887" data-current="180000.0">
+                <td class="rank">68</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/ogdensburg_ny/median_sale_price.png" target="_blank">Ogdensburg, NY</a></td>
+                <td class="value">$180,000</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+24.1%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+27.5%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+32.5%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+66.2%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+80.5%</td>
+            </tr>
+            <tr data-rank="69" data-marketsize="63.32254584681769" data-1month="23.902719815800836" data-3month="82.41525423728814" data-6month="44.51158106747231" data-1year="37.93655879525793" data-3year="25.114797549435604" data-current="215250.0">
+                <td class="rank">69</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/poplar_bluff_mo/median_sale_price.png" target="_blank">Poplar Bluff, MO</a></td>
+                <td class="value">$215,250</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+23.9%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+82.4%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+44.5%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+37.9%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+25.1%</td>
+            </tr>
+            <tr data-rank="70" data-marketsize="70.873786407767" data-1month="23.828125" data-3month="-15.396163469557965" data-6month="-12.879178261018929" data-1year="-28.321085358959863" data-3year="-21.54436332137112" data-current="158500.0">
+                <td class="rank">70</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/madisonville_ky/median_sale_price.png" target="_blank">Madisonville, KY</a></td>
+                <td class="value">$158,500</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+23.8%</td>
+                <td class="change" style="background-color: #3D3733; color: #F6F7F3;">-15.4%</td>
+                <td class="change" style="background-color: #3D3733; color: #F6F7F3;">-12.9%</td>
+                <td class="change" style="background-color: #3D3733; color: #F6F7F3;">-28.3%</td>
+                <td class="change" style="background-color: #3D3733; color: #F6F7F3;">-21.5%</td>
+            </tr>
+            <tr data-rank="71" data-marketsize="73.57065803667746" data-1month="23.72812372812373" data-3month="90.0" data-6month="60.4179309253054" data-1year="27.73109243697479" data-3year="49.242740371634056" data-current="760000.0">
+                <td class="rank">71</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/brevard_nc/median_sale_price.png" target="_blank">Brevard, NC</a></td>
+                <td class="value">$760,000</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+23.7%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+90.0%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+60.4%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+27.7%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+49.2%</td>
+            </tr>
+            <tr data-rank="72" data-marketsize="97.84250269687163" data-1month="23.53510734199192" data-3month="1.092896174863388" data-6month="115.39804977441422" data-1year="11.876703138099105" data-3year="-13.039390805678291" data-current="185000.0">
+                <td class="rank">72</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/maysville_ky/median_sale_price.png" target="_blank">Maysville, KY</a></td>
+                <td class="value">$185,000</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+23.5%</td>
+                <td class="change" style="background-color: #C6E4FF; color: #3D3733;">+1.1%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+115.4%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+11.9%</td>
+                <td class="change" style="background-color: #3D3733; color: #F6F7F3;">-13.0%</td>
+            </tr>
+            <tr data-rank="73" data-marketsize="60.94929881337649" data-1month="23.336389535134202" data-3month="-6.955272011680315" data-6month="63.58633928571429" data-1year="-13.188012319355602" data-3year="12.105997409905644" data-current="229020.875">
+                <td class="rank">73</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/oneonta_ny/median_sale_price.png" target="_blank">Oneonta, NY</a></td>
+                <td class="value">$229,021</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+23.3%</td>
+                <td class="change" style="background-color: #6B635C; color: #F6F7F3;">-7.0%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+63.6%</td>
+                <td class="change" style="background-color: #3D3733; color: #F6F7F3;">-13.2%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+12.1%</td>
+            </tr>
+            <tr data-rank="74" data-marketsize="49.298813376483274" data-1month="23.024772377707624" data-3month="41.18484255470557" data-6month="37.396121883656505" data-1year="24.66944896857494" data-3year="13.209700427960058" data-current="248000.0">
+                <td class="rank">74</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/new_philadelphia_oh/median_sale_price.png" target="_blank">New Philadelphia, OH</a></td>
+                <td class="value">$248,000</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+23.0%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+41.2%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+37.4%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+24.7%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+13.2%</td>
+            </tr>
+            <tr data-rank="75" data-marketsize="70.55016181229773" data-1month="22.183433830529992" data-3month="57.981124333196554" data-6month="33.87811875163001" data-1year="37.5" data-3year="45.00941619585687" data-current="385000.0">
+                <td class="rank">75</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/urbana_oh/median_sale_price.png" target="_blank">Urbana, OH</a></td>
+                <td class="value">$385,000</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+22.2%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+58.0%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+33.9%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+37.5%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+45.0%</td>
+            </tr>
+            <tr data-rank="76" data-marketsize="84.68176914778857" data-1month="21.590516639871556" data-3month="2.35817722864355" data-6month="74.94323342415984" data-1year="32.83620689655172" data-3year="22.852662910859696" data-current="192612.5">
+                <td class="rank">76</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/connersville_in/median_sale_price.png" target="_blank">Connersville, IN</a></td>
+                <td class="value">$192,612</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+21.6%</td>
+                <td class="change" style="background-color: #8CCFFF; color: #3D3733;">+2.4%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+74.9%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+32.8%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+22.9%</td>
+            </tr>
+            <tr data-rank="77" data-marketsize="45.9546925566343" data-1month="20.838990514634137" data-3month="-2.3496845472530747" data-6month="11.858482282596416" data-1year="1.5158940206607958" data-3year="-4.023273334086698" data-current="297263.916666">
+                <td class="rank">77</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/beaver_dam_wi/median_sale_price.png" target="_blank">Beaver Dam, WI</a></td>
+                <td class="value">$297,264</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+20.8%</td>
+                <td class="change" style="background-color: #A09B95; color: #3D3733;">-2.3%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+11.9%</td>
+                <td class="change" style="background-color: #C6E4FF; color: #3D3733;">+1.5%</td>
+                <td class="change" style="background-color: #A09B95; color: #3D3733;">-4.0%</td>
+            </tr>
+            <tr data-rank="78" data-marketsize="92.66450916936354" data-1month="20.439393939272733" data-3month="24.280800500187624" data-6month="-1.6821273965120545" data-1year="0" data-3year="17.04414638716606" data-current="331208.333333">
+                <td class="rank">78</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/las_vegas_nm/median_sale_price.png" target="_blank">Las Vegas, NM</a></td>
+                <td class="value">$331,208</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+20.4%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+24.3%</td>
+                <td class="change" style="background-color: #DADFCE; color: #3D3733;">-1.7%</td>
+                <td class="change">—</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+17.0%</td>
+            </tr>
+            <tr data-rank="79" data-marketsize="98.92125134843582" data-1month="20.304182509505704" data-3month="0" data-6month="-2.074873724868773" data-1year="23.59375" data-3year="-51.94410692588093" data-current="395500.0">
+                <td class="rank">79</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/gillette_wy/median_sale_price.png" target="_blank">Gillette, WY</a></td>
+                <td class="value">$395,500</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+20.3%</td>
+                <td class="change">—</td>
+                <td class="change" style="background-color: #A09B95; color: #3D3733;">-2.1%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+23.6%</td>
+                <td class="change" style="background-color: #3D3733; color: #F6F7F3;">-51.9%</td>
+            </tr>
+            <tr data-rank="80" data-marketsize="74.4336569579288" data-1month="19.801980198019802" data-3month="29.368526561977948" data-6month="30.45675587674076" data-1year="31.97600436332294" data-3year="115.11111111111111" data-current="242000.0">
+                <td class="rank">80</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/alpena_mi/median_sale_price.png" target="_blank">Alpena, MI</a></td>
+                <td class="value">$242,000</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+19.8%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+29.4%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+30.5%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+32.0%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+115.1%</td>
+            </tr>
+            <tr data-rank="81" data-marketsize="75.29665587918015" data-1month="19.51588502269289" data-3month="2.7308192457737324" data-6month="28.340508488343758" data-1year="79.54545454545455" data-3year="26.97562282401061" data-current="197500.0">
+                <td class="rank">81</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/logansport_in/median_sale_price.png" target="_blank">Logansport, IN</a></td>
+                <td class="value">$197,500</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+19.5%</td>
+                <td class="change" style="background-color: #8CCFFF; color: #3D3733;">+2.7%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+28.3%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+79.5%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+27.0%</td>
+            </tr>
+            <tr data-rank="82" data-marketsize="87.27076591154261" data-1month="18.853392429994592" data-3month="23.064290923069095" data-6month="-0.5938356164383563" data-1year="53.28252068297835" data-3year="53.16568949379261" data-current="217699.5">
+                <td class="rank">82</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/dubois_pa/median_sale_price.png" target="_blank">DuBois, PA</a></td>
+                <td class="value">$217,700</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+18.9%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+23.1%</td>
+                <td class="change" style="background-color: #DADFCE; color: #3D3733;">-0.6%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+53.3%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+53.2%</td>
+            </tr>
+            <tr data-rank="83" data-marketsize="91.15426105717368" data-1month="18.772682283074893" data-3month="-23.7029501525941" data-6month="32.37240770701574" data-1year="15.999312597064783" data-3year="45.16129032258064" data-current="225000.0">
+                <td class="rank">83</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/portales_nm/median_sale_price.png" target="_blank">Portales, NM</a></td>
+                <td class="value">$225,000</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+18.8%</td>
+                <td class="change" style="background-color: #3D3733; color: #F6F7F3;">-23.7%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+32.4%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+16.0%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+45.2%</td>
+            </tr>
+            <tr data-rank="84" data-marketsize="76.59115426105717" data-1month="18.24866310160428" data-3month="76.87346897965305" data-6month="47.41666666666667" data-1year="76.49054194269296" data-3year="138.40970350404314" data-current="221125.0">
+                <td class="rank">84</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/oil_city_pa/median_sale_price.png" target="_blank">Oil City, PA</a></td>
+                <td class="value">$221,125</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+18.2%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+76.9%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+47.4%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+76.5%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+138.4%</td>
+            </tr>
+            <tr data-rank="85" data-marketsize="35.27508090614887" data-1month="17.763886460220323" data-3month="-15.813541666749995" data-6month="19.41341607553192" data-1year="14.151129943389837" data-3year="15.126780626666672" data-current="336745.833333">
+                <td class="rank">85</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/la_crosse_wi/median_sale_price.png" target="_blank">La Crosse, WI</a></td>
+                <td class="value">$336,746</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+17.8%</td>
+                <td class="change" style="background-color: #3D3733; color: #F6F7F3;">-15.8%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+19.4%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+14.2%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+15.1%</td>
+            </tr>
+            <tr data-rank="86" data-marketsize="35.92233009708737" data-1month="17.635794768344358" data-3month="16.353855631276772" data-6month="17.77456647398844" data-1year="25.11193552564968" data-3year="14.988450597862329" data-current="203750.0">
+                <td class="rank">86</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/ottawa_il/median_sale_price.png" target="_blank">Ottawa, IL</a></td>
+                <td class="value">$203,750</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+17.6%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+16.4%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+17.8%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+25.1%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+15.0%</td>
+            </tr>
+            <tr data-rank="87" data-marketsize="49.622437971952536" data-1month="17.27511945595038" data-3month="18.404259156056977" data-6month="11.417532742653636" data-1year="18.099842351738396" data-3year="21.197253084563574" data-current="254425.0">
+                <td class="rank">87</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/shawnee_ok/median_sale_price.png" target="_blank">Shawnee, OK</a></td>
+                <td class="value">$254,425</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+17.3%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+18.4%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+11.4%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+18.1%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+21.2%</td>
+            </tr>
+            <tr data-rank="88" data-marketsize="18.12297734627832" data-1month="16.883116883116884" data-3month="-12.302070645554203" data-6month="5.446378685771988" data-1year="0.6101821232486169" data-3year="3.4111310592459607" data-current="360000.0">
+                <td class="rank">88</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/lake_havasu_city_az/median_sale_price.png" target="_blank">Lake Havasu City, AZ</a></td>
+                <td class="value">$360,000</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+16.9%</td>
+                <td class="change" style="background-color: #3D3733; color: #F6F7F3;">-12.3%</td>
+                <td class="change" style="background-color: #52B9FF; color: #3D3733;">+5.4%</td>
+                <td class="change" style="background-color: #C6E4FF; color: #3D3733;">+0.6%</td>
+                <td class="change" style="background-color: #8CCFFF; color: #3D3733;">+3.4%</td>
+            </tr>
+            <tr data-rank="89" data-marketsize="83.38727076591154" data-1month="16.756352842887463" data-3month="10.158040068151108" data-6month="31.675201170446233" data-1year="14.467408585055644" data-3year="24.826629680998614" data-current="225000.0">
+                <td class="rank">89</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/marshall_mn/median_sale_price.png" target="_blank">Marshall, MN</a></td>
+                <td class="value">$225,000</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+16.8%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+10.2%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+31.7%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+14.5%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+24.8%</td>
+            </tr>
+            <tr data-rank="90" data-marketsize="30.74433656957929" data-1month="16.508575261090353" data-3month="22.235625251306796" data-6month="7.049277059475657" data-1year="12.187022655498662" data-3year="15.348138578957911" data-current="760000.0">
+                <td class="rank">90</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/flagstaff_az/median_sale_price.png" target="_blank">Flagstaff, AZ</a></td>
+                <td class="value">$760,000</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+16.5%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+22.2%</td>
+                <td class="change" style="background-color: #52B9FF; color: #3D3733;">+7.0%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+12.2%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+15.3%</td>
+            </tr>
+            <tr data-rank="91" data-marketsize="93.20388349514563" data-1month="16.477272727272727" data-3month="57.08812260536399" data-6month="16.092496460813773" data-1year="35.64929693961952" data-3year="31.375166889746858" data-current="205000.0">
+                <td class="rank">91</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/central_city_ky/median_sale_price.png" target="_blank">Central City, KY</a></td>
+                <td class="value">$205,000</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+16.5%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+57.1%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+16.1%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+35.6%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+31.4%</td>
+            </tr>
+            <tr data-rank="92" data-marketsize="92.88025889967638" data-1month="16.169294929999918" data-3month="12.980904441994248" data-6month="9.121250249041282" data-1year="-9.35455128230769" data-3year="-57.14942424254544" data-current="117839.083333">
+                <td class="rank">92</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/parsons_ks/median_sale_price.png" target="_blank">Parsons, KS</a></td>
+                <td class="value">$117,839</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+16.2%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+13.0%</td>
+                <td class="change" style="background-color: #52B9FF; color: #3D3733;">+9.1%</td>
+                <td class="change" style="background-color: #6B635C; color: #F6F7F3;">-9.4%</td>
+                <td class="change" style="background-color: #3D3733; color: #F6F7F3;">-57.1%</td>
+            </tr>
+            <tr data-rank="93" data-marketsize="70.9816612729234" data-1month="15.931972788979598" data-3month="-8.916235753236856" data-6month="-3.404397021531654" data-1year="12.163618563269745" data-3year="8.326976862318848" data-current="284033.333333">
+                <td class="rank">93</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/nacogdoches_tx/median_sale_price.png" target="_blank">Nacogdoches, TX</a></td>
+                <td class="value">$284,033</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+15.9%</td>
+                <td class="change" style="background-color: #6B635C; color: #F6F7F3;">-8.9%</td>
+                <td class="change" style="background-color: #A09B95; color: #3D3733;">-3.4%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+12.2%</td>
+                <td class="change" style="background-color: #52B9FF; color: #3D3733;">+8.3%</td>
+            </tr>
+            <tr data-rank="94" data-marketsize="64.29341963322545" data-1month="15.724684835001653" data-3month="33.88218461538462" data-6month="21.10639186161404" data-1year="-8.588844537815126" data-3year="-14.211928233438487" data-current="543896.375">
+                <td class="rank">94</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/sheridan_wy/median_sale_price.png" target="_blank">Sheridan, WY</a></td>
+                <td class="value">$543,896</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+15.7%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+33.9%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+21.1%</td>
+                <td class="change" style="background-color: #6B635C; color: #F6F7F3;">-8.6%</td>
+                <td class="change" style="background-color: #3D3733; color: #F6F7F3;">-14.2%</td>
+            </tr>
+            <tr data-rank="95" data-marketsize="62.02804746494067" data-1month="15.553840216132766" data-3month="19.712115153938427" data-6month="23.923841059602648" data-1year="33.66071428571429" data-3year="-15.946097697922514" data-current="187125.0">
+                <td class="rank">95</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/clinton_ia/median_sale_price.png" target="_blank">Clinton, IA</a></td>
+                <td class="value">$187,125</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+15.6%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+19.7%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+23.9%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+33.7%</td>
+                <td class="change" style="background-color: #3D3733; color: #F6F7F3;">-15.9%</td>
+            </tr>
+            <tr data-rank="96" data-marketsize="66.3430420711974" data-1month="15.463405549692718" data-3month="11.896525793352383" data-6month="0.6493506493506493" data-1year="20.173178595752862" data-3year="-27.34375" data-current="465000.0">
+                <td class="rank">96</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/rexburg_id/median_sale_price.png" target="_blank">Rexburg, ID</a></td>
+                <td class="value">$465,000</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+15.5%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+11.9%</td>
+                <td class="change" style="background-color: #C6E4FF; color: #3D3733;">+0.6%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+20.2%</td>
+                <td class="change" style="background-color: #3D3733; color: #F6F7F3;">-27.3%</td>
+            </tr>
+            <tr data-rank="97" data-marketsize="50.377562028047464" data-1month="15.300716734185105" data-3month="-7.5" data-6month="45.09803921568628" data-1year="44.949584315005346" data-3year="19.35483870967742" data-current="185000.0">
+                <td class="rank">97</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/new_castle_pa/median_sale_price.png" target="_blank">New Castle, PA</a></td>
+                <td class="value">$185,000</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+15.3%</td>
+                <td class="change" style="background-color: #6B635C; color: #F6F7F3;">-7.5%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+45.1%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+44.9%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+19.4%</td>
+            </tr>
+            <tr data-rank="98" data-marketsize="59.54692556634304" data-1month="15.150795535502256" data-3month="-2.04040404040404" data-6month="13.799577563952123" data-1year="7.166141775788717" data-3year="40.93198992470633" data-current="242450.0">
+                <td class="rank">98</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/bedford_in/median_sale_price.png" target="_blank">Bedford, IN</a></td>
+                <td class="value">$242,450</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+15.2%</td>
+                <td class="change" style="background-color: #A09B95; color: #3D3733;">-2.0%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+13.8%</td>
+                <td class="change" style="background-color: #52B9FF; color: #3D3733;">+7.2%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+40.9%</td>
+            </tr>
+            <tr data-rank="99" data-marketsize="83.27939590075512" data-1month="14.912256097560975" data-3month="16.402779493514515" data-6month="22.616936139757314" data-1year="62.462155172413794" data-3year="22.935549805602104" data-current="471140.25">
+                <td class="rank">99</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/the_dalles_or/median_sale_price.png" target="_blank">The Dalles, OR</a></td>
+                <td class="value">$471,140</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+14.9%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+16.4%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+22.6%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+62.5%</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+22.9%</td>
+            </tr>
+            <tr data-rank="100" data-marketsize="60.84142394822006" data-1month="14.904057017105266" data-3month="1.014555619433201" data-6month="-0.3352513196075334" data-1year="6.63461293810578" data-3year="9.158854166250002" data-current="174654.166666">
+                <td class="rank">100</td>
+                <td class="metro-name"><a href="https://www.home-economics.us/live/mobile/fremont_oh/median_sale_price.png" target="_blank">Fremont, OH</a></td>
+                <td class="value">$174,654</td>
+                <td class="change" style="background-color: #0BB4FF; color: #3D3733;">+14.9%</td>
+                <td class="change" style="background-color: #C6E4FF; color: #3D3733;">+1.0%</td>
+                <td class="change" style="background-color: #DADFCE; color: #3D3733;">-0.3%</td>
+                <td class="change" style="background-color: #52B9FF; color: #3D3733;">+6.6%</td>
+                <td class="change" style="background-color: #52B9FF; color: #3D3733;">+9.2%</td>
+            </tr>
+        </tbody>
+    </table>
+    
+    <div class="metadata">
+        <p>Data updated: August 10, 2025 | Source: Redfin | <a href="https://www.home-economics.us">Home Economics</a></p>
+    </div>
+    
+    <script>
+        let currentData = [];
+        
+        function initializeTable() {
+            const rows = document.querySelectorAll('#rankingsTable tbody tr');
+            rows.forEach(row => {
+                currentData.push(row);
+            });
+            filterTable();
+        }
+        
+        function filterTable() {
+            const filterValue = document.getElementById('marketSize').value;
+            const tbody = document.querySelector('#rankingsTable tbody');
+            
+            let thresholds = {
+                'top10': 10,
+                'top25': 25,
+                'top50': 50,
+                'all': 100
+            };
+            
+            let threshold = thresholds[filterValue];
+            let visibleRank = 1;
+            
+            currentData.forEach(row => {
+                const percentile = parseFloat(row.dataset.marketsize);
+                if (percentile <= threshold) {
+                    row.style.display = '';
+                    row.querySelector('.rank').textContent = visibleRank++;
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        }
+        
+        function sortTable() {
+            const sortBy = document.getElementById('sortPeriod').value;
+            const tbody = document.querySelector('#rankingsTable tbody');
+            
+            // Sort the data array
+            currentData.sort((a, b) => {
+                const aVal = parseFloat(a.dataset[sortBy]) || -999;
+                const bVal = parseFloat(b.dataset[sortBy]) || -999;
+                return bVal - aVal;  // Descending order
+            });
+            
+            // Reorder DOM elements
+            currentData.forEach(row => {
+                tbody.appendChild(row);
+            });
+            
+            // Reapply filter and update ranks
+            filterTable();
+        }
+        
+        // Initialize on load
+        initializeTable();
+    </script>
+</body>
+</html>

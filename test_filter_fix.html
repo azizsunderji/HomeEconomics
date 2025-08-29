@@ -1,0 +1,2615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Median Sale Price Rankings | Home Economics</title>
+    <style>
+        @font-face {
+            font-family: 'Oracle';
+            src: url('https://www.home-economics.us/fonts/Oracle-Regular.woff2') format('woff2'),
+                 url('https://www.home-economics.us/fonts/Oracle-Regular.woff') format('woff');
+            font-weight: normal;
+            font-style: normal;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Oracle', -apple-system, system-ui, sans-serif;
+            background: white;
+            color: #3D3733;
+            font-size: 13px;
+            line-height: 1.4;
+            padding: 0;
+            max-width: none;
+            margin: 0;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .fixed-header {
+            position: sticky;
+            top: 0;
+            background: white;
+            z-index: 100;
+            padding: 20px;
+            padding-bottom: 0;
+            border-bottom: 1px solid #DADFCE;
+            flex-shrink: 0;
+        }
+        
+        h1 {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #3D3733;
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .metrics {
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+        }
+        
+        .metric-btn {
+            padding: 5px 10px;
+            background: transparent;
+            border: 1px solid #DADFCE;
+            color: #3D3733;
+            text-decoration: none;
+            font-size: 12px;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        
+        .metric-btn:hover {
+            background: #DADFCE;
+        }
+        
+        .metric-btn.active {
+            background: #0BB4FF;
+            border-color: #0BB4FF;
+            color: #F6F7F3;
+        }
+        
+        .filter {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+        }
+        
+        .summary-box {
+            background: #F8F9FA;
+            border: 1px solid #DADFCE;
+            border-radius: 4px;
+            margin: 15px 15px 15px 0;
+            overflow: hidden;
+        }
+        
+        .summary-toggle {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 15px;
+            cursor: pointer;
+            user-select: none;
+            background: transparent;
+            transition: background 0.2s;
+        }
+        
+        .summary-toggle:hover {
+            background: #F0F0EC;
+        }
+        
+        .summary-toggle-text {
+            font-size: 14px;
+            color: #6B635C;
+            font-weight: 500;
+        }
+        
+        .summary-arrow {
+            transition: transform 0.3s;
+            color: #6B635C;
+        }
+        
+        .summary-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+            padding: 0 15px;
+        }
+        
+        .summary-content.expanded {
+            max-height: 500px;
+            padding: 0 15px 15px 15px;
+            transition: max-height 0.3s ease-in;
+        }
+        
+        .summary-text {
+            font-size: 14px;
+            line-height: 1.6;
+            color: #3D3733;
+        }
+        
+        select {
+            padding: 4px 8px;
+            border: 1px solid #DADFCE;
+            background: white;
+            font-family: inherit;
+            font-size: 12px;
+            color: #3D3733;
+        }
+        
+        .table-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0 20px 20px 20px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th {
+            text-align: left;
+            padding: 6px 8px;
+            border-bottom: 1px solid #DADFCE;
+            font-weight: normal;
+            font-size: 11px;
+            color: #6B635C;
+            cursor: pointer;
+            user-select: none;
+            position: sticky;
+            top: 0;
+            background: white;
+            white-space: nowrap;
+            z-index: 10;
+        }
+        
+        th:hover {
+            background: #DADFCE;
+        }
+        
+        th.sorted {
+            background: #E8F4FF;
+            color: #3D3733;
+        }
+        
+        th.number {
+            text-align: right;
+        }
+        
+        td {
+            padding: 5px 8px;
+            border-bottom: 1px solid #F0F0EC;
+            font-size: 12px;
+        }
+        
+        td.number {
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+        }
+        
+        td.rank {
+            color: #6B635C;
+            width: 40px;
+        }
+        
+        td.metro {
+            font-weight: 500;
+        }
+        
+        tr:hover {
+            background: rgba(218, 223, 206, 0.2);
+        }
+        
+        .footer {
+            text-align: center;
+            padding: 15px 20px;
+            font-size: 11px;
+            color: #6B635C;
+            border-top: 1px solid #DADFCE;
+            background: white;
+            flex-shrink: 0;
+        }
+        
+        .arrow {
+            font-size: 10px;
+            margin-left: 2px;
+        }
+        
+        @media (max-width: 768px) {
+            body { font-size: 11px; }
+            th { font-size: 10px; }
+            td { font-size: 11px; padding: 4px 6px; }
+            .metric-btn { font-size: 11px; padding: 4px 8px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="fixed-header">
+        <h1>MEDIAN SALE PRICE</h1>
+        
+        <div class="controls">
+            <div class="metrics">
+                <a href="median_sale_price.html" class="metric-btn active">Median Sale Price</a><a href="active_listings.html" class="metric-btn ">Active Listings</a><a href="weeks_supply.html" class="metric-btn ">Weeks of Supply</a><a href="homes_sold.html" class="metric-btn ">Homes Sold</a><a href="new_listings.html" class="metric-btn ">New Listings</a><a href="median_days_on_market.html" class="metric-btn ">Days on Market</a><a href="pending_sales.html" class="metric-btn ">Pending Sales</a><a href="off_market_in_2_weeks.html" class="metric-btn ">Off Market in 2 Weeks</a><a href="median_days_to_close.html" class="metric-btn ">Days to Close</a><a href="sale_to_list_ratio.html" class="metric-btn ">Sale to List Ratio</a><a href="pct_listings_w__price_drops.html" class="metric-btn ">Price Drops</a><a href="age_of_inventory.html" class="metric-btn ">Age of Inventory</a>
+            </div>
+            
+            <div class="filter">
+                <input type="text" id="searchBox" placeholder="Search metros..." onkeyup="searchTable()" style="padding: 4px 8px; border: 1px solid #DADFCE; background: white; font-family: inherit; font-size: 12px; margin-right: 10px;">
+                <label>Show:</label>
+                <select id="marketFilter" onchange="filterTable()">
+                    <option value="10">Large Markets (Top 10%)</option>
+                    <option value="25" selected>Major Markets (Top 25%)</option>
+                    <option value="50">Mid-Size Markets (Top 50%)</option>
+                    <option value="100">All Markets</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="summary-box">
+            <div class="summary-toggle" onclick="toggleSummary()">
+                <span class="summary-toggle-text">Market Analysis Summary</span>
+                <span class="summary-arrow" id="summaryArrow">▼</span>
+            </div>
+            <div class="summary-content" id="summaryContent">
+                <p class="summary-text" id="summaryText">Home prices among major markets (top 25%) are currently highest in San Jose, CA, Salinas, CA, Portland, ME, with values exceeding $1.5 million. The Northeast is showing strong growth with a median 3.3% increase over the past 3 months. The Southeast has seen declines, with a median 3.8% decrease over 3 months. Markets including Keene, Mitchell, SD, Berlin, NH have turned positive after months of decline. Markets including Hilton Head Island, Warren, MI, Escanaba, MI have shifted to decline after sustained growth. Prineville, OR stands out with an exceptional 31.3% increase in recent months.</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="table-container">
+        <table id="rankingsTable">
+        <thead>
+            <tr>
+                <th onclick="sortTable('metro')">#</th>
+                <th onclick="sortTable('metro')">Metro Area <span class="arrow" id="arrow-metro"></span></th>
+                <th class="number" onclick="sortTable('current')">Current <span class="arrow" id="arrow-current"></span></th>
+                <th class="number" onclick="sortTable('month1')">1 Mo <span class="arrow" id="arrow-month1"></span></th>
+                <th class="number" onclick="sortTable('month3')">3 Mo <span class="arrow" id="arrow-month3"></span></th>
+                <th class="number" onclick="sortTable('month6')">6 Mo <span class="arrow" id="arrow-month6"></span></th>
+                <th class="number" onclick="sortTable('year1')">1 Yr <span class="arrow" id="arrow-year1"></span></th>
+                <th class="number" onclick="sortTable('year3')">3 Yr <span class="arrow" id="arrow-year3"></span></th>
+            </tr>
+            <tr id="medianRow" style="background: #F0F0EC; font-size: 11px; color: #6B635C;">
+                <td></td>
+                <td>Median</td>
+                <td class="number" id="median-current">—</td>
+                <td class="number" id="median-month1">—</td>
+                <td class="number" id="median-month3">—</td>
+                <td class="number" id="median-month6">—</td>
+                <td class="number" id="median-year1">—</td>
+                <td class="number" id="median-year3">—</td>
+            </tr>
+        </thead>
+        <tbody>
+            <tr data-percentile="24.5" data-metro="san jose, ca" data-current="1546875.0" data-month1="-0.98" data-month3="-6.58" data-month6="-8.26" data-year1="-10.56" data-year3="-2.41">
+                <td class="rank">1</td>
+                <td class="metro">San Jose, CA</td>
+                <td class="number current-value">$1.5M</td>
+                <td class="number change-month1">-1.0%</td>
+                <td class="number change-month3">-6.6%</td>
+                <td class="number change-month6">-8.3%</td>
+                <td class="number change-year1">-10.6%</td>
+                <td class="number change-year3">-2.4%</td>
+            </tr>
+            <tr data-percentile="42.5" data-metro="edwards, co" data-current="1521250.0" data-month1="2.83" data-month3="12.63" data-month6="4.53" data-year1="-6.26" data-year3="15.46">
+                <td class="rank">2</td>
+                <td class="metro">Edwards, CO</td>
+                <td class="number current-value">$1.5M</td>
+                <td class="number change-month1">+2.8%</td>
+                <td class="number change-month3">+12.6%</td>
+                <td class="number change-month6">+4.5%</td>
+                <td class="number change-year1">-6.3%</td>
+                <td class="number change-year3">+15.5%</td>
+            </tr>
+            <tr data-percentile="87.5" data-metro="san rafael, ca" data-current="1340000.0" data-month1="-4.63" data-month3="-14.45" data-month6="-11.11" data-year1="-12.20" data-year3="-15.28">
+                <td class="rank">3</td>
+                <td class="metro">San Rafael, CA</td>
+                <td class="number current-value">$1.3M</td>
+                <td class="number change-month1">-4.6%</td>
+                <td class="number change-month3">-14.4%</td>
+                <td class="number change-month6">-11.1%</td>
+                <td class="number change-year1">-12.2%</td>
+                <td class="number change-year3">-15.3%</td>
+            </tr>
+            <tr data-percentile="69.5" data-metro="santa cruz, ca" data-current="1186125.0" data-month1="-5.51" data-month3="-6.41" data-month6="3.09" data-year1="8.68" data-year3="-4.66">
+                <td class="rank">4</td>
+                <td class="metro">Santa Cruz, CA</td>
+                <td class="number current-value">$1.2M</td>
+                <td class="number change-month1">-5.5%</td>
+                <td class="number change-month3">-6.4%</td>
+                <td class="number change-month6">+3.1%</td>
+                <td class="number change-year1">+8.7%</td>
+                <td class="number change-year3">-4.7%</td>
+            </tr>
+            <tr data-percentile="21.5" data-metro="salinas, ca" data-current="1116250.0" data-month1="8.90" data-month3="29.42" data-month6="18.12" data-year1="15.23" data-year3="25.74">
+                <td class="rank">5</td>
+                <td class="metro">Salinas, CA</td>
+                <td class="number current-value">$1.1M</td>
+                <td class="number change-month1">+8.9%</td>
+                <td class="number change-month3">+29.4%</td>
+                <td class="number change-month6">+18.1%</td>
+                <td class="number change-year1">+15.2%</td>
+                <td class="number change-year3">+25.7%</td>
+            </tr>
+            <tr data-percentile="68.5" data-metro="kapaa, hi" data-current="1108262.5" data-month1="-9.72" data-month3="8.73" data-month6="25.87" data-year1="11.83" data-year3="11.68">
+                <td class="rank">6</td>
+                <td class="metro">Kapaa, HI</td>
+                <td class="number current-value">$1.1M</td>
+                <td class="number change-month1">-9.7%</td>
+                <td class="number change-month3">+8.7%</td>
+                <td class="number change-month6">+25.9%</td>
+                <td class="number change-year1">+11.8%</td>
+                <td class="number change-year3">+11.7%</td>
+            </tr>
+            <tr data-percentile="81.5" data-metro="key west, fl" data-current="1095625.0" data-month1="0.63" data-month3="7.22" data-month6="19.86" data-year1="17.13" data-year3="-1.52">
+                <td class="rank">7</td>
+                <td class="metro">Key West, FL</td>
+                <td class="number current-value">$1.1M</td>
+                <td class="number change-month1">+0.6%</td>
+                <td class="number change-month3">+7.2%</td>
+                <td class="number change-month6">+19.9%</td>
+                <td class="number change-year1">+17.1%</td>
+                <td class="number change-year3">-1.5%</td>
+            </tr>
+            <tr data-percentile="62.0" data-metro="new york, ny" data-current="816250.0" data-month1="0.62" data-month3="0.82" data-month6="0.59" data-year1="5.62" data-year3="11.10">
+                <td class="rank">8</td>
+                <td class="metro">New York, NY</td>
+                <td class="number current-value">$816K</td>
+                <td class="number change-month1">+0.6%</td>
+                <td class="number change-month3">+0.8%</td>
+                <td class="number change-month6">+0.6%</td>
+                <td class="number change-year1">+5.6%</td>
+                <td class="number change-year3">+11.1%</td>
+            </tr>
+            <tr data-percentile="40.0" data-metro="bozeman, mt" data-current="761750.0" data-month1="0.00" data-month3="0.04" data-month6="17.76" data-year1="11.45" data-year3="5.73">
+                <td class="rank">9</td>
+                <td class="metro">Bozeman, MT</td>
+                <td class="number current-value">$762K</td>
+                <td class="number change-month1">+0.0%</td>
+                <td class="number change-month3">+0.0%</td>
+                <td class="number change-month6">+17.8%</td>
+                <td class="number change-year1">+11.5%</td>
+                <td class="number change-year3">+5.7%</td>
+            </tr>
+            <tr data-percentile="36.0" data-metro="kalispell, mt" data-current="731750.0" data-month1="3.70" data-month3="14.20" data-month6="17.43" data-year1="12.84" data-year3="14.22">
+                <td class="rank">10</td>
+                <td class="metro">Kalispell, MT</td>
+                <td class="number current-value">$732K</td>
+                <td class="number change-month1">+3.7%</td>
+                <td class="number change-month3">+14.2%</td>
+                <td class="number change-month6">+17.4%</td>
+                <td class="number change-year1">+12.8%</td>
+                <td class="number change-year3">+14.2%</td>
+            </tr>
+            <tr data-percentile="58.0" data-metro="hood river, or" data-current="666471.666666" data-month1="0.06" data-month3="-7.68" data-month6="-17.35" data-year1="-4.33" data-year3="-3.68">
+                <td class="rank">11</td>
+                <td class="metro">Hood River, OR</td>
+                <td class="number current-value">$666K</td>
+                <td class="number change-month1">+0.1%</td>
+                <td class="number change-month3">-7.7%</td>
+                <td class="number change-month6">-17.3%</td>
+                <td class="number change-year1">-4.3%</td>
+                <td class="number change-year3">-3.7%</td>
+            </tr>
+            <tr data-percentile="47.0" data-metro="ketchikan, ak" data-current="611000.0" data-month1="0.00" data-month3="66.49" data-month6="99.19" data-year1="45.53" data-year3="38.16">
+                <td class="rank">12</td>
+                <td class="metro">Ketchikan, AK</td>
+                <td class="number current-value">$611K</td>
+                <td class="number change-month1">+0.0%</td>
+                <td class="number change-month3">+66.5%</td>
+                <td class="number change-month6">+99.2%</td>
+                <td class="number change-year1">+45.5%</td>
+                <td class="number change-year3">+38.2%</td>
+            </tr>
+            <tr data-percentile="60.5" data-metro="frederick, md" data-current="600067.25" data-month1="-2.44" data-month3="-3.65" data-month6="-0.53" data-year1="-1.25" data-year3="5.55">
+                <td class="rank">13</td>
+                <td class="metro">Frederick, MD</td>
+                <td class="number current-value">$600K</td>
+                <td class="number change-month1">-2.4%</td>
+                <td class="number change-month3">-3.7%</td>
+                <td class="number change-month6">-0.5%</td>
+                <td class="number change-year1">-1.3%</td>
+                <td class="number change-year3">+5.5%</td>
+            </tr>
+            <tr data-percentile="43.5" data-metro="ellensburg, wa" data-current="592250.0" data-month1="0.53" data-month3="6.95" data-month6="-8.33" data-year1="29.28" data-year3="-3.80">
+                <td class="rank">14</td>
+                <td class="metro">Ellensburg, WA</td>
+                <td class="number current-value">$592K</td>
+                <td class="number change-month1">+0.5%</td>
+                <td class="number change-month3">+7.0%</td>
+                <td class="number change-month6">-8.3%</td>
+                <td class="number change-year1">+29.3%</td>
+                <td class="number change-year3">-3.8%</td>
+            </tr>
+            <tr data-percentile="17.5" data-metro="portland, me" data-current="566500.0" data-month1="2.86" data-month3="5.42" data-month6="7.19" data-year1="6.46" data-year3="14.73">
+                <td class="rank">15</td>
+                <td class="metro">Portland, ME</td>
+                <td class="number current-value">$566K</td>
+                <td class="number change-month1">+2.9%</td>
+                <td class="number change-month3">+5.4%</td>
+                <td class="number change-month6">+7.2%</td>
+                <td class="number change-year1">+6.5%</td>
+                <td class="number change-year3">+14.7%</td>
+            </tr>
+            <tr data-percentile="11.0" data-metro="prineville, or" data-current="548229.375" data-month1="7.06" data-month3="31.28" data-month6="10.89" data-year1="19.81" data-year3="31.43">
+                <td class="rank">16</td>
+                <td class="metro">Prineville, OR</td>
+                <td class="number current-value">$548K</td>
+                <td class="number change-month1">+7.1%</td>
+                <td class="number change-month3">+31.3%</td>
+                <td class="number change-month6">+10.9%</td>
+                <td class="number change-year1">+19.8%</td>
+                <td class="number change-year3">+31.4%</td>
+            </tr>
+            <tr data-percentile="6.0" data-metro="hilton head island, sc" data-current="538443.125" data-month1="2.73" data-month3="-1.70" data-month6="4.05" data-year1="3.62" data-year3="-3.44">
+                <td class="rank">17</td>
+                <td class="metro">Hilton Head Island, SC</td>
+                <td class="number current-value">$538K</td>
+                <td class="number change-month1">+2.7%</td>
+                <td class="number change-month3">-1.7%</td>
+                <td class="number change-month6">+4.1%</td>
+                <td class="number change-year1">+3.6%</td>
+                <td class="number change-year3">-3.4%</td>
+            </tr>
+            <tr data-percentile="38.0" data-metro="carson city, nv" data-current="516350.0" data-month1="3.04" data-month3="1.20" data-month6="-5.54" data-year1="4.83" data-year3="-6.66">
+                <td class="rank">18</td>
+                <td class="metro">Carson City, NV</td>
+                <td class="number current-value">$516K</td>
+                <td class="number change-month1">+3.0%</td>
+                <td class="number change-month3">+1.2%</td>
+                <td class="number change-month6">-5.5%</td>
+                <td class="number change-year1">+4.8%</td>
+                <td class="number change-year3">-6.7%</td>
+            </tr>
+            <tr data-percentile="73.0" data-metro="astoria, or" data-current="505612.5" data-month1="7.24" data-month3="4.45" data-month6="-5.76" data-year1="-2.20" data-year3="-22.74">
+                <td class="rank">19</td>
+                <td class="metro">Astoria, OR</td>
+                <td class="number current-value">$506K</td>
+                <td class="number change-month1">+7.2%</td>
+                <td class="number change-month3">+4.5%</td>
+                <td class="number change-month6">-5.8%</td>
+                <td class="number change-year1">-2.2%</td>
+                <td class="number change-year3">-22.7%</td>
+            </tr>
+            <tr data-percentile="92.5" data-metro="fort morgan, co" data-current="494375.0" data-month1="-5.90" data-month3="21.29" data-month6="49.30" data-year1="64.79" data-year3="62.56">
+                <td class="rank">20</td>
+                <td class="metro">Fort Morgan, CO</td>
+                <td class="number current-value">$494K</td>
+                <td class="number change-month1">-5.9%</td>
+                <td class="number change-month3">+21.3%</td>
+                <td class="number change-month6">+49.3%</td>
+                <td class="number change-year1">+64.8%</td>
+                <td class="number change-year3">+62.6%</td>
+            </tr>
+            <tr data-percentile="70.5" data-metro="concord, nh" data-current="483202.0" data-month1="-1.20" data-month3="-3.96" data-month6="-0.14" data-year1="1.38" data-year3="7.47">
+                <td class="rank">21</td>
+                <td class="metro">Concord, NH</td>
+                <td class="number current-value">$483K</td>
+                <td class="number change-month1">-1.2%</td>
+                <td class="number change-month3">-4.0%</td>
+                <td class="number change-month6">-0.1%</td>
+                <td class="number change-year1">+1.4%</td>
+                <td class="number change-year3">+7.5%</td>
+            </tr>
+            <tr data-percentile="1.0" data-metro="laconia, nh" data-current="475000.0" data-month1="-2.21" data-month3="-10.10" data-month6="-10.63" data-year1="-11.63" data-year3="-5.33">
+                <td class="rank">22</td>
+                <td class="metro">Laconia, NH</td>
+                <td class="number current-value">$475K</td>
+                <td class="number change-month1">-2.2%</td>
+                <td class="number change-month3">-10.1%</td>
+                <td class="number change-month6">-10.6%</td>
+                <td class="number change-year1">-11.6%</td>
+                <td class="number change-year3">-5.3%</td>
+            </tr>
+            <tr data-percentile="19.5" data-metro="the dalles, or" data-current="471140.25" data-month1="12.36" data-month3="0.26" data-month6="12.36" data-year1="28.82" data-year3="19.48">
+                <td class="rank">23</td>
+                <td class="metro">The Dalles, OR</td>
+                <td class="number current-value">$471K</td>
+                <td class="number change-month1">+12.4%</td>
+                <td class="number change-month3">+0.3%</td>
+                <td class="number change-month6">+12.4%</td>
+                <td class="number change-year1">+28.8%</td>
+                <td class="number change-year3">+19.5%</td>
+            </tr>
+            <tr data-percentile="2.5" data-metro="shelton, wa" data-current="468234.25" data-month1="-1.58" data-month3="-3.03" data-month6="-4.56" data-year1="5.13" data-year3="4.23">
+                <td class="rank">24</td>
+                <td class="metro">Shelton, WA</td>
+                <td class="number current-value">$468K</td>
+                <td class="number change-month1">-1.6%</td>
+                <td class="number change-month3">-3.0%</td>
+                <td class="number change-month6">-4.6%</td>
+                <td class="number change-year1">+5.1%</td>
+                <td class="number change-year3">+4.2%</td>
+            </tr>
+            <tr data-percentile="14.5" data-metro="wilmington, nc" data-current="460295.75" data-month1="-0.86" data-month3="0.37" data-month6="-0.58" data-year1="1.66" data-year3="0.11">
+                <td class="rank">25</td>
+                <td class="metro">Wilmington, NC</td>
+                <td class="number current-value">$460K</td>
+                <td class="number change-month1">-0.9%</td>
+                <td class="number change-month3">+0.4%</td>
+                <td class="number change-month6">-0.6%</td>
+                <td class="number change-year1">+1.7%</td>
+                <td class="number change-year3">+0.1%</td>
+            </tr>
+            <tr data-percentile="28.5" data-metro="walla walla, wa" data-current="455187.5" data-month1="2.53" data-month3="1.87" data-month6="0.37" data-year1="1.56" data-year3="6.98">
+                <td class="rank">26</td>
+                <td class="metro">Walla Walla, WA</td>
+                <td class="number current-value">$455K</td>
+                <td class="number change-month1">+2.5%</td>
+                <td class="number change-month3">+1.9%</td>
+                <td class="number change-month6">+0.4%</td>
+                <td class="number change-year1">+1.6%</td>
+                <td class="number change-year3">+7.0%</td>
+            </tr>
+            <tr data-percentile="21.0" data-metro="las vegas, nv" data-current="454330.625" data-month1="1.68" data-month3="2.44" data-month6="0.74" data-year1="0.97" data-year3="3.30">
+                <td class="rank">27</td>
+                <td class="metro">Las Vegas, NV</td>
+                <td class="number current-value">$454K</td>
+                <td class="number change-month1">+1.7%</td>
+                <td class="number change-month3">+2.4%</td>
+                <td class="number change-month6">+0.7%</td>
+                <td class="number change-year1">+1.0%</td>
+                <td class="number change-year3">+3.3%</td>
+            </tr>
+            <tr data-percentile="73.5" data-metro="cedar city, ut" data-current="447400.0" data-month1="5.14" data-month3="13.96" data-month6="2.70" data-year1="7.90" data-year3="11.94">
+                <td class="rank">28</td>
+                <td class="metro">Cedar City, UT</td>
+                <td class="number current-value">$447K</td>
+                <td class="number change-month1">+5.1%</td>
+                <td class="number change-month3">+14.0%</td>
+                <td class="number change-month6">+2.7%</td>
+                <td class="number change-year1">+7.9%</td>
+                <td class="number change-year3">+11.9%</td>
+            </tr>
+            <tr data-percentile="48.5" data-metro="madison, wi" data-current="445312.5" data-month1="0.00" data-month3="-1.07" data-month6="-0.35" data-year1="0.23" data-year3="5.47">
+                <td class="rank">29</td>
+                <td class="metro">Madison, WI</td>
+                <td class="number current-value">$445K</td>
+                <td class="number change-month1">+0.0%</td>
+                <td class="number change-month3">-1.1%</td>
+                <td class="number change-month6">-0.4%</td>
+                <td class="number change-year1">+0.2%</td>
+                <td class="number change-year3">+5.5%</td>
+            </tr>
+            <tr data-percentile="54.5" data-metro="medford, or" data-current="443487.5" data-month1="-1.09" data-month3="-7.29" data-month6="-6.68" data-year1="0.34" data-year3="-1.17">
+                <td class="rank">30</td>
+                <td class="metro">Medford, OR</td>
+                <td class="number current-value">$443K</td>
+                <td class="number change-month1">-1.1%</td>
+                <td class="number change-month3">-7.3%</td>
+                <td class="number change-month6">-6.7%</td>
+                <td class="number change-year1">+0.3%</td>
+                <td class="number change-year3">-1.2%</td>
+            </tr>
+            <tr data-percentile="90.5" data-metro="eureka, ca" data-current="427750.0" data-month1="-3.22" data-month3="-3.25" data-month6="4.98" data-year1="-3.61" data-year3="-4.15">
+                <td class="rank">31</td>
+                <td class="metro">Eureka, CA</td>
+                <td class="number current-value">$428K</td>
+                <td class="number change-month1">-3.2%</td>
+                <td class="number change-month3">-3.3%</td>
+                <td class="number change-month6">+5.0%</td>
+                <td class="number change-year1">-3.6%</td>
+                <td class="number change-year3">-4.1%</td>
+            </tr>
+            <tr data-percentile="83.5" data-metro="whitewater, wi" data-current="423372.0" data-month1="4.31" data-month3="12.76" data-month6="12.08" data-year1="12.94" data-year3="11.72">
+                <td class="rank">32</td>
+                <td class="metro">Whitewater, WI</td>
+                <td class="number current-value">$423K</td>
+                <td class="number change-month1">+4.3%</td>
+                <td class="number change-month3">+12.8%</td>
+                <td class="number change-month6">+12.1%</td>
+                <td class="number change-year1">+12.9%</td>
+                <td class="number change-year3">+11.7%</td>
+            </tr>
+            <tr data-percentile="5.0" data-metro="dallas, tx" data-current="419303.0" data-month1="-1.18" data-month3="-0.81" data-month6="-0.93" data-year1="-0.20" data-year3="-0.15">
+                <td class="rank">33</td>
+                <td class="metro">Dallas, TX</td>
+                <td class="number current-value">$419K</td>
+                <td class="number change-month1">-1.2%</td>
+                <td class="number change-month3">-0.8%</td>
+                <td class="number change-month6">-0.9%</td>
+                <td class="number change-year1">-0.2%</td>
+                <td class="number change-year3">-0.1%</td>
+            </tr>
+            <tr data-percentile="57.0" data-metro="payson, az" data-current="417108.125" data-month1="-4.87" data-month3="-0.79" data-month6="2.97" data-year1="-13.89" data-year3="2.35">
+                <td class="rank">34</td>
+                <td class="metro">Payson, AZ</td>
+                <td class="number current-value">$417K</td>
+                <td class="number change-month1">-4.9%</td>
+                <td class="number change-month3">-0.8%</td>
+                <td class="number change-month6">+3.0%</td>
+                <td class="number change-year1">-13.9%</td>
+                <td class="number change-year3">+2.3%</td>
+            </tr>
+            <tr data-percentile="40.5" data-metro="winnemucca, nv" data-current="416500.0" data-month1="5.11" data-month3="10.85" data-month6="0.04" data-year1="-21.27" data-year3="19.09">
+                <td class="rank">35</td>
+                <td class="metro">Winnemucca, NV</td>
+                <td class="number current-value">$416K</td>
+                <td class="number change-month1">+5.1%</td>
+                <td class="number change-month3">+10.8%</td>
+                <td class="number change-month6">+0.0%</td>
+                <td class="number change-year1">-21.3%</td>
+                <td class="number change-year3">+19.1%</td>
+            </tr>
+            <tr data-percentile="53.0" data-metro="new haven, ct" data-current="408250.0" data-month1="0.00" data-month3="-0.15" data-month6="1.53" data-year1="6.04" data-year3="10.71">
+                <td class="rank">36</td>
+                <td class="metro">New Haven, CT</td>
+                <td class="number current-value">$408K</td>
+                <td class="number change-month1">+0.0%</td>
+                <td class="number change-month3">-0.2%</td>
+                <td class="number change-month6">+1.5%</td>
+                <td class="number change-year1">+6.0%</td>
+                <td class="number change-year3">+10.7%</td>
+            </tr>
+            <tr data-percentile="56.5" data-metro="paris, tn" data-current="405333.333333" data-month1="8.74" data-month3="51.04" data-month6="55.11" data-year1="63.94" data-year3="77.19">
+                <td class="rank">37</td>
+                <td class="metro">Paris, TN</td>
+                <td class="number current-value">$405K</td>
+                <td class="number change-month1">+8.7%</td>
+                <td class="number change-month3">+51.0%</td>
+                <td class="number change-month6">+55.1%</td>
+                <td class="number change-year1">+63.9%</td>
+                <td class="number change-year3">+77.2%</td>
+            </tr>
+            <tr data-percentile="11.5" data-metro="brookings, sd" data-current="400375.0" data-month1="-10.25" data-month3="-22.90" data-month6="-25.39" data-year1="39.31" data-year3="12.39">
+                <td class="rank">38</td>
+                <td class="metro">Brookings, SD</td>
+                <td class="number current-value">$400K</td>
+                <td class="number change-month1">-10.2%</td>
+                <td class="number change-month3">-22.9%</td>
+                <td class="number change-month6">-25.4%</td>
+                <td class="number change-year1">+39.3%</td>
+                <td class="number change-year3">+12.4%</td>
+            </tr>
+            <tr data-percentile="85.0" data-metro="hartford, ct" data-current="398191.375" data-month1="-1.15" data-month3="-2.61" data-month6="-1.07" data-year1="2.96" data-year3="8.72">
+                <td class="rank">39</td>
+                <td class="metro">Hartford, CT</td>
+                <td class="number current-value">$398K</td>
+                <td class="number change-month1">-1.1%</td>
+                <td class="number change-month3">-2.6%</td>
+                <td class="number change-month6">-1.1%</td>
+                <td class="number change-year1">+3.0%</td>
+                <td class="number change-year3">+8.7%</td>
+            </tr>
+            <tr data-percentile="76.5" data-metro="all redfin metros" data-current="396000.0" data-month1="0.06" data-month3="-0.57" data-month6="-0.48" data-year1="1.94" data-year3="2.93">
+                <td class="rank">40</td>
+                <td class="metro">All Redfin Metros</td>
+                <td class="number current-value">$396K</td>
+                <td class="number change-month1">+0.1%</td>
+                <td class="number change-month3">-0.6%</td>
+                <td class="number change-month6">-0.5%</td>
+                <td class="number change-year1">+1.9%</td>
+                <td class="number change-year3">+2.9%</td>
+            </tr>
+            <tr data-percentile="13.5" data-metro="clearlake, ca" data-current="393500.0" data-month1="10.22" data-month3="19.11" data-month6="26.83" data-year1="28.28" data-year3="9.53">
+                <td class="rank">41</td>
+                <td class="metro">Clearlake, CA</td>
+                <td class="number current-value">$394K</td>
+                <td class="number change-month1">+10.2%</td>
+                <td class="number change-month3">+19.1%</td>
+                <td class="number change-month6">+26.8%</td>
+                <td class="number change-year1">+28.3%</td>
+                <td class="number change-year3">+9.5%</td>
+            </tr>
+            <tr data-percentile="25.5" data-metro="fallon, nv" data-current="392500.0" data-month1="-7.69" data-month3="-2.80" data-month6="-7.83" data-year1="-7.37" data-year3="4.77">
+                <td class="rank">42</td>
+                <td class="metro">Fallon, NV</td>
+                <td class="number current-value">$392K</td>
+                <td class="number change-month1">-7.7%</td>
+                <td class="number change-month3">-2.8%</td>
+                <td class="number change-month6">-7.8%</td>
+                <td class="number change-year1">-7.4%</td>
+                <td class="number change-year3">+4.8%</td>
+            </tr>
+            <tr data-percentile="46.5" data-metro="fayetteville, ar" data-current="392487.5" data-month1="0.58" data-month3="1.29" data-month6="-0.95" data-year1="5.10" data-year3="6.72">
+                <td class="rank">43</td>
+                <td class="metro">Fayetteville, AR</td>
+                <td class="number current-value">$392K</td>
+                <td class="number change-month1">+0.6%</td>
+                <td class="number change-month3">+1.3%</td>
+                <td class="number change-month6">-1.0%</td>
+                <td class="number change-year1">+5.1%</td>
+                <td class="number change-year3">+6.7%</td>
+            </tr>
+            <tr data-percentile="98.5" data-metro="milledgeville, ga" data-current="386487.5" data-month1="-21.46" data-month3="-12.77" data-month6="27.25" data-year1="18.80" data-year3="40.71">
+                <td class="rank">44</td>
+                <td class="metro">Milledgeville, GA</td>
+                <td class="number current-value">$386K</td>
+                <td class="number change-month1">-21.5%</td>
+                <td class="number change-month3">-12.8%</td>
+                <td class="number change-month6">+27.2%</td>
+                <td class="number change-year1">+18.8%</td>
+                <td class="number change-year3">+40.7%</td>
+            </tr>
+            <tr data-percentile="6.5" data-metro="keene, nh" data-current="384375.0" data-month1="1.92" data-month3="1.25" data-month6="-8.93" data-year1="6.16" data-year3="1.55">
+                <td class="rank">45</td>
+                <td class="metro">Keene, NH</td>
+                <td class="number current-value">$384K</td>
+                <td class="number change-month1">+1.9%</td>
+                <td class="number change-month3">+1.3%</td>
+                <td class="number change-month6">-8.9%</td>
+                <td class="number change-year1">+6.2%</td>
+                <td class="number change-year3">+1.6%</td>
+            </tr>
+            <tr data-percentile="69.0" data-metro="atlantic city, nj" data-current="383500.0" data-month1="-6.11" data-month3="-9.63" data-month6="-3.49" data-year1="4.21" data-year3="3.27">
+                <td class="rank">46</td>
+                <td class="metro">Atlantic City, NJ</td>
+                <td class="number current-value">$384K</td>
+                <td class="number change-month1">-6.1%</td>
+                <td class="number change-month3">-9.6%</td>
+                <td class="number change-month6">-3.5%</td>
+                <td class="number change-year1">+4.2%</td>
+                <td class="number change-year3">+3.3%</td>
+            </tr>
+            <tr data-percentile="88.5" data-metro="elgin, il" data-current="383000.0" data-month1="0.66" data-month3="1.37" data-month6="-0.95" data-year1="6.93" data-year3="13.84">
+                <td class="rank">47</td>
+                <td class="metro">Elgin, IL</td>
+                <td class="number current-value">$383K</td>
+                <td class="number change-month1">+0.7%</td>
+                <td class="number change-month3">+1.4%</td>
+                <td class="number change-month6">-1.0%</td>
+                <td class="number change-year1">+6.9%</td>
+                <td class="number change-year3">+13.8%</td>
+            </tr>
+            <tr data-percentile="3.5" data-metro="brainerd, mn" data-current="379600.0" data-month1="-2.16" data-month3="-0.40" data-month6="2.19" data-year1="3.86" data-year3="2.25">
+                <td class="rank">48</td>
+                <td class="metro">Brainerd, MN</td>
+                <td class="number current-value">$380K</td>
+                <td class="number change-month1">-2.2%</td>
+                <td class="number change-month3">-0.4%</td>
+                <td class="number change-month6">+2.2%</td>
+                <td class="number change-year1">+3.9%</td>
+                <td class="number change-year3">+2.3%</td>
+            </tr>
+            <tr data-percentile="91.0" data-metro="huron, sd" data-current="376112.5" data-month1="5.62" data-month3="91.80" data-month6="136.42" data-year1="27.51" data-year3="40.73">
+                <td class="rank">49</td>
+                <td class="metro">Huron, SD</td>
+                <td class="number current-value">$376K</td>
+                <td class="number change-month1">+5.6%</td>
+                <td class="number change-month3">+91.8%</td>
+                <td class="number change-month6">+136.4%</td>
+                <td class="number change-year1">+27.5%</td>
+                <td class="number change-year3">+40.7%</td>
+            </tr>
+            <tr data-percentile="99.5" data-metro="great falls, mt" data-current="374175.0" data-month1="0.68" data-month3="5.14" data-month6="6.08" data-year1="-1.22" data-year3="11.20">
+                <td class="rank">50</td>
+                <td class="metro">Great Falls, MT</td>
+                <td class="number current-value">$374K</td>
+                <td class="number change-month1">+0.7%</td>
+                <td class="number change-month3">+5.1%</td>
+                <td class="number change-month6">+6.1%</td>
+                <td class="number change-year1">-1.2%</td>
+                <td class="number change-year3">+11.2%</td>
+            </tr>
+            <tr data-percentile="50.5" data-metro="coos bay, or" data-current="371875.0" data-month1="1.36" data-month3="14.29" data-month6="-10.39" data-year1="3.57" data-year3="-0.13">
+                <td class="rank">51</td>
+                <td class="metro">Coos Bay, OR</td>
+                <td class="number current-value">$372K</td>
+                <td class="number change-month1">+1.4%</td>
+                <td class="number change-month3">+14.3%</td>
+                <td class="number change-month6">-10.4%</td>
+                <td class="number change-year1">+3.6%</td>
+                <td class="number change-year3">-0.1%</td>
+            </tr>
+            <tr data-percentile="29.0" data-metro="aberdeen, wa" data-current="371575.0" data-month1="4.79" data-month3="1.28" data-month6="6.63" data-year1="3.44" data-year3="0.86">
+                <td class="rank">52</td>
+                <td class="metro">Aberdeen, WA</td>
+                <td class="number current-value">$372K</td>
+                <td class="number change-month1">+4.8%</td>
+                <td class="number change-month3">+1.3%</td>
+                <td class="number change-month6">+6.6%</td>
+                <td class="number change-year1">+3.4%</td>
+                <td class="number change-year3">+0.9%</td>
+            </tr>
+            <tr data-percentile="18.5" data-metro="milwaukee, wi" data-current="369750.0" data-month1="-0.17" data-month3="-0.82" data-month6="2.14" data-year1="9.51" data-year3="12.66">
+                <td class="rank">53</td>
+                <td class="metro">Milwaukee, WI</td>
+                <td class="number current-value">$370K</td>
+                <td class="number change-month1">-0.2%</td>
+                <td class="number change-month3">-0.8%</td>
+                <td class="number change-month6">+2.1%</td>
+                <td class="number change-year1">+9.5%</td>
+                <td class="number change-year3">+12.7%</td>
+            </tr>
+            <tr data-percentile="52.5" data-metro="mountain home, id" data-current="369610.0" data-month1="-1.14" data-month3="-0.31" data-month6="1.40" data-year1="6.87" data-year3="4.77">
+                <td class="rank">54</td>
+                <td class="metro">Mountain Home, ID</td>
+                <td class="number current-value">$370K</td>
+                <td class="number change-month1">-1.1%</td>
+                <td class="number change-month3">-0.3%</td>
+                <td class="number change-month6">+1.4%</td>
+                <td class="number change-year1">+6.9%</td>
+                <td class="number change-year3">+4.8%</td>
+            </tr>
+            <tr data-percentile="9.0" data-metro="granbury, tx" data-current="367486.0" data-month1="1.03" data-month3="7.96" data-month6="9.23" data-year1="9.54" data-year3="-5.83">
+                <td class="rank">55</td>
+                <td class="metro">Granbury, TX</td>
+                <td class="number current-value">$367K</td>
+                <td class="number change-month1">+1.0%</td>
+                <td class="number change-month3">+8.0%</td>
+                <td class="number change-month6">+9.2%</td>
+                <td class="number change-year1">+9.5%</td>
+                <td class="number change-year3">-5.8%</td>
+            </tr>
+            <tr data-percentile="72.5" data-metro="tucson, az" data-current="363873.75" data-month1="-0.07" data-month3="-0.63" data-month6="-2.11" data-year1="-3.26" data-year3="1.68">
+                <td class="rank">56</td>
+                <td class="metro">Tucson, AZ</td>
+                <td class="number current-value">$364K</td>
+                <td class="number change-month1">-0.1%</td>
+                <td class="number change-month3">-0.6%</td>
+                <td class="number change-month6">-2.1%</td>
+                <td class="number change-year1">-3.3%</td>
+                <td class="number change-year3">+1.7%</td>
+            </tr>
+            <tr data-percentile="15.5" data-metro="morristown, tn" data-current="360940.625" data-month1="2.59" data-month3="4.19" data-month6="8.84" data-year1="18.21" data-year3="11.17">
+                <td class="rank">57</td>
+                <td class="metro">Morristown, TN</td>
+                <td class="number current-value">$361K</td>
+                <td class="number change-month1">+2.6%</td>
+                <td class="number change-month3">+4.2%</td>
+                <td class="number change-month6">+8.8%</td>
+                <td class="number change-year1">+18.2%</td>
+                <td class="number change-year3">+11.2%</td>
+            </tr>
+            <tr data-percentile="9.5" data-metro="red bluff, ca" data-current="360000.0" data-month1="-4.30" data-month3="-3.66" data-month6="0.88" data-year1="0.56" data-year3="11.20">
+                <td class="rank">58</td>
+                <td class="metro">Red Bluff, CA</td>
+                <td class="number current-value">$360K</td>
+                <td class="number change-month1">-4.3%</td>
+                <td class="number change-month3">-3.7%</td>
+                <td class="number change-month6">+0.9%</td>
+                <td class="number change-year1">+0.6%</td>
+                <td class="number change-year3">+11.2%</td>
+            </tr>
+            <tr data-percentile="82.5" data-metro="cape coral, fl" data-current="355748.75" data-month1="0.78" data-month3="-0.00" data-month6="-3.85" data-year1="-5.95" data-year3="-10.07">
+                <td class="rank">59</td>
+                <td class="metro">Cape Coral, FL</td>
+                <td class="number current-value">$356K</td>
+                <td class="number change-month1">+0.8%</td>
+                <td class="number change-month3">-0.0%</td>
+                <td class="number change-month6">-3.9%</td>
+                <td class="number change-year1">-5.9%</td>
+                <td class="number change-year3">-10.1%</td>
+            </tr>
+            <tr data-percentile="74.5" data-metro="levelland, tx" data-current="354062.5" data-month1="37.33" data-month3="83.48" data-month6="34.82" data-year1="90.69" data-year3="91.46">
+                <td class="rank">60</td>
+                <td class="metro">Levelland, TX</td>
+                <td class="number current-value">$354K</td>
+                <td class="number change-month1">+37.3%</td>
+                <td class="number change-month3">+83.5%</td>
+                <td class="number change-month6">+34.8%</td>
+                <td class="number change-year1">+90.7%</td>
+                <td class="number change-year3">+91.5%</td>
+            </tr>
+            <tr data-percentile="25.0" data-metro="blacksburg, va" data-current="353300.0" data-month1="2.91" data-month3="5.21" data-month6="3.48" data-year1="19.12" data-year3="24.51">
+                <td class="rank">61</td>
+                <td class="metro">Blacksburg, VA</td>
+                <td class="number current-value">$353K</td>
+                <td class="number change-month1">+2.9%</td>
+                <td class="number change-month3">+5.2%</td>
+                <td class="number change-month6">+3.5%</td>
+                <td class="number change-year1">+19.1%</td>
+                <td class="number change-year3">+24.5%</td>
+            </tr>
+            <tr data-percentile="80.5" data-metro="crossville, tn" data-current="349737.5" data-month1="-5.15" data-month3="-4.70" data-month6="-3.65" data-year1="-0.45" data-year3="0.95">
+                <td class="rank">62</td>
+                <td class="metro">Crossville, TN</td>
+                <td class="number current-value">$350K</td>
+                <td class="number change-month1">-5.1%</td>
+                <td class="number change-month3">-4.7%</td>
+                <td class="number change-month6">-3.7%</td>
+                <td class="number change-year1">-0.4%</td>
+                <td class="number change-year3">+1.0%</td>
+            </tr>
+            <tr data-percentile="75.5" data-metro="craig, co" data-current="342700.0" data-month1="0.22" data-month3="1.75" data-month6="0.78" data-year1="10.95" data-year3="36.13">
+                <td class="rank">63</td>
+                <td class="metro">Craig, CO</td>
+                <td class="number current-value">$343K</td>
+                <td class="number change-month1">+0.2%</td>
+                <td class="number change-month3">+1.8%</td>
+                <td class="number change-month6">+0.8%</td>
+                <td class="number change-year1">+11.0%</td>
+                <td class="number change-year3">+36.1%</td>
+            </tr>
+            <tr data-percentile="58.5" data-metro="myrtle beach, sc" data-current="341248.75" data-month1="-1.52" data-month3="-1.31" data-month6="-1.59" data-year1="1.27" data-year3="-0.89">
+                <td class="rank">64</td>
+                <td class="metro">Myrtle Beach, SC</td>
+                <td class="number current-value">$341K</td>
+                <td class="number change-month1">-1.5%</td>
+                <td class="number change-month3">-1.3%</td>
+                <td class="number change-month6">-1.6%</td>
+                <td class="number change-year1">+1.3%</td>
+                <td class="number change-year3">-0.9%</td>
+            </tr>
+            <tr data-percentile="20.0" data-metro="warren, mi" data-current="337843.75" data-month1="-1.46" data-month3="-1.83" data-month6="2.11" data-year1="5.08" data-year3="7.68">
+                <td class="rank">65</td>
+                <td class="metro">Warren, MI</td>
+                <td class="number current-value">$338K</td>
+                <td class="number change-month1">-1.5%</td>
+                <td class="number change-month3">-1.8%</td>
+                <td class="number change-month6">+2.1%</td>
+                <td class="number change-year1">+5.1%</td>
+                <td class="number change-year3">+7.7%</td>
+            </tr>
+            <tr data-percentile="27.0" data-metro="sherman, tx" data-current="337241.375" data-month1="7.58" data-month3="7.17" data-month6="-2.44" data-year1="4.98" data-year3="5.19">
+                <td class="rank">66</td>
+                <td class="metro">Sherman, TX</td>
+                <td class="number current-value">$337K</td>
+                <td class="number change-month1">+7.6%</td>
+                <td class="number change-month3">+7.2%</td>
+                <td class="number change-month6">-2.4%</td>
+                <td class="number change-year1">+5.0%</td>
+                <td class="number change-year3">+5.2%</td>
+            </tr>
+            <tr data-percentile="0.0" data-metro="appleton, wi" data-current="336725.0" data-month1="4.26" data-month3="6.48" data-month6="-0.49" data-year1="1.58" data-year3="4.65">
+                <td class="rank">67</td>
+                <td class="metro">Appleton, WI</td>
+                <td class="number current-value">$337K</td>
+                <td class="number change-month1">+4.3%</td>
+                <td class="number change-month3">+6.5%</td>
+                <td class="number change-month6">-0.5%</td>
+                <td class="number change-year1">+1.6%</td>
+                <td class="number change-year3">+4.6%</td>
+            </tr>
+            <tr data-percentile="61.0" data-metro="sanford, nc" data-current="335557.25" data-month1="3.55" data-month3="7.04" data-month6="5.27" data-year1="2.12" data-year3="4.55">
+                <td class="rank">68</td>
+                <td class="metro">Sanford, NC</td>
+                <td class="number current-value">$336K</td>
+                <td class="number change-month1">+3.6%</td>
+                <td class="number change-month3">+7.0%</td>
+                <td class="number change-month6">+5.3%</td>
+                <td class="number change-year1">+2.1%</td>
+                <td class="number change-year3">+4.6%</td>
+            </tr>
+            <tr data-percentile="0.5" data-metro="pensacola, fl" data-current="328237.5" data-month1="-1.06" data-month3="-3.06" data-month6="-1.64" data-year1="2.70" data-year3="2.42">
+                <td class="rank">69</td>
+                <td class="metro">Pensacola, FL</td>
+                <td class="number current-value">$328K</td>
+                <td class="number change-month1">-1.1%</td>
+                <td class="number change-month3">-3.1%</td>
+                <td class="number change-month6">-1.6%</td>
+                <td class="number change-year1">+2.7%</td>
+                <td class="number change-year3">+2.4%</td>
+            </tr>
+            <tr data-percentile="7.5" data-metro="omaha, ne" data-current="327500.0" data-month1="-2.09" data-month3="0.27" data-month6="-0.03" data-year1="1.62" data-year3="5.90">
+                <td class="rank">70</td>
+                <td class="metro">Omaha, NE</td>
+                <td class="number current-value">$328K</td>
+                <td class="number change-month1">-2.1%</td>
+                <td class="number change-month3">+0.3%</td>
+                <td class="number change-month6">-0.0%</td>
+                <td class="number change-year1">+1.6%</td>
+                <td class="number change-year3">+5.9%</td>
+            </tr>
+            <tr data-percentile="43.0" data-metro="hagerstown, md" data-current="327356.75" data-month1="0.23" data-month3="-0.54" data-month6="3.13" data-year1="2.11" data-year3="5.41">
+                <td class="rank">71</td>
+                <td class="metro">Hagerstown, MD</td>
+                <td class="number current-value">$327K</td>
+                <td class="number change-month1">+0.2%</td>
+                <td class="number change-month3">-0.5%</td>
+                <td class="number change-month6">+3.1%</td>
+                <td class="number change-year1">+2.1%</td>
+                <td class="number change-year3">+5.4%</td>
+            </tr>
+            <tr data-percentile="59.5" data-metro="bloomington, in" data-current="326750.0" data-month1="-3.86" data-month3="-4.37" data-month6="2.21" data-year1="1.51" data-year3="10.14">
+                <td class="rank">72</td>
+                <td class="metro">Bloomington, IN</td>
+                <td class="number current-value">$327K</td>
+                <td class="number change-month1">-3.9%</td>
+                <td class="number change-month3">-4.4%</td>
+                <td class="number change-month6">+2.2%</td>
+                <td class="number change-year1">+1.5%</td>
+                <td class="number change-year3">+10.1%</td>
+            </tr>
+            <tr data-percentile="95.5" data-metro="rock springs, wy" data-current="326375.0" data-month1="-1.02" data-month3="-1.62" data-month6="9.52" data-year1="-2.06" data-year3="12.33">
+                <td class="rank">73</td>
+                <td class="metro">Rock Springs, WY</td>
+                <td class="number current-value">$326K</td>
+                <td class="number change-month1">-1.0%</td>
+                <td class="number change-month3">-1.6%</td>
+                <td class="number change-month6">+9.5%</td>
+                <td class="number change-year1">-2.1%</td>
+                <td class="number change-year3">+12.3%</td>
+            </tr>
+            <tr data-percentile="5.5" data-metro="pierre, sd" data-current="324625.0" data-month1="-0.15" data-month3="7.00" data-month6="25.46" data-year1="37.16" data-year3="26.50">
+                <td class="rank">74</td>
+                <td class="metro">Pierre, SD</td>
+                <td class="number current-value">$325K</td>
+                <td class="number change-month1">-0.2%</td>
+                <td class="number change-month3">+7.0%</td>
+                <td class="number change-month6">+25.5%</td>
+                <td class="number change-year1">+37.2%</td>
+                <td class="number change-year3">+26.5%</td>
+            </tr>
+            <tr data-percentile="76.0" data-metro="red wing, mn" data-current="316375.0" data-month1="-0.54" data-month3="-4.05" data-month6="0.07" data-year1="-8.99" data-year3="-9.05">
+                <td class="rank">75</td>
+                <td class="metro">Red Wing, MN</td>
+                <td class="number current-value">$316K</td>
+                <td class="number change-month1">-0.5%</td>
+                <td class="number change-month3">-4.0%</td>
+                <td class="number change-month6">+0.1%</td>
+                <td class="number change-year1">-9.0%</td>
+                <td class="number change-year3">-9.1%</td>
+            </tr>
+            <tr data-percentile="31.0" data-metro="lakeland, fl" data-current="315570.0" data-month1="1.48" data-month3="1.39" data-month6="0.84" data-year1="0.36" data-year3="-0.75">
+                <td class="rank">76</td>
+                <td class="metro">Lakeland, FL</td>
+                <td class="number current-value">$316K</td>
+                <td class="number change-month1">+1.5%</td>
+                <td class="number change-month3">+1.4%</td>
+                <td class="number change-month6">+0.8%</td>
+                <td class="number change-year1">+0.4%</td>
+                <td class="number change-year3">-0.7%</td>
+            </tr>
+            <tr data-percentile="42.0" data-metro="iowa city, ia" data-current="313975.0" data-month1="2.36" data-month3="-4.74" data-month6="-6.51" data-year1="-3.20" data-year3="-5.82">
+                <td class="rank">77</td>
+                <td class="metro">Iowa City, IA</td>
+                <td class="number current-value">$314K</td>
+                <td class="number change-month1">+2.4%</td>
+                <td class="number change-month3">-4.7%</td>
+                <td class="number change-month6">-6.5%</td>
+                <td class="number change-year1">-3.2%</td>
+                <td class="number change-year3">-5.8%</td>
+            </tr>
+            <tr data-percentile="23.5" data-metro="mitchell, sd" data-current="313412.5" data-month1="-3.19" data-month3="10.51" data-month6="-7.68" data-year1="36.01" data-year3="36.34">
+                <td class="rank">78</td>
+                <td class="metro">Mitchell, SD</td>
+                <td class="number current-value">$313K</td>
+                <td class="number change-month1">-3.2%</td>
+                <td class="number change-month3">+10.5%</td>
+                <td class="number change-month6">-7.7%</td>
+                <td class="number change-year1">+36.0%</td>
+                <td class="number change-year3">+36.3%</td>
+            </tr>
+            <tr data-percentile="78.5" data-metro="crescent city, ca" data-current="312500.0" data-month1="-18.44" data-month3="-32.58" data-month6="-27.11" data-year1="-22.04" data-year3="-22.90">
+                <td class="rank">79</td>
+                <td class="metro">Crescent City, CA</td>
+                <td class="number current-value">$312K</td>
+                <td class="number change-month1">-18.4%</td>
+                <td class="number change-month3">-32.6%</td>
+                <td class="number change-month6">-27.1%</td>
+                <td class="number change-year1">-22.0%</td>
+                <td class="number change-year3">-22.9%</td>
+            </tr>
+            <tr data-percentile="63.0" data-metro="lincoln, ne" data-current="311774.875" data-month1="0.17" data-month3="-0.87" data-month6="0.09" data-year1="0.90" data-year3="1.23">
+                <td class="rank">80</td>
+                <td class="metro">Lincoln, NE</td>
+                <td class="number current-value">$312K</td>
+                <td class="number change-month1">+0.2%</td>
+                <td class="number change-month3">-0.9%</td>
+                <td class="number change-month6">+0.1%</td>
+                <td class="number change-year1">+0.9%</td>
+                <td class="number change-year3">+1.2%</td>
+            </tr>
+            <tr data-percentile="10.0" data-metro="new bern, nc" data-current="310187.5" data-month1="0.40" data-month3="-3.86" data-month6="0.21" data-year1="-1.57" data-year3="1.95">
+                <td class="rank">81</td>
+                <td class="metro">New Bern, NC</td>
+                <td class="number current-value">$310K</td>
+                <td class="number change-month1">+0.4%</td>
+                <td class="number change-month3">-3.9%</td>
+                <td class="number change-month6">+0.2%</td>
+                <td class="number change-year1">-1.6%</td>
+                <td class="number change-year3">+1.9%</td>
+            </tr>
+            <tr data-percentile="88.0" data-metro="bismarck, nd" data-current="309325.0" data-month1="-8.17" data-month3="-16.23" data-month6="-15.86" data-year1="-12.10" data-year3="0.41">
+                <td class="rank">82</td>
+                <td class="metro">Bismarck, ND</td>
+                <td class="number current-value">$309K</td>
+                <td class="number change-month1">-8.2%</td>
+                <td class="number change-month3">-16.2%</td>
+                <td class="number change-month6">-15.9%</td>
+                <td class="number change-year1">-12.1%</td>
+                <td class="number change-year3">+0.4%</td>
+            </tr>
+            <tr data-percentile="79.0" data-metro="st. cloud, mn" data-current="308950.0" data-month1="2.74" data-month3="2.05" data-month6="1.51" data-year1="4.73" data-year3="14.40">
+                <td class="rank">83</td>
+                <td class="metro">St. Cloud, MN</td>
+                <td class="number current-value">$309K</td>
+                <td class="number change-month1">+2.7%</td>
+                <td class="number change-month3">+2.1%</td>
+                <td class="number change-month6">+1.5%</td>
+                <td class="number change-year1">+4.7%</td>
+                <td class="number change-year3">+14.4%</td>
+            </tr>
+            <tr data-percentile="44.5" data-metro="fayetteville, nc" data-current="307418.5" data-month1="0.74" data-month3="0.07" data-month6="0.11" data-year1="2.45" data-year3="4.85">
+                <td class="rank">84</td>
+                <td class="metro">Fayetteville, NC</td>
+                <td class="number current-value">$307K</td>
+                <td class="number change-month1">+0.7%</td>
+                <td class="number change-month3">+0.1%</td>
+                <td class="number change-month6">+0.1%</td>
+                <td class="number change-year1">+2.4%</td>
+                <td class="number change-year3">+4.9%</td>
+            </tr>
+            <tr data-percentile="15.0" data-metro="hays, ks" data-current="306037.5" data-month1="-8.74" data-month3="9.08" data-month6="42.96" data-year1="47.33" data-year3="32.77">
+                <td class="rank">85</td>
+                <td class="metro">Hays, KS</td>
+                <td class="number current-value">$306K</td>
+                <td class="number change-month1">-8.7%</td>
+                <td class="number change-month3">+9.1%</td>
+                <td class="number change-month6">+43.0%</td>
+                <td class="number change-year1">+47.3%</td>
+                <td class="number change-year3">+32.8%</td>
+            </tr>
+            <tr data-percentile="20.5" data-metro="richmond, ky" data-current="304094.25" data-month1="1.46" data-month3="2.93" data-month6="1.18" data-year1="5.19" data-year3="7.89">
+                <td class="rank">86</td>
+                <td class="metro">Richmond, KY</td>
+                <td class="number current-value">$304K</td>
+                <td class="number change-month1">+1.5%</td>
+                <td class="number change-month3">+2.9%</td>
+                <td class="number change-month6">+1.2%</td>
+                <td class="number change-year1">+5.2%</td>
+                <td class="number change-year3">+7.9%</td>
+            </tr>
+            <tr data-percentile="94.5" data-metro="sheboygan, wi" data-current="301625.0" data-month1="-0.35" data-month3="-4.11" data-month6="5.88" data-year1="7.88" data-year3="16.13">
+                <td class="rank">87</td>
+                <td class="metro">Sheboygan, WI</td>
+                <td class="number current-value">$302K</td>
+                <td class="number change-month1">-0.4%</td>
+                <td class="number change-month3">-4.1%</td>
+                <td class="number change-month6">+5.9%</td>
+                <td class="number change-year1">+7.9%</td>
+                <td class="number change-year3">+16.1%</td>
+            </tr>
+            <tr data-percentile="49.0" data-metro="americus, ga" data-current="296483.333333" data-month1="-5.98" data-month3="11.04" data-month6="-2.23" data-year1="174.52" data-year3="8.86">
+                <td class="rank">88</td>
+                <td class="metro">Americus, GA</td>
+                <td class="number current-value">$296K</td>
+                <td class="number change-month1">-6.0%</td>
+                <td class="number change-month3">+11.0%</td>
+                <td class="number change-month6">-2.2%</td>
+                <td class="number change-year1">+174.5%</td>
+                <td class="number change-year3">+8.9%</td>
+            </tr>
+            <tr data-percentile="8.5" data-metro="forest city, nc" data-current="295750.0" data-month1="0.30" data-month3="-11.49" data-month6="-8.08" data-year1="2.65" data-year3="-1.37">
+                <td class="rank">89</td>
+                <td class="metro">Forest City, NC</td>
+                <td class="number current-value">$296K</td>
+                <td class="number change-month1">+0.3%</td>
+                <td class="number change-month3">-11.5%</td>
+                <td class="number change-month6">-8.1%</td>
+                <td class="number change-year1">+2.6%</td>
+                <td class="number change-year3">-1.4%</td>
+            </tr>
+            <tr data-percentile="54.0" data-metro="minot, nd" data-current="295725.0" data-month1="4.19" data-month3="8.80" data-month6="1.80" data-year1="3.54" data-year3="15.53">
+                <td class="rank">90</td>
+                <td class="metro">Minot, ND</td>
+                <td class="number current-value">$296K</td>
+                <td class="number change-month1">+4.2%</td>
+                <td class="number change-month3">+8.8%</td>
+                <td class="number change-month6">+1.8%</td>
+                <td class="number change-year1">+3.5%</td>
+                <td class="number change-year3">+15.5%</td>
+            </tr>
+            <tr data-percentile="57.5" data-metro="waco, tx" data-current="294250.0" data-month1="-1.58" data-month3="-5.99" data-month6="-1.23" data-year1="0.06" data-year3="2.08">
+                <td class="rank">91</td>
+                <td class="metro">Waco, TX</td>
+                <td class="number current-value">$294K</td>
+                <td class="number change-month1">-1.6%</td>
+                <td class="number change-month3">-6.0%</td>
+                <td class="number change-month6">-1.2%</td>
+                <td class="number change-year1">+0.1%</td>
+                <td class="number change-year3">+2.1%</td>
+            </tr>
+            <tr data-percentile="7.0" data-metro="athens, tx" data-current="294000.0" data-month1="-0.08" data-month3="-2.61" data-month6="-5.50" data-year1="-6.61" data-year3="2.71">
+                <td class="rank">92</td>
+                <td class="metro">Athens, TX</td>
+                <td class="number current-value">$294K</td>
+                <td class="number change-month1">-0.1%</td>
+                <td class="number change-month3">-2.6%</td>
+                <td class="number change-month6">-5.5%</td>
+                <td class="number change-year1">-6.6%</td>
+                <td class="number change-year3">+2.7%</td>
+            </tr>
+            <tr data-percentile="53.5" data-metro="farmington, nm" data-current="293025.0" data-month1="-3.71" data-month3="-7.43" data-month6="-13.81" data-year1="4.19" data-year3="12.73">
+                <td class="rank">93</td>
+                <td class="metro">Farmington, NM</td>
+                <td class="number current-value">$293K</td>
+                <td class="number change-month1">-3.7%</td>
+                <td class="number change-month3">-7.4%</td>
+                <td class="number change-month6">-13.8%</td>
+                <td class="number change-year1">+4.2%</td>
+                <td class="number change-year3">+12.7%</td>
+            </tr>
+            <tr data-percentile="80.0" data-metro="louisville, ky" data-current="291943.75" data-month1="0.48" data-month3="0.46" data-month6="-0.48" data-year1="5.68" data-year3="10.38">
+                <td class="rank">94</td>
+                <td class="metro">Louisville, KY</td>
+                <td class="number current-value">$292K</td>
+                <td class="number change-month1">+0.5%</td>
+                <td class="number change-month3">+0.5%</td>
+                <td class="number change-month6">-0.5%</td>
+                <td class="number change-year1">+5.7%</td>
+                <td class="number change-year3">+10.4%</td>
+            </tr>
+            <tr data-percentile="93.5" data-metro="glens falls, ny" data-current="291625.0" data-month1="1.70" data-month3="-1.52" data-month6="1.51" data-year1="-4.56" data-year3="10.03">
+                <td class="rank">95</td>
+                <td class="metro">Glens Falls, NY</td>
+                <td class="number current-value">$292K</td>
+                <td class="number change-month1">+1.7%</td>
+                <td class="number change-month3">-1.5%</td>
+                <td class="number change-month6">+1.5%</td>
+                <td class="number change-year1">-4.6%</td>
+                <td class="number change-year3">+10.0%</td>
+            </tr>
+            <tr data-percentile="51.0" data-metro="kendallville, in" data-current="290000.0" data-month1="-1.40" data-month3="2.07" data-month6="18.74" data-year1="17.62" data-year3="30.81">
+                <td class="rank">96</td>
+                <td class="metro">Kendallville, IN</td>
+                <td class="number current-value">$290K</td>
+                <td class="number change-month1">-1.4%</td>
+                <td class="number change-month3">+2.1%</td>
+                <td class="number change-month6">+18.7%</td>
+                <td class="number change-year1">+17.6%</td>
+                <td class="number change-year3">+30.8%</td>
+            </tr>
+            <tr data-percentile="52.0" data-metro="mount vernon, oh" data-current="288362.5" data-month1="2.51" data-month3="2.42" data-month6="-10.64" data-year1="-7.37" data-year3="13.70">
+                <td class="rank">97</td>
+                <td class="metro">Mount Vernon, OH</td>
+                <td class="number current-value">$288K</td>
+                <td class="number change-month1">+2.5%</td>
+                <td class="number change-month3">+2.4%</td>
+                <td class="number change-month6">-10.6%</td>
+                <td class="number change-year1">-7.4%</td>
+                <td class="number change-year3">+13.7%</td>
+            </tr>
+            <tr data-percentile="75.0" data-metro="toccoa, ga" data-current="287998.75" data-month1="0.70" data-month3="-2.08" data-month6="19.57" data-year1="15.06" data-year3="6.16">
+                <td class="rank">98</td>
+                <td class="metro">Toccoa, GA</td>
+                <td class="number current-value">$288K</td>
+                <td class="number change-month1">+0.7%</td>
+                <td class="number change-month3">-2.1%</td>
+                <td class="number change-month6">+19.6%</td>
+                <td class="number change-year1">+15.1%</td>
+                <td class="number change-year3">+6.2%</td>
+            </tr>
+            <tr data-percentile="83.0" data-metro="kalamazoo, mi" data-current="286487.5" data-month1="3.52" data-month3="-3.58" data-month6="-4.34" data-year1="1.41" data-year3="7.21">
+                <td class="rank">99</td>
+                <td class="metro">Kalamazoo, MI</td>
+                <td class="number current-value">$286K</td>
+                <td class="number change-month1">+3.5%</td>
+                <td class="number change-month3">-3.6%</td>
+                <td class="number change-month6">-4.3%</td>
+                <td class="number change-year1">+1.4%</td>
+                <td class="number change-year3">+7.2%</td>
+            </tr>
+            <tr data-percentile="97.0" data-metro="mcpherson, ks" data-current="284359.166666" data-month1="1.28" data-month3="5.91" data-month6="10.93" data-year1="45.95" data-year3="-19.47">
+                <td class="rank">100</td>
+                <td class="metro">McPherson, KS</td>
+                <td class="number current-value">$284K</td>
+                <td class="number change-month1">+1.3%</td>
+                <td class="number change-month3">+5.9%</td>
+                <td class="number change-month6">+10.9%</td>
+                <td class="number change-year1">+45.9%</td>
+                <td class="number change-year3">-19.5%</td>
+            </tr>
+            <tr data-percentile="77.5" data-metro="hickory, nc" data-current="283750.0" data-month1="-0.87" data-month3="-4.22" data-month6="-11.39" data-year1="-4.33" data-year3="-6.16">
+                <td class="rank">101</td>
+                <td class="metro">Hickory, NC</td>
+                <td class="number current-value">$284K</td>
+                <td class="number change-month1">-0.9%</td>
+                <td class="number change-month3">-4.2%</td>
+                <td class="number change-month6">-11.4%</td>
+                <td class="number change-year1">-4.3%</td>
+                <td class="number change-year3">-6.2%</td>
+            </tr>
+            <tr data-percentile="31.5" data-metro="urbana, oh" data-current="281275.0" data-month1="14.36" data-month3="9.96" data-month6="14.87" data-year1="13.25" data-year3="30.94">
+                <td class="rank">102</td>
+                <td class="metro">Urbana, OH</td>
+                <td class="number current-value">$281K</td>
+                <td class="number change-month1">+14.4%</td>
+                <td class="number change-month3">+10.0%</td>
+                <td class="number change-month6">+14.9%</td>
+                <td class="number change-year1">+13.2%</td>
+                <td class="number change-year3">+30.9%</td>
+            </tr>
+            <tr data-percentile="26.5" data-metro="huntsville, tx" data-current="278425.0" data-month1="2.53" data-month3="9.40" data-month6="-8.89" data-year1="1.30" data-year3="0.62">
+                <td class="rank">103</td>
+                <td class="metro">Huntsville, TX</td>
+                <td class="number current-value">$278K</td>
+                <td class="number change-month1">+2.5%</td>
+                <td class="number change-month3">+9.4%</td>
+                <td class="number change-month6">-8.9%</td>
+                <td class="number change-year1">+1.3%</td>
+                <td class="number change-year3">+0.6%</td>
+            </tr>
+            <tr data-percentile="47.5" data-metro="oklahoma city, ok" data-current="277357.5" data-month1="-2.03" data-month3="-2.79" data-month6="0.08" data-year1="5.81" data-year3="5.03">
+                <td class="rank">104</td>
+                <td class="metro">Oklahoma City, OK</td>
+                <td class="number current-value">$277K</td>
+                <td class="number change-month1">-2.0%</td>
+                <td class="number change-month3">-2.8%</td>
+                <td class="number change-month6">+0.1%</td>
+                <td class="number change-year1">+5.8%</td>
+                <td class="number change-year3">+5.0%</td>
+            </tr>
+            <tr data-percentile="23.0" data-metro="sturgis, mi" data-current="272506.25" data-month1="11.22" data-month3="17.14" data-month6="15.73" data-year1="18.19" data-year3="42.62">
+                <td class="rank">105</td>
+                <td class="metro">Sturgis, MI</td>
+                <td class="number current-value">$273K</td>
+                <td class="number change-month1">+11.2%</td>
+                <td class="number change-month3">+17.1%</td>
+                <td class="number change-month6">+15.7%</td>
+                <td class="number change-year1">+18.2%</td>
+                <td class="number change-year3">+42.6%</td>
+            </tr>
+            <tr data-percentile="99.0" data-metro="marion, nc" data-current="271000.0" data-month1="6.17" data-month3="7.70" data-month6="-14.85" data-year1="-22.61" data-year3="-12.89">
+                <td class="rank">106</td>
+                <td class="metro">Marion, NC</td>
+                <td class="number current-value">$271K</td>
+                <td class="number change-month1">+6.2%</td>
+                <td class="number change-month3">+7.7%</td>
+                <td class="number change-month6">-14.8%</td>
+                <td class="number change-year1">-22.6%</td>
+                <td class="number change-year3">-12.9%</td>
+            </tr>
+            <tr data-percentile="29.5" data-metro="victoria, tx" data-current="267250.0" data-month1="-1.18" data-month3="-6.31" data-month6="-5.41" data-year1="20.39" data-year3="3.28">
+                <td class="rank">107</td>
+                <td class="metro">Victoria, TX</td>
+                <td class="number current-value">$267K</td>
+                <td class="number change-month1">-1.2%</td>
+                <td class="number change-month3">-6.3%</td>
+                <td class="number change-month6">-5.4%</td>
+                <td class="number change-year1">+20.4%</td>
+                <td class="number change-year3">+3.3%</td>
+            </tr>
+            <tr data-percentile="96.0" data-metro="yankton, sd" data-current="264189.0" data-month1="7.12" data-month3="-7.57" data-month6="4.27" data-year1="-10.65" data-year3="-4.02">
+                <td class="rank">108</td>
+                <td class="metro">Yankton, SD</td>
+                <td class="number current-value">$264K</td>
+                <td class="number change-month1">+7.1%</td>
+                <td class="number change-month3">-7.6%</td>
+                <td class="number change-month6">+4.3%</td>
+                <td class="number change-year1">-10.7%</td>
+                <td class="number change-year3">-4.0%</td>
+            </tr>
+            <tr data-percentile="48.0" data-metro="summerville, ga" data-current="264062.5" data-month1="37.76" data-month3="30.93" data-month6="65.12" data-year1="17.30" data-year3="74.11">
+                <td class="rank">109</td>
+                <td class="metro">Summerville, GA</td>
+                <td class="number current-value">$264K</td>
+                <td class="number change-month1">+37.8%</td>
+                <td class="number change-month3">+30.9%</td>
+                <td class="number change-month6">+65.1%</td>
+                <td class="number change-year1">+17.3%</td>
+                <td class="number change-year3">+74.1%</td>
+            </tr>
+            <tr data-percentile="4.0" data-metro="fort leonard wood, mo" data-current="263776.25" data-month1="6.37" data-month3="9.00" data-month6="3.69" data-year1="19.09" data-year3="7.89">
+                <td class="rank">110</td>
+                <td class="metro">Fort Leonard Wood, MO</td>
+                <td class="number current-value">$264K</td>
+                <td class="number change-month1">+6.4%</td>
+                <td class="number change-month3">+9.0%</td>
+                <td class="number change-month6">+3.7%</td>
+                <td class="number change-year1">+19.1%</td>
+                <td class="number change-year3">+7.9%</td>
+            </tr>
+            <tr data-percentile="37.5" data-metro="enterprise, al" data-current="263725.0" data-month1="-0.35" data-month3="-8.86" data-month6="-4.49" data-year1="-3.21" data-year3="21.32">
+                <td class="rank">111</td>
+                <td class="metro">Enterprise, AL</td>
+                <td class="number current-value">$264K</td>
+                <td class="number change-month1">-0.4%</td>
+                <td class="number change-month3">-8.9%</td>
+                <td class="number change-month6">-4.5%</td>
+                <td class="number change-year1">-3.2%</td>
+                <td class="number change-year3">+21.3%</td>
+            </tr>
+            <tr data-percentile="30.0" data-metro="wausau, wi" data-current="263462.5" data-month1="-4.87" data-month3="-5.70" data-month6="0.76" data-year1="3.99" data-year3="1.70">
+                <td class="rank">112</td>
+                <td class="metro">Wausau, WI</td>
+                <td class="number current-value">$263K</td>
+                <td class="number change-month1">-4.9%</td>
+                <td class="number change-month3">-5.7%</td>
+                <td class="number change-month6">+0.8%</td>
+                <td class="number change-year1">+4.0%</td>
+                <td class="number change-year3">+1.7%</td>
+            </tr>
+            <tr data-percentile="65.0" data-metro="fort wayne, in" data-current="262125.0" data-month1="1.70" data-month3="-1.69" data-month6="-5.07" data-year1="2.81" data-year3="1.30">
+                <td class="rank">113</td>
+                <td class="metro">Fort Wayne, IN</td>
+                <td class="number current-value">$262K</td>
+                <td class="number change-month1">+1.7%</td>
+                <td class="number change-month3">-1.7%</td>
+                <td class="number change-month6">-5.1%</td>
+                <td class="number change-year1">+2.8%</td>
+                <td class="number change-year3">+1.3%</td>
+            </tr>
+            <tr data-percentile="36.5" data-metro="cleveland, oh" data-current="261062.5" data-month1="-0.57" data-month3="-2.04" data-month6="0.53" data-year1="9.77" data-year3="12.41">
+                <td class="rank">114</td>
+                <td class="metro">Cleveland, OH</td>
+                <td class="number current-value">$261K</td>
+                <td class="number change-month1">-0.6%</td>
+                <td class="number change-month3">-2.0%</td>
+                <td class="number change-month6">+0.5%</td>
+                <td class="number change-year1">+9.8%</td>
+                <td class="number change-year3">+12.4%</td>
+            </tr>
+            <tr data-percentile="16.0" data-metro="berlin, nh" data-current="257875.0" data-month1="8.12" data-month3="8.32" data-month6="-2.55" data-year1="8.61" data-year3="-5.11">
+                <td class="rank">115</td>
+                <td class="metro">Berlin, NH</td>
+                <td class="number current-value">$258K</td>
+                <td class="number change-month1">+8.1%</td>
+                <td class="number change-month3">+8.3%</td>
+                <td class="number change-month6">-2.6%</td>
+                <td class="number change-year1">+8.6%</td>
+                <td class="number change-year3">-5.1%</td>
+            </tr>
+            <tr data-percentile="34.5" data-metro="henderson, nc" data-current="257375.0" data-month1="-0.72" data-month3="4.04" data-month6="5.92" data-year1="32.58" data-year3="58.38">
+                <td class="rank">116</td>
+                <td class="metro">Henderson, NC</td>
+                <td class="number current-value">$257K</td>
+                <td class="number change-month1">-0.7%</td>
+                <td class="number change-month3">+4.0%</td>
+                <td class="number change-month6">+5.9%</td>
+                <td class="number change-year1">+32.6%</td>
+                <td class="number change-year3">+58.4%</td>
+            </tr>
+            <tr data-percentile="89.0" data-metro="watertown, ny" data-current="257193.75" data-month1="2.48" data-month3="7.18" data-month6="5.96" data-year1="-0.21" data-year3="28.12">
+                <td class="rank">117</td>
+                <td class="metro">Watertown, NY</td>
+                <td class="number current-value">$257K</td>
+                <td class="number change-month1">+2.5%</td>
+                <td class="number change-month3">+7.2%</td>
+                <td class="number change-month6">+6.0%</td>
+                <td class="number change-year1">-0.2%</td>
+                <td class="number change-year3">+28.1%</td>
+            </tr>
+            <tr data-percentile="41.0" data-metro="little rock, ar" data-current="255875.0" data-month1="2.61" data-month3="4.39" data-month6="-1.11" data-year1="7.58" data-year3="4.99">
+                <td class="rank">118</td>
+                <td class="metro">Little Rock, AR</td>
+                <td class="number current-value">$256K</td>
+                <td class="number change-month1">+2.6%</td>
+                <td class="number change-month3">+4.4%</td>
+                <td class="number change-month6">-1.1%</td>
+                <td class="number change-year1">+7.6%</td>
+                <td class="number change-year3">+5.0%</td>
+            </tr>
+            <tr data-percentile="84.0" data-metro="elkhart, in" data-current="255500.0" data-month1="-2.62" data-month3="-10.46" data-month6="-4.12" data-year1="5.91" data-year3="6.34">
+                <td class="rank">119</td>
+                <td class="metro">Elkhart, IN</td>
+                <td class="number current-value">$256K</td>
+                <td class="number change-month1">-2.6%</td>
+                <td class="number change-month3">-10.5%</td>
+                <td class="number change-month6">-4.1%</td>
+                <td class="number change-year1">+5.9%</td>
+                <td class="number change-year3">+6.3%</td>
+            </tr>
+            <tr data-percentile="68.0" data-metro="bloomsburg, pa" data-current="254375.0" data-month1="2.52" data-month3="-1.36" data-month6="6.83" data-year1="-12.31" data-year3="15.14">
+                <td class="rank">120</td>
+                <td class="metro">Bloomsburg, PA</td>
+                <td class="number current-value">$254K</td>
+                <td class="number change-month1">+2.5%</td>
+                <td class="number change-month3">-1.4%</td>
+                <td class="number change-month6">+6.8%</td>
+                <td class="number change-year1">-12.3%</td>
+                <td class="number change-year3">+15.1%</td>
+            </tr>
+            <tr data-percentile="12.5" data-metro="columbus, in" data-current="251562.5" data-month1="-0.20" data-month3="-5.61" data-month6="-5.29" data-year1="-5.94" data-year3="-4.17">
+                <td class="rank">121</td>
+                <td class="metro">Columbus, IN</td>
+                <td class="number current-value">$252K</td>
+                <td class="number change-month1">-0.2%</td>
+                <td class="number change-month3">-5.6%</td>
+                <td class="number change-month6">-5.3%</td>
+                <td class="number change-year1">-5.9%</td>
+                <td class="number change-year3">-4.2%</td>
+            </tr>
+            <tr data-percentile="33.5" data-metro="michigan city, in" data-current="250735.0" data-month1="-8.11" data-month3="-6.09" data-month6="-1.09" data-year1="17.61" data-year3="4.22">
+                <td class="rank">122</td>
+                <td class="metro">Michigan City, IN</td>
+                <td class="number current-value">$251K</td>
+                <td class="number change-month1">-8.1%</td>
+                <td class="number change-month3">-6.1%</td>
+                <td class="number change-month6">-1.1%</td>
+                <td class="number change-year1">+17.6%</td>
+                <td class="number change-year3">+4.2%</td>
+            </tr>
+            <tr data-percentile="45.5" data-metro="thomaston, ga" data-current="250425.0" data-month1="-2.29" data-month3="8.20" data-month6="-11.64" data-year1="36.03" data-year3="44.44">
+                <td class="rank">123</td>
+                <td class="metro">Thomaston, GA</td>
+                <td class="number current-value">$250K</td>
+                <td class="number change-month1">-2.3%</td>
+                <td class="number change-month3">+8.2%</td>
+                <td class="number change-month6">-11.6%</td>
+                <td class="number change-year1">+36.0%</td>
+                <td class="number change-year3">+44.4%</td>
+            </tr>
+            <tr data-percentile="98.0" data-metro="amarillo, tx" data-current="249125.0" data-month1="-3.11" data-month3="-7.64" data-month6="-4.91" data-year1="0.01" data-year3="2.01">
+                <td class="rank">124</td>
+                <td class="metro">Amarillo, TX</td>
+                <td class="number current-value">$249K</td>
+                <td class="number change-month1">-3.1%</td>
+                <td class="number change-month3">-7.6%</td>
+                <td class="number change-month6">-4.9%</td>
+                <td class="number change-year1">+0.0%</td>
+                <td class="number change-year3">+2.0%</td>
+            </tr>
+            <tr data-percentile="65.5" data-metro="danville, ky" data-current="245475.0" data-month1="-2.84" data-month3="-16.81" data-month6="-11.85" data-year1="1.05" data-year3="3.91">
+                <td class="rank">125</td>
+                <td class="metro">Danville, KY</td>
+                <td class="number current-value">$245K</td>
+                <td class="number change-month1">-2.8%</td>
+                <td class="number change-month3">-16.8%</td>
+                <td class="number change-month6">-11.9%</td>
+                <td class="number change-year1">+1.1%</td>
+                <td class="number change-year3">+3.9%</td>
+            </tr>
+            <tr data-percentile="87.0" data-metro="lagrange, ga" data-current="242372.5" data-month1="-5.79" data-month3="-2.58" data-month6="2.40" data-year1="-7.83" data-year3="5.70">
+                <td class="rank">126</td>
+                <td class="metro">LaGrange, GA</td>
+                <td class="number current-value">$242K</td>
+                <td class="number change-month1">-5.8%</td>
+                <td class="number change-month3">-2.6%</td>
+                <td class="number change-month6">+2.4%</td>
+                <td class="number change-year1">-7.8%</td>
+                <td class="number change-year3">+5.7%</td>
+            </tr>
+            <tr data-percentile="49.5" data-metro="alpena, mi" data-current="242000.0" data-month1="7.89" data-month3="25.43" data-month6="25.89" data-year1="31.37" data-year3="56.65">
+                <td class="rank">127</td>
+                <td class="metro">Alpena, MI</td>
+                <td class="number current-value">$242K</td>
+                <td class="number change-month1">+7.9%</td>
+                <td class="number change-month3">+25.4%</td>
+                <td class="number change-month6">+25.9%</td>
+                <td class="number change-year1">+31.4%</td>
+                <td class="number change-year3">+56.6%</td>
+            </tr>
+            <tr data-percentile="38.5" data-metro="scranton, pa" data-current="241375.0" data-month1="-1.73" data-month3="2.28" data-month6="4.83" data-year1="7.34" data-year3="10.00">
+                <td class="rank">128</td>
+                <td class="metro">Scranton, PA</td>
+                <td class="number current-value">$241K</td>
+                <td class="number change-month1">-1.7%</td>
+                <td class="number change-month3">+2.3%</td>
+                <td class="number change-month6">+4.8%</td>
+                <td class="number change-year1">+7.3%</td>
+                <td class="number change-year3">+10.0%</td>
+            </tr>
+            <tr data-percentile="10.5" data-metro="tahlequah, ok" data-current="237287.5" data-month1="2.87" data-month3="4.89" data-month6="-1.80" data-year1="-5.60" data-year3="16.50">
+                <td class="rank">129</td>
+                <td class="metro">Tahlequah, OK</td>
+                <td class="number current-value">$237K</td>
+                <td class="number change-month1">+2.9%</td>
+                <td class="number change-month3">+4.9%</td>
+                <td class="number change-month6">-1.8%</td>
+                <td class="number change-year1">-5.6%</td>
+                <td class="number change-year3">+16.5%</td>
+            </tr>
+            <tr data-percentile="94.0" data-metro="evansville, in" data-current="236625.0" data-month1="-1.97" data-month3="0.97" data-month6="-1.17" data-year1="2.89" data-year3="21.11">
+                <td class="rank">130</td>
+                <td class="metro">Evansville, IN</td>
+                <td class="number current-value">$237K</td>
+                <td class="number change-month1">-2.0%</td>
+                <td class="number change-month3">+1.0%</td>
+                <td class="number change-month6">-1.2%</td>
+                <td class="number change-year1">+2.9%</td>
+                <td class="number change-year3">+21.1%</td>
+            </tr>
+            <tr data-percentile="81.0" data-metro="glasgow, ky" data-current="234787.5" data-month1="-0.17" data-month3="4.09" data-month6="8.57" data-year1="10.23" data-year3="-7.93">
+                <td class="rank">131</td>
+                <td class="metro">Glasgow, KY</td>
+                <td class="number current-value">$235K</td>
+                <td class="number change-month1">-0.2%</td>
+                <td class="number change-month3">+4.1%</td>
+                <td class="number change-month6">+8.6%</td>
+                <td class="number change-year1">+10.2%</td>
+                <td class="number change-year3">-7.9%</td>
+            </tr>
+            <tr data-percentile="89.5" data-metro="thomasville, ga" data-current="233975.0" data-month1="-8.77" data-month3="-8.32" data-month6="-10.86" data-year1="-4.93" data-year3="-13.96">
+                <td class="rank">132</td>
+                <td class="metro">Thomasville, GA</td>
+                <td class="number current-value">$234K</td>
+                <td class="number change-month1">-8.8%</td>
+                <td class="number change-month3">-8.3%</td>
+                <td class="number change-month6">-10.9%</td>
+                <td class="number change-year1">-4.9%</td>
+                <td class="number change-year3">-14.0%</td>
+            </tr>
+            <tr data-percentile="35.5" data-metro="wapakoneta, oh" data-current="233912.5" data-month1="-5.88" data-month3="-9.83" data-month6="-11.08" data-year1="32.53" data-year3="11.49">
+                <td class="rank">133</td>
+                <td class="metro">Wapakoneta, OH</td>
+                <td class="number current-value">$234K</td>
+                <td class="number change-month1">-5.9%</td>
+                <td class="number change-month3">-9.8%</td>
+                <td class="number change-month6">-11.1%</td>
+                <td class="number change-year1">+32.5%</td>
+                <td class="number change-year3">+11.5%</td>
+            </tr>
+            <tr data-percentile="93.0" data-metro="hobbs, nm" data-current="227125.0" data-month1="-4.32" data-month3="-2.00" data-month6="-19.14" data-year1="-26.27" data-year3="-4.38">
+                <td class="rank">134</td>
+                <td class="metro">Hobbs, NM</td>
+                <td class="number current-value">$227K</td>
+                <td class="number change-month1">-4.3%</td>
+                <td class="number change-month3">-2.0%</td>
+                <td class="number change-month6">-19.1%</td>
+                <td class="number change-year1">-26.3%</td>
+                <td class="number change-year3">-4.4%</td>
+            </tr>
+            <tr data-percentile="66.0" data-metro="detroit, mi" data-current="226750.0" data-month1="0.00" data-month3="4.86" data-month6="7.82" data-year1="9.94" data-year3="18.41">
+                <td class="rank">135</td>
+                <td class="metro">Detroit, MI</td>
+                <td class="number current-value">$227K</td>
+                <td class="number change-month1">+0.0%</td>
+                <td class="number change-month3">+4.9%</td>
+                <td class="number change-month6">+7.8%</td>
+                <td class="number change-year1">+9.9%</td>
+                <td class="number change-year3">+18.4%</td>
+            </tr>
+            <tr data-percentile="46.0" data-metro="fort payne, al" data-current="226318.75" data-month1="0.54" data-month3="12.32" data-month6="-13.45" data-year1="3.46" data-year3="-1.68">
+                <td class="rank">136</td>
+                <td class="metro">Fort Payne, AL</td>
+                <td class="number current-value">$226K</td>
+                <td class="number change-month1">+0.5%</td>
+                <td class="number change-month3">+12.3%</td>
+                <td class="number change-month6">-13.4%</td>
+                <td class="number change-year1">+3.5%</td>
+                <td class="number change-year3">-1.7%</td>
+            </tr>
+            <tr data-percentile="45.0" data-metro="mount sterling, ky" data-current="226250.0" data-month1="-1.09" data-month3="-2.84" data-month6="16.10" data-year1="-17.29" data-year3="14.16">
+                <td class="rank">137</td>
+                <td class="metro">Mount Sterling, KY</td>
+                <td class="number current-value">$226K</td>
+                <td class="number change-month1">-1.1%</td>
+                <td class="number change-month3">-2.8%</td>
+                <td class="number change-month6">+16.1%</td>
+                <td class="number change-year1">-17.3%</td>
+                <td class="number change-year3">+14.2%</td>
+            </tr>
+            <tr data-percentile="35.0" data-metro="west plains, mo" data-current="224575.0" data-month1="0.34" data-month3="9.70" data-month6="-1.33" data-year1="-13.20" data-year3="-1.73">
+                <td class="rank">138</td>
+                <td class="metro">West Plains, MO</td>
+                <td class="number current-value">$225K</td>
+                <td class="number change-month1">+0.3%</td>
+                <td class="number change-month3">+9.7%</td>
+                <td class="number change-month6">-1.3%</td>
+                <td class="number change-year1">-13.2%</td>
+                <td class="number change-year3">-1.7%</td>
+            </tr>
+            <tr data-percentile="97.5" data-metro="cedar rapids, ia" data-current="224296.875" data-month1="-3.25" data-month3="-4.35" data-month6="-3.89" data-year1="5.49" data-year3="4.39">
+                <td class="rank">139</td>
+                <td class="metro">Cedar Rapids, IA</td>
+                <td class="number current-value">$224K</td>
+                <td class="number change-month1">-3.2%</td>
+                <td class="number change-month3">-4.4%</td>
+                <td class="number change-month6">-3.9%</td>
+                <td class="number change-year1">+5.5%</td>
+                <td class="number change-year3">+4.4%</td>
+            </tr>
+            <tr data-percentile="26.0" data-metro="toledo, oh" data-current="221956.25" data-month1="-2.66" data-month3="-2.09" data-month6="-2.73" data-year1="0.61" data-year3="10.53">
+                <td class="rank">140</td>
+                <td class="metro">Toledo, OH</td>
+                <td class="number current-value">$222K</td>
+                <td class="number change-month1">-2.7%</td>
+                <td class="number change-month3">-2.1%</td>
+                <td class="number change-month6">-2.7%</td>
+                <td class="number change-year1">+0.6%</td>
+                <td class="number change-year3">+10.5%</td>
+            </tr>
+            <tr data-percentile="34.0" data-metro="rockford, il" data-current="221350.0" data-month1="3.27" data-month3="6.55" data-month6="5.40" data-year1="9.08" data-year3="12.11">
+                <td class="rank">141</td>
+                <td class="metro">Rockford, IL</td>
+                <td class="number current-value">$221K</td>
+                <td class="number change-month1">+3.3%</td>
+                <td class="number change-month3">+6.5%</td>
+                <td class="number change-month6">+5.4%</td>
+                <td class="number change-year1">+9.1%</td>
+                <td class="number change-year3">+12.1%</td>
+            </tr>
+            <tr data-percentile="56.0" data-metro="shawnee, ok" data-current="219971.5" data-month1="2.86" data-month3="0.16" data-month6="0.97" data-year1="-9.52" data-year3="-4.30">
+                <td class="rank">142</td>
+                <td class="metro">Shawnee, OK</td>
+                <td class="number current-value">$220K</td>
+                <td class="number change-month1">+2.9%</td>
+                <td class="number change-month3">+0.2%</td>
+                <td class="number change-month6">+1.0%</td>
+                <td class="number change-year1">-9.5%</td>
+                <td class="number change-year3">-4.3%</td>
+            </tr>
+            <tr data-percentile="13.0" data-metro="dubois, pa" data-current="217699.5" data-month1="15.40" data-month3="15.07" data-month6="53.04" data-year1="66.74" data-year3="9.47">
+                <td class="rank">143</td>
+                <td class="metro">DuBois, PA</td>
+                <td class="number current-value">$218K</td>
+                <td class="number change-month1">+15.4%</td>
+                <td class="number change-month3">+15.1%</td>
+                <td class="number change-month6">+53.0%</td>
+                <td class="number change-year1">+66.7%</td>
+                <td class="number change-year3">+9.5%</td>
+            </tr>
+            <tr data-percentile="64.5" data-metro="wisconsin rapids, wi" data-current="216112.5" data-month1="-1.42" data-month3="-11.27" data-month6="-9.85" data-year1="-8.27" data-year3="-2.54">
+                <td class="rank">144</td>
+                <td class="metro">Wisconsin Rapids, WI</td>
+                <td class="number current-value">$216K</td>
+                <td class="number change-month1">-1.4%</td>
+                <td class="number change-month3">-11.3%</td>
+                <td class="number change-month6">-9.9%</td>
+                <td class="number change-year1">-8.3%</td>
+                <td class="number change-year3">-2.5%</td>
+            </tr>
+            <tr data-percentile="51.5" data-metro="st. joseph, mo" data-current="212750.0" data-month1="-6.59" data-month3="-3.21" data-month6="-1.16" data-year1="18.90" data-year3="13.54">
+                <td class="rank">145</td>
+                <td class="metro">St. Joseph, MO</td>
+                <td class="number current-value">$213K</td>
+                <td class="number change-month1">-6.6%</td>
+                <td class="number change-month3">-3.2%</td>
+                <td class="number change-month6">-1.2%</td>
+                <td class="number change-year1">+18.9%</td>
+                <td class="number change-year3">+13.5%</td>
+            </tr>
+            <tr data-percentile="71.5" data-metro="ardmore, ok" data-current="211962.5" data-month1="5.75" data-month3="17.51" data-month6="31.45" data-year1="16.22" data-year3="-0.63">
+                <td class="rank">146</td>
+                <td class="metro">Ardmore, OK</td>
+                <td class="number current-value">$212K</td>
+                <td class="number change-month1">+5.7%</td>
+                <td class="number change-month3">+17.5%</td>
+                <td class="number change-month6">+31.4%</td>
+                <td class="number change-year1">+16.2%</td>
+                <td class="number change-year3">-0.6%</td>
+            </tr>
+            <tr data-percentile="96.5" data-metro="erie, pa" data-current="211500.0" data-month1="1.08" data-month3="2.43" data-month6="7.98" data-year1="9.86" data-year3="7.10">
+                <td class="rank">147</td>
+                <td class="metro">Erie, PA</td>
+                <td class="number current-value">$212K</td>
+                <td class="number change-month1">+1.1%</td>
+                <td class="number change-month3">+2.4%</td>
+                <td class="number change-month6">+8.0%</td>
+                <td class="number change-year1">+9.9%</td>
+                <td class="number change-year3">+7.1%</td>
+            </tr>
+            <tr data-percentile="44.0" data-metro="fairmont, wv" data-current="209999.875" data-month1="3.07" data-month3="21.21" data-month6="2.59" data-year1="11.25" data-year3="12.70">
+                <td class="rank">148</td>
+                <td class="metro">Fairmont, WV</td>
+                <td class="number current-value">$210K</td>
+                <td class="number change-month1">+3.1%</td>
+                <td class="number change-month3">+21.2%</td>
+                <td class="number change-month6">+2.6%</td>
+                <td class="number change-year1">+11.3%</td>
+                <td class="number change-year3">+12.7%</td>
+            </tr>
+            <tr data-percentile="61.5" data-metro="anniston, al" data-current="209837.5" data-month1="-0.30" data-month3="-6.10" data-month6="0.24" data-year1="2.37" data-year3="7.89">
+                <td class="rank">149</td>
+                <td class="metro">Anniston, AL</td>
+                <td class="number current-value">$210K</td>
+                <td class="number change-month1">-0.3%</td>
+                <td class="number change-month3">-6.1%</td>
+                <td class="number change-month6">+0.2%</td>
+                <td class="number change-year1">+2.4%</td>
+                <td class="number change-year3">+7.9%</td>
+            </tr>
+            <tr data-percentile="86.5" data-metro="greenville, oh" data-current="204662.5" data-month1="-2.44" data-month3="12.39" data-month6="-9.19" data-year1="0.85" data-year3="-2.13">
+                <td class="rank">150</td>
+                <td class="metro">Greenville, OH</td>
+                <td class="number current-value">$205K</td>
+                <td class="number change-month1">-2.4%</td>
+                <td class="number change-month3">+12.4%</td>
+                <td class="number change-month6">-9.2%</td>
+                <td class="number change-year1">+0.9%</td>
+                <td class="number change-year3">-2.1%</td>
+            </tr>
+            <tr data-percentile="16.5" data-metro="lima, oh" data-current="202750.0" data-month1="-5.34" data-month3="-6.05" data-month6="-6.62" data-year1="3.19" data-year3="13.40">
+                <td class="rank">151</td>
+                <td class="metro">Lima, OH</td>
+                <td class="number current-value">$203K</td>
+                <td class="number change-month1">-5.3%</td>
+                <td class="number change-month3">-6.1%</td>
+                <td class="number change-month6">-6.6%</td>
+                <td class="number change-year1">+3.2%</td>
+                <td class="number change-year3">+13.4%</td>
+            </tr>
+            <tr data-percentile="19.0" data-metro="fort polk south, la" data-current="202062.5" data-month1="-11.74" data-month3="-13.69" data-month6="-3.34" data-year1="9.71" data-year3="-17.78">
+                <td class="rank">152</td>
+                <td class="metro">Fort Polk South, LA</td>
+                <td class="number current-value">$202K</td>
+                <td class="number change-month1">-11.7%</td>
+                <td class="number change-month3">-13.7%</td>
+                <td class="number change-month6">-3.3%</td>
+                <td class="number change-year1">+9.7%</td>
+                <td class="number change-year3">-17.8%</td>
+            </tr>
+            <tr data-percentile="22.5" data-metro="russellville, ar" data-current="201875.0" data-month1="-5.78" data-month3="-11.70" data-month6="-10.90" data-year1="-1.22" data-year3="3.79">
+                <td class="rank">153</td>
+                <td class="metro">Russellville, AR</td>
+                <td class="number current-value">$202K</td>
+                <td class="number change-month1">-5.8%</td>
+                <td class="number change-month3">-11.7%</td>
+                <td class="number change-month6">-10.9%</td>
+                <td class="number change-year1">-1.2%</td>
+                <td class="number change-year3">+3.8%</td>
+            </tr>
+            <tr data-percentile="90.0" data-metro="el campo, tx" data-current="201202.5" data-month1="1.00" data-month3="-1.48" data-month6="-3.56" data-year1="-0.79" data-year3="-20.45">
+                <td class="rank">154</td>
+                <td class="metro">El Campo, TX</td>
+                <td class="number current-value">$201K</td>
+                <td class="number change-month1">+1.0%</td>
+                <td class="number change-month3">-1.5%</td>
+                <td class="number change-month6">-3.6%</td>
+                <td class="number change-year1">-0.8%</td>
+                <td class="number change-year3">-20.4%</td>
+            </tr>
+            <tr data-percentile="71.0" data-metro="scottsburg, in" data-current="200987.5" data-month1="-0.92" data-month3="7.93" data-month6="1.98" data-year1="-11.44" data-year3="-5.41">
+                <td class="rank">155</td>
+                <td class="metro">Scottsburg, IN</td>
+                <td class="number current-value">$201K</td>
+                <td class="number change-month1">-0.9%</td>
+                <td class="number change-month3">+7.9%</td>
+                <td class="number change-month6">+2.0%</td>
+                <td class="number change-year1">-11.4%</td>
+                <td class="number change-year3">-5.4%</td>
+            </tr>
+            <tr data-percentile="59.0" data-metro="sedalia, mo" data-current="199975.0" data-month1="-0.31" data-month3="5.33" data-month6="-1.25" data-year1="-3.73" data-year3="19.96">
+                <td class="rank">156</td>
+                <td class="metro">Sedalia, MO</td>
+                <td class="number current-value">$200K</td>
+                <td class="number change-month1">-0.3%</td>
+                <td class="number change-month3">+5.3%</td>
+                <td class="number change-month6">-1.3%</td>
+                <td class="number change-year1">-3.7%</td>
+                <td class="number change-year3">+20.0%</td>
+            </tr>
+            <tr data-percentile="85.5" data-metro="kingsville, tx" data-current="198624.75" data-month1="-10.79" data-month3="2.38" data-month6="18.77" data-year1="-31.91" data-year3="13.58">
+                <td class="rank">157</td>
+                <td class="metro">Kingsville, TX</td>
+                <td class="number current-value">$199K</td>
+                <td class="number change-month1">-10.8%</td>
+                <td class="number change-month3">+2.4%</td>
+                <td class="number change-month6">+18.8%</td>
+                <td class="number change-year1">-31.9%</td>
+                <td class="number change-year3">+13.6%</td>
+            </tr>
+            <tr data-percentile="67.5" data-metro="wichita falls, tx" data-current="198037.5" data-month1="-3.06" data-month3="2.37" data-month6="-10.36" data-year1="0.45" data-year3="-2.44">
+                <td class="rank">158</td>
+                <td class="metro">Wichita Falls, TX</td>
+                <td class="number current-value">$198K</td>
+                <td class="number change-month1">-3.1%</td>
+                <td class="number change-month3">+2.4%</td>
+                <td class="number change-month6">-10.4%</td>
+                <td class="number change-year1">+0.5%</td>
+                <td class="number change-year3">-2.4%</td>
+            </tr>
+            <tr data-percentile="67.0" data-metro="uvalde, tx" data-current="196500.0" data-month1="-20.82" data-month3="-18.04" data-month6="21.65" data-year1="-59.43" data-year3="-59.67">
+                <td class="rank">159</td>
+                <td class="metro">Uvalde, TX</td>
+                <td class="number current-value">$196K</td>
+                <td class="number change-month1">-20.8%</td>
+                <td class="number change-month3">-18.0%</td>
+                <td class="number change-month6">+21.7%</td>
+                <td class="number change-year1">-59.4%</td>
+                <td class="number change-year3">-59.7%</td>
+            </tr>
+            <tr data-percentile="62.5" data-metro="mansfield, oh" data-current="195475.0" data-month1="-2.32" data-month3="-3.05" data-month6="-4.00" data-year1="-2.87" data-year3="2.33">
+                <td class="rank">160</td>
+                <td class="metro">Mansfield, OH</td>
+                <td class="number current-value">$195K</td>
+                <td class="number change-month1">-2.3%</td>
+                <td class="number change-month3">-3.1%</td>
+                <td class="number change-month6">-4.0%</td>
+                <td class="number change-year1">-2.9%</td>
+                <td class="number change-year3">+2.3%</td>
+            </tr>
+            <tr data-percentile="39.5" data-metro="portales, nm" data-current="194125.0" data-month1="-8.26" data-month3="-9.11" data-month6="25.58" data-year1="17.12" data-year3="24.89">
+                <td class="rank">161</td>
+                <td class="metro">Portales, NM</td>
+                <td class="number current-value">$194K</td>
+                <td class="number change-month1">-8.3%</td>
+                <td class="number change-month3">-9.1%</td>
+                <td class="number change-month6">+25.6%</td>
+                <td class="number change-year1">+17.1%</td>
+                <td class="number change-year3">+24.9%</td>
+            </tr>
+            <tr data-percentile="27.5" data-metro="dyersburg, tn" data-current="193062.5" data-month1="-12.33" data-month3="-0.88" data-month6="37.47" data-year1="-10.94" data-year3="-3.15">
+                <td class="rank">162</td>
+                <td class="metro">Dyersburg, TN</td>
+                <td class="number current-value">$193K</td>
+                <td class="number change-month1">-12.3%</td>
+                <td class="number change-month3">-0.9%</td>
+                <td class="number change-month6">+37.5%</td>
+                <td class="number change-year1">-10.9%</td>
+                <td class="number change-year3">-3.2%</td>
+            </tr>
+            <tr data-percentile="64.0" data-metro="raymondville, tx" data-current="190975.0" data-month1="-20.83" data-month3="-3.84" data-month6="-10.94" data-year1="54.01" data-year3="-15.44">
+                <td class="rank">163</td>
+                <td class="metro">Raymondville, TX</td>
+                <td class="number current-value">$191K</td>
+                <td class="number change-month1">-20.8%</td>
+                <td class="number change-month3">-3.8%</td>
+                <td class="number change-month6">-10.9%</td>
+                <td class="number change-year1">+54.0%</td>
+                <td class="number change-year3">-15.4%</td>
+            </tr>
+            <tr data-percentile="33.0" data-metro="lewistown, pa" data-current="190087.5" data-month1="2.82" data-month3="-13.11" data-month6="-9.76" data-year1="18.43" data-year3="17.90">
+                <td class="rank">164</td>
+                <td class="metro">Lewistown, PA</td>
+                <td class="number current-value">$190K</td>
+                <td class="number change-month1">+2.8%</td>
+                <td class="number change-month3">-13.1%</td>
+                <td class="number change-month6">-9.8%</td>
+                <td class="number change-year1">+18.4%</td>
+                <td class="number change-year3">+17.9%</td>
+            </tr>
+            <tr data-percentile="18.0" data-metro="peru, in" data-current="189975.0" data-month1="-8.22" data-month3="18.73" data-month6="14.42" data-year1="10.37" data-year3="11.03">
+                <td class="rank">165</td>
+                <td class="metro">Peru, IN</td>
+                <td class="number current-value">$190K</td>
+                <td class="number change-month1">-8.2%</td>
+                <td class="number change-month3">+18.7%</td>
+                <td class="number change-month6">+14.4%</td>
+                <td class="number change-year1">+10.4%</td>
+                <td class="number change-year3">+11.0%</td>
+            </tr>
+            <tr data-percentile="24.0" data-metro="escanaba, mi" data-current="189500.0" data-month1="-1.62" data-month3="-3.13" data-month6="9.57" data-year1="-2.60" data-year3="8.56">
+                <td class="rank">166</td>
+                <td class="metro">Escanaba, MI</td>
+                <td class="number current-value">$190K</td>
+                <td class="number change-month1">-1.6%</td>
+                <td class="number change-month3">-3.1%</td>
+                <td class="number change-month6">+9.6%</td>
+                <td class="number change-year1">-2.6%</td>
+                <td class="number change-year3">+8.6%</td>
+            </tr>
+            <tr data-percentile="77.0" data-metro="mount vernon, il" data-current="189375.0" data-month1="13.48" data-month3="21.69" data-month6="24.54" data-year1="3.49" data-year3="22.24">
+                <td class="rank">167</td>
+                <td class="metro">Mount Vernon, IL</td>
+                <td class="number current-value">$189K</td>
+                <td class="number change-month1">+13.5%</td>
+                <td class="number change-month3">+21.7%</td>
+                <td class="number change-month6">+24.5%</td>
+                <td class="number change-year1">+3.5%</td>
+                <td class="number change-year3">+22.2%</td>
+            </tr>
+            <tr data-percentile="84.5" data-metro="youngstown, oh" data-current="189312.5" data-month1="-0.66" data-month3="5.43" data-month6="4.30" data-year1="10.99" data-year3="5.61">
+                <td class="rank">168</td>
+                <td class="metro">Youngstown, OH</td>
+                <td class="number current-value">$189K</td>
+                <td class="number change-month1">-0.7%</td>
+                <td class="number change-month3">+5.4%</td>
+                <td class="number change-month6">+4.3%</td>
+                <td class="number change-year1">+11.0%</td>
+                <td class="number change-year3">+5.6%</td>
+            </tr>
+            <tr data-percentile="14.0" data-metro="ozark, al" data-current="187200.0" data-month1="9.11" data-month3="-5.97" data-month6="-30.63" data-year1="-1.57" data-year3="-8.54">
+                <td class="rank">169</td>
+                <td class="metro">Ozark, AL</td>
+                <td class="number current-value">$187K</td>
+                <td class="number change-month1">+9.1%</td>
+                <td class="number change-month3">-6.0%</td>
+                <td class="number change-month6">-30.6%</td>
+                <td class="number change-year1">-1.6%</td>
+                <td class="number change-year3">-8.5%</td>
+            </tr>
+            <tr data-percentile="3.0" data-metro="winfield, ks" data-current="186458.25" data-month1="23.67" data-month3="50.04" data-month6="45.51" data-year1="9.22" data-year3="31.12">
+                <td class="rank">170</td>
+                <td class="metro">Winfield, KS</td>
+                <td class="number current-value">$186K</td>
+                <td class="number change-month1">+23.7%</td>
+                <td class="number change-month3">+50.0%</td>
+                <td class="number change-month6">+45.5%</td>
+                <td class="number change-year1">+9.2%</td>
+                <td class="number change-year3">+31.1%</td>
+            </tr>
+            <tr data-percentile="63.5" data-metro="charleston, wv" data-current="186206.125" data-month1="0.85" data-month3="-4.88" data-month6="-2.64" data-year1="-2.06" data-year3="-5.21">
+                <td class="rank">171</td>
+                <td class="metro">Charleston, WV</td>
+                <td class="number current-value">$186K</td>
+                <td class="number change-month1">+0.8%</td>
+                <td class="number change-month3">-4.9%</td>
+                <td class="number change-month6">-2.6%</td>
+                <td class="number change-year1">-2.1%</td>
+                <td class="number change-year3">-5.2%</td>
+            </tr>
+            <tr data-percentile="12.0" data-metro="amsterdam, ny" data-current="185875.0" data-month1="-6.62" data-month3="-8.96" data-month6="-13.19" data-year1="-14.28" data-year3="9.19">
+                <td class="rank">172</td>
+                <td class="metro">Amsterdam, NY</td>
+                <td class="number current-value">$186K</td>
+                <td class="number change-month1">-6.6%</td>
+                <td class="number change-month3">-9.0%</td>
+                <td class="number change-month6">-13.2%</td>
+                <td class="number change-year1">-14.3%</td>
+                <td class="number change-year3">+9.2%</td>
+            </tr>
+            <tr data-percentile="2.0" data-metro="ottawa, il" data-current="185187.375" data-month1="6.20" data-month3="4.26" data-month6="5.30" data-year1="4.18" data-year3="6.97">
+                <td class="rank">173</td>
+                <td class="metro">Ottawa, IL</td>
+                <td class="number current-value">$185K</td>
+                <td class="number change-month1">+6.2%</td>
+                <td class="number change-month3">+4.3%</td>
+                <td class="number change-month6">+5.3%</td>
+                <td class="number change-year1">+4.2%</td>
+                <td class="number change-year3">+7.0%</td>
+            </tr>
+            <tr data-percentile="79.5" data-metro="carbondale, il" data-current="179712.5" data-month1="-1.37" data-month3="-10.13" data-month6="3.77" data-year1="7.47" data-year3="2.85">
+                <td class="rank">174</td>
+                <td class="metro">Carbondale, IL</td>
+                <td class="number current-value">$180K</td>
+                <td class="number change-month1">-1.4%</td>
+                <td class="number change-month3">-10.1%</td>
+                <td class="number change-month6">+3.8%</td>
+                <td class="number change-year1">+7.5%</td>
+                <td class="number change-year3">+2.8%</td>
+            </tr>
+            <tr data-percentile="41.5" data-metro="bay city, mi" data-current="176673.125" data-month1="-3.55" data-month3="-4.28" data-month6="0.40" data-year1="1.87" data-year3="12.67">
+                <td class="rank">175</td>
+                <td class="metro">Bay City, MI</td>
+                <td class="number current-value">$177K</td>
+                <td class="number change-month1">-3.5%</td>
+                <td class="number change-month3">-4.3%</td>
+                <td class="number change-month6">+0.4%</td>
+                <td class="number change-year1">+1.9%</td>
+                <td class="number change-year3">+12.7%</td>
+            </tr>
+            <tr data-percentile="92.0" data-metro="new castle, pa" data-current="175687.5" data-month1="-2.09" data-month3="-2.40" data-month6="7.54" data-year1="25.49" data-year3="26.92">
+                <td class="rank">176</td>
+                <td class="metro">New Castle, PA</td>
+                <td class="number current-value">$176K</td>
+                <td class="number change-month1">-2.1%</td>
+                <td class="number change-month3">-2.4%</td>
+                <td class="number change-month6">+7.5%</td>
+                <td class="number change-year1">+25.5%</td>
+                <td class="number change-year3">+26.9%</td>
+            </tr>
+            <tr data-percentile="82.0" data-metro="burlington, ia" data-current="174000.0" data-month1="12.26" data-month3="9.87" data-month6="16.68" data-year1="28.47" data-year3="38.65">
+                <td class="rank">177</td>
+                <td class="metro">Burlington, IA</td>
+                <td class="number current-value">$174K</td>
+                <td class="number change-month1">+12.3%</td>
+                <td class="number change-month3">+9.9%</td>
+                <td class="number change-month6">+16.7%</td>
+                <td class="number change-year1">+28.5%</td>
+                <td class="number change-year3">+38.6%</td>
+            </tr>
+            <tr data-percentile="74.0" data-metro="emporia, ks" data-current="173400.0" data-month1="-10.92" data-month3="-16.11" data-month6="-8.10" data-year1="35.01" data-year3="11.78">
+                <td class="rank">178</td>
+                <td class="metro">Emporia, KS</td>
+                <td class="number current-value">$173K</td>
+                <td class="number change-month1">-10.9%</td>
+                <td class="number change-month3">-16.1%</td>
+                <td class="number change-month6">-8.1%</td>
+                <td class="number change-year1">+35.0%</td>
+                <td class="number change-year3">+11.8%</td>
+            </tr>
+            <tr data-percentile="22.0" data-metro="clarksburg, wv" data-current="167431.25" data-month1="-4.36" data-month3="-3.81" data-month6="-20.25" data-year1="-9.37" data-year3="-25.09">
+                <td class="rank">179</td>
+                <td class="metro">Clarksburg, WV</td>
+                <td class="number current-value">$167K</td>
+                <td class="number change-month1">-4.4%</td>
+                <td class="number change-month3">-3.8%</td>
+                <td class="number change-month6">-20.3%</td>
+                <td class="number change-year1">-9.4%</td>
+                <td class="number change-year3">-25.1%</td>
+            </tr>
+            <tr data-percentile="28.0" data-metro="sterling, il" data-current="165312.5" data-month1="-7.39" data-month3="-2.15" data-month6="2.64" data-year1="24.86" data-year3="15.35">
+                <td class="rank">180</td>
+                <td class="metro">Sterling, IL</td>
+                <td class="number current-value">$165K</td>
+                <td class="number change-month1">-7.4%</td>
+                <td class="number change-month3">-2.1%</td>
+                <td class="number change-month6">+2.6%</td>
+                <td class="number change-year1">+24.9%</td>
+                <td class="number change-year3">+15.4%</td>
+            </tr>
+            <tr data-percentile="72.0" data-metro="great bend, ks" data-current="164112.5" data-month1="-9.39" data-month3="-11.62" data-month6="20.67" data-year1="-10.48" data-year3="16.34">
+                <td class="rank">181</td>
+                <td class="metro">Great Bend, KS</td>
+                <td class="number current-value">$164K</td>
+                <td class="number change-month1">-9.4%</td>
+                <td class="number change-month3">-11.6%</td>
+                <td class="number change-month6">+20.7%</td>
+                <td class="number change-year1">-10.5%</td>
+                <td class="number change-year3">+16.3%</td>
+            </tr>
+            <tr data-percentile="30.5" data-metro="new castle, in" data-current="160931.875" data-month1="3.37" data-month3="-2.17" data-month6="-12.88" data-year1="-19.08" data-year3="-1.19">
+                <td class="rank">182</td>
+                <td class="metro">New Castle, IN</td>
+                <td class="number current-value">$161K</td>
+                <td class="number change-month1">+3.4%</td>
+                <td class="number change-month3">-2.2%</td>
+                <td class="number change-month6">-12.9%</td>
+                <td class="number change-year1">-19.1%</td>
+                <td class="number change-year3">-1.2%</td>
+            </tr>
+            <tr data-percentile="55.5" data-metro="fairfield, ia" data-current="160750.0" data-month1="-9.50" data-month3="-48.87" data-month6="6.24" data-year1="-23.50" data-year3="-1.88">
+                <td class="rank">183</td>
+                <td class="metro">Fairfield, IA</td>
+                <td class="number current-value">$161K</td>
+                <td class="number change-month1">-9.5%</td>
+                <td class="number change-month3">-48.9%</td>
+                <td class="number change-month6">+6.2%</td>
+                <td class="number change-year1">-23.5%</td>
+                <td class="number change-year3">-1.9%</td>
+            </tr>
+            <tr data-percentile="50.0" data-metro="greenville, ms" data-current="157083.333333" data-month1="20.91" data-month3="97.28" data-month6="71.49" data-year1="5.09" data-year3="20.26">
+                <td class="rank">184</td>
+                <td class="metro">Greenville, MS</td>
+                <td class="number current-value">$157K</td>
+                <td class="number change-month1">+20.9%</td>
+                <td class="number change-month3">+97.3%</td>
+                <td class="number change-month6">+71.5%</td>
+                <td class="number change-year1">+5.1%</td>
+                <td class="number change-year3">+20.3%</td>
+            </tr>
+            <tr data-percentile="95.0" data-metro="jamestown, ny" data-current="156520.0" data-month1="1.34" data-month3="-0.56" data-month6="-10.29" data-year1="20.61" data-year3="-11.01">
+                <td class="rank">185</td>
+                <td class="metro">Jamestown, NY</td>
+                <td class="number current-value">$157K</td>
+                <td class="number change-month1">+1.3%</td>
+                <td class="number change-month3">-0.6%</td>
+                <td class="number change-month6">-10.3%</td>
+                <td class="number change-year1">+20.6%</td>
+                <td class="number change-year3">-11.0%</td>
+            </tr>
+            <tr data-percentile="39.0" data-metro="dixon, il" data-current="147312.5" data-month1="-2.32" data-month3="-15.34" data-month6="-23.87" data-year1="12.13" data-year3="4.17">
+                <td class="rank">186</td>
+                <td class="metro">Dixon, IL</td>
+                <td class="number current-value">$147K</td>
+                <td class="number change-month1">-2.3%</td>
+                <td class="number change-month3">-15.3%</td>
+                <td class="number change-month6">-23.9%</td>
+                <td class="number change-year1">+12.1%</td>
+                <td class="number change-year3">+4.2%</td>
+            </tr>
+            <tr data-percentile="17.0" data-metro="lincoln, il" data-current="142750.0" data-month1="-4.19" data-month3="-0.34" data-month6="0.45" data-year1="12.24" data-year3="8.01">
+                <td class="rank">187</td>
+                <td class="metro">Lincoln, IL</td>
+                <td class="number current-value">$143K</td>
+                <td class="number change-month1">-4.2%</td>
+                <td class="number change-month3">-0.3%</td>
+                <td class="number change-month6">+0.4%</td>
+                <td class="number change-year1">+12.2%</td>
+                <td class="number change-year3">+8.0%</td>
+            </tr>
+            <tr data-percentile="60.0" data-metro="kennett, mo" data-current="139812.5" data-month1="-3.25" data-month3="-24.03" data-month6="4.44" data-year1="45.73" data-year3="25.25">
+                <td class="rank">188</td>
+                <td class="metro">Kennett, MO</td>
+                <td class="number current-value">$140K</td>
+                <td class="number change-month1">-3.3%</td>
+                <td class="number change-month3">-24.0%</td>
+                <td class="number change-month6">+4.4%</td>
+                <td class="number change-year1">+45.7%</td>
+                <td class="number change-year3">+25.3%</td>
+            </tr>
+            <tr data-percentile="55.0" data-metro="vincennes, in" data-current="139587.5" data-month1="-3.48" data-month3="-21.85" data-month6="-17.87" data-year1="-12.34" data-year3="-9.20">
+                <td class="rank">189</td>
+                <td class="metro">Vincennes, IN</td>
+                <td class="number current-value">$140K</td>
+                <td class="number change-month1">-3.5%</td>
+                <td class="number change-month3">-21.8%</td>
+                <td class="number change-month6">-17.9%</td>
+                <td class="number change-year1">-12.3%</td>
+                <td class="number change-year3">-9.2%</td>
+            </tr>
+            <tr data-percentile="66.5" data-metro="greenwood, ms" data-current="134833.333333" data-month1="2.83" data-month3="-26.12" data-month6="-13.84" data-year1="-22.06" data-year3="-9.74">
+                <td class="rank">190</td>
+                <td class="metro">Greenwood, MS</td>
+                <td class="number current-value">$135K</td>
+                <td class="number change-month1">+2.8%</td>
+                <td class="number change-month3">-26.1%</td>
+                <td class="number change-month6">-13.8%</td>
+                <td class="number change-year1">-22.1%</td>
+                <td class="number change-year3">-9.7%</td>
+            </tr>
+            <tr data-percentile="32.5" data-metro="pine bluff, ar" data-current="134600.0" data-month1="5.91" data-month3="11.56" data-month6="-22.50" data-year1="-17.49" data-year3="13.05">
+                <td class="rank">191</td>
+                <td class="metro">Pine Bluff, AR</td>
+                <td class="number current-value">$135K</td>
+                <td class="number change-month1">+5.9%</td>
+                <td class="number change-month3">+11.6%</td>
+                <td class="number change-month6">-22.5%</td>
+                <td class="number change-year1">-17.5%</td>
+                <td class="number change-year3">+13.0%</td>
+            </tr>
+            <tr data-percentile="4.5" data-metro="forrest city, ar" data-current="134187.5" data-month1="0.20" data-month3="-5.83" data-month6="78.92" data-year1="40.02" data-year3="4.86">
+                <td class="rank">192</td>
+                <td class="metro">Forrest City, AR</td>
+                <td class="number current-value">$134K</td>
+                <td class="number change-month1">+0.2%</td>
+                <td class="number change-month3">-5.8%</td>
+                <td class="number change-month6">+78.9%</td>
+                <td class="number change-year1">+40.0%</td>
+                <td class="number change-year3">+4.9%</td>
+            </tr>
+            <tr data-percentile="91.5" data-metro="magnolia, ar" data-current="130733.333333" data-month1="-18.41" data-month3="-52.02" data-month6="-51.56" data-year1="-28.26" data-year3="-29.66">
+                <td class="rank">193</td>
+                <td class="metro">Magnolia, AR</td>
+                <td class="number current-value">$131K</td>
+                <td class="number change-month1">-18.4%</td>
+                <td class="number change-month3">-52.0%</td>
+                <td class="number change-month6">-51.6%</td>
+                <td class="number change-year1">-28.3%</td>
+                <td class="number change-year3">-29.7%</td>
+            </tr>
+            <tr data-percentile="78.0" data-metro="coffeyville, ks" data-current="118187.5" data-month1="1.23" data-month3="-4.82" data-month6="-23.75" data-year1="10.61" data-year3="15.42">
+                <td class="rank">194</td>
+                <td class="metro">Coffeyville, KS</td>
+                <td class="number current-value">$118K</td>
+                <td class="number change-month1">+1.2%</td>
+                <td class="number change-month3">-4.8%</td>
+                <td class="number change-month6">-23.8%</td>
+                <td class="number change-year1">+10.6%</td>
+                <td class="number change-year3">+15.4%</td>
+            </tr>
+            <tr data-percentile="70.0" data-metro="clarksdale, ms" data-current="117875.0" data-month1="-17.57" data-month3="7.98" data-month6="-23.02" data-year1="-10.36" data-year3="18.32">
+                <td class="rank">195</td>
+                <td class="metro">Clarksdale, MS</td>
+                <td class="number current-value">$118K</td>
+                <td class="number change-month1">-17.6%</td>
+                <td class="number change-month3">+8.0%</td>
+                <td class="number change-month6">-23.0%</td>
+                <td class="number change-year1">-10.4%</td>
+                <td class="number change-year3">+18.3%</td>
+            </tr>
+            <tr data-percentile="8.0" data-metro="centralia, il" data-current="116687.5" data-month1="-1.06" data-month3="-25.50" data-month6="-29.44" data-year1="6.58" data-year3="-8.85">
+                <td class="rank">196</td>
+                <td class="metro">Centralia, IL</td>
+                <td class="number current-value">$117K</td>
+                <td class="number change-month1">-1.1%</td>
+                <td class="number change-month3">-25.5%</td>
+                <td class="number change-month6">-29.4%</td>
+                <td class="number change-year1">+6.6%</td>
+                <td class="number change-year3">-8.9%</td>
+            </tr>
+            <tr data-percentile="1.5" data-metro="rio grande city, tx" data-current="111916.666666" data-month1="-29.43" data-month3="-41.33" data-month6="-53.90" data-year1="-53.15" data-year3="-60.03">
+                <td class="rank">197</td>
+                <td class="metro">Rio Grande City, TX</td>
+                <td class="number current-value">$112K</td>
+                <td class="number change-month1">-29.4%</td>
+                <td class="number change-month3">-41.3%</td>
+                <td class="number change-month6">-53.9%</td>
+                <td class="number change-year1">-53.1%</td>
+                <td class="number change-year3">-60.0%</td>
+            </tr>
+            <tr data-percentile="37.0" data-metro="hope, ar" data-current="82750.0" data-month1="-11.10" data-month3="-39.34" data-month6="103.40" data-year1="-44.07" data-year3="-42.07">
+                <td class="rank">198</td>
+                <td class="metro">Hope, AR</td>
+                <td class="number current-value">$83K</td>
+                <td class="number change-month1">-11.1%</td>
+                <td class="number change-month3">-39.3%</td>
+                <td class="number change-month6">+103.4%</td>
+                <td class="number change-year1">-44.1%</td>
+                <td class="number change-year3">-42.1%</td>
+            </tr>
+        </tbody>
+    </table>
+    </div>
+    
+    <div class="footer">
+        <strong>Data:</strong> Redfin weekly housing market data | <strong>Updated:</strong> August 10, 2025 | <strong>Methodology:</strong> Based on rolling 4-week windows<br>
+        <a href="https://www.home-economics.us">Home Economics</a>
+    </div>
+    
+    <script>
+        // Global state
+        let allRows = [];
+        let currentSort = 'current';
+        let sortAscending = false;
+        
+        // Store summaries for different segments
+        const marketSummaries = {"10": "Home prices among large markets (top 10%) are currently highest in Hilton Head Island, SC, Laconia, NH, Shelton, WA, with values exceeding $538K. The Midwest is showing strong growth with a median 5.4% increase over the past 3 months. The Southeast has seen declines, with a median 3.9% decrease over 3 months. Markets including Keene have turned positive after months of decline. Markets including Hilton Head Island, Forrest City have shifted to decline after sustained growth. Rio Grande City has experienced a significant 41.3% decline in recent months.", "25": "Home prices among major markets (top 25%) are currently highest in San Jose, CA, Salinas, CA, Portland, ME, with values exceeding $1.5 million. The Northeast is showing strong growth with a median 3.3% increase over the past 3 months. The Southeast has seen declines, with a median 3.8% decrease over 3 months. Markets including Keene, Mitchell, SD, Berlin, NH have turned positive after months of decline. Markets including Hilton Head Island, Warren, MI, Escanaba, MI have shifted to decline after sustained growth. Prineville, OR stands out with an exceptional 31.3% increase in recent months.", "50": "Home prices among mid-size markets (top 50%) are currently highest in San Jose, CA, Edwards, CO, Salinas, CA, with values exceeding $1.5 million. Georgia metros are experiencing notable increases, averaging 11.0% growth over 3 months. Markets including Ellensburg, WA, Carson City, NV, Keene have turned positive after months of decline. Markets including Hilton Head Island, Warren, MI have shifted to decline after sustained growth. Prineville, OR stands out with an exceptional 31.3% increase in recent months.", "100": "At the national level, the median sale price stands at $396K. Home prices are currently highest in San Jose, CA, Edwards, CO, San Rafael, CA, with values exceeding $1.5 million. The Other is showing strong growth with a median 4.1% increase over the past 3 months. Colorado metros are experiencing notable increases, averaging 12.6% growth over 3 months. Markets including Ellensburg, WA, Carson City, NV, Astoria, OR have turned positive after months of decline. Markets including Santa Cruz, CA, Hilton Head Island, Eureka, CA have shifted to decline after sustained growth. Prineville, OR stands out with an exceptional 31.3% increase in recent months."};
+        
+        // Initialize on page load
+        window.onload = function() {
+            const tbody = document.querySelector('#rankingsTable tbody');
+            allRows = Array.from(tbody.querySelectorAll('tr'));
+            
+            // Initial sort by current value with coloring
+            sortTableWithInitialColoring('current');
+            
+            // Calculate initial medians
+            calculateMedians();
+        };
+        
+        // Special function for initial load to apply coloring
+        function sortTableWithInitialColoring(column) {
+            currentSort = column;
+            sortAscending = false;  // Start with descending
+            
+            // Set arrow for current column
+            const arrow = document.getElementById('arrow-' + column);
+            if (arrow) {
+                arrow.textContent = '↓';
+            }
+            
+            // Sort the rows
+            allRows.sort((a, b) => {
+                const aStr = a.dataset[column];
+                const bStr = b.dataset[column];
+                
+                if (aStr === 'null' && bStr === 'null') return 0;
+                if (aStr === 'null') return 1;
+                if (bStr === 'null') return -1;
+                
+                const aVal = parseFloat(aStr);
+                const bVal = parseFloat(bStr);
+                
+                return bVal - aVal;  // Descending
+            });
+            
+            // Apply heat mapping to current column using same blue gradient as regular sort
+            allRows.forEach(row => {
+                const td = row.querySelector('.current-value');
+                if (td) {
+                    const value = parseFloat(row.dataset.current);
+                    if (!isNaN(value)) {
+                        const allValues = allRows.map(r => parseFloat(r.dataset.current)).filter(v => !isNaN(v));
+                        const max = Math.max(...allValues);
+                        const min = Math.min(...allValues);
+                        const range = max - min;
+                        const percent = range > 0 ? ((value - min) / range) * 100 : 50;
+                        
+                        // Use same blue gradient as regular sortTable function
+                        let bgColor;
+                        if (percent <= 20) bgColor = '#DADFCE';  // Cream
+                        else if (percent <= 40) bgColor = '#E8F4FF';  // Very light blue
+                        else if (percent <= 60) bgColor = '#C6E4FF';  // Light blue  
+                        else if (percent <= 80) bgColor = '#8CCFFF';  // Medium blue
+                        else bgColor = '#0BB4FF';  // Full blue
+                        
+                        td.style.backgroundColor = bgColor;
+                        td.style.color = (bgColor === '#0BB4FF' || bgColor === '#8CCFFF') ? '#F6F7F3' : '#3D3733';
+                    }
+                }
+            });
+            
+            // Update table
+            const tbody = document.querySelector('#rankingsTable tbody');
+            tbody.innerHTML = '';
+            allRows.forEach((row, index) => {
+                const rankCell = row.querySelector('.rank');
+                if (rankCell) rankCell.textContent = index + 1;
+                tbody.appendChild(row);
+            });
+            
+            // Apply the filter after initial sort
+            filterTable();
+        }
+        
+        // Simple, bulletproof sorting function
+        function sortTable(column) {
+            console.log('Sorting by:', column);
+            
+            // Toggle sort direction if same column
+            if (currentSort === column) {
+                sortAscending = !sortAscending;
+            } else {
+                sortAscending = false;  // Default to descending
+                currentSort = column;
+            }
+            
+            // Clear all arrows
+            document.querySelectorAll('.arrow').forEach(arrow => {
+                arrow.textContent = '';
+            });
+            
+            // Set current arrow
+            const arrow = document.getElementById('arrow-' + column);
+            if (arrow) {
+                arrow.textContent = sortAscending ? '↑' : '↓';
+            }
+            
+            // Update header styles
+            document.querySelectorAll('th').forEach(th => {
+                th.classList.remove('sorted');
+            });
+            event.target.classList.add('sorted');
+            
+            // Sort the rows
+            allRows.sort((a, b) => {
+                let aVal, bVal;
+                
+                if (column === 'metro') {
+                    aVal = a.dataset.metro;
+                    bVal = b.dataset.metro;
+                    return sortAscending ? 
+                        aVal.localeCompare(bVal) : 
+                        bVal.localeCompare(aVal);
+                } else {
+                    // Get numeric values from data attributes
+                    // Handle 'null' string as missing data
+                    const aStr = a.dataset[column];
+                    const bStr = b.dataset[column];
+                    
+                    // For descending: valid numbers first, then nulls
+                    // For ascending: nulls first, then valid numbers
+                    if (aStr === 'null' && bStr === 'null') return 0;
+                    if (aStr === 'null') return sortAscending ? -1 : 1;
+                    if (bStr === 'null') return sortAscending ? 1 : -1;
+                    
+                    const aVal = parseFloat(aStr);
+                    const bVal = parseFloat(bStr);
+                    
+                    console.log('Comparing:', aVal, 'vs', bVal);
+                    
+                    return sortAscending ? aVal - bVal : bVal - aVal;
+                }
+            });
+            
+            // Clear all coloring from all columns
+            document.querySelectorAll('td').forEach(td => {
+                if (td.className.includes('change-') || td.className.includes('number')) {
+                    td.style.backgroundColor = '';
+                    td.style.color = '';
+                }
+            });
+            
+            // Apply coloring to sorted column only
+            if (column === 'current') {
+                // Color the current value column using a value-based gradient
+                allRows.forEach(row => {
+                    const td = row.querySelector('.current-value');
+                    if (td) {
+                        const value = parseFloat(row.dataset.current);
+                        if (!isNaN(value)) {
+                            // Create a gradient based on relative position in sorted list
+                            const allValues = allRows.map(r => parseFloat(r.dataset.current)).filter(v => !isNaN(v));
+                            const max = Math.max(...allValues);
+                            const min = Math.min(...allValues);
+                            const range = max - min;
+                            const percent = range > 0 ? ((value - min) / range) * 100 : 50;
+                            
+                            // Apply gradient from cream (low) to blue (high)
+                            let bgColor;
+                            if (percent <= 20) bgColor = '#DADFCE';  // Cream
+                            else if (percent <= 40) bgColor = '#E8F4FF';  // Very light blue
+                            else if (percent <= 60) bgColor = '#C6E4FF';  // Light blue  
+                            else if (percent <= 80) bgColor = '#8CCFFF';  // Medium blue
+                            else bgColor = '#0BB4FF';  // Full blue
+                            
+                            td.style.backgroundColor = bgColor;
+                            td.style.color = (bgColor === '#0BB4FF' || bgColor === '#8CCFFF') ? '#F6F7F3' : '#3D3733';
+                        }
+                    }
+                });
+            } else if (column !== 'metro') {
+                // Color the change column that's being sorted
+                allRows.forEach(row => {
+                    const value = parseFloat(row.dataset[column]) || 0;
+                    if (value !== 0) {
+                        const td = row.querySelector('.change-' + column);
+                        if (td) {
+                            const bgColor = getColorForChange(value);
+                            if (bgColor) {
+                                td.style.backgroundColor = bgColor;
+                                td.style.color = getTextColor(bgColor);
+                            }
+                        }
+                    }
+                });
+            }
+            
+            // Re-render the table with filtered rows
+            filterTable();
+        }
+        
+        // Get color for change value
+        function getColorForChange(val) {
+            if (val <= -5) return '#3D3733';
+            if (val <= -2) return '#A09B95';
+            if (val <= 0) return '#DADFCE';
+            if (val <= 2) return '#C6E4FF';
+            if (val <= 5) return '#8CCFFF';
+            return '#0BB4FF';
+        }
+        
+        // Get text color for background
+        function getTextColor(bgColor) {
+            return (bgColor === '#3D3733' || bgColor === '#6B635C') ? '#F6F7F3' : '#3D3733';
+        }
+        
+        // Calculate median of visible rows
+        function calculateMedians() {
+            const tbody = document.querySelector('#rankingsTable tbody');
+            const visibleRows = Array.from(tbody.querySelectorAll('tr'));
+            
+            if (visibleRows.length === 0) return;
+            
+            // Calculate median for each column
+            const columns = ['current', 'month1', 'month3', 'month6', 'year1', 'year3'];
+            
+            columns.forEach(col => {
+                const values = visibleRows
+                    .map(row => {
+                        const val = row.dataset[col];
+                        return val !== 'null' ? parseFloat(val) : null;
+                    })
+                    .filter(v => v !== null && !isNaN(v))
+                    .sort((a, b) => a - b);
+                
+                if (values.length > 0) {
+                    const median = values.length % 2 === 0
+                        ? (values[values.length / 2 - 1] + values[values.length / 2]) / 2
+                        : values[Math.floor(values.length / 2)];
+                    
+                    // Format the median value
+                    let formatted;
+                    if (col === 'current') {
+                        // Format based on metric type
+                        const metricType = 'currency';
+                        const multiplier = 1;
+                        const displayVal = median * multiplier;
+                        
+                        if (metricType === 'currency') {
+                            if (displayVal >= 1000000) {
+                                formatted = '$' + (displayVal / 1000000).toFixed(1) + 'M';
+                            } else if (displayVal >= 1000) {
+                                formatted = '$' + Math.round(displayVal / 1000) + 'K';
+                            } else {
+                                formatted = '$' + Math.round(displayVal);
+                            }
+                        } else if (metricType === 'percent') {
+                            formatted = displayVal.toFixed(1) + '%';
+                        } else {
+                            formatted = displayVal.toFixed(1);
+                        }
+                    } else {
+                        // Change columns - show as percentage
+                        formatted = (median >= 0 ? '+' : '') + median.toFixed(1) + '%';
+                    }
+                    
+                    document.getElementById('median-' + col).textContent = formatted;
+                } else {
+                    document.getElementById('median-' + col).textContent = '—';
+                }
+            });
+        }
+        
+        // Filter table by market size and search
+        function filterTable() {
+            const filter = parseFloat(document.getElementById('marketFilter').value);
+            const searchTerm = document.getElementById('searchBox').value.toLowerCase();
+            const tbody = document.querySelector('#rankingsTable tbody');
+            tbody.innerHTML = '';
+            
+            let rank = 1;
+            allRows.forEach(row => {
+                const percentile = parseFloat(row.dataset.percentile);
+                const metroName = row.dataset.metro;
+                const matchesSearch = !searchTerm || metroName.includes(searchTerm);
+                
+                if (percentile <= filter && matchesSearch) {
+                    row.querySelector('.rank').textContent = rank++;
+                    tbody.appendChild(row);
+                }
+            });
+            
+            // Update medians for visible rows
+            calculateMedians();
+            
+            // Update summary based on selected filter
+            const summaryText = marketSummaries[filter] || marketSummaries['100'];
+            document.getElementById('summaryText').textContent = summaryText;
+        }
+        
+        // Search function
+        function searchTable() {
+            filterTable();  // Reuse filter function which now handles search too
+        }
+        
+        // Toggle summary box
+        function toggleSummary() {
+            const content = document.getElementById('summaryContent');
+            const arrow = document.getElementById('summaryArrow');
+            
+            if (content.classList.contains('expanded')) {
+                content.classList.remove('expanded');
+                arrow.style.transform = 'rotate(0deg)';
+            } else {
+                content.classList.add('expanded');
+                arrow.style.transform = 'rotate(180deg)';
+            }
+        }
+    </script>
+</body>
+</html>

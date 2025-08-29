@@ -1,0 +1,37 @@
+<html>
+<body>
+<button onclick="testFilter()">Test Filter</button>
+<div id="result"></div>
+<script>
+// Simulate the actual page behavior
+let allRows = [];
+for(let i = 0; i < 100; i++) {
+    let row = {
+        percentile: (i+1)/100 * 100,
+        value: Math.random() * 1000000,
+        element: document.createElement('tr')
+    };
+    row.element.dataset.percentile = row.percentile;
+    row.element.dataset.current = row.value;
+    allRows.push(row.element);
+}
+
+// This mimics sortTableWithInitialColoring
+allRows.sort((a,b) => {
+    return parseFloat(b.dataset.current) - parseFloat(a.dataset.current);
+});
+
+function testFilter() {
+    let count10 = 0;
+    allRows.forEach(row => {
+        if(parseFloat(row.dataset.percentile) <= 10) count10++;
+    });
+    
+    document.getElementById('result').innerHTML = 
+        `Total rows: ${allRows.length}<br>` +
+        `Rows with percentile <= 10: ${count10}<br>` +
+        `allRows is sorted by: current value (not percentile)`;
+}
+</script>
+</body>
+</html>

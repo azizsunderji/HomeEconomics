@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+<script>
+function countFilteredRows() {
+    const tables = document.querySelectorAll('table tbody tr');
+    console.log('Total rows in table:', tables.length);
+    
+    let count10 = 0, count25 = 0, count50 = 0;
+    tables.forEach(row => {
+        const pct = parseFloat(row.dataset.percentile);
+        if (pct <= 10) count10++;
+        if (pct <= 25) count25++;  
+        if (pct <= 50) count50++;
+    });
+    
+    alert(`Rows with percentile <= 10%: ${count10}\nRows with percentile <= 25%: ${count25}\nRows with percentile <= 50%: ${count50}\nTotal rows: ${tables.length}`);
+}
+</script>
+</head>
+<body>
+Open rankings/median_sale_price.html, open browser console, paste and run: countFilteredRows()
+</body>
+</html>

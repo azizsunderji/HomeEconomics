@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Median Sale Price Rankings | Home Economics</title>
+    <style>
+        @font-face {
+            font-family: 'Oracle';
+            src: url('https://www.home-economics.us/fonts/Oracle-Regular.woff2') format('woff2'),
+                 url('https://www.home-economics.us/fonts/Oracle-Regular.woff') format('woff');
+            font-weight: normal;
+            font-style: normal;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Oracle', -apple-system, system-ui, sans-serif;
+            background: #F6F7F3;
+            color: #3D3733;
+            font-size: 13px;
+            line-height: 1.4;
+            padding: 15px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            font-size: 20px;
+            font-weight: normal;
+            margin-bottom: 15px;
+            color: #3D3733;
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .metrics {
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+        }
+        
+        .metric-btn {
+            padding: 5px 10px;
+            background: transparent;
+            border: 1px solid #DADFCE;
+            color: #3D3733;
+            text-decoration: none;
+            font-size: 12px;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        
+        .metric-btn:hover {
+            background: #DADFCE;
+        }
+        
+        .metric-btn.active {
+            background: #0BB4FF;
+            border-color: #0BB4FF;
+            color: #F6F7F3;
+        }
+        
+        .filter {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+        }
+        
+        select {
+            padding: 4px 8px;
+            border: 1px solid #DADFCE;
+            background: #F6F7F3;
+            font-family: inherit;
+            font-size: 12px;
+            color: #3D3733;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th {
+            text-align: left;
+            padding: 6px 8px;
+            border-bottom: 1px solid #DADFCE;
+            font-weight: normal;
+            font-size: 11px;
+            color: #6B635C;
+            cursor: pointer;
+            user-select: none;
+            position: sticky;
+            top: 0;
+            background: #F6F7F3;
+            white-space: nowrap;
+        }
+        
+        th:hover {
+            background: #DADFCE;
+        }
+        
+        th.sorted {
+            background: #E8F4FF;
+            color: #3D3733;
+        }
+        
+        th.number {
+            text-align: right;
+        }
+        
+        td {
+            padding: 5px 8px;
+            border-bottom: 1px solid #F0F0EC;
+            font-size: 12px;
+        }
+        
+        td.number {
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+        }
+        
+        td.rank {
+            color: #6B635C;
+            width: 40px;
+        }
+        
+        td.metro {
+            font-weight: 500;
+        }
+        
+        td.colored {
+            padding: 3px 8px;
+        }
+        
+        tr:hover {
+            background: rgba(218, 223, 206, 0.2);
+        }
+        
+        .footer {
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid #DADFCE;
+            font-size: 11px;
+            color: #6B635C;
+        }
+        
+        .arrow {
+            display: inline-block;
+            margin-left: 4px;
+            font-size: 10px;
+        }
+        
+        @media (max-width: 768px) {
+            body { font-size: 11px; }
+            th { font-size: 10px; }
+            td { font-size: 11px; padding: 4px 6px; }
+            .metric-btn { font-size: 11px; padding: 4px 8px; }
+        }
+    </style>
+</head>
+<body>
+    <h1>MEDIAN SALE PRICE</h1>
+    
+    <div class="controls">
+        <div class="metrics">
+            <a href="median_sale_price.html" class="metric-btn active">Median&nbsp;Sale&nbsp;Price</a>
+        </div>
+        
+        <div class="filter">
+            <label>Show:</label>
+            <select id="marketFilter" onchange="filterTable()">
+                <option value="10">Large Markets (Top 10%)</option>
+                <option value="25" selected>Major Markets (Top 25%)</option>
+                <option value="50">Mid-Size Markets (Top 50%)</option>
+                <option value="100">All Markets</option>
+            </select>
+        </div>
+    </div>
+    
+    <table id="rankingsTable">
+        <thead>
+            <tr>
+                <th class="rank">#</th>
+                <th data-sort="metro">Metro Area <span class="arrow"></span></th>
+                <th class="number sorted" data-sort="current">Current <span class="arrow">↓</span></th>
+                <th class="number" data-sort="month1">1 Mo <span class="arrow"></span></th>
+                <th class="number" data-sort="month3">3 Mo <span class="arrow"></span></th>
+                <th class="number" data-sort="month6">6 Mo <span class="arrow"></span></th>
+                <th class="number" data-sort="year1">1 Yr <span class="arrow"></span></th>
+                <th class="number" data-sort="year3">3 Yr <span class="arrow"></span></th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr data-percentile="1.0" data-current="600000" data-metro="new york, ny" data-month1="2.50" data-month3="5.10" data-month6="8.20" data-year1="12.00" data-year3="35.50" >
+                <td class="rank">1</td>
+                <td class="metro">New York, NY</td>
+                <td class="number col-current">$600K</td>
+                <td class="number col-month1">+2.5%</td>
+                <td class="number col-month3">+5.1%</td>
+                <td class="number col-month6">+8.2%</td>
+                <td class="number col-year1">+12.0%</td>
+                <td class="number col-year3">+35.5%</td>
+            </tr>
+            <tr data-percentile="5.0" data-current="450000" data-metro="denver, co" data-month1="-1.20" data-month3="2.30" data-month6="4.50" data-year1="8.70" data-year3="25.20" >
+                <td class="rank">2</td>
+                <td class="metro">Denver, CO</td>
+                <td class="number col-current">$450K</td>
+                <td class="number col-month1">-1.2%</td>
+                <td class="number col-month3">+2.3%</td>
+                <td class="number col-month6">+4.5%</td>
+                <td class="number col-year1">+8.7%</td>
+                <td class="number col-year3">+25.2%</td>
+            </tr>
+        </tbody>
+    </table>
+    
+    <div class="footer">
+        Data updated: Test Date | Source: Redfin | <a href="https://www.home-economics.us">Home Economics</a>
+    </div>
+    
+    <script>
+        let currentSort = 'current';
+        let sortAscending = false;
+        let allRows = [];
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            const tbody = document.querySelector('#rankingsTable tbody');
+            allRows = Array.from(tbody.querySelectorAll('tr'));
+            
+            // Add click handlers to headers
+            document.querySelectorAll('th[data-sort]').forEach(th => {
+                th.addEventListener('click', function() {
+                    sortBy(this.dataset.sort);
+                });
+            });
+            
+            filterTable();
+        });
+        
+        // Sort by column
+        function sortBy(column) {
+            console.log('Sorting by:', column); // Debug
+            
+            // Toggle direction if same column
+            if (currentSort === column) {
+                sortAscending = !sortAscending;
+            } else {
+                sortAscending = false; // Default descending
+                currentSort = column;
+            }
+            
+            // Update header styles and arrows
+            document.querySelectorAll('th').forEach(th => {
+                th.classList.remove('sorted');
+                const arrow = th.querySelector('.arrow');
+                if (arrow) arrow.textContent = '';
+            });
+            
+            const currentTh = document.querySelector(`th[data-sort="${column}"]`);
+            if (currentTh) {
+                currentTh.classList.add('sorted');
+                const arrow = currentTh.querySelector('.arrow');
+                if (arrow) arrow.textContent = sortAscending ? '↑' : '↓';
+            }
+            
+            // Sort rows
+            allRows.sort((a, b) => {
+                let aVal, bVal;
+                
+                if (column === 'metro') {
+                    aVal = a.dataset.metro;
+                    bVal = b.dataset.metro;
+                    return sortAscending ? 
+                        aVal.localeCompare(bVal) : 
+                        bVal.localeCompare(aVal);
+                } else {
+                    aVal = parseFloat(a.dataset[column]) || -999;
+                    bVal = parseFloat(b.dataset[column]) || -999;
+                    return sortAscending ? aVal - bVal : bVal - aVal;
+                }
+            });
+            
+            // Apply coloring
+            updateColoring(column);
+            
+            // Re-render
+            filterTable();
+        }
+        
+        // Update coloring
+        function updateColoring(column) {
+            allRows.forEach(row => {
+                // Clear all colors
+                row.querySelectorAll('td').forEach(td => {
+                    td.style.backgroundColor = '';
+                    td.style.color = '';
+                    td.classList.remove('colored');
+                });
+                
+                // Color only change columns when sorted
+                if (column !== 'current' && column !== 'metro') {
+                    const td = row.querySelector('.col-' + column);
+                    if (td) {
+                        const val = parseFloat(row.dataset[column]);
+                        if (!isNaN(val) && val !== 0) {
+                            const bgColor = getColorForChange(val);
+                            if (bgColor !== 'transparent') {
+                                td.style.backgroundColor = bgColor;
+                                td.style.color = getTextColor(bgColor);
+                                td.classList.add('colored');
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Get color for change
+        function getColorForChange(val) {
+            if (val <= -5) return '#3D3733';
+            if (val <= -2) return '#A09B95';
+            if (val <= 0) return '#DADFCE';
+            if (val <= 2) return '#C6E4FF';
+            if (val <= 5) return '#8CCFFF';
+            return '#0BB4FF';
+        }
+        
+        // Get text color
+        function getTextColor(bgColor) {
+            return (bgColor === '#3D3733' || bgColor === '#6B635C') ? '#F6F7F3' : '#3D3733';
+        }
+        
+        // Filter table
+        function filterTable() {
+            const filter = parseFloat(document.getElementById('marketFilter').value);
+            const tbody = document.querySelector('#rankingsTable tbody');
+            tbody.innerHTML = '';
+            
+            let rank = 1;
+            allRows.forEach(row => {
+                const percentile = parseFloat(row.dataset.percentile);
+                if (percentile <= filter) {
+                    row.querySelector('.rank').textContent = rank++;
+                    tbody.appendChild(row);
+                }
+            });
+        }
+    </script>
+</body>
+</html>
