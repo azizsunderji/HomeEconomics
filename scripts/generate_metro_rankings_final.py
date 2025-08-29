@@ -247,8 +247,8 @@ def generate_metric_summary(rankings_data, metric_key, metric_info):
                 if metric_key == 'MEDIAN_SALE_PRICE' and m['current_value'] < 50000:
                     continue  # Skip unrealistic low prices
                 # Skip metros with extreme changes (likely data errors)
-                if m['changes'].get('3month') and abs(m['changes']['3month']) > 100:
-                    continue  # Skip > 100% changes as likely errors
+                if m['changes'].get('3month') and abs(m['changes']['3month']) > 50:
+                    continue  # Skip > 50% changes as likely errors
                 valid_metros.append(m)
             
             if len(valid_metros) >= 3:  # Still need 3 valid metros
@@ -289,8 +289,10 @@ def generate_metric_summary(rankings_data, metric_key, metric_info):
     if declining_regions:
         declining_regions.sort(key=lambda x: x[1])
         region_text = declining_regions[0][0]
-        change = abs(declining_regions[0][1])
-        summary_parts.append(f"The {region_text} has seen declines, with a median {change:.1f}% decrease over 3 months.")
+        # Skip "Other" region as it's not meaningful
+        if region_text != 'Other':
+            change = abs(declining_regions[0][1])
+            summary_parts.append(f"The {region_text} has seen declines, with a median {change:.1f}% decrease over 3 months.")
     
     # State-specific notable changes
     if state_trends:
@@ -298,7 +300,10 @@ def generate_metric_summary(rankings_data, metric_key, metric_info):
         for state, change in sorted_states:
             state_name = {'FL': 'Florida', 'TX': 'Texas', 'CA': 'California', 'NY': 'New York', 
                          'AZ': 'Arizona', 'NV': 'Nevada', 'CO': 'Colorado', 'WA': 'Washington',
-                         'OR': 'Oregon', 'GA': 'Georgia', 'NC': 'North Carolina', 'TN': 'Tennessee'}.get(state, state)
+                         'OR': 'Oregon', 'GA': 'Georgia', 'NC': 'North Carolina', 'TN': 'Tennessee',
+                         'OK': 'Oklahoma', 'MS': 'Mississippi', 'AR': 'Arkansas', 'MO': 'Missouri',
+                         'LA': 'Louisiana', 'AL': 'Alabama', 'SC': 'South Carolina', 'VA': 'Virginia',
+                         'OH': 'Ohio', 'MI': 'Michigan', 'PA': 'Pennsylvania', 'IL': 'Illinois'}.get(state, state)
             if change > 0:
                 summary_parts.append(f"{state_name} metros are experiencing notable increases, averaging {change:.1f}% growth over 3 months.")
             else:
@@ -315,11 +320,12 @@ def generate_metric_summary(rankings_data, metric_key, metric_info):
         examples = ', '.join([m['metro_name'].split(',')[0] for m in metros_with_reversal[:3]])
         summary_parts.append(f"Several markets including {examples} have reversed their year-over-year trends in recent months.")
     
-    # Notable individual metros
+    # Notable individual metros - be more selective
     outliers = []
-    for metro in rankings_data:
+    for metro in rankings_data[:50]:  # Only check top 50 metros for outliers
         if metro['changes'].get('3month'):
-            if abs(metro['changes']['3month']) > 15:  # Very large change
+            # More strict criteria: 15-50% change (exclude likely errors)
+            if 15 < abs(metro['changes']['3month']) < 50:
                 outliers.append((metro['metro_name'], metro['changes']['3month']))
     
     if outliers:
