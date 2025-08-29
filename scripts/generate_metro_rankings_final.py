@@ -236,15 +236,28 @@ def generate_metric_summary(rankings_data, metric_key, metric_info):
                     'count': len(metros)
                 }
     
-    # State-level notable trends
+    # State-level notable trends - use median and filter outliers
     state_trends = {}
     for state, metros in state_data.items():
-        if len(metros) >= 2:  # States with multiple metros
-            changes_3m = [m['changes'].get('3month', 0) for m in metros if m['changes'].get('3month') is not None]
-            if changes_3m:
-                avg_change = np.mean(changes_3m)
-                if abs(avg_change) > 5:  # Notable change threshold
-                    state_trends[state] = avg_change
+        if len(metros) >= 3:  # Need at least 3 metros for reliable state-level claims
+            # Filter out data quality issues
+            valid_metros = []
+            for m in metros:
+                # Skip metros with unrealistic current values (likely data errors)
+                if metric_key == 'MEDIAN_SALE_PRICE' and m['current_value'] < 50000:
+                    continue  # Skip unrealistic low prices
+                # Skip metros with extreme changes (likely data errors)
+                if m['changes'].get('3month') and abs(m['changes']['3month']) > 100:
+                    continue  # Skip > 100% changes as likely errors
+                valid_metros.append(m)
+            
+            if len(valid_metros) >= 3:  # Still need 3 valid metros
+                changes_3m = [m['changes'].get('3month', 0) for m in valid_metros if m['changes'].get('3month') is not None]
+                if changes_3m:
+                    # Use median instead of mean to be robust against outliers
+                    median_change = np.median(changes_3m)
+                    if abs(median_change) > 8:  # Higher threshold for "notable"
+                        state_trends[state] = median_change
     
     # Build summary text based on metric type
     metric_name = metric_info['display'].lower()
