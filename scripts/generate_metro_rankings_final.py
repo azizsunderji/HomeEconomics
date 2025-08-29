@@ -12,6 +12,7 @@ from pathlib import Path
 from datetime import datetime
 import argparse
 import sys
+import json
 
 # Color gradient for percentage changes
 def get_color_for_change(change_pct):
@@ -193,7 +194,7 @@ def get_region_for_metro(metro_name):
     else:
         return 'Other'
 
-def generate_metric_summary(rankings_data, metric_key, metric_info):
+def generate_metric_summary(rankings_data, metric_key, metric_info, segment_name="All Markets"):
     """Generate insightful summary text for a metric."""
     # Group metros by region
     regional_data = {}
@@ -264,12 +265,49 @@ def generate_metric_summary(rankings_data, metric_key, metric_info):
     
     # Opening - describe current levels
     if metric_key == 'MEDIAN_SALE_PRICE':
-        top_metros = ', '.join([m['metro_name'].split(',')[0] for m in top_5[:3]])
-        summary_parts.append(f"Home prices are currently highest in {top_metros}, with values exceeding ${int(top_5[0]['current_value']/1000)}K.")
+        # Add state to metro names and format prices better
+        top_metros_with_state = []
+        for m in top_5[:3]:
+            name_parts = m['metro_name'].split(',')
+            if len(name_parts) > 1:
+                city = name_parts[0]
+                state = name_parts[1].strip()
+                top_metros_with_state.append(f"{city}, {state}")
+            else:
+                top_metros_with_state.append(m['metro_name'])
+        
+        top_metros = ', '.join(top_metros_with_state)
+        
+        # Format price as millions
+        price = top_5[0]['current_value']
+        if price >= 1000000:
+            price_str = f"${price/1000000:.1f} million"
+        else:
+            price_str = f"${int(price/1000)}K"
+        
+        # Add segment context
+        segment_context = f" among {segment_name.lower()}" if segment_name != "All Markets" else ""
+        summary_parts.append(f"Home prices{segment_context} are currently highest in {top_metros}, with values exceeding {price_str}.")
     elif metric_key == 'ACTIVE_LISTINGS':
-        summary_parts.append(f"Active inventory varies dramatically across markets, with {top_5[0]['metro_name'].split(',')[0]} showing {int(top_5[0]['current_value']):,} active listings.")
+        # Add state to metro name
+        metro_parts = top_5[0]['metro_name'].split(',')
+        if len(metro_parts) > 1:
+            metro_name = f"{metro_parts[0]}, {metro_parts[1].strip()}"
+        else:
+            metro_name = top_5[0]['metro_name']
+        
+        segment_context = f" among {segment_name.lower()}" if segment_name != "All Markets" else " across markets"
+        summary_parts.append(f"Active inventory varies dramatically{segment_context}, with {metro_name} showing {int(top_5[0]['current_value']):,} active listings.")
     elif metric_key == 'OFF_MARKET_IN_TWO_WEEKS':
-        summary_parts.append(f"Market velocity shows {top_5[0]['metro_name'].split(',')[0]} leading with {top_5[0]['current_value']:.1f}% of homes going off market within two weeks.")
+        # Add state to metro name
+        metro_parts = top_5[0]['metro_name'].split(',')
+        if len(metro_parts) > 1:
+            metro_name = f"{metro_parts[0]}, {metro_parts[1].strip()}"
+        else:
+            metro_name = top_5[0]['metro_name']
+        
+        segment_context = f" in {segment_name.lower()}" if segment_name != "All Markets" else ""
+        summary_parts.append(f"Market velocity{segment_context} shows {metro_name} leading with {top_5[0]['current_value']:.1f}% of homes going off market within two weeks.")
     
     # Regional trends
     trending_regions = []
@@ -364,8 +402,26 @@ def calculate_market_size(metro_data):
 def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date_str):
     """Generate HTML page with simple, working sorting."""
     
-    # Generate summary text
-    summary_text = generate_metric_summary(rankings_data, metric_key, metric_info)
+    # Generate summaries for different market segments
+    # Filter rankings for each segment and generate appropriate summary
+    segments = [
+        ('10', 'Large Markets (Top 10%)'),
+        ('25', 'Major Markets (Top 25%)'),
+        ('50', 'Mid-Size Markets (Top 50%)'),
+        ('100', 'All Markets')
+    ]
+    
+    summaries = {}
+    for percentile, name in segments:
+        if percentile == '100':
+            segment_data = rankings_data
+        else:
+            segment_data = [r for r in rankings_data if r['market_percentile'] <= float(percentile)]
+        
+        if segment_data:
+            summaries[percentile] = generate_metric_summary(segment_data[:200], metric_key, metric_info, name)
+        else:
+            summaries[percentile] = f"No data available for {name}."
     
     # Build metric navigation buttons
     metric_buttons = []
@@ -625,7 +681,7 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
             <span class="summary-arrow" id="summaryArrow">▼</span>
         </div>
         <div class="summary-content" id="summaryContent">
-            <p class="summary-text">{summary_text}</p>
+            <p class="summary-text" id="summaryText">{summaries.get('25', 'No summary available.')}</p>
         </div>
     </div>
     
@@ -640,6 +696,16 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
                 <th class="number" onclick="sortTable('month6')">6 Mo <span class="arrow" id="arrow-month6"></span></th>
                 <th class="number" onclick="sortTable('year1')">1 Yr <span class="arrow" id="arrow-year1"></span></th>
                 <th class="number" onclick="sortTable('year3')">3 Yr <span class="arrow" id="arrow-year3"></span></th>
+            </tr>
+            <tr id="medianRow" style="background: #F0F0EC; font-size: 11px; color: #6B635C;">
+                <td></td>
+                <td>Median</td>
+                <td class="number" id="median-current">—</td>
+                <td class="number" id="median-month1">—</td>
+                <td class="number" id="median-month3">—</td>
+                <td class="number" id="median-month6">—</td>
+                <td class="number" id="median-year1">—</td>
+                <td class="number" id="median-year3">—</td>
             </tr>
         </thead>
         <tbody>
@@ -696,6 +762,9 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
         let currentSort = 'current';
         let sortAscending = false;
         
+        // Store summaries for different segments
+        const marketSummaries = {json.dumps(summaries)};
+        
         // Initialize on page load
         window.onload = function() {{
             const tbody = document.querySelector('#rankingsTable tbody');
@@ -703,6 +772,9 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
             
             // Initial sort by current value
             sortTable('current');
+            
+            // Calculate initial medians
+            calculateMedians();
         }};
         
         // Simple, bulletproof sorting function
@@ -837,6 +909,63 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
             return (bgColor === '#3D3733' || bgColor === '#6B635C') ? '#F6F7F3' : '#3D3733';
         }}
         
+        // Calculate median of visible rows
+        function calculateMedians() {{
+            const tbody = document.querySelector('#rankingsTable tbody');
+            const visibleRows = Array.from(tbody.querySelectorAll('tr'));
+            
+            if (visibleRows.length === 0) return;
+            
+            // Calculate median for each column
+            const columns = ['current', 'month1', 'month3', 'month6', 'year1', 'year3'];
+            
+            columns.forEach(col => {{
+                const values = visibleRows
+                    .map(row => {{
+                        const val = row.dataset[col];
+                        return val !== 'null' ? parseFloat(val) : null;
+                    }})
+                    .filter(v => v !== null && !isNaN(v))
+                    .sort((a, b) => a - b);
+                
+                if (values.length > 0) {{
+                    const median = values.length % 2 === 0
+                        ? (values[values.length / 2 - 1] + values[values.length / 2]) / 2
+                        : values[Math.floor(values.length / 2)];
+                    
+                    // Format the median value
+                    let formatted;
+                    if (col === 'current') {{
+                        // Format based on metric type
+                        const metricType = '{metric_info.get("format", "number")}';
+                        const multiplier = {metric_info.get("multiplier", 1)};
+                        const displayVal = median * multiplier;
+                        
+                        if (metricType === 'currency') {{
+                            if (displayVal >= 1000000) {{
+                                formatted = '$' + (displayVal / 1000000).toFixed(1) + 'M';
+                            }} else if (displayVal >= 1000) {{
+                                formatted = '$' + Math.round(displayVal / 1000) + 'K';
+                            }} else {{
+                                formatted = '$' + Math.round(displayVal);
+                            }}
+                        }} else if (metricType === 'percent') {{
+                            formatted = displayVal.toFixed(1) + '%';
+                        }} else {{
+                            formatted = displayVal.toFixed(1);
+                        }}
+                    }} else {{
+                        // Change columns - show as percentage
+                        formatted = (median >= 0 ? '+' : '') + median.toFixed(1) + '%';
+                    }}
+                    
+                    document.getElementById('median-' + col).textContent = formatted;
+                }} else {{
+                    document.getElementById('median-' + col).textContent = '—';
+                }}
+            }});
+        }}
+        
         // Filter table by market size and search
         function filterTable() {{
             const filter = parseFloat(document.getElementById('marketFilter').value);
@@ -855,6 +984,13 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
                     tbody.appendChild(row);
                 }}
             }});
+            
+            // Update medians for visible rows
+            calculateMedians();
+            
+            // Update summary based on selected filter
+            const summaryText = marketSummaries[filter] || marketSummaries['100'];
+            document.getElementById('summaryText').textContent = summaryText;
         }}
         
         // Search function
