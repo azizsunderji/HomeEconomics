@@ -880,7 +880,6 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
         (df["REGION_TYPE_ID"] == -2)
         & (df["DURATION"] == "4 weeks")
         & (df["PERIOD_END"] == latest_date)
-        & (df["REGION_NAME"] != "All Redfin Metros")
     ].copy()
 
     current_data = metro_data_all.dropna(subset=[column_name]).copy()
@@ -900,8 +899,7 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
             & (df["DURATION"] == "4 weeks")
             & (df["PERIOD_END"] >= five_years_ago)
             & (df["PERIOD_END"] <= latest_date)
-            & (df["REGION_NAME"] != "All Redfin Metros")
-        ].copy()
+            ].copy()
         
         # Calculate average for each metro
         avg_by_metro = historical_data.groupby("REGION_NAME")[column_name].mean().reset_index()
@@ -932,6 +930,14 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
             target_value_hist = target_row["normalized_value"].iloc[0]
         else:
             target_value_hist = target_row[column_name].iloc[0]
+
+        # For national data, exclude it from comparison set for percentile calculation
+        if metro_name == "All Redfin Metros":
+            comparison_data = current_data[current_data["REGION_NAME"] != "All Redfin Metros"]
+            if column_name in ["ACTIVE_LISTINGS", "WEEKS_OF_SUPPLY"] or normalize_for_histogram:
+                values_for_hist = comparison_data["normalized_value"].dropna()
+            else:
+                values_for_hist = comparison_data[column_name]
 
         # Calculate reasonable bounds around the majority of data
         # Don't expand bounds too much just to include the target
@@ -1088,7 +1094,6 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
         & (df["DURATION"] == "4 weeks")
         & (df["PERIOD_END"] <= three_months_ago)
         & (df["PERIOD_END"] >= three_months_ago - timedelta(days=30))
-        & (df["REGION_NAME"] != "All Redfin Metros")
     ].copy()
     past_data_all = past_data_all.sort_values(["REGION_NAME", "PERIOD_END"]).groupby("REGION_NAME").last()
 
@@ -1124,7 +1129,12 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
         target_data_hist = target_row.iloc[0]
         target_change = target_data_hist["change_3m"]
 
-        change_values = change_df["change_3m"].values
+        # For national data, exclude it from comparison set for percentile calculation
+        if metro_name == "All Redfin Metros":
+            comparison_change_df = change_df[change_df["REGION_NAME"] != "All Redfin Metros"]
+            change_values = comparison_change_df["change_3m"].values
+        else:
+            change_values = change_df["change_3m"].values
         change_values = change_values[~np.isnan(change_values)]
 
         if len(change_values) > 0 and np.std(change_values) > 0:

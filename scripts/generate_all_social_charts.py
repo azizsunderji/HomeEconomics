@@ -142,10 +142,9 @@ def main():
     df = pd.read_parquet(data_file)
     df['PERIOD_END'] = pd.to_datetime(df['PERIOD_END'])
     
-    # Get all unique metros (excluding national aggregate)
+    # Get all unique metros (including national aggregate)
     all_metros = df[
-        (df['REGION_TYPE_ID'] == -2) & 
-        (df['REGION_NAME'] != 'All Redfin Metros')
+        (df['REGION_TYPE_ID'] == -2)
     ]['REGION_NAME'].unique()
     
     # Apply sharding if specified
