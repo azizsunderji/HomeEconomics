@@ -95,8 +95,8 @@ METRICS = {
     'PERCENT_ACTIVE_LISTINGS_WITH_PRICE_DROPS': {
         'display': 'Price Drops',
         'format': 'percent',
-        'slug': 'pct_listings_w__price_drops'
-        # This one is already stored as percentage, no multiplier needed
+        'slug': 'pct_listings_w__price_drops',
+        'multiplier': 100  # Data is stored as decimal (0.10 = 10%), needs *100 for display
     },
     'AGE_OF_INVENTORY': {
         'display': 'Age of Inventory',
