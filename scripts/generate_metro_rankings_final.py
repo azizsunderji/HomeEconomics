@@ -1212,10 +1212,11 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
     
     <div class="footer">
         <strong>Data:</strong> Redfin weekly housing market data | <strong>Updated:</strong> {date_str} | <strong>Methodology:</strong> Based on rolling 4-week windows<br>
-        <a href="https://www.home-economics.us">Home Economics</a>
+        <a href="https://www.home-economics.us">Home Economics</a><br>
+        <small style="color: #999;">Version: {version} | Generated: {time.strftime('%Y-%m-%d %H:%M:%S')}</small>
     </div>
     
-    <!-- Chart Panel -->
+    <!-- Chart Panel VERSION 2.0 WITH SCROLLBAR -->
     <div class="chart-panel" id="chartPanel">
         <div class="chart-panel-header">
             <div class="chart-panel-title" id="chartTitle">Select a metro to view chart</div>
