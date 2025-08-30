@@ -35,6 +35,13 @@
             overflow: hidden;
             display: flex;
             flex-direction: column;
+            /* Hide all scrollbars on body */
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+        
+        body::-webkit-scrollbar {
+            display: none;
         }
         
         .fixed-header {
@@ -123,6 +130,13 @@
             border-left-width: 4px;
         }
         
+        .summary-toggle:hover .summary-toggle-text::after {
+            content: " (Click to expand)";
+            font-size: 12px;
+            color: #0BB4FF;
+            font-weight: normal;
+        }
+        
         .summary-toggle-text {
             font-size: 14px;
             color: #3D3733;
@@ -132,10 +146,6 @@
             gap: 8px;
         }
         
-        .summary-toggle-text::before {
-            content: "📊";
-            font-size: 16px;
-        }
         
         .summary-arrow {
             transition: transform 0.3s;
@@ -176,26 +186,19 @@
             overflow-x: hidden; /* Prevent horizontal scroll and gray line */
             padding: 0 20px 20px 20px;
             max-width: 100%;
-            scrollbar-gutter: stable; /* Reserve space for scrollbar */
+            border-right: none !important;
+            box-shadow: none !important;
         }
         
-        /* Hide table container scrollbar track to remove gray line */
+        /* Completely hide table container scrollbar to remove gray line */
         .table-container::-webkit-scrollbar {
-            width: 10px;
-            background: transparent;
+            width: 0px;
+            display: none;
         }
         
-        .table-container::-webkit-scrollbar-track {
-            background: transparent;
-        }
-        
-        .table-container::-webkit-scrollbar-thumb {
-            background: #DADFCE;
-            border-radius: 5px;
-        }
-        
-        .table-container::-webkit-scrollbar-thumb:hover {
-            background: #C6DCCB;
+        .table-container {
+            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;  /* Firefox */
         }
         
         table {
@@ -262,11 +265,13 @@
         }
         
         td.metro:hover::after {
-            content: "📈";
+            content: "View chart →";
             position: absolute;
-            right: -25px;
-            opacity: 0.7;
-            font-size: 14px;
+            right: -85px;
+            color: #0BB4FF;
+            font-size: 11px;
+            font-weight: normal;
+            opacity: 0.8;
         }
         
         /* Click hint for first metro */
@@ -359,12 +364,14 @@
         
         .chart-panel-content {
             flex: 1;
-            overflow-y: scroll !important; /* Always show scrollbar */
+            overflow-y: scroll !important; /* Force scrollbar to always show */
             overflow-x: hidden;
             padding: 15px 20px 15px 20px;
             display: flex;
             flex-direction: column;
             align-items: center;
+            /* Force minimum height to ensure scrollbar appears */
+            min-height: 101%;
             /* Custom scrollbar styling for better visibility */
             scrollbar-width: thin;
             scrollbar-color: #0BB4FF #F6F7F3; /* Brand blue scrollbar */
@@ -442,20 +449,23 @@
             text-decoration: underline;
         }
         
-        /* Scroll indicator */
+        /* Scroll indicator - more prominent */
         .scroll-indicator {
             position: absolute;
-            bottom: 10px;
+            bottom: 15px;
             left: 50%;
             transform: translateX(-50%);
-            font-size: 11px;
-            color: #6B635C;
-            background: rgba(255, 255, 255, 0.9);
-            padding: 2px 8px;
-            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            color: white;
+            background: #0BB4FF;
+            padding: 8px 16px;
+            border-radius: 20px;
             display: none;
             pointer-events: none;
-            animation: bounce 2s infinite;
+            animation: bounce 1.5s infinite;
+            box-shadow: 0 4px 12px rgba(11, 180, 255, 0.4);
+            z-index: 10;
         }
         
         .scroll-indicator.visible {
@@ -463,8 +473,14 @@
         }
         
         @keyframes bounce {
-            0%, 100% { transform: translateX(-50%) translateY(0); }
-            50% { transform: translateX(-50%) translateY(-5px); }
+            0%, 100% { 
+                transform: translateX(-50%) translateY(0); 
+                box-shadow: 0 4px 12px rgba(11, 180, 255, 0.4);
+            }
+            50% { 
+                transform: translateX(-50%) translateY(-8px); 
+                box-shadow: 0 8px 20px rgba(11, 180, 255, 0.6);
+            }
         }
         
         /* Adjust table container when panel is open */
@@ -542,7 +558,7 @@
         
         <div class="controls">
             <div class="metrics">
-                <a href="median_sale_price.html?v=1756575267" class="metric-btn ">Median Sale Price</a><a href="active_listings.html?v=1756575267" class="metric-btn ">Active Listings</a><a href="weeks_supply.html?v=1756575267" class="metric-btn active">Weeks of Supply</a><a href="homes_sold.html?v=1756575267" class="metric-btn ">Homes Sold</a><a href="new_listings.html?v=1756575267" class="metric-btn ">New Listings</a><a href="median_days_on_market.html?v=1756575267" class="metric-btn ">Days on Market</a><a href="pending_sales.html?v=1756575267" class="metric-btn ">Pending Sales</a><a href="off_market_in_2_weeks.html?v=1756575267" class="metric-btn ">Off Market in 2 Weeks</a><a href="median_days_to_close.html?v=1756575267" class="metric-btn ">Days to Close</a><a href="sale_to_list_ratio.html?v=1756575267" class="metric-btn ">Sale to List Ratio</a><a href="pct_listings_w__price_drops.html?v=1756575267" class="metric-btn ">Price Drops</a><a href="age_of_inventory.html?v=1756575267" class="metric-btn ">Age of Inventory</a>
+                <a href="median_sale_price.html?v=1756581847" class="metric-btn ">Median Sale Price</a><a href="active_listings.html?v=1756581847" class="metric-btn ">Active Listings</a><a href="weeks_supply.html?v=1756581847" class="metric-btn active">Weeks of Supply</a><a href="homes_sold.html?v=1756581847" class="metric-btn ">Homes Sold</a><a href="new_listings.html?v=1756581847" class="metric-btn ">New Listings</a><a href="median_days_on_market.html?v=1756581847" class="metric-btn ">Days on Market</a><a href="pending_sales.html?v=1756581847" class="metric-btn ">Pending Sales</a><a href="off_market_in_2_weeks.html?v=1756581847" class="metric-btn ">Off Market in 2 Weeks</a><a href="median_days_to_close.html?v=1756581847" class="metric-btn ">Days to Close</a><a href="sale_to_list_ratio.html?v=1756581847" class="metric-btn ">Sale to List Ratio</a><a href="pct_listings_w__price_drops.html?v=1756581847" class="metric-btn ">Price Drops</a><a href="age_of_inventory.html?v=1756581847" class="metric-btn ">Age of Inventory</a>
             </div>
             
             <div class="filter">
@@ -559,7 +575,7 @@
         
         <div class="summary-box">
             <div class="summary-toggle" onclick="toggleSummary()">
-                <span class="summary-toggle-text">Market Analysis Summary (Click to expand)</span>
+                <span class="summary-toggle-text">Market Analysis Summary</span>
                 <span class="summary-arrow" id="summaryArrow">▼</span>
             </div>
             <div class="summary-content" id="summaryContent">
@@ -595,7 +611,7 @@
         <tbody>
             <tr data-percentile="62.6" data-metro="midland, tx" data-current="661.75" data-month1="-23.59" data-month3="-5.14" data-month6="660.46" data-year1="727.31" data-year3="605.38">
                 <td class="rank">1</td>
-                <td class="metro" data-metro-url="midland_tx" onclick="showChart(this)">Midland, TX<span class="click-hint">← Click for chart</span></td>
+                <td class="metro" data-metro-url="midland_tx" onclick="showChart(this)">Midland, TX<span class="click-hint">Click for chart</span></td>
                 <td class="number current-value">661.8</td>
                 <td class="number change-month1">-23.6%</td>
                 <td class="number change-month3">-5.1%</td>
@@ -9810,7 +9826,7 @@
     <div class="footer">
         <strong>Data:</strong> Redfin weekly housing market data | <strong>Updated:</strong> August 24, 2025 | <strong>Methodology:</strong> Based on rolling 4-week windows<br>
         <a href="https://www.home-economics.us">Home Economics</a><br>
-        <small style="color: #999;">Version: 1756575267 | Generated: 2025-08-30 13:34:27</small>
+        <small style="color: #999;">Version: 1756581847 | Generated: 2025-08-30 15:24:07</small>
     </div>
     
     <!-- Chart Panel VERSION 2.0 WITH SCROLLBAR -->
@@ -9824,7 +9840,7 @@
             <img class="chart-image" id="chartImage" alt="Metro chart">
             <div class="chart-error" id="chartError">Chart not available for this metro</div>
             <div class="chart-link" id="chartLink"></div>
-            <div class="scroll-indicator" id="scrollIndicator">↓ Scroll for more ↓</div>
+            <div class="scroll-indicator" id="scrollIndicator">Scroll down for full chart</div>
         </div>
     </div>
     

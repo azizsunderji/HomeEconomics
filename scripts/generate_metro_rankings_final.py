@@ -709,6 +709,13 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
             overflow: hidden;
             display: flex;
             flex-direction: column;
+            /* Hide all scrollbars on body */
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }}
+        
+        body::-webkit-scrollbar {{
+            display: none;
         }}
         
         .fixed-header {{
@@ -797,6 +804,13 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
             border-left-width: 4px;
         }}
         
+        .summary-toggle:hover .summary-toggle-text::after {{
+            content: " (Click to expand)";
+            font-size: 12px;
+            color: #0BB4FF;
+            font-weight: normal;
+        }}
+        
         .summary-toggle-text {{
             font-size: 14px;
             color: #3D3733;
@@ -806,10 +820,6 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
             gap: 8px;
         }}
         
-        .summary-toggle-text::before {{
-            content: "📊";
-            font-size: 16px;
-        }}
         
         .summary-arrow {{
             transition: transform 0.3s;
@@ -850,26 +860,19 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
             overflow-x: hidden; /* Prevent horizontal scroll and gray line */
             padding: 0 20px 20px 20px;
             max-width: 100%;
-            scrollbar-gutter: stable; /* Reserve space for scrollbar */
+            border-right: none !important;
+            box-shadow: none !important;
         }}
         
-        /* Hide table container scrollbar track to remove gray line */
+        /* Completely hide table container scrollbar to remove gray line */
         .table-container::-webkit-scrollbar {{
-            width: 10px;
-            background: transparent;
+            width: 0px;
+            display: none;
         }}
         
-        .table-container::-webkit-scrollbar-track {{
-            background: transparent;
-        }}
-        
-        .table-container::-webkit-scrollbar-thumb {{
-            background: #DADFCE;
-            border-radius: 5px;
-        }}
-        
-        .table-container::-webkit-scrollbar-thumb:hover {{
-            background: #C6DCCB;
+        .table-container {{
+            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;  /* Firefox */
         }}
         
         table {{
@@ -936,11 +939,13 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
         }}
         
         td.metro:hover::after {{
-            content: "📈";
+            content: "View chart →";
             position: absolute;
-            right: -25px;
-            opacity: 0.7;
-            font-size: 14px;
+            right: -85px;
+            color: #0BB4FF;
+            font-size: 11px;
+            font-weight: normal;
+            opacity: 0.8;
         }}
         
         /* Click hint for first metro */
@@ -1033,12 +1038,14 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
         
         .chart-panel-content {{
             flex: 1;
-            overflow-y: scroll !important; /* Always show scrollbar */
+            overflow-y: scroll !important; /* Force scrollbar to always show */
             overflow-x: hidden;
             padding: 15px 20px 15px 20px;
             display: flex;
             flex-direction: column;
             align-items: center;
+            /* Force minimum height to ensure scrollbar appears */
+            min-height: 101%;
             /* Custom scrollbar styling for better visibility */
             scrollbar-width: thin;
             scrollbar-color: #0BB4FF #F6F7F3; /* Brand blue scrollbar */
@@ -1116,20 +1123,23 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
             text-decoration: underline;
         }}
         
-        /* Scroll indicator */
+        /* Scroll indicator - more prominent */
         .scroll-indicator {{
             position: absolute;
-            bottom: 10px;
+            bottom: 15px;
             left: 50%;
             transform: translateX(-50%);
-            font-size: 11px;
-            color: #6B635C;
-            background: rgba(255, 255, 255, 0.9);
-            padding: 2px 8px;
-            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            color: white;
+            background: #0BB4FF;
+            padding: 8px 16px;
+            border-radius: 20px;
             display: none;
             pointer-events: none;
-            animation: bounce 2s infinite;
+            animation: bounce 1.5s infinite;
+            box-shadow: 0 4px 12px rgba(11, 180, 255, 0.4);
+            z-index: 10;
         }}
         
         .scroll-indicator.visible {{
@@ -1137,8 +1147,14 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
         }}
         
         @keyframes bounce {{
-            0%, 100% {{ transform: translateX(-50%) translateY(0); }}
-            50% {{ transform: translateX(-50%) translateY(-5px); }}
+            0%, 100% {{ 
+                transform: translateX(-50%) translateY(0); 
+                box-shadow: 0 4px 12px rgba(11, 180, 255, 0.4);
+            }}
+            50% {{ 
+                transform: translateX(-50%) translateY(-8px); 
+                box-shadow: 0 8px 20px rgba(11, 180, 255, 0.6);
+            }}
         }}
         
         /* Adjust table container when panel is open */
@@ -1233,7 +1249,7 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
         
         <div class="summary-box">
             <div class="summary-toggle" onclick="toggleSummary()">
-                <span class="summary-toggle-text">Market Analysis Summary (Click to expand)</span>
+                <span class="summary-toggle-text">Market Analysis Summary</span>
                 <span class="summary-arrow" id="summaryArrow">▼</span>
             </div>
             <div class="summary-content" id="summaryContent">
@@ -1290,7 +1306,7 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
         html += f'                <td class="rank">{i}</td>\n'
         metro_url = format_metro_for_url(row["metro_name"])
         # Add click hint only for the first row
-        click_hint = '<span class="click-hint">← Click for chart</span>' if i == 1 else ''
+        click_hint = '<span class="click-hint">Click for chart</span>' if i == 1 else ''
         html += f'                <td class="metro" data-metro-url="{metro_url}" onclick="showChart(this)">{row["metro_name"]}{click_hint}</td>\n'
         
         # Current value with class for targeting
@@ -1330,7 +1346,7 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
             <img class="chart-image" id="chartImage" alt="Metro chart">
             <div class="chart-error" id="chartError">Chart not available for this metro</div>
             <div class="chart-link" id="chartLink"></div>
-            <div class="scroll-indicator" id="scrollIndicator">↓ Scroll for more ↓</div>
+            <div class="scroll-indicator" id="scrollIndicator">Scroll down for full chart</div>
         </div>
     </div>
     
