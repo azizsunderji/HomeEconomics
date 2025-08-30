@@ -837,7 +837,9 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
         .table-container {{
             flex: 1;
             overflow-y: auto;
+            overflow-x: hidden; /* Prevent horizontal scroll and gray line */
             padding: 0 20px 20px 20px;
+            max-width: 100%;
         }}
         
         table {{
@@ -961,34 +963,36 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
         
         .chart-panel-content {{
             flex: 1;
-            overflow-y: auto;
+            overflow-y: scroll !important; /* Always show scrollbar */
             overflow-x: hidden;
-            padding: 15px 15px 15px 20px; /* Less padding, extra on right for scrollbar */
+            padding: 15px 20px 15px 20px;
             display: flex;
             flex-direction: column;
             align-items: center;
             /* Custom scrollbar styling for better visibility */
             scrollbar-width: thin;
-            scrollbar-color: #DADFCE #F6F7F3;
+            scrollbar-color: #67A275 #F6F7F3; /* Darker green for better visibility */
         }}
         
         /* Custom scrollbar for webkit browsers */
         .chart-panel-content::-webkit-scrollbar {{
-            width: 8px;
+            width: 10px; /* Wider for better visibility */
         }}
         
         .chart-panel-content::-webkit-scrollbar-track {{
             background: #F6F7F3;
-            border-radius: 4px;
+            border-radius: 5px;
+            margin: 10px 0;
         }}
         
         .chart-panel-content::-webkit-scrollbar-thumb {{
-            background: #DADFCE;
-            border-radius: 4px;
+            background: #67A275; /* Darker green */
+            border-radius: 5px;
+            border: 1px solid #F6F7F3;
         }}
         
         .chart-panel-content::-webkit-scrollbar-thumb:hover {{
-            background: #C6DCCB;
+            background: #0BB4FF; /* Blue on hover */
         }}
         
         .chart-loading {{
@@ -1075,16 +1079,25 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
         
         /* Special styles when in iframe */
         body.in-iframe {{
-            overflow: visible !important;
+            overflow-x: hidden !important;
         }}
         
         body.in-iframe .chart-panel {{
-            position: absolute;
-            height: calc(100% - 10px);
+            position: fixed;
+            top: 140px !important; /* Start below header */
+            height: calc(100vh - 150px) !important;
+            width: 420px !important;
+            right: -420px !important;
+            border-top-left-radius: 8px;
+            box-shadow: -4px 0 15px rgba(0,0,0,0.15);
+        }}
+        
+        body.in-iframe .chart-panel.open {{
+            right: 0 !important;
         }}
         
         body.in-iframe .table-container.panel-open {{
-            margin-right: 460px;
+            margin-right: 430px;
         }}
         
         .footer {{

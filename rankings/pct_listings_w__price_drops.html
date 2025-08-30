@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>Price Drops Rankings | Home Economics</title>
     <style>
         @font-face {
@@ -160,7 +163,9 @@
         .table-container {
             flex: 1;
             overflow-y: auto;
+            overflow-x: hidden; /* Prevent horizontal scroll and gray line */
             padding: 0 20px 20px 20px;
+            max-width: 100%;
         }
         
         table {
@@ -228,17 +233,18 @@
             background: rgba(218, 223, 206, 0.2);
         }
         
-        /* Chart Panel Styles */
+        /* Chart Panel Styles - iframe compatible */
         .chart-panel {
             position: fixed;
             top: 0;
             right: -450px;
             width: 450px;
             height: 100vh;
+            max-height: 100%;
             background: white;
             box-shadow: -2px 0 10px rgba(0,0,0,0.1);
             transition: right 0.3s ease;
-            z-index: 1000;
+            z-index: 9999;
             display: flex;
             flex-direction: column;
         }
@@ -283,11 +289,36 @@
         
         .chart-panel-content {
             flex: 1;
-            overflow-y: auto;
-            padding: 20px;
+            overflow-y: scroll !important; /* Always show scrollbar */
+            overflow-x: hidden;
+            padding: 15px 20px 15px 20px;
             display: flex;
             flex-direction: column;
             align-items: center;
+            /* Custom scrollbar styling for better visibility */
+            scrollbar-width: thin;
+            scrollbar-color: #67A275 #F6F7F3; /* Darker green for better visibility */
+        }
+        
+        /* Custom scrollbar for webkit browsers */
+        .chart-panel-content::-webkit-scrollbar {
+            width: 10px; /* Wider for better visibility */
+        }
+        
+        .chart-panel-content::-webkit-scrollbar-track {
+            background: #F6F7F3;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        
+        .chart-panel-content::-webkit-scrollbar-thumb {
+            background: #67A275; /* Darker green */
+            border-radius: 5px;
+            border: 1px solid #F6F7F3;
+        }
+        
+        .chart-panel-content::-webkit-scrollbar-thumb:hover {
+            background: #0BB4FF; /* Blue on hover */
         }
         
         .chart-loading {
@@ -323,7 +354,8 @@
         }
         
         .chart-link {
-            margin-top: 15px;
+            margin-top: 10px;
+            margin-bottom: 5px;
             text-align: center;
             font-size: 12px;
         }
@@ -337,6 +369,31 @@
             text-decoration: underline;
         }
         
+        /* Scroll indicator */
+        .scroll-indicator {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 11px;
+            color: #6B635C;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 2px 8px;
+            border-radius: 10px;
+            display: none;
+            pointer-events: none;
+            animation: bounce 2s infinite;
+        }
+        
+        .scroll-indicator.visible {
+            display: block;
+        }
+        
+        @keyframes bounce {
+            0%, 100% { transform: translateX(-50%) translateY(0); }
+            50% { transform: translateX(-50%) translateY(-5px); }
+        }
+        
         /* Adjust table container when panel is open */
         .table-container {
             transition: margin-right 0.3s ease;
@@ -344,6 +401,29 @@
         
         .table-container.panel-open {
             margin-right: 450px;
+        }
+        
+        /* Special styles when in iframe */
+        body.in-iframe {
+            overflow-x: hidden !important;
+        }
+        
+        body.in-iframe .chart-panel {
+            position: fixed;
+            top: 140px !important; /* Start below header */
+            height: calc(100vh - 150px) !important;
+            width: 420px !important;
+            right: -420px !important;
+            border-top-left-radius: 8px;
+            box-shadow: -4px 0 15px rgba(0,0,0,0.15);
+        }
+        
+        body.in-iframe .chart-panel.open {
+            right: 0 !important;
+        }
+        
+        body.in-iframe .table-container.panel-open {
+            margin-right: 430px;
         }
         
         .footer {
@@ -389,7 +469,7 @@
         
         <div class="controls">
             <div class="metrics">
-                <a href="median_sale_price.html" class="metric-btn ">Median Sale Price</a><a href="active_listings.html" class="metric-btn ">Active Listings</a><a href="weeks_supply.html" class="metric-btn ">Weeks of Supply</a><a href="homes_sold.html" class="metric-btn ">Homes Sold</a><a href="new_listings.html" class="metric-btn ">New Listings</a><a href="median_days_on_market.html" class="metric-btn ">Days on Market</a><a href="pending_sales.html" class="metric-btn ">Pending Sales</a><a href="off_market_in_2_weeks.html" class="metric-btn ">Off Market in 2 Weeks</a><a href="median_days_to_close.html" class="metric-btn ">Days to Close</a><a href="sale_to_list_ratio.html" class="metric-btn ">Sale to List Ratio</a><a href="pct_listings_w__price_drops.html" class="metric-btn active">Price Drops</a><a href="age_of_inventory.html" class="metric-btn ">Age of Inventory</a>
+                <a href="median_sale_price.html?v=1756573891" class="metric-btn ">Median Sale Price</a><a href="active_listings.html?v=1756573891" class="metric-btn ">Active Listings</a><a href="weeks_supply.html?v=1756573891" class="metric-btn ">Weeks of Supply</a><a href="homes_sold.html?v=1756573891" class="metric-btn ">Homes Sold</a><a href="new_listings.html?v=1756573891" class="metric-btn ">New Listings</a><a href="median_days_on_market.html?v=1756573891" class="metric-btn ">Days on Market</a><a href="pending_sales.html?v=1756573891" class="metric-btn ">Pending Sales</a><a href="off_market_in_2_weeks.html?v=1756573891" class="metric-btn ">Off Market in 2 Weeks</a><a href="median_days_to_close.html?v=1756573891" class="metric-btn ">Days to Close</a><a href="sale_to_list_ratio.html?v=1756573891" class="metric-btn ">Sale to List Ratio</a><a href="pct_listings_w__price_drops.html?v=1756573891" class="metric-btn active">Price Drops</a><a href="age_of_inventory.html?v=1756573891" class="metric-btn ">Age of Inventory</a>
             </div>
             
             <div class="filter">
@@ -9716,10 +9796,11 @@
     
     <div class="footer">
         <strong>Data:</strong> Redfin weekly housing market data | <strong>Updated:</strong> August 24, 2025 | <strong>Methodology:</strong> Based on rolling 4-week windows<br>
-        <a href="https://www.home-economics.us">Home Economics</a>
+        <a href="https://www.home-economics.us">Home Economics</a><br>
+        <small style="color: #999;">Version: 1756573891 | Generated: 2025-08-30 13:11:31</small>
     </div>
     
-    <!-- Chart Panel -->
+    <!-- Chart Panel VERSION 2.0 WITH SCROLLBAR -->
     <div class="chart-panel" id="chartPanel">
         <div class="chart-panel-header">
             <div class="chart-panel-title" id="chartTitle">Select a metro to view chart</div>
@@ -9730,6 +9811,7 @@
             <img class="chart-image" id="chartImage" alt="Metro chart">
             <div class="chart-error" id="chartError">Chart not available for this metro</div>
             <div class="chart-link" id="chartLink"></div>
+            <div class="scroll-indicator" id="scrollIndicator">↓ Scroll for more ↓</div>
         </div>
     </div>
     
@@ -9752,6 +9834,25 @@
             
             // Calculate initial medians
             calculateMedians();
+            
+            // Detect if in iframe and adjust panel behavior
+            if (window.self !== window.top) {
+                console.log('Page is in iframe - adjusting panel behavior');
+                // Add class to body for iframe-specific styling
+                document.body.classList.add('in-iframe');
+                
+                // Try to make iframe taller when panel opens
+                const sendHeight = () => {
+                    if (window.parent && window.parent.postMessage) {
+                        const height = document.body.scrollHeight;
+                        window.parent.postMessage({type: 'resize', height: height}, '*');
+                    }
+                };
+                
+                // Send height on panel open/close
+                window.addEventListener('resize', sendHeight);
+                setInterval(sendHeight, 1000); // Periodic height check
+            }
         };
         
         // Special function for initial load to apply coloring
@@ -10075,8 +10176,8 @@
             document.querySelector('.table-container').classList.add('panel-open');
             
             // Construct chart URL - using mobile charts (higher res)
-            // Format: https://www.home-economics.us/live/mobile/metro_name/metric.png
-            const chartUrl = `https://www.home-economics.us/live/mobile/${metroUrl}/${currentMetric}.png`;
+            // Format: https://home-economics.us/wp-content/uploads/reports/live/mobile/metro_name/metro_name_metric_mobile.png
+            const chartUrl = `https://home-economics.us/wp-content/uploads/reports/live/mobile/${metroUrl}/${metroUrl}_${currentMetric}_mobile.png`;
             
             // Load chart image
             const img = document.getElementById('chartImage');
@@ -10087,6 +10188,26 @@
                 // Add link to open in new tab
                 const linkDiv = document.getElementById('chartLink');
                 linkDiv.innerHTML = `<a href="${chartUrl}" target="_blank">Open chart in new tab ↗</a>`;
+                
+                // Check if scrolling is needed and show indicator
+                setTimeout(() => {
+                    const content = document.querySelector('.chart-panel-content');
+                    const hasScroll = content.scrollHeight > content.clientHeight;
+                    const indicator = document.getElementById('scrollIndicator');
+                    if (hasScroll) {
+                        indicator.classList.add('visible');
+                        // Hide indicator when user scrolls
+                        content.onscroll = function() {
+                            if (content.scrollTop > 50) {
+                                indicator.classList.remove('visible');
+                            } else {
+                                indicator.classList.add('visible');
+                            }
+                        };
+                    } else {
+                        indicator.classList.remove('visible');
+                    }
+                }, 100);
             };
             
             img.onerror = function() {
@@ -10103,6 +10224,7 @@
         function closeChartPanel() {
             document.getElementById('chartPanel').classList.remove('open');
             document.querySelector('.table-container').classList.remove('panel-open');
+            document.getElementById('scrollIndicator').classList.remove('visible');
             currentChartMetro = null;
         }
         
