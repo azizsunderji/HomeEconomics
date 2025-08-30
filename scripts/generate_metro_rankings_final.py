@@ -1515,8 +1515,8 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
             document.querySelector('.table-container').classList.add('panel-open');
             
             // Construct chart URL - using mobile charts (higher res)
-            // Format: https://www.home-economics.us/live/mobile/metro_name/metric.png
-            const chartUrl = `https://www.home-economics.us/live/mobile/${{metroUrl}}/${{currentMetric}}.png`;
+            // Format: https://home-economics.us/wp-content/uploads/reports/live/mobile/metro_name/metro_name_metric_mobile.png
+            const chartUrl = `https://home-economics.us/wp-content/uploads/reports/live/mobile/${{metroUrl}}/${{metroUrl}}_${{currentMetric}}_mobile.png`;
             
             // Load chart image
             const img = document.getElementById('chartImage');
