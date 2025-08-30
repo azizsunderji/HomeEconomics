@@ -659,12 +659,16 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
         else:
             summaries[percentile] = f"No data available for {name}."
     
-    # Build metric navigation buttons
+    # Generate version string based on current timestamp for cache-busting
+    import time
+    version = int(time.time())
+    
+    # Build metric navigation buttons with cache-busting parameter
     metric_buttons = []
     for m_key, m_info in all_metrics.items():
         is_active = 'active' if m_key == metric_key else ''
         metric_buttons.append(
-            f'<a href="{m_info["slug"]}.html" class="metric-btn {is_active}">'
+            f'<a href="{m_info["slug"]}.html?v={version}" class="metric-btn {is_active}">'
             f'{m_info["display"]}</a>'
         )
     
@@ -673,6 +677,9 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>{metric_info['display']} Rankings | Home Economics</title>
     <style>
         @font-face {{
@@ -1783,10 +1790,17 @@ def main():
             f.write(html)
         print(f"  Saved {output_file}")
     
-    # Create index redirect
+    # Create index redirect with cache-busting
+    import time
+    version = int(time.time())
     with open(output_path / 'index.html', 'w') as f:
-        f.write('''<!DOCTYPE html>
-<html><head><meta http-equiv="refresh" content="0; url=median_sale_price.html"></head>
+        f.write(f'''<!DOCTYPE html>
+<html><head>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<meta http-equiv="refresh" content="0; url=median_sale_price.html?v={version}">
+</head>
 <body>Redirecting...</body></html>''')
     
     print(f"\nGenerated {len(METRICS)} ranking pages")
