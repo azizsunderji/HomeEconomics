@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Deploy - Cache Bust Version</title>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+</head>
+<body>
+    <h1>TEST DEPLOY - NEW VERSION WITH TIMESTAMP</h1>
+    <p>If you see this, the deployment is working!</p>
+    <p>Generated at: <strong id="timestamp"></strong></p>
+    <p>Chart panel feature: <strong>ENABLED</strong></p>
+    <script>
+        document.getElementById('timestamp').textContent = new Date().toISOString();
+    </script>
+</body>
+</html>
