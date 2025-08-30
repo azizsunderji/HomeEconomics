@@ -113,18 +113,28 @@
             padding: 10px 15px;
             cursor: pointer;
             user-select: none;
-            background: transparent;
-            transition: background 0.2s;
+            background: linear-gradient(to right, transparent, rgba(11, 180, 255, 0.05));
+            transition: all 0.2s;
+            border-left: 3px solid #0BB4FF;
         }
         
         .summary-toggle:hover {
-            background: #F0F0EC;
+            background: linear-gradient(to right, rgba(11, 180, 255, 0.05), rgba(11, 180, 255, 0.1));
+            border-left-width: 4px;
         }
         
         .summary-toggle-text {
             font-size: 14px;
-            color: #6B635C;
-            font-weight: 500;
+            color: #3D3733;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .summary-toggle-text::before {
+            content: "📊";
+            font-size: 16px;
         }
         
         .summary-arrow {
@@ -166,11 +176,32 @@
             overflow-x: hidden; /* Prevent horizontal scroll and gray line */
             padding: 0 20px 20px 20px;
             max-width: 100%;
+            scrollbar-gutter: stable; /* Reserve space for scrollbar */
+        }
+        
+        /* Hide table container scrollbar track to remove gray line */
+        .table-container::-webkit-scrollbar {
+            width: 10px;
+            background: transparent;
+        }
+        
+        .table-container::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        
+        .table-container::-webkit-scrollbar-thumb {
+            background: #DADFCE;
+            border-radius: 5px;
+        }
+        
+        .table-container::-webkit-scrollbar-thumb:hover {
+            background: #C6DCCB;
         }
         
         table {
-            width: 100%;
+            width: calc(100% - 10px); /* Prevent edge shadow */
             border-collapse: collapse;
+            margin-right: 10px; /* Keep away from right edge */
         }
         
         th {
@@ -221,12 +252,51 @@
         td.metro {
             font-weight: 500;
             cursor: pointer;
-            transition: color 0.2s;
+            transition: all 0.2s;
+            position: relative;
         }
         
         td.metro:hover {
             color: #0BB4FF;
             text-decoration: underline;
+        }
+        
+        td.metro:hover::after {
+            content: "📈";
+            position: absolute;
+            right: -25px;
+            opacity: 0.7;
+            font-size: 14px;
+        }
+        
+        /* Click hint for first metro */
+        .click-hint {
+            display: inline-block;
+            margin-left: 10px;
+            font-size: 11px;
+            color: #0BB4FF;
+            font-weight: normal;
+            opacity: 0;
+            animation: fadeInOut 3s ease-in-out;
+            animation-delay: 1s;
+            pointer-events: none;
+        }
+        
+        @keyframes fadeInOut {
+            0% { opacity: 0; }
+            20% { opacity: 1; }
+            80% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+        
+        /* Show hint on first row */
+        tbody tr:first-child .click-hint {
+            animation: pulse 2s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
         }
         
         tr:hover {
@@ -297,28 +367,31 @@
             align-items: center;
             /* Custom scrollbar styling for better visibility */
             scrollbar-width: thin;
-            scrollbar-color: #67A275 #F6F7F3; /* Darker green for better visibility */
+            scrollbar-color: #0BB4FF #F6F7F3; /* Brand blue scrollbar */
         }
         
         /* Custom scrollbar for webkit browsers */
         .chart-panel-content::-webkit-scrollbar {
-            width: 10px; /* Wider for better visibility */
+            width: 12px; /* Slightly wider for better visibility */
+            display: block !important; /* Force display */
         }
         
         .chart-panel-content::-webkit-scrollbar-track {
             background: #F6F7F3;
-            border-radius: 5px;
+            border-radius: 6px;
             margin: 10px 0;
+            border: 1px solid #DADFCE;
         }
         
         .chart-panel-content::-webkit-scrollbar-thumb {
-            background: #67A275; /* Darker green */
-            border-radius: 5px;
+            background: #0BB4FF; /* Brand blue */
+            border-radius: 6px;
             border: 1px solid #F6F7F3;
+            min-height: 30px; /* Ensure thumb is always visible */
         }
         
         .chart-panel-content::-webkit-scrollbar-thumb:hover {
-            background: #0BB4FF; /* Blue on hover */
+            background: #0995D6; /* Slightly darker blue on hover */
         }
         
         .chart-loading {
@@ -469,7 +542,7 @@
         
         <div class="controls">
             <div class="metrics">
-                <a href="median_sale_price.html?v=1756573867" class="metric-btn ">Median Sale Price</a><a href="active_listings.html?v=1756573867" class="metric-btn ">Active Listings</a><a href="weeks_supply.html?v=1756573867" class="metric-btn ">Weeks of Supply</a><a href="homes_sold.html?v=1756573867" class="metric-btn ">Homes Sold</a><a href="new_listings.html?v=1756573867" class="metric-btn ">New Listings</a><a href="median_days_on_market.html?v=1756573867" class="metric-btn ">Days on Market</a><a href="pending_sales.html?v=1756573867" class="metric-btn ">Pending Sales</a><a href="off_market_in_2_weeks.html?v=1756573867" class="metric-btn ">Off Market in 2 Weeks</a><a href="median_days_to_close.html?v=1756573867" class="metric-btn ">Days to Close</a><a href="sale_to_list_ratio.html?v=1756573867" class="metric-btn active">Sale to List Ratio</a><a href="pct_listings_w__price_drops.html?v=1756573867" class="metric-btn ">Price Drops</a><a href="age_of_inventory.html?v=1756573867" class="metric-btn ">Age of Inventory</a>
+                <a href="median_sale_price.html?v=1756575437" class="metric-btn ">Median Sale Price</a><a href="active_listings.html?v=1756575437" class="metric-btn ">Active Listings</a><a href="weeks_supply.html?v=1756575437" class="metric-btn ">Weeks of Supply</a><a href="homes_sold.html?v=1756575437" class="metric-btn ">Homes Sold</a><a href="new_listings.html?v=1756575437" class="metric-btn ">New Listings</a><a href="median_days_on_market.html?v=1756575437" class="metric-btn ">Days on Market</a><a href="pending_sales.html?v=1756575437" class="metric-btn ">Pending Sales</a><a href="off_market_in_2_weeks.html?v=1756575437" class="metric-btn ">Off Market in 2 Weeks</a><a href="median_days_to_close.html?v=1756575437" class="metric-btn ">Days to Close</a><a href="sale_to_list_ratio.html?v=1756575437" class="metric-btn active">Sale to List Ratio</a><a href="pct_listings_w__price_drops.html?v=1756575437" class="metric-btn ">Price Drops</a><a href="age_of_inventory.html?v=1756575437" class="metric-btn ">Age of Inventory</a>
             </div>
             
             <div class="filter">
@@ -486,7 +559,7 @@
         
         <div class="summary-box">
             <div class="summary-toggle" onclick="toggleSummary()">
-                <span class="summary-toggle-text">Market Analysis Summary</span>
+                <span class="summary-toggle-text">Market Analysis Summary (Click to expand)</span>
                 <span class="summary-arrow" id="summaryArrow">▼</span>
             </div>
             <div class="summary-content" id="summaryContent">
@@ -522,7 +595,7 @@
         <tbody>
             <tr data-percentile="8.7" data-metro="rochester, ny" data-current="1.141841767" data-month1="-1.58" data-month3="-2.18" data-month6="6.70" data-year1="-1.31" data-year3="3.16">
                 <td class="rank">1</td>
-                <td class="metro" data-metro-url="rochester_ny" onclick="showChart(this)">Rochester, NY</td>
+                <td class="metro" data-metro-url="rochester_ny" onclick="showChart(this)">Rochester, NY<span class="click-hint">← Click for chart</span></td>
                 <td class="number current-value">114.2%</td>
                 <td class="number change-month1">-1.6%</td>
                 <td class="number change-month3">-2.2%</td>
@@ -9327,7 +9400,7 @@
     <div class="footer">
         <strong>Data:</strong> Redfin weekly housing market data | <strong>Updated:</strong> August 24, 2025 | <strong>Methodology:</strong> Based on rolling 4-week windows<br>
         <a href="https://www.home-economics.us">Home Economics</a><br>
-        <small style="color: #999;">Version: 1756573867 | Generated: 2025-08-30 13:11:07</small>
+        <small style="color: #999;">Version: 1756575437 | Generated: 2025-08-30 13:37:17</small>
     </div>
     
     <!-- Chart Panel VERSION 2.0 WITH SCROLLBAR -->

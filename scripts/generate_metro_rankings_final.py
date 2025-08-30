@@ -787,18 +787,28 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
             padding: 10px 15px;
             cursor: pointer;
             user-select: none;
-            background: transparent;
-            transition: background 0.2s;
+            background: linear-gradient(to right, transparent, rgba(11, 180, 255, 0.05));
+            transition: all 0.2s;
+            border-left: 3px solid #0BB4FF;
         }}
         
         .summary-toggle:hover {{
-            background: #F0F0EC;
+            background: linear-gradient(to right, rgba(11, 180, 255, 0.05), rgba(11, 180, 255, 0.1));
+            border-left-width: 4px;
         }}
         
         .summary-toggle-text {{
             font-size: 14px;
-            color: #6B635C;
-            font-weight: 500;
+            color: #3D3733;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }}
+        
+        .summary-toggle-text::before {{
+            content: "📊";
+            font-size: 16px;
         }}
         
         .summary-arrow {{
@@ -840,11 +850,32 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
             overflow-x: hidden; /* Prevent horizontal scroll and gray line */
             padding: 0 20px 20px 20px;
             max-width: 100%;
+            scrollbar-gutter: stable; /* Reserve space for scrollbar */
+        }}
+        
+        /* Hide table container scrollbar track to remove gray line */
+        .table-container::-webkit-scrollbar {{
+            width: 10px;
+            background: transparent;
+        }}
+        
+        .table-container::-webkit-scrollbar-track {{
+            background: transparent;
+        }}
+        
+        .table-container::-webkit-scrollbar-thumb {{
+            background: #DADFCE;
+            border-radius: 5px;
+        }}
+        
+        .table-container::-webkit-scrollbar-thumb:hover {{
+            background: #C6DCCB;
         }}
         
         table {{
-            width: 100%;
+            width: calc(100% - 10px); /* Prevent edge shadow */
             border-collapse: collapse;
+            margin-right: 10px; /* Keep away from right edge */
         }}
         
         th {{
@@ -895,12 +926,51 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
         td.metro {{
             font-weight: 500;
             cursor: pointer;
-            transition: color 0.2s;
+            transition: all 0.2s;
+            position: relative;
         }}
         
         td.metro:hover {{
             color: #0BB4FF;
             text-decoration: underline;
+        }}
+        
+        td.metro:hover::after {{
+            content: "📈";
+            position: absolute;
+            right: -25px;
+            opacity: 0.7;
+            font-size: 14px;
+        }}
+        
+        /* Click hint for first metro */
+        .click-hint {{
+            display: inline-block;
+            margin-left: 10px;
+            font-size: 11px;
+            color: #0BB4FF;
+            font-weight: normal;
+            opacity: 0;
+            animation: fadeInOut 3s ease-in-out;
+            animation-delay: 1s;
+            pointer-events: none;
+        }}
+        
+        @keyframes fadeInOut {{
+            0% {{ opacity: 0; }}
+            20% {{ opacity: 1; }}
+            80% {{ opacity: 1; }}
+            100% {{ opacity: 0; }}
+        }}
+        
+        /* Show hint on first row */
+        tbody tr:first-child .click-hint {{
+            animation: pulse 2s ease-in-out infinite;
+        }}
+        
+        @keyframes pulse {{
+            0%, 100% {{ opacity: 0.5; }}
+            50% {{ opacity: 1; }}
         }}
         
         tr:hover {{
@@ -971,28 +1041,31 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
             align-items: center;
             /* Custom scrollbar styling for better visibility */
             scrollbar-width: thin;
-            scrollbar-color: #67A275 #F6F7F3; /* Darker green for better visibility */
+            scrollbar-color: #0BB4FF #F6F7F3; /* Brand blue scrollbar */
         }}
         
         /* Custom scrollbar for webkit browsers */
         .chart-panel-content::-webkit-scrollbar {{
-            width: 10px; /* Wider for better visibility */
+            width: 12px; /* Slightly wider for better visibility */
+            display: block !important; /* Force display */
         }}
         
         .chart-panel-content::-webkit-scrollbar-track {{
             background: #F6F7F3;
-            border-radius: 5px;
+            border-radius: 6px;
             margin: 10px 0;
+            border: 1px solid #DADFCE;
         }}
         
         .chart-panel-content::-webkit-scrollbar-thumb {{
-            background: #67A275; /* Darker green */
-            border-radius: 5px;
+            background: #0BB4FF; /* Brand blue */
+            border-radius: 6px;
             border: 1px solid #F6F7F3;
+            min-height: 30px; /* Ensure thumb is always visible */
         }}
         
         .chart-panel-content::-webkit-scrollbar-thumb:hover {{
-            background: #0BB4FF; /* Blue on hover */
+            background: #0995D6; /* Slightly darker blue on hover */
         }}
         
         .chart-loading {{
@@ -1160,7 +1233,7 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
         
         <div class="summary-box">
             <div class="summary-toggle" onclick="toggleSummary()">
-                <span class="summary-toggle-text">Market Analysis Summary</span>
+                <span class="summary-toggle-text">Market Analysis Summary (Click to expand)</span>
                 <span class="summary-arrow" id="summaryArrow">▼</span>
             </div>
             <div class="summary-content" id="summaryContent">
@@ -1216,7 +1289,9 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
         
         html += f'                <td class="rank">{i}</td>\n'
         metro_url = format_metro_for_url(row["metro_name"])
-        html += f'                <td class="metro" data-metro-url="{metro_url}" onclick="showChart(this)">{row["metro_name"]}</td>\n'
+        # Add click hint only for the first row
+        click_hint = '<span class="click-hint">← Click for chart</span>' if i == 1 else ''
+        html += f'                <td class="metro" data-metro-url="{metro_url}" onclick="showChart(this)">{row["metro_name"]}{click_hint}</td>\n'
         
         # Current value with class for targeting
         multiplier = metric_info.get('multiplier', 1)
