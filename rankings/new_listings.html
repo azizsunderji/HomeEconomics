@@ -284,10 +284,33 @@
         .chart-panel-content {
             flex: 1;
             overflow-y: auto;
-            padding: 20px;
+            overflow-x: hidden;
+            padding: 15px 15px 15px 20px; /* Less padding, extra on right for scrollbar */
             display: flex;
             flex-direction: column;
             align-items: center;
+            /* Custom scrollbar styling for better visibility */
+            scrollbar-width: thin;
+            scrollbar-color: #DADFCE #F6F7F3;
+        }
+        
+        /* Custom scrollbar for webkit browsers */
+        .chart-panel-content::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .chart-panel-content::-webkit-scrollbar-track {
+            background: #F6F7F3;
+            border-radius: 4px;
+        }
+        
+        .chart-panel-content::-webkit-scrollbar-thumb {
+            background: #DADFCE;
+            border-radius: 4px;
+        }
+        
+        .chart-panel-content::-webkit-scrollbar-thumb:hover {
+            background: #C6DCCB;
         }
         
         .chart-loading {
@@ -323,7 +346,8 @@
         }
         
         .chart-link {
-            margin-top: 15px;
+            margin-top: 10px;
+            margin-bottom: 5px;
             text-align: center;
             font-size: 12px;
         }
@@ -335,6 +359,31 @@
         
         .chart-link a:hover {
             text-decoration: underline;
+        }
+        
+        /* Scroll indicator */
+        .scroll-indicator {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 11px;
+            color: #6B635C;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 2px 8px;
+            border-radius: 10px;
+            display: none;
+            pointer-events: none;
+            animation: bounce 2s infinite;
+        }
+        
+        .scroll-indicator.visible {
+            display: block;
+        }
+        
+        @keyframes bounce {
+            0%, 100% { transform: translateX(-50%) translateY(0); }
+            50% { transform: translateX(-50%) translateY(-5px); }
         }
         
         /* Adjust table container when panel is open */
@@ -9730,6 +9779,7 @@
             <img class="chart-image" id="chartImage" alt="Metro chart">
             <div class="chart-error" id="chartError">Chart not available for this metro</div>
             <div class="chart-link" id="chartLink"></div>
+            <div class="scroll-indicator" id="scrollIndicator">↓ Scroll for more ↓</div>
         </div>
     </div>
     
@@ -10087,6 +10137,26 @@
                 // Add link to open in new tab
                 const linkDiv = document.getElementById('chartLink');
                 linkDiv.innerHTML = `<a href="${chartUrl}" target="_blank">Open chart in new tab ↗</a>`;
+                
+                // Check if scrolling is needed and show indicator
+                setTimeout(() => {
+                    const content = document.querySelector('.chart-panel-content');
+                    const hasScroll = content.scrollHeight > content.clientHeight;
+                    const indicator = document.getElementById('scrollIndicator');
+                    if (hasScroll) {
+                        indicator.classList.add('visible');
+                        // Hide indicator when user scrolls
+                        content.onscroll = function() {
+                            if (content.scrollTop > 50) {
+                                indicator.classList.remove('visible');
+                            } else {
+                                indicator.classList.add('visible');
+                            }
+                        };
+                    } else {
+                        indicator.classList.remove('visible');
+                    }
+                }, 100);
             };
             
             img.onerror = function() {
@@ -10103,6 +10173,7 @@
         function closeChartPanel() {
             document.getElementById('chartPanel').classList.remove('open');
             document.querySelector('.table-container').classList.remove('panel-open');
+            document.getElementById('scrollIndicator').classList.remove('visible');
             currentChartMetro = null;
         }
         
