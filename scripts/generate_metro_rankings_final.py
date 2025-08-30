@@ -187,6 +187,16 @@ def calculate_changes(df, metric, periods):
     
     return changes
 
+def format_metro_for_url(metro_name):
+    """Convert metro name to URL format for charts."""
+    # Remove "metro area" suffix if present
+    clean_name = metro_name.replace(' metro area', '')
+    # Convert to lowercase and replace spaces/commas with underscores
+    url_name = clean_name.lower().replace(', ', '_').replace(' ', '_')
+    # Remove any remaining special characters
+    url_name = ''.join(c if c.isalnum() or c == '_' else '' for c in url_name)
+    return url_name
+
 def get_region_for_metro(metro_name):
     """Categorize metro into region based on state."""
     # Extract state from metro name
@@ -875,10 +885,135 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
         
         td.metro {{
             font-weight: 500;
+            cursor: pointer;
+            transition: color 0.2s;
+        }}
+        
+        td.metro:hover {{
+            color: #0BB4FF;
+            text-decoration: underline;
         }}
         
         tr:hover {{
             background: rgba(218, 223, 206, 0.2);
+        }}
+        
+        /* Chart Panel Styles */
+        .chart-panel {{
+            position: fixed;
+            top: 0;
+            right: -450px;
+            width: 450px;
+            height: 100vh;
+            background: white;
+            box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            transition: right 0.3s ease;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+        }}
+        
+        .chart-panel.open {{
+            right: 0;
+        }}
+        
+        .chart-panel-header {{
+            padding: 15px 20px;
+            border-bottom: 1px solid #DADFCE;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #F6F7F3;
+            flex-shrink: 0;
+        }}
+        
+        .chart-panel-title {{
+            font-size: 14px;
+            font-weight: bold;
+            color: #3D3733;
+        }}
+        
+        .chart-panel-close {{
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            color: #6B635C;
+            padding: 0;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }}
+        
+        .chart-panel-close:hover {{
+            color: #3D3733;
+        }}
+        
+        .chart-panel-content {{
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }}
+        
+        .chart-loading {{
+            display: none;
+            text-align: center;
+            padding: 40px;
+            color: #6B635C;
+        }}
+        
+        .chart-loading.active {{
+            display: block;
+        }}
+        
+        .chart-image {{
+            max-width: 100%;
+            height: auto;
+            display: none;
+        }}
+        
+        .chart-image.loaded {{
+            display: block;
+        }}
+        
+        .chart-error {{
+            display: none;
+            text-align: center;
+            padding: 40px;
+            color: #F4743B;
+        }}
+        
+        .chart-error.active {{
+            display: block;
+        }}
+        
+        .chart-link {{
+            margin-top: 15px;
+            text-align: center;
+            font-size: 12px;
+        }}
+        
+        .chart-link a {{
+            color: #0BB4FF;
+            text-decoration: none;
+        }}
+        
+        .chart-link a:hover {{
+            text-decoration: underline;
+        }}
+        
+        /* Adjust table container when panel is open */
+        .table-container {{
+            transition: margin-right 0.3s ease;
+        }}
+        
+        .table-container.panel-open {{
+            margin-right: 450px;
         }}
         
         .footer {{
@@ -901,6 +1036,20 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
             th {{ font-size: 10px; }}
             td {{ font-size: 11px; padding: 4px 6px; }}
             .metric-btn {{ font-size: 11px; padding: 4px 8px; }}
+            
+            /* Make panel full-screen on mobile */
+            .chart-panel {{
+                width: 100%;
+                right: -100%;
+            }}
+            
+            .chart-panel.open {{
+                right: 0;
+            }}
+            
+            .table-container.panel-open {{
+                margin-right: 0;
+            }}
         }}
     </style>
 </head>
@@ -982,7 +1131,8 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
         html += f'data-year3="{year3_val:.2f}">\n' if year3_val is not None else 'data-year3="null">\n'
         
         html += f'                <td class="rank">{i}</td>\n'
-        html += f'                <td class="metro">{row["metro_name"]}</td>\n'
+        metro_url = format_metro_for_url(row["metro_name"])
+        html += f'                <td class="metro" data-metro-url="{metro_url}" onclick="showChart(this)">{row["metro_name"]}</td>\n'
         
         # Current value with class for targeting
         multiplier = metric_info.get('multiplier', 1)
@@ -1007,6 +1157,20 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
     <div class="footer">
         <strong>Data:</strong> Redfin weekly housing market data | <strong>Updated:</strong> {date_str} | <strong>Methodology:</strong> Based on rolling 4-week windows<br>
         <a href="https://www.home-economics.us">Home Economics</a>
+    </div>
+    
+    <!-- Chart Panel -->
+    <div class="chart-panel" id="chartPanel">
+        <div class="chart-panel-header">
+            <div class="chart-panel-title" id="chartTitle">Select a metro to view chart</div>
+            <button class="chart-panel-close" onclick="closeChartPanel()">×</button>
+        </div>
+        <div class="chart-panel-content">
+            <div class="chart-loading" id="chartLoading">Loading chart...</div>
+            <img class="chart-image" id="chartImage" alt="Metro chart">
+            <div class="chart-error" id="chartError">Chart not available for this metro</div>
+            <div class="chart-link" id="chartLink"></div>
+        </div>
     </div>
     
     <script>
@@ -1329,6 +1493,65 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
                 arrow.style.transform = 'rotate(180deg)';
             }}
         }}
+        
+        // Chart Panel Functions
+        let currentChartMetro = null;
+        
+        function showChart(element) {{
+            const metroName = element.textContent;
+            const metroUrl = element.getAttribute('data-metro-url');
+            const currentMetric = '{metric_info['slug']}';
+            
+            // Update panel title
+            document.getElementById('chartTitle').textContent = metroName;
+            
+            // Reset panel state
+            document.getElementById('chartLoading').classList.add('active');
+            document.getElementById('chartImage').classList.remove('loaded');
+            document.getElementById('chartError').classList.remove('active');
+            
+            // Open panel
+            document.getElementById('chartPanel').classList.add('open');
+            document.querySelector('.table-container').classList.add('panel-open');
+            
+            // Construct chart URL - using mobile charts (higher res)
+            // Format: https://www.home-economics.us/live/mobile/metro_name/metric.png
+            const chartUrl = `https://www.home-economics.us/live/mobile/${{metroUrl}}/${{currentMetric}}.png`;
+            
+            // Load chart image
+            const img = document.getElementById('chartImage');
+            img.onload = function() {{
+                document.getElementById('chartLoading').classList.remove('active');
+                img.classList.add('loaded');
+                
+                // Add link to open in new tab
+                const linkDiv = document.getElementById('chartLink');
+                linkDiv.innerHTML = `<a href="${{chartUrl}}" target="_blank">Open chart in new tab ↗</a>`;
+            }};
+            
+            img.onerror = function() {{
+                document.getElementById('chartLoading').classList.remove('active');
+                document.getElementById('chartError').classList.add('active');
+                document.getElementById('chartLink').innerHTML = '';
+            }};
+            
+            // Set the image source to trigger loading
+            img.src = chartUrl;
+            currentChartMetro = metroUrl;
+        }}
+        
+        function closeChartPanel() {{
+            document.getElementById('chartPanel').classList.remove('open');
+            document.querySelector('.table-container').classList.remove('panel-open');
+            currentChartMetro = null;
+        }}
+        
+        // Close panel with ESC key
+        document.addEventListener('keydown', function(e) {{
+            if (e.key === 'Escape') {{
+                closeChartPanel();
+            }}
+        }});
     </script>
 </body>
 </html>"""
