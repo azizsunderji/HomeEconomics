@@ -905,17 +905,18 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
             background: rgba(218, 223, 206, 0.2);
         }}
         
-        /* Chart Panel Styles */
+        /* Chart Panel Styles - iframe compatible */
         .chart-panel {{
             position: fixed;
             top: 0;
             right: -450px;
             width: 450px;
             height: 100vh;
+            max-height: 100%;
             background: white;
             box-shadow: -2px 0 10px rgba(0,0,0,0.1);
             transition: right 0.3s ease;
-            z-index: 1000;
+            z-index: 9999;
             display: flex;
             flex-direction: column;
         }}
@@ -1070,6 +1071,20 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
         
         .table-container.panel-open {{
             margin-right: 450px;
+        }}
+        
+        /* Special styles when in iframe */
+        body.in-iframe {{
+            overflow: visible !important;
+        }}
+        
+        body.in-iframe .chart-panel {{
+            position: absolute;
+            height: calc(100% - 10px);
+        }}
+        
+        body.in-iframe .table-container.panel-open {{
+            margin-right: 460px;
         }}
         
         .footer {{
@@ -1250,6 +1265,25 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
             
             // Calculate initial medians
             calculateMedians();
+            
+            // Detect if in iframe and adjust panel behavior
+            if (window.self !== window.top) {{
+                console.log('Page is in iframe - adjusting panel behavior');
+                // Add class to body for iframe-specific styling
+                document.body.classList.add('in-iframe');
+                
+                // Try to make iframe taller when panel opens
+                const sendHeight = () => {{
+                    if (window.parent && window.parent.postMessage) {{
+                        const height = document.body.scrollHeight;
+                        window.parent.postMessage({{type: 'resize', height: height}}, '*');
+                    }}
+                }};
+                
+                // Send height on panel open/close
+                window.addEventListener('resize', sendHeight);
+                setInterval(sendHeight, 1000); // Periodic height check
+            }}
         }};
         
         // Special function for initial load to apply coloring

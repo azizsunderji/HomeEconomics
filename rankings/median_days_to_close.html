@@ -231,17 +231,18 @@
             background: rgba(218, 223, 206, 0.2);
         }
         
-        /* Chart Panel Styles */
+        /* Chart Panel Styles - iframe compatible */
         .chart-panel {
             position: fixed;
             top: 0;
             right: -450px;
             width: 450px;
             height: 100vh;
+            max-height: 100%;
             background: white;
             box-shadow: -2px 0 10px rgba(0,0,0,0.1);
             transition: right 0.3s ease;
-            z-index: 1000;
+            z-index: 9999;
             display: flex;
             flex-direction: column;
         }
@@ -398,6 +399,20 @@
             margin-right: 450px;
         }
         
+        /* Special styles when in iframe */
+        body.in-iframe {
+            overflow: visible !important;
+        }
+        
+        body.in-iframe .chart-panel {
+            position: absolute;
+            height: calc(100% - 10px);
+        }
+        
+        body.in-iframe .table-container.panel-open {
+            margin-right: 460px;
+        }
+        
         .footer {
             text-align: center;
             padding: 15px 20px;
@@ -441,7 +456,7 @@
         
         <div class="controls">
             <div class="metrics">
-                <a href="median_sale_price.html?v=1756519451" class="metric-btn ">Median Sale Price</a><a href="active_listings.html?v=1756519451" class="metric-btn ">Active Listings</a><a href="weeks_supply.html?v=1756519451" class="metric-btn ">Weeks of Supply</a><a href="homes_sold.html?v=1756519451" class="metric-btn ">Homes Sold</a><a href="new_listings.html?v=1756519451" class="metric-btn ">New Listings</a><a href="median_days_on_market.html?v=1756519451" class="metric-btn ">Days on Market</a><a href="pending_sales.html?v=1756519451" class="metric-btn ">Pending Sales</a><a href="off_market_in_2_weeks.html?v=1756519451" class="metric-btn ">Off Market in 2 Weeks</a><a href="median_days_to_close.html?v=1756519451" class="metric-btn active">Days to Close</a><a href="sale_to_list_ratio.html?v=1756519451" class="metric-btn ">Sale to List Ratio</a><a href="pct_listings_w__price_drops.html?v=1756519451" class="metric-btn ">Price Drops</a><a href="age_of_inventory.html?v=1756519451" class="metric-btn ">Age of Inventory</a>
+                <a href="median_sale_price.html?v=1756571254" class="metric-btn ">Median Sale Price</a><a href="active_listings.html?v=1756571254" class="metric-btn ">Active Listings</a><a href="weeks_supply.html?v=1756571254" class="metric-btn ">Weeks of Supply</a><a href="homes_sold.html?v=1756571254" class="metric-btn ">Homes Sold</a><a href="new_listings.html?v=1756571254" class="metric-btn ">New Listings</a><a href="median_days_on_market.html?v=1756571254" class="metric-btn ">Days on Market</a><a href="pending_sales.html?v=1756571254" class="metric-btn ">Pending Sales</a><a href="off_market_in_2_weeks.html?v=1756571254" class="metric-btn ">Off Market in 2 Weeks</a><a href="median_days_to_close.html?v=1756571254" class="metric-btn active">Days to Close</a><a href="sale_to_list_ratio.html?v=1756571254" class="metric-btn ">Sale to List Ratio</a><a href="pct_listings_w__price_drops.html?v=1756571254" class="metric-btn ">Price Drops</a><a href="age_of_inventory.html?v=1756571254" class="metric-btn ">Age of Inventory</a>
             </div>
             
             <div class="filter">
@@ -9708,10 +9723,11 @@
     
     <div class="footer">
         <strong>Data:</strong> Redfin weekly housing market data | <strong>Updated:</strong> August 24, 2025 | <strong>Methodology:</strong> Based on rolling 4-week windows<br>
-        <a href="https://www.home-economics.us">Home Economics</a>
+        <a href="https://www.home-economics.us">Home Economics</a><br>
+        <small style="color: #999;">Version: 1756571254 | Generated: 2025-08-30 12:27:34</small>
     </div>
     
-    <!-- Chart Panel -->
+    <!-- Chart Panel VERSION 2.0 WITH SCROLLBAR -->
     <div class="chart-panel" id="chartPanel">
         <div class="chart-panel-header">
             <div class="chart-panel-title" id="chartTitle">Select a metro to view chart</div>
@@ -9745,6 +9761,25 @@
             
             // Calculate initial medians
             calculateMedians();
+            
+            // Detect if in iframe and adjust panel behavior
+            if (window.self !== window.top) {
+                console.log('Page is in iframe - adjusting panel behavior');
+                // Add class to body for iframe-specific styling
+                document.body.classList.add('in-iframe');
+                
+                // Try to make iframe taller when panel opens
+                const sendHeight = () => {
+                    if (window.parent && window.parent.postMessage) {
+                        const height = document.body.scrollHeight;
+                        window.parent.postMessage({type: 'resize', height: height}, '*');
+                    }
+                };
+                
+                // Send height on panel open/close
+                window.addEventListener('resize', sendHeight);
+                setInterval(sendHeight, 1000); // Periodic height check
+            }
         };
         
         // Special function for initial load to apply coloring
