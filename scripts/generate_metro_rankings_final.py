@@ -865,14 +865,31 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
         }}
         
         /* Completely hide table container scrollbar to remove gray line */
+        /* Custom scrollbar for main table - always visible */
         .table-container::-webkit-scrollbar {{
-            width: 0px;
-            display: none;
+            width: 12px;
+            display: block !important;
+        }}
+        
+        .table-container::-webkit-scrollbar-track {{
+            background: #F6F7F3;
+            border-radius: 6px;
+        }}
+        
+        .table-container::-webkit-scrollbar-thumb {{
+            background: #0BB4FF;
+            border-radius: 6px;
+            min-height: 50px;
+        }}
+        
+        .table-container::-webkit-scrollbar-thumb:hover {{
+            background: #0AA0E8;
         }}
         
         .table-container {{
-            -ms-overflow-style: none;  /* IE and Edge */
-            scrollbar-width: none;  /* Firefox */
+            -ms-overflow-style: auto;  /* IE and Edge */
+            scrollbar-width: thin;  /* Firefox */
+            scrollbar-color: #0BB4FF #F6F7F3;  /* Firefox thumb and track colors */
         }}
         
         table {{
