@@ -1057,7 +1057,7 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
             flex: 1;
             overflow-y: scroll !important; /* Force scrollbar to always show */
             overflow-x: hidden;
-            padding: 15px 20px 15px 20px;
+            padding: 15px 0 30px 0; /* Remove side padding, add more bottom padding */
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -1104,7 +1104,8 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
         }}
         
         .chart-image {{
-            max-width: 100%;
+            width: 100%; /* Use full width */
+            max-width: 420px; /* Match panel width */
             height: auto;
             display: none;
         }}
