@@ -1166,9 +1166,45 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
             margin-right: 450px;
         }}
         
-        /* Special styles when in iframe */
+        /* Special styles when in iframe - eliminate all shadows and scrollbar artifacts */
         body.in-iframe {{
-            overflow-x: hidden !important;
+            overflow: hidden !important;
+            width: calc(100vw + 25px) !important; /* Push scrollbar completely off-screen */
+            position: relative !important;
+            left: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }}
+        
+        /* Wrapper to contain content and hide overflow */
+        body.in-iframe .table-container {{
+            width: calc(100vw - 30px) !important; /* Leave space on right */
+            max-width: calc(100vw - 30px) !important;
+            margin-right: 0 !important;
+            padding-right: 0 !important;
+            overflow: hidden !important;
+            position: relative !important;
+            box-shadow: none !important;
+        }}
+        
+        /* Remove all shadows from table in iframe */
+        body.in-iframe table {{
+            box-shadow: none !important;
+            border-right: none !important;
+        }}
+        
+        /* Hide scrollbars completely in iframe */
+        body.in-iframe::-webkit-scrollbar,
+        body.in-iframe .table-container::-webkit-scrollbar {{
+            width: 0 !important;
+            height: 0 !important;
+            display: none !important;
+        }}
+        
+        body.in-iframe,
+        body.in-iframe .table-container {{
+            -ms-overflow-style: none !important;  /* IE and Edge */
+            scrollbar-width: none !important;  /* Firefox */
         }}
         
         body.in-iframe .chart-panel {{
