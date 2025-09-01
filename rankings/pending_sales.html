@@ -492,45 +492,15 @@
             margin-right: 450px;
         }
         
-        /* Special styles when in iframe - eliminate all shadows and scrollbar artifacts */
+        /* Special styles when in iframe */
         body.in-iframe {
-            overflow: hidden !important;
-            width: calc(100vw + 25px) !important; /* Push scrollbar completely off-screen */
-            position: relative !important;
-            left: 0 !important;
-            margin: 0 !important;
-            padding: 0 !important;
+            overflow-y: auto !important;
+            overflow-x: hidden !important;
         }
         
-        /* Wrapper to contain content and hide overflow */
         body.in-iframe .table-container {
-            width: calc(100vw - 30px) !important; /* Leave space on right */
-            max-width: calc(100vw - 30px) !important;
-            margin-right: 0 !important;
-            padding-right: 0 !important;
-            overflow: hidden !important;
-            position: relative !important;
-            box-shadow: none !important;
-        }
-        
-        /* Remove all shadows from table in iframe */
-        body.in-iframe table {
-            box-shadow: none !important;
-            border-right: none !important;
-        }
-        
-        /* Hide scrollbars completely in iframe */
-        body.in-iframe::-webkit-scrollbar,
-        body.in-iframe .table-container::-webkit-scrollbar {
-            width: 0 !important;
-            height: 0 !important;
-            display: none !important;
-        }
-        
-        body.in-iframe,
-        body.in-iframe .table-container {
-            -ms-overflow-style: none !important;  /* IE and Edge */
-            scrollbar-width: none !important;  /* Firefox */
+            overflow-y: auto !important;
+            overflow-x: hidden !important;
         }
         
         body.in-iframe .chart-panel {
@@ -594,7 +564,7 @@
         
         <div class="controls">
             <div class="metrics">
-                <a href="median_sale_price.html?v=1756691092" class="metric-btn ">Median Sale Price</a><a href="active_listings.html?v=1756691092" class="metric-btn ">Active Listings</a><a href="weeks_supply.html?v=1756691092" class="metric-btn ">Weeks of Supply</a><a href="homes_sold.html?v=1756691092" class="metric-btn ">Homes Sold</a><a href="new_listings.html?v=1756691092" class="metric-btn ">New Listings</a><a href="median_days_on_market.html?v=1756691092" class="metric-btn ">Days on Market</a><a href="pending_sales.html?v=1756691092" class="metric-btn active">Pending Sales</a><a href="off_market_in_2_weeks.html?v=1756691092" class="metric-btn ">Off Market in 2 Weeks</a><a href="median_days_to_close.html?v=1756691092" class="metric-btn ">Days to Close</a><a href="sale_to_list_ratio.html?v=1756691092" class="metric-btn ">Sale to List Ratio</a><a href="pct_listings_w__price_drops.html?v=1756691092" class="metric-btn ">Price Drops</a><a href="age_of_inventory.html?v=1756691092" class="metric-btn ">Age of Inventory</a>
+                <a href="median_sale_price.html?v=1756693019" class="metric-btn ">Median Sale Price</a><a href="active_listings.html?v=1756693019" class="metric-btn ">Active Listings</a><a href="weeks_supply.html?v=1756693019" class="metric-btn ">Weeks of Supply</a><a href="homes_sold.html?v=1756693019" class="metric-btn ">Homes Sold</a><a href="new_listings.html?v=1756693019" class="metric-btn ">New Listings</a><a href="median_days_on_market.html?v=1756693019" class="metric-btn ">Days on Market</a><a href="pending_sales.html?v=1756693019" class="metric-btn active">Pending Sales</a><a href="off_market_in_2_weeks.html?v=1756693019" class="metric-btn ">Off Market in 2 Weeks</a><a href="median_days_to_close.html?v=1756693019" class="metric-btn ">Days to Close</a><a href="sale_to_list_ratio.html?v=1756693019" class="metric-btn ">Sale to List Ratio</a><a href="pct_listings_w__price_drops.html?v=1756693019" class="metric-btn ">Price Drops</a><a href="age_of_inventory.html?v=1756693019" class="metric-btn ">Age of Inventory</a>
             </div>
             
             <div class="filter">
@@ -9922,7 +9892,7 @@
     <div class="footer">
         <strong>Data:</strong> Redfin weekly housing market data | <strong>Updated:</strong> August 24, 2025 | <strong>Methodology:</strong> Based on rolling 4-week windows<br>
         <a href="https://www.home-economics.us">Home Economics</a><br>
-        <small style="color: #999;">Version: 1756691092 | Generated: 2025-08-31 21:44:52</small>
+        <small style="color: #999;">Version: 1756693019 | Generated: 2025-08-31 22:16:59</small>
     </div>
     
     <!-- Chart Panel VERSION 2.0 WITH SCROLLBAR -->
