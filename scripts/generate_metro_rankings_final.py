@@ -1493,16 +1493,14 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
             .chart-image {{
                 position: relative;
                 display: block;
-                width: 85%; /* Smaller - was 90% */
+                width: 85%; /* Smaller size creates natural buffer */
                 max-width: 320px; /* Smaller max width */
                 height: auto;
                 margin: 0 auto 15px auto;
                 left: 50%;
                 transform: translateX(-50%);
                 border: none;
-                background: #F6F7F3; /* Match cream background */
-                padding: 10px; /* Add padding for buffer effect */
-                box-sizing: border-box;
+                /* No padding needed - cream background provides buffer */
             }}
         }}
     </style>
