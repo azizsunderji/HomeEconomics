@@ -1444,10 +1444,18 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
                 z-index: 9999;
                 overflow-y: auto; /* Simple vertical scroll */
                 -webkit-overflow-scrolling: touch;
+                overscroll-behavior: contain; /* Prevent background scrolling */
             }}
             
             .chart-panel.open {{
                 display: block;
+            }}
+            
+            /* Prevent body scroll when panel is open */
+            body.panel-open {{
+                overflow: hidden !important;
+                position: fixed !important;
+                width: 100% !important;
             }}
             
             /* No separate overlay needed */
@@ -1455,61 +1463,47 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
                 display: none !important;
             }}
             
-            /* Close button - ONLY inside panel, not global */
-            .chart-panel .chart-panel-close {{
-                position: absolute;
-                top: 15px;
-                right: 15px;
-                width: 40px;
-                height: 40px;
-                background: #0BB4FF;
-                color: white;
-                font-size: 24px;
-                border-radius: 50%;
-                border: none;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                cursor: pointer;
-                z-index: 10;
-            }}
-            
-            /* Close button - FIXED at top right */
+            /* Close button - FIXED at top right with better visibility */
             .chart-panel .chart-panel-close {{
                 position: fixed !important; /* Fixed so it stays visible */
-                top: 15px !important;
-                right: 15px !important;
-                z-index: 10000 !important;
-                width: 50px !important;
-                height: 50px !important;
-                background: #0BB4FF !important;
+                top: 10px !important;
+                right: 10px !important;
+                z-index: 10001 !important; /* Higher than panel */
+                width: 44px !important;
+                height: 44px !important;
+                background: #F4743B !important; /* Red for visibility */
                 color: white !important;
-                border: 2px solid white !important;
+                border: 3px solid white !important;
                 border-radius: 50% !important;
-                font-size: 28px !important;
+                font-size: 24px !important;
+                font-weight: bold !important;
                 display: flex !important;
                 align-items: center !important;
                 justify-content: center !important;
                 cursor: pointer !important;
-                box-shadow: 0 2px 10px rgba(0,0,0,0.2) !important;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.3) !important;
+                line-height: 1 !important;
+                padding: 0 !important;
             }}
             
-            /* Content is just the whole panel - SIMPLE */
+            /* Content with reduced top padding and proper centering */
             .chart-panel-content {{
-                padding: 80px 20px 40px 20px; /* Top padding for close button */
+                padding: 60px 10px 40px 10px; /* Reduced top padding, minimal side padding */
                 width: 100%;
                 height: auto;
-                /* No special overflow - parent handles it */
+                display: flex;
+                flex-direction: column;
+                align-items: center; /* Center all children */
             }}
             
-            /* Charts - just display them naturally */
+            /* Charts - properly centered */
             .chart-image {{
-                display: block;
-                width: 90%;
-                max-width: 400px; /* Bigger on full screen */
-                height: auto;
-                margin: 20px auto;
-                border: none;
+                display: block !important;
+                width: calc(100% - 20px) !important; /* Full width minus padding */
+                max-width: 400px !important;
+                height: auto !important;
+                margin: 15px auto !important; /* Auto margins for centering */
+                border: none !important;
             }}
             
             /* Hide unnecessary elements */
@@ -2003,6 +1997,10 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
             document.getElementById('chartPanel').classList.add('open');
             document.getElementById('modalOverlay').classList.add('open');
             document.querySelector('.table-container').classList.add('panel-open');
+            // Prevent body scroll on mobile
+            if (window.innerWidth <= 768) {{
+                document.body.classList.add('panel-open');
+            }}
             
             // Construct chart URL - using mobile charts (higher res)
             // Format: https://home-economics.us/wp-content/uploads/reports/live/mobile/metro_name/metro_name_metric_mobile.png
@@ -2055,6 +2053,10 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
             document.getElementById('modalOverlay').classList.remove('open');
             document.querySelector('.table-container').classList.remove('panel-open');
             document.getElementById('scrollIndicator').classList.remove('visible');
+            // Re-enable body scroll on mobile
+            if (window.innerWidth <= 768) {{
+                document.body.classList.remove('panel-open');
+            }}
             currentChartMetro = null;
         }}
         

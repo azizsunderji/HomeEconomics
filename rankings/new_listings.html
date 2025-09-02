@@ -562,21 +562,24 @@
         }
         
         @media (max-width: 768px) {
-            /* Mobile: Force the entire document to be wider than viewport */
-            html { 
-                min-width: 800px !important; /* Force horizontal scroll in iframe */
-                width: 800px !important;
+            /* BACK TO BASICS - Simple scrollable table */
+            * {
+                -webkit-overflow-scrolling: touch !important;
+            }
+            
+            html, body { 
+                margin: 0;
+                padding: 0;
+                overflow: auto;
+                width: 100%;
+                height: 100%;
             }
             
             body { 
                 font-size: 11px;
-                margin: 0;
-                padding: 0;
-                min-width: 800px !important;
-                width: 800px !important;
-                overflow: visible !important;
-                display: block !important;
+                display: block;
             }
+            
             th { font-size: 10px; }
             td { font-size: 11px; padding: 4px 6px; }
             
@@ -599,12 +602,13 @@
                 display: none !important;
             }
             
-            /* Simplify controls */
+            /* Simplify controls - left-aligned with reasonable widths */
             .controls {
                 margin-bottom: 12px;
                 display: flex;
                 flex-direction: column;
                 gap: 10px;
+                align-items: flex-start; /* Left align */
             }
             
             /* Hide metric buttons on mobile */
@@ -612,11 +616,13 @@
                 display: none !important;
             }
             
-            /* Show and style metric dropdown on mobile */
+            /* Show and style metric dropdown on mobile - compact width */
             .metric-dropdown {
                 display: block !important;
-                width: 100%;
-                padding: 10px 14px;
+                width: auto; /* Natural width */
+                min-width: 200px; /* Minimum reasonable width */
+                max-width: 280px; /* Maximum width */
+                padding: 10px 40px 10px 14px; /* Room for arrow */
                 font-size: 13px;
                 border: 1px solid #DADFCE;
                 background: white;
@@ -628,131 +634,201 @@
                 background-repeat: no-repeat;
                 background-position: right 10px center;
                 background-size: 20px;
-                padding-right: 40px;
             }
             
+            /* Market filter also compact */
             #marketFilter {
                 font-size: 13px;
-                padding: 10px 14px;
-                width: 100%;
+                padding: 10px 40px 10px 14px;
+                width: auto;
+                min-width: 200px;
+                max-width: 280px;
                 border-radius: 4px;
                 appearance: none;
                 background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
                 background-repeat: no-repeat;
                 background-position: right 10px center;
                 background-size: 20px;
-                padding-right: 40px;
             }
             
-            /* Everything inherits the 800px width */
+            /* Fixed header stays in place */
             .fixed-header {
-                width: 100%;
+                flex-shrink: 0;
             }
             
+            /* MOBILE: Show only essential columns */
+            
+            /* RADICAL NEW APPROACH - wrapper for everything */
+            .mobile-wrapper {
+                position: relative;
+                width: 100%;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            /* Table container - let it scroll naturally */
             .table-container {
                 width: 100%;
-                overflow: visible; /* No container scrolling needed */
-            }
-            
-            /* Table fills the available width */
-            table {
-                width: 100%;
-                table-layout: auto; /* Let columns size naturally */
-            }
-            
-            /* Sticky table header on mobile */
-            thead {
-                position: sticky;
-                top: 80px; /* Below the fixed header */
-                z-index: 90;
-                background: white;
-            }
-            
-            thead th {
-                background: white;
-                padding: 8px 6px;
-                border-bottom: 2px solid #0BB4FF; /* Brand blue accent */
+                height: calc(100vh - 120px); /* Account for header */
+                overflow-y: scroll;
+                -webkit-overflow-scrolling: touch;
                 position: relative;
             }
             
-            /* Add subtle shadow under sticky header */
-            thead::after {
-                content: '';
-                position: absolute;
-                bottom: -4px;
-                left: 0;
-                right: 0;
-                height: 4px;
-                background: linear-gradient(to bottom, rgba(0,0,0,0.1), transparent);
-                pointer-events: none;
+            /* Table fills container width */
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                position: relative;
             }
             
-            /* Ensure minimum column widths for readability */
-            th, td { 
-                white-space: nowrap; /* Prevent wrapping */
-                min-width: 60px; /* Minimum width for all columns */
-            }
-            th:nth-child(2), td:nth-child(2) { 
-                min-width: 150px; /* Metro name needs more space */
+            /* Hide all columns except rank (1), metro (2), current (3), and 1Y (7) */
+            th:nth-child(4), td:nth-child(4), /* 1M */
+            th:nth-child(5), td:nth-child(5), /* 3M */
+            th:nth-child(6), td:nth-child(6), /* 6M */
+            th:nth-child(8), td:nth-child(8), /* 3Y */
+            th:nth-child(9), td:nth-child(9)  /* Percentile */ {
+                display: none !important;
             }
             
-            /* Chart panel - simple overlay */
+            /* Style the visible columns */
+            th, td {
+                padding: 8px 6px;
+                border-bottom: 1px solid #e0e0e0;
+                white-space: nowrap;
+            }
+            
+            /* Rank column - very narrow */
+            th:first-child, td:first-child {
+                width: 25px;
+                text-align: center;
+                font-weight: bold;
+                padding: 6px 2px;
+            }
+            
+            /* Metro column - flexible width */
+            th:nth-child(2), td:nth-child(2) {
+                text-align: left;
+                padding: 6px 8px;
+                /* Allow wrapping for long metro names */
+                white-space: normal;
+                word-break: break-word;
+            }
+            
+            /* Current value column */
+            th:nth-child(3), td:nth-child(3) {
+                width: 80px;
+                text-align: right;
+                padding: 6px 4px;
+            }
+            
+            /* 1Y change column */
+            th:nth-child(7), td:nth-child(7) {
+                width: 60px;
+                text-align: right;
+                padding: 6px 8px;
+                font-weight: bold;
+            }
+            
+            /* BULLETPROOF STICKY HEADERS */
+            table {
+                position: relative;
+            }
+            
+            thead {
+                position: -webkit-sticky !important;
+                position: sticky !important;
+                top: -1px !important; /* -1px helps with some browsers */
+                z-index: 500 !important;
+            }
+            
+            thead th {
+                position: -webkit-sticky !important;
+                position: sticky !important;
+                top: -1px !important;
+                background: white !important;
+                z-index: 501 !important;
+                border-bottom: 3px solid #0BB4FF !important;
+                padding: 12px 6px !important;
+            }
+            
+            /* SIMPLEST SOLUTION - Full screen takeover */
             .chart-panel {
+                display: none;
                 position: fixed;
                 top: 0;
-                right: -100%;
+                left: 0;
                 width: 100%;
-                height: 100vh;
-                background: white;
+                height: 100%;
+                background: #F6F7F3;
                 z-index: 9999;
-                transition: right 0.3s ease;
-                display: flex;
-                flex-direction: column;
+                overflow-y: auto; /* Simple vertical scroll */
+                -webkit-overflow-scrolling: touch;
+                overscroll-behavior: contain; /* Prevent background scrolling */
             }
             
             .chart-panel.open {
-                right: 0;
+                display: block;
             }
             
-            /* Close button - ONLY inside panel, not global */
+            /* Prevent body scroll when panel is open */
+            body.panel-open {
+                overflow: hidden !important;
+                position: fixed !important;
+                width: 100% !important;
+            }
+            
+            /* No separate overlay needed */
+            .modal-overlay {
+                display: none !important;
+            }
+            
+            /* Close button - FIXED at top right with better visibility */
             .chart-panel .chart-panel-close {
-                position: absolute;
-                top: 15px;
-                right: 15px;
-                width: 40px;
-                height: 40px;
-                background: #0BB4FF;
-                color: white;
-                font-size: 24px;
-                border-radius: 50%;
-                border: none;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                cursor: pointer;
-                z-index: 10;
+                position: fixed !important; /* Fixed so it stays visible */
+                top: 10px !important;
+                right: 10px !important;
+                z-index: 10001 !important; /* Higher than panel */
+                width: 44px !important;
+                height: 44px !important;
+                background: #F4743B !important; /* Red for visibility */
+                color: white !important;
+                border: 3px solid white !important;
+                border-radius: 50% !important;
+                font-size: 24px !important;
+                font-weight: bold !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                cursor: pointer !important;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.3) !important;
+                line-height: 1 !important;
+                padding: 0 !important;
             }
             
+            /* Content with reduced top padding and proper centering */
             .chart-panel-content {
-                flex: 1;
-                padding: 60px 10px 20px 10px; /* Less padding on sides */
-                overflow-y: auto;
-                -webkit-overflow-scrolling: touch;
-                background: #F6F7F3;
+                padding: 60px 10px 40px 10px; /* Reduced top padding, minimal side padding */
+                width: 100%;
+                height: auto;
                 display: flex;
                 flex-direction: column;
-                align-items: center;
-                justify-content: flex-start; /* Start from top */
+                align-items: center; /* Center all children */
             }
             
-            /* Charts properly sized and centered */
+            /* Charts - properly centered */
             .chart-image {
-                width: calc(100% - 20px); /* Account for padding */
-                max-width: 350px; /* Reasonable max width for mobile */
-                height: auto;
-                display: block;
-                margin: 0 auto 15px auto;
-                border: 1px solid #DADFCE; /* Add subtle border */
+                display: block !important;
+                width: calc(100% - 20px) !important; /* Full width minus padding */
+                max-width: 400px !important;
+                height: auto !important;
+                margin: 15px auto !important; /* Auto margins for centering */
+                border: none !important;
+            }
+            
+            /* Hide unnecessary elements */
+            .scroll-indicator, .chart-loading, .chart-error {
+                display: none !important;
             }
         }
     </style>
@@ -763,12 +839,12 @@
         
         <div class="controls">
             <div class="metrics">
-                <a href="median_sale_price.html?v=1756824664" class="metric-btn ">Median Sale Price</a><a href="active_listings.html?v=1756824664" class="metric-btn ">Active Listings</a><a href="weeks_supply.html?v=1756824664" class="metric-btn ">Weeks of Supply</a><a href="homes_sold.html?v=1756824664" class="metric-btn ">Homes Sold</a><a href="new_listings.html?v=1756824664" class="metric-btn active">New Listings</a><a href="median_days_on_market.html?v=1756824664" class="metric-btn ">Days on Market</a><a href="pending_sales.html?v=1756824664" class="metric-btn ">Pending Sales</a><a href="off_market_in_2_weeks.html?v=1756824664" class="metric-btn ">Off Market in 2 Weeks</a><a href="median_days_to_close.html?v=1756824664" class="metric-btn ">Days to Close</a><a href="sale_to_list_ratio.html?v=1756824664" class="metric-btn ">Sale to List Ratio</a><a href="pct_listings_w__price_drops.html?v=1756824664" class="metric-btn ">Price Drops</a><a href="age_of_inventory.html?v=1756824664" class="metric-btn ">Age of Inventory</a>
+                <a href="median_sale_price.html?v=1756841297" class="metric-btn ">Median Sale Price</a><a href="active_listings.html?v=1756841297" class="metric-btn ">Active Listings</a><a href="weeks_supply.html?v=1756841297" class="metric-btn ">Weeks of Supply</a><a href="homes_sold.html?v=1756841297" class="metric-btn ">Homes Sold</a><a href="new_listings.html?v=1756841297" class="metric-btn active">New Listings</a><a href="median_days_on_market.html?v=1756841297" class="metric-btn ">Days on Market</a><a href="pending_sales.html?v=1756841297" class="metric-btn ">Pending Sales</a><a href="off_market_in_2_weeks.html?v=1756841297" class="metric-btn ">Off Market in 2 Weeks</a><a href="median_days_to_close.html?v=1756841297" class="metric-btn ">Days to Close</a><a href="sale_to_list_ratio.html?v=1756841297" class="metric-btn ">Sale to List Ratio</a><a href="pct_listings_w__price_drops.html?v=1756841297" class="metric-btn ">Price Drops</a><a href="age_of_inventory.html?v=1756841297" class="metric-btn ">Age of Inventory</a>
             </div>
             
             <!-- Mobile metric dropdown -->
             <select class="metric-dropdown" id="metricDropdown" onchange="window.location.href=this.value">
-                <option value="median_sale_price.html?v=1756824664" >Median Sale Price</option><option value="active_listings.html?v=1756824664" >Active Listings</option><option value="weeks_supply.html?v=1756824664" >Weeks of Supply</option><option value="homes_sold.html?v=1756824664" >Homes Sold</option><option value="new_listings.html?v=1756824664" selected>New Listings</option><option value="median_days_on_market.html?v=1756824664" >Days on Market</option><option value="pending_sales.html?v=1756824664" >Pending Sales</option><option value="off_market_in_2_weeks.html?v=1756824664" >Off Market in 2 Weeks</option><option value="median_days_to_close.html?v=1756824664" >Days to Close</option><option value="sale_to_list_ratio.html?v=1756824664" >Sale to List Ratio</option><option value="pct_listings_w__price_drops.html?v=1756824664" >Price Drops</option><option value="age_of_inventory.html?v=1756824664" >Age of Inventory</option>
+                <option value="median_sale_price.html?v=1756841297" >Median Sale Price</option><option value="active_listings.html?v=1756841297" >Active Listings</option><option value="weeks_supply.html?v=1756841297" >Weeks of Supply</option><option value="homes_sold.html?v=1756841297" >Homes Sold</option><option value="new_listings.html?v=1756841297" selected>New Listings</option><option value="median_days_on_market.html?v=1756841297" >Days on Market</option><option value="pending_sales.html?v=1756841297" >Pending Sales</option><option value="off_market_in_2_weeks.html?v=1756841297" >Off Market in 2 Weeks</option><option value="median_days_to_close.html?v=1756841297" >Days to Close</option><option value="sale_to_list_ratio.html?v=1756841297" >Sale to List Ratio</option><option value="pct_listings_w__price_drops.html?v=1756841297" >Price Drops</option><option value="age_of_inventory.html?v=1756841297" >Age of Inventory</option>
             </select>
             
             <div class="filter">
@@ -821,7 +897,7 @@
         <tbody>
             <tr data-percentile="0.1" data-metro="all redfin metros" data-current="91756.271995173" data-month1="-1.43" data-month3="-14.85" data-month6="10.74" data-year1="1.45" data-year3="-7.57">
                 <td class="rank">1</td>
-                <td class="metro" data-metro-url="all_redfin_metros" onclick="showChart(this)">All Redfin Metros<span class="click-hint">Click for chart</span></td>
+                <td class="metro" data-metro-url="all_redfin_metros" onclick="showChart(this)">All Redfin Metros</td>
                 <td class="number current-value">91,756</td>
                 <td class="number change-month1">-1.4%</td>
                 <td class="number change-month3">-14.8%</td>
@@ -10096,10 +10172,13 @@
     <div class="footer">
         <strong>Data:</strong> Redfin weekly housing market data | <strong>Updated:</strong> August 24, 2025 | <strong>Methodology:</strong> Based on rolling 4-week windows<br>
         <a href="https://www.home-economics.us">Home Economics</a><br>
-        <small style="color: #999;">Version: 1756824664 | Generated: 2025-09-02 10:51:04</small>
+        <small style="color: #999;">Version: 1756841297 | Generated: 2025-09-02 15:28:17</small>
     </div>
     
-    <!-- Chart Panel VERSION 2.0 WITH SCROLLBAR -->
+    <!-- Modal Overlay for mobile -->
+    <div class="modal-overlay" id="modalOverlay" onclick="closeChartPanel()"></div>
+    
+    <!-- Chart Panel VERSION 3.0 MODAL -->
     <div class="chart-panel" id="chartPanel">
         <button class="chart-panel-close" onclick="closeChartPanel()">×</button>
         <div class="chart-panel-content">
@@ -10464,9 +10543,14 @@
             document.getElementById('chartImage').classList.remove('loaded');
             document.getElementById('chartError').classList.remove('active');
             
-            // Open panel
+            // Open panel and overlay (on mobile)
             document.getElementById('chartPanel').classList.add('open');
+            document.getElementById('modalOverlay').classList.add('open');
             document.querySelector('.table-container').classList.add('panel-open');
+            // Prevent body scroll on mobile
+            if (window.innerWidth <= 768) {
+                document.body.classList.add('panel-open');
+            }
             
             // Construct chart URL - using mobile charts (higher res)
             // Format: https://home-economics.us/wp-content/uploads/reports/live/mobile/metro_name/metro_name_metric_mobile.png
@@ -10516,8 +10600,13 @@
         
         function closeChartPanel() {
             document.getElementById('chartPanel').classList.remove('open');
+            document.getElementById('modalOverlay').classList.remove('open');
             document.querySelector('.table-container').classList.remove('panel-open');
             document.getElementById('scrollIndicator').classList.remove('visible');
+            // Re-enable body scroll on mobile
+            if (window.innerWidth <= 768) {
+                document.body.classList.remove('panel-open');
+            }
             currentChartMetro = null;
         }
         
