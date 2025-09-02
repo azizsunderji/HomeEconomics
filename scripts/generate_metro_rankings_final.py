@@ -1279,12 +1279,13 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
                 display: none !important;
             }}
             
-            /* Simplify controls */
+            /* Simplify controls - left-aligned with reasonable widths */
             .controls {{
                 margin-bottom: 12px;
                 display: flex;
                 flex-direction: column;
                 gap: 10px;
+                align-items: flex-start; /* Left align */
             }}
             
             /* Hide metric buttons on mobile */
@@ -1292,11 +1293,13 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
                 display: none !important;
             }}
             
-            /* Show and style metric dropdown on mobile */
+            /* Show and style metric dropdown on mobile - compact width */
             .metric-dropdown {{
                 display: block !important;
-                width: 100%;
-                padding: 10px 14px;
+                width: auto; /* Natural width */
+                min-width: 200px; /* Minimum reasonable width */
+                max-width: 280px; /* Maximum width */
+                padding: 10px 40px 10px 14px; /* Room for arrow */
                 font-size: 13px;
                 border: 1px solid #DADFCE;
                 background: white;
@@ -1308,20 +1311,21 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
                 background-repeat: no-repeat;
                 background-position: right 10px center;
                 background-size: 20px;
-                padding-right: 40px;
             }}
             
+            /* Market filter also compact */
             #marketFilter {{
                 font-size: 13px;
-                padding: 10px 14px;
-                width: 100%;
+                padding: 10px 40px 10px 14px;
+                width: auto;
+                min-width: 200px;
+                max-width: 280px;
                 border-radius: 4px;
                 appearance: none;
                 background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
                 background-repeat: no-repeat;
                 background-position: right 10px center;
                 background-size: 20px;
-                padding-right: 40px;
             }}
             
             /* Everything inherits the 800px width */
@@ -1340,11 +1344,16 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
                 table-layout: auto; /* Let columns size naturally */
             }}
             
-            /* Sticky table header on mobile */
+            /* Sticky table header on mobile - FIXED */
             thead {{
                 position: sticky;
-                top: 80px; /* Below the fixed header */
-                z-index: 90;
+                top: 0; /* Stick to top of scrollable area */
+                z-index: 100; /* Higher z-index */
+                background: white;
+            }}
+            
+            /* Ensure header stays on top and visible */
+            thead tr {{
                 background: white;
             }}
             
@@ -1352,19 +1361,9 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
                 background: white;
                 padding: 8px 6px;
                 border-bottom: 2px solid #0BB4FF; /* Brand blue accent */
-                position: relative;
-            }}
-            
-            /* Add subtle shadow under sticky header */
-            thead::after {{
-                content: '';
-                position: absolute;
-                bottom: -4px;
-                left: 0;
-                right: 0;
-                height: 4px;
-                background: linear-gradient(to bottom, rgba(0,0,0,0.1), transparent);
-                pointer-events: none;
+                position: sticky;
+                top: 0; /* Each th also sticky */
+                z-index: 101;
             }}
             
             /* Ensure minimum column widths for readability */

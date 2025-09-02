@@ -599,12 +599,13 @@
                 display: none !important;
             }
             
-            /* Simplify controls */
+            /* Simplify controls - left-aligned with reasonable widths */
             .controls {
                 margin-bottom: 12px;
                 display: flex;
                 flex-direction: column;
                 gap: 10px;
+                align-items: flex-start; /* Left align */
             }
             
             /* Hide metric buttons on mobile */
@@ -612,11 +613,13 @@
                 display: none !important;
             }
             
-            /* Show and style metric dropdown on mobile */
+            /* Show and style metric dropdown on mobile - compact width */
             .metric-dropdown {
                 display: block !important;
-                width: 100%;
-                padding: 10px 14px;
+                width: auto; /* Natural width */
+                min-width: 200px; /* Minimum reasonable width */
+                max-width: 280px; /* Maximum width */
+                padding: 10px 40px 10px 14px; /* Room for arrow */
                 font-size: 13px;
                 border: 1px solid #DADFCE;
                 background: white;
@@ -628,20 +631,21 @@
                 background-repeat: no-repeat;
                 background-position: right 10px center;
                 background-size: 20px;
-                padding-right: 40px;
             }
             
+            /* Market filter also compact */
             #marketFilter {
                 font-size: 13px;
-                padding: 10px 14px;
-                width: 100%;
+                padding: 10px 40px 10px 14px;
+                width: auto;
+                min-width: 200px;
+                max-width: 280px;
                 border-radius: 4px;
                 appearance: none;
                 background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
                 background-repeat: no-repeat;
                 background-position: right 10px center;
                 background-size: 20px;
-                padding-right: 40px;
             }
             
             /* Everything inherits the 800px width */
@@ -660,11 +664,16 @@
                 table-layout: auto; /* Let columns size naturally */
             }
             
-            /* Sticky table header on mobile */
+            /* Sticky table header on mobile - FIXED */
             thead {
                 position: sticky;
-                top: 80px; /* Below the fixed header */
-                z-index: 90;
+                top: 0; /* Stick to top of scrollable area */
+                z-index: 100; /* Higher z-index */
+                background: white;
+            }
+            
+            /* Ensure header stays on top and visible */
+            thead tr {
                 background: white;
             }
             
@@ -672,19 +681,9 @@
                 background: white;
                 padding: 8px 6px;
                 border-bottom: 2px solid #0BB4FF; /* Brand blue accent */
-                position: relative;
-            }
-            
-            /* Add subtle shadow under sticky header */
-            thead::after {
-                content: '';
-                position: absolute;
-                bottom: -4px;
-                left: 0;
-                right: 0;
-                height: 4px;
-                background: linear-gradient(to bottom, rgba(0,0,0,0.1), transparent);
-                pointer-events: none;
+                position: sticky;
+                top: 0; /* Each th also sticky */
+                z-index: 101;
             }
             
             /* Ensure minimum column widths for readability */
@@ -763,12 +762,12 @@
         
         <div class="controls">
             <div class="metrics">
-                <a href="median_sale_price.html?v=1756824583" class="metric-btn ">Median Sale Price</a><a href="active_listings.html?v=1756824583" class="metric-btn active">Active Listings</a><a href="weeks_supply.html?v=1756824583" class="metric-btn ">Weeks of Supply</a><a href="homes_sold.html?v=1756824583" class="metric-btn ">Homes Sold</a><a href="new_listings.html?v=1756824583" class="metric-btn ">New Listings</a><a href="median_days_on_market.html?v=1756824583" class="metric-btn ">Days on Market</a><a href="pending_sales.html?v=1756824583" class="metric-btn ">Pending Sales</a><a href="off_market_in_2_weeks.html?v=1756824583" class="metric-btn ">Off Market in 2 Weeks</a><a href="median_days_to_close.html?v=1756824583" class="metric-btn ">Days to Close</a><a href="sale_to_list_ratio.html?v=1756824583" class="metric-btn ">Sale to List Ratio</a><a href="pct_listings_w__price_drops.html?v=1756824583" class="metric-btn ">Price Drops</a><a href="age_of_inventory.html?v=1756824583" class="metric-btn ">Age of Inventory</a>
+                <a href="median_sale_price.html?v=1756825521" class="metric-btn ">Median Sale Price</a><a href="active_listings.html?v=1756825521" class="metric-btn active">Active Listings</a><a href="weeks_supply.html?v=1756825521" class="metric-btn ">Weeks of Supply</a><a href="homes_sold.html?v=1756825521" class="metric-btn ">Homes Sold</a><a href="new_listings.html?v=1756825521" class="metric-btn ">New Listings</a><a href="median_days_on_market.html?v=1756825521" class="metric-btn ">Days on Market</a><a href="pending_sales.html?v=1756825521" class="metric-btn ">Pending Sales</a><a href="off_market_in_2_weeks.html?v=1756825521" class="metric-btn ">Off Market in 2 Weeks</a><a href="median_days_to_close.html?v=1756825521" class="metric-btn ">Days to Close</a><a href="sale_to_list_ratio.html?v=1756825521" class="metric-btn ">Sale to List Ratio</a><a href="pct_listings_w__price_drops.html?v=1756825521" class="metric-btn ">Price Drops</a><a href="age_of_inventory.html?v=1756825521" class="metric-btn ">Age of Inventory</a>
             </div>
             
             <!-- Mobile metric dropdown -->
             <select class="metric-dropdown" id="metricDropdown" onchange="window.location.href=this.value">
-                <option value="median_sale_price.html?v=1756824583" >Median Sale Price</option><option value="active_listings.html?v=1756824583" selected>Active Listings</option><option value="weeks_supply.html?v=1756824583" >Weeks of Supply</option><option value="homes_sold.html?v=1756824583" >Homes Sold</option><option value="new_listings.html?v=1756824583" >New Listings</option><option value="median_days_on_market.html?v=1756824583" >Days on Market</option><option value="pending_sales.html?v=1756824583" >Pending Sales</option><option value="off_market_in_2_weeks.html?v=1756824583" >Off Market in 2 Weeks</option><option value="median_days_to_close.html?v=1756824583" >Days to Close</option><option value="sale_to_list_ratio.html?v=1756824583" >Sale to List Ratio</option><option value="pct_listings_w__price_drops.html?v=1756824583" >Price Drops</option><option value="age_of_inventory.html?v=1756824583" >Age of Inventory</option>
+                <option value="median_sale_price.html?v=1756825521" >Median Sale Price</option><option value="active_listings.html?v=1756825521" selected>Active Listings</option><option value="weeks_supply.html?v=1756825521" >Weeks of Supply</option><option value="homes_sold.html?v=1756825521" >Homes Sold</option><option value="new_listings.html?v=1756825521" >New Listings</option><option value="median_days_on_market.html?v=1756825521" >Days on Market</option><option value="pending_sales.html?v=1756825521" >Pending Sales</option><option value="off_market_in_2_weeks.html?v=1756825521" >Off Market in 2 Weeks</option><option value="median_days_to_close.html?v=1756825521" >Days to Close</option><option value="sale_to_list_ratio.html?v=1756825521" >Sale to List Ratio</option><option value="pct_listings_w__price_drops.html?v=1756825521" >Price Drops</option><option value="age_of_inventory.html?v=1756825521" >Age of Inventory</option>
             </select>
             
             <div class="filter">
@@ -10106,7 +10105,7 @@
     <div class="footer">
         <strong>Data:</strong> Redfin weekly housing market data | <strong>Updated:</strong> August 24, 2025 | <strong>Methodology:</strong> Based on rolling 4-week windows<br>
         <a href="https://www.home-economics.us">Home Economics</a><br>
-        <small style="color: #999;">Version: 1756824583 | Generated: 2025-09-02 10:49:43</small>
+        <small style="color: #999;">Version: 1756825521 | Generated: 2025-09-02 11:05:21</small>
     </div>
     
     <!-- Chart Panel VERSION 2.0 WITH SCROLLBAR -->
