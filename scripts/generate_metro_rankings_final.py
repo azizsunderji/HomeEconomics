@@ -1231,19 +1231,98 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
         }}
         
         @media (max-width: 768px) {{
-            body {{ font-size: 11px; }}
+            /* Basic mobile typography */
+            body {{ 
+                font-size: 11px;
+                display: flex;
+                flex-direction: column;
+                height: 100vh;
+                margin: 0;
+                padding: 0;
+                overflow: hidden;
+            }}
             th {{ font-size: 10px; }}
             td {{ font-size: 11px; padding: 4px 6px; }}
-            .metric-btn {{ font-size: 11px; padding: 4px 8px; }}
             
-            /* Make panel full-screen on mobile with proper height */
+            /* Compact header on mobile */
+            .fixed-header {{
+                position: relative !important;
+                padding: 10px !important;
+                flex-shrink: 0;
+                max-height: 120px;
+                overflow: hidden;
+            }}
+            
+            h1 {{
+                font-size: 16px !important;
+                margin-bottom: 8px !important;
+            }}
+            
+            /* Simplify controls on mobile */
+            .controls {{
+                margin-bottom: 8px !important;
+            }}
+            
+            /* Hide search box and label on mobile */
+            #searchBox {{
+                display: none !important;
+            }}
+            
+            .filter label {{
+                display: none !important;
+            }}
+            
+            /* Make filter dropdown more prominent */
+            #marketFilter {{
+                font-size: 12px !important;
+                padding: 4px !important;
+            }}
+            
+            /* Horizontal scroll for metric buttons */
+            .metrics {{
+                width: 100%;
+                overflow-x: auto;
+                overflow-y: hidden;
+                -webkit-overflow-scrolling: touch;
+                padding-bottom: 5px;
+            }}
+            
+            .metric-btn {{ 
+                font-size: 10px; 
+                padding: 3px 6px;
+                flex-shrink: 0;
+            }}
+            
+            /* Hide summary box on mobile to save space */
+            .summary-box {{
+                display: none !important;
+            }}
+            
+            /* Make table container use remaining space */
+            .table-container {{
+                flex: 1;
+                overflow-y: auto !important;
+                overflow-x: hidden !important;
+                padding: 5px !important;
+                height: auto !important;
+                min-height: 0;
+            }}
+            
+            /* Ensure table is visible */
+            table {{
+                width: 100% !important;
+            }}
+            
+            /* Make panel full-screen on mobile */
             .chart-panel {{
                 width: 100%;
                 height: 100vh !important;
+                max-height: 100vh !important;
                 top: 0 !important;
                 bottom: 0 !important;
                 right: -100%;
-                border: none !important; /* No border on mobile */
+                border: none !important;
+                z-index: 10000 !important;
             }}
             
             .chart-panel.open {{
@@ -1251,8 +1330,17 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
             }}
             
             .chart-panel-content {{
-                padding: 20px 15px 50px 15px !important; /* More padding on mobile */
-                -webkit-overflow-scrolling: touch; /* Smooth iOS scrolling */
+                height: calc(100vh - 50px) !important;
+                padding: 45px 10px 30px 10px !important;
+                overflow-y: auto !important;
+                -webkit-overflow-scrolling: touch;
+            }}
+            
+            /* Ensure charts fit mobile width */
+            .chart-image {{
+                width: 100% !important;
+                max-width: 100% !important;
+                height: auto !important;
             }}
             
             .table-container.panel-open {{
@@ -1262,7 +1350,7 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
             /* Fix rendering issues on mobile */
             tbody {{
                 will-change: transform;
-                transform: translateZ(0); /* GPU acceleration */
+                transform: translateZ(0);
             }}
         }}
     </style>

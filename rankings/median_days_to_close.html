@@ -557,19 +557,98 @@
         }
         
         @media (max-width: 768px) {
-            body { font-size: 11px; }
+            /* Basic mobile typography */
+            body { 
+                font-size: 11px;
+                display: flex;
+                flex-direction: column;
+                height: 100vh;
+                margin: 0;
+                padding: 0;
+                overflow: hidden;
+            }
             th { font-size: 10px; }
             td { font-size: 11px; padding: 4px 6px; }
-            .metric-btn { font-size: 11px; padding: 4px 8px; }
             
-            /* Make panel full-screen on mobile with proper height */
+            /* Compact header on mobile */
+            .fixed-header {
+                position: relative !important;
+                padding: 10px !important;
+                flex-shrink: 0;
+                max-height: 120px;
+                overflow: hidden;
+            }
+            
+            h1 {
+                font-size: 16px !important;
+                margin-bottom: 8px !important;
+            }
+            
+            /* Simplify controls on mobile */
+            .controls {
+                margin-bottom: 8px !important;
+            }
+            
+            /* Hide search box and label on mobile */
+            #searchBox {
+                display: none !important;
+            }
+            
+            .filter label {
+                display: none !important;
+            }
+            
+            /* Make filter dropdown more prominent */
+            #marketFilter {
+                font-size: 12px !important;
+                padding: 4px !important;
+            }
+            
+            /* Horizontal scroll for metric buttons */
+            .metrics {
+                width: 100%;
+                overflow-x: auto;
+                overflow-y: hidden;
+                -webkit-overflow-scrolling: touch;
+                padding-bottom: 5px;
+            }
+            
+            .metric-btn { 
+                font-size: 10px; 
+                padding: 3px 6px;
+                flex-shrink: 0;
+            }
+            
+            /* Hide summary box on mobile to save space */
+            .summary-box {
+                display: none !important;
+            }
+            
+            /* Make table container use remaining space */
+            .table-container {
+                flex: 1;
+                overflow-y: auto !important;
+                overflow-x: hidden !important;
+                padding: 5px !important;
+                height: auto !important;
+                min-height: 0;
+            }
+            
+            /* Ensure table is visible */
+            table {
+                width: 100% !important;
+            }
+            
+            /* Make panel full-screen on mobile */
             .chart-panel {
                 width: 100%;
                 height: 100vh !important;
+                max-height: 100vh !important;
                 top: 0 !important;
                 bottom: 0 !important;
                 right: -100%;
-                border: none !important; /* No border on mobile */
+                border: none !important;
+                z-index: 10000 !important;
             }
             
             .chart-panel.open {
@@ -577,8 +656,17 @@
             }
             
             .chart-panel-content {
-                padding: 20px 15px 50px 15px !important; /* More padding on mobile */
-                -webkit-overflow-scrolling: touch; /* Smooth iOS scrolling */
+                height: calc(100vh - 50px) !important;
+                padding: 45px 10px 30px 10px !important;
+                overflow-y: auto !important;
+                -webkit-overflow-scrolling: touch;
+            }
+            
+            /* Ensure charts fit mobile width */
+            .chart-image {
+                width: 100% !important;
+                max-width: 100% !important;
+                height: auto !important;
             }
             
             .table-container.panel-open {
@@ -588,7 +676,7 @@
             /* Fix rendering issues on mobile */
             tbody {
                 will-change: transform;
-                transform: translateZ(0); /* GPU acceleration */
+                transform: translateZ(0);
             }
         }
     </style>
@@ -599,7 +687,7 @@
         
         <div class="controls">
             <div class="metrics">
-                <a href="median_sale_price.html?v=1756774297" class="metric-btn ">Median Sale Price</a><a href="active_listings.html?v=1756774297" class="metric-btn ">Active Listings</a><a href="weeks_supply.html?v=1756774297" class="metric-btn ">Weeks of Supply</a><a href="homes_sold.html?v=1756774297" class="metric-btn ">Homes Sold</a><a href="new_listings.html?v=1756774297" class="metric-btn ">New Listings</a><a href="median_days_on_market.html?v=1756774297" class="metric-btn ">Days on Market</a><a href="pending_sales.html?v=1756774297" class="metric-btn ">Pending Sales</a><a href="off_market_in_2_weeks.html?v=1756774297" class="metric-btn ">Off Market in 2 Weeks</a><a href="median_days_to_close.html?v=1756774297" class="metric-btn active">Days to Close</a><a href="sale_to_list_ratio.html?v=1756774297" class="metric-btn ">Sale to List Ratio</a><a href="pct_listings_w__price_drops.html?v=1756774297" class="metric-btn ">Price Drops</a><a href="age_of_inventory.html?v=1756774297" class="metric-btn ">Age of Inventory</a>
+                <a href="median_sale_price.html?v=1756775829" class="metric-btn ">Median Sale Price</a><a href="active_listings.html?v=1756775829" class="metric-btn ">Active Listings</a><a href="weeks_supply.html?v=1756775829" class="metric-btn ">Weeks of Supply</a><a href="homes_sold.html?v=1756775829" class="metric-btn ">Homes Sold</a><a href="new_listings.html?v=1756775829" class="metric-btn ">New Listings</a><a href="median_days_on_market.html?v=1756775829" class="metric-btn ">Days on Market</a><a href="pending_sales.html?v=1756775829" class="metric-btn ">Pending Sales</a><a href="off_market_in_2_weeks.html?v=1756775829" class="metric-btn ">Off Market in 2 Weeks</a><a href="median_days_to_close.html?v=1756775829" class="metric-btn active">Days to Close</a><a href="sale_to_list_ratio.html?v=1756775829" class="metric-btn ">Sale to List Ratio</a><a href="pct_listings_w__price_drops.html?v=1756775829" class="metric-btn ">Price Drops</a><a href="age_of_inventory.html?v=1756775829" class="metric-btn ">Age of Inventory</a>
             </div>
             
             <div class="filter">
@@ -9867,7 +9955,7 @@
     <div class="footer">
         <strong>Data:</strong> Redfin weekly housing market data | <strong>Updated:</strong> August 24, 2025 | <strong>Methodology:</strong> Based on rolling 4-week windows<br>
         <a href="https://www.home-economics.us">Home Economics</a><br>
-        <small style="color: #999;">Version: 1756774297 | Generated: 2025-09-01 20:51:37</small>
+        <small style="color: #999;">Version: 1756775829 | Generated: 2025-09-01 21:17:09</small>
     </div>
     
     <!-- Chart Panel VERSION 2.0 WITH SCROLLBAR -->
