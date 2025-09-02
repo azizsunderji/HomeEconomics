@@ -665,11 +665,17 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
     
     # Build metric navigation buttons with cache-busting parameter
     metric_buttons = []
+    metric_options = []
     for m_key, m_info in all_metrics.items():
         is_active = 'active' if m_key == metric_key else ''
         metric_buttons.append(
             f'<a href="{m_info["slug"]}.html?v={version}" class="metric-btn {is_active}">'
             f'{m_info["display"]}</a>'
+        )
+        # Also build options for mobile dropdown
+        selected = 'selected' if m_key == metric_key else ''
+        metric_options.append(
+            f'<option value="{m_info["slug"]}.html?v={version}" {selected}>{m_info["display"]}</option>'
         )
     
     html = f"""<!DOCTYPE html>
@@ -749,6 +755,11 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
             display: flex;
             gap: 5px;
             flex-wrap: wrap;
+        }}
+        
+        /* Hide metric dropdown on desktop */
+        .metric-dropdown {{
+            display: none;
         }}
         
         .metric-btn {{
@@ -1270,27 +1281,47 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
             
             /* Simplify controls */
             .controls {{
-                margin-bottom: 8px;
+                margin-bottom: 12px;
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+            }}
+            
+            /* Hide metric buttons on mobile */
+            .metrics {{
+                display: none !important;
+            }}
+            
+            /* Show and style metric dropdown on mobile */
+            .metric-dropdown {{
+                display: block !important;
+                width: 100%;
+                padding: 10px 14px;
+                font-size: 13px;
+                border: 1px solid #DADFCE;
+                background: white;
+                border-radius: 4px;
+                font-family: inherit;
+                color: #3D3733;
+                appearance: none;
+                background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+                background-repeat: no-repeat;
+                background-position: right 10px center;
+                background-size: 20px;
+                padding-right: 40px;
             }}
             
             #marketFilter {{
-                font-size: 12px;
-                padding: 4px;
-            }}
-            
-            /* Metric buttons horizontal scroll */
-            .metrics {{
-                display: flex;
-                overflow-x: auto;
-                -webkit-overflow-scrolling: touch;
-                gap: 5px;
-                padding-bottom: 5px;
-            }}
-            
-            .metric-btn {{ 
-                font-size: 10px; 
-                padding: 3px 6px;
-                flex-shrink: 0;
+                font-size: 13px;
+                padding: 10px 14px;
+                width: 100%;
+                border-radius: 4px;
+                appearance: none;
+                background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+                background-repeat: no-repeat;
+                background-position: right 10px center;
+                background-size: 20px;
+                padding-right: 40px;
             }}
             
             /* Everything inherits the 800px width */
@@ -1307,6 +1338,33 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
             table {{
                 width: 100%;
                 table-layout: auto; /* Let columns size naturally */
+            }}
+            
+            /* Sticky table header on mobile */
+            thead {{
+                position: sticky;
+                top: 80px; /* Below the fixed header */
+                z-index: 90;
+                background: white;
+            }}
+            
+            thead th {{
+                background: white;
+                padding: 8px 6px;
+                border-bottom: 2px solid #0BB4FF; /* Brand blue accent */
+                position: relative;
+            }}
+            
+            /* Add subtle shadow under sticky header */
+            thead::after {{
+                content: '';
+                position: absolute;
+                bottom: -4px;
+                left: 0;
+                right: 0;
+                height: 4px;
+                background: linear-gradient(to bottom, rgba(0,0,0,0.1), transparent);
+                pointer-events: none;
             }}
             
             /* Ensure minimum column widths for readability */
@@ -1387,6 +1445,11 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
             <div class="metrics">
                 {''.join(metric_buttons)}
             </div>
+            
+            <!-- Mobile metric dropdown -->
+            <select class="metric-dropdown" id="metricDropdown" onchange="window.location.href=this.value">
+                {''.join(metric_options)}
+            </select>
             
             <div class="filter">
                 <input type="text" id="searchBox" placeholder="Search metros..." onkeyup="searchTable()" style="padding: 4px 8px; border: 1px solid #DADFCE; background: white; font-family: inherit; font-size: 12px; margin-right: 10px;">
