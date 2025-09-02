@@ -1007,8 +1007,8 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
             width: 450px;
             height: 100vh;
             max-height: 100%;
-            background: white;
-            box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            background: #F6F7F3; /* Cream background */
+            border-left: 1px solid #DADFCE; /* Simple border instead of shadow */
             transition: right 0.3s ease;
             z-index: 9999;
             display: flex;
@@ -1019,48 +1019,50 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
             right: 0;
         }}
         
+        /* Remove header - title is redundant with chart content */
         .chart-panel-header {{
-            padding: 15px 20px;
-            border-bottom: 1px solid #DADFCE;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: #F6F7F3;
-            flex-shrink: 0;
+            display: none;
         }}
         
         .chart-panel-title {{
-            font-size: 14px;
-            font-weight: bold;
-            color: #3D3733;
+            display: none;
         }}
         
         .chart-panel-close {{
-            background: none;
-            border: none;
-            font-size: 20px;
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            z-index: 10;
+            background: white;
+            border: 1px solid #DADFCE;
+            border-radius: 50%;
+            font-size: 18px;
             cursor: pointer;
             color: #6B635C;
             padding: 0;
-            width: 24px;
-            height: 24px;
+            width: 30px;
+            height: 30px;
             display: flex;
             align-items: center;
             justify-content: center;
+            transition: all 0.2s ease;
         }}
         
         .chart-panel-close:hover {{
-            color: #3D3733;
+            background: #0BB4FF;
+            color: white;
+            border-color: #0BB4FF;
         }}
         
         .chart-panel-content {{
             flex: 1;
             overflow-y: scroll !important; /* Force scrollbar to always show */
             overflow-x: hidden;
-            padding: 15px 0 30px 0; /* Remove side padding, add more bottom padding */
+            padding: 50px 20px 40px 20px; /* Top padding for close button, sides for spacing */
             display: flex;
             flex-direction: column;
             align-items: center;
+            background: #F6F7F3; /* Cream background */
             /* Force minimum height to ensure scrollbar appears */
             min-height: 101%;
             /* Custom scrollbar styling for better visibility */
@@ -1202,7 +1204,7 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
             width: 420px !important;
             right: -420px !important;
             border-top-left-radius: 8px;
-            box-shadow: -4px 0 15px rgba(0,0,0,0.15);
+            border-left: 1px solid #DADFCE !important; /* Simple border, no shadow */
         }}
         
         body.in-iframe .chart-panel.open {{
@@ -1234,18 +1236,33 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
             td {{ font-size: 11px; padding: 4px 6px; }}
             .metric-btn {{ font-size: 11px; padding: 4px 8px; }}
             
-            /* Make panel full-screen on mobile */
+            /* Make panel full-screen on mobile with proper height */
             .chart-panel {{
                 width: 100%;
+                height: 100vh !important;
+                top: 0 !important;
+                bottom: 0 !important;
                 right: -100%;
+                border: none !important; /* No border on mobile */
             }}
             
             .chart-panel.open {{
                 right: 0;
             }}
             
+            .chart-panel-content {{
+                padding: 20px 15px 50px 15px !important; /* More padding on mobile */
+                -webkit-overflow-scrolling: touch; /* Smooth iOS scrolling */
+            }}
+            
             .table-container.panel-open {{
                 margin-right: 0;
+            }}
+            
+            /* Fix rendering issues on mobile */
+            tbody {{
+                will-change: transform;
+                transform: translateZ(0); /* GPU acceleration */
             }}
         }}
     </style>
@@ -1361,10 +1378,7 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
     
     <!-- Chart Panel VERSION 2.0 WITH SCROLLBAR -->
     <div class="chart-panel" id="chartPanel">
-        <div class="chart-panel-header">
-            <div class="chart-panel-title" id="chartTitle">Select a metro to view chart</div>
-            <button class="chart-panel-close" onclick="closeChartPanel()">×</button>
-        </div>
+        <button class="chart-panel-close" onclick="closeChartPanel()">×</button>
         <div class="chart-panel-content">
             <div class="chart-loading" id="chartLoading">Loading chart...</div>
             <img class="chart-image" id="chartImage" alt="Metro chart">
@@ -1721,9 +1735,6 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
             const metroName = element.textContent;
             const metroUrl = element.getAttribute('data-metro-url');
             const currentMetric = '{metric_info['slug']}';
-            
-            // Update panel title
-            document.getElementById('chartTitle').textContent = metroName;
             
             // Reset panel state
             document.getElementById('chartLoading').classList.add('active');
