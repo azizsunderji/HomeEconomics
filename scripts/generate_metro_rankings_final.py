@@ -1338,20 +1338,28 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
             
             /* MOBILE: Show only essential columns */
             
-            /* Table container - no horizontal scroll needed */
+            /* RADICAL NEW APPROACH - wrapper for everything */
+            .mobile-wrapper {{
+                position: relative;
+                width: 100%;
+                height: 100vh;
+                overflow: hidden;
+            }}
+            
+            /* Table container - let it scroll naturally */
             .table-container {{
                 width: 100%;
-                overflow-x: hidden; /* No horizontal scroll */
-                overflow-y: auto;
+                height: calc(100vh - 120px); /* Account for header */
+                overflow-y: scroll;
                 -webkit-overflow-scrolling: touch;
-                padding: 0;
-                margin: 0;
+                position: relative;
             }}
             
             /* Table fills container width */
             table {{
                 width: 100%;
                 border-collapse: collapse;
+                position: relative;
             }}
             
             /* Hide all columns except rank (1), metro (2), current (3), and 1Y (7) */
@@ -1402,20 +1410,24 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
                 font-weight: bold;
             }}
             
-            /* Sticky header for vertical scroll - FIXED */
+            /* FORCE sticky header with webkit hack */
             thead {{
+                position: -webkit-sticky !important;
                 position: sticky !important;
                 top: 0 !important;
-                z-index: 100 !important;
+                z-index: 1000 !important;
+                transform: translateZ(0); /* Force GPU layer */
             }}
             
             thead th {{
+                position: -webkit-sticky !important;
                 position: sticky !important;
                 top: 0 !important;
                 background: white !important;
-                z-index: 100 !important;
+                z-index: 1001 !important;
                 border-bottom: 2px solid #0BB4FF;
                 padding: 10px 6px;
+                transform: translateZ(0); /* Force GPU layer */
             }}
             
             /* Chart panel - simple overlay */
@@ -1455,35 +1467,37 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
                 z-index: 10;
             }}
             
-            /* Move close button out of the way */
+            /* Close button */
             .chart-panel .chart-panel-close {{
-                position: fixed !important; /* Fixed instead of absolute */
+                position: absolute !important;
                 top: 10px !important;
                 right: 10px !important;
-                z-index: 10001 !important; /* Higher z-index */
+                z-index: 10001 !important;
             }}
             
             .chart-panel-content {{
-                flex: 1;
-                padding: 20px 15px; /* Much less padding all around */
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
                 overflow-y: auto;
                 -webkit-overflow-scrolling: touch;
                 background: #F6F7F3;
-                /* Remove flex, use standard block */
-                display: block;
-                text-align: center; /* Center content */
-                width: 100%;
+                padding: 40px 0;
             }}
             
-            /* Charts - simplify completely */
+            /* CENTER charts with absolute positioning */
             .chart-image {{
-                width: calc(100% - 20px); /* Account for some margin */
-                max-width: none; /* Remove max-width constraint */
+                position: relative;
+                display: block;
+                width: 90%;
+                max-width: 350px;
                 height: auto;
-                display: inline-block; /* Inline-block for centering */
-                margin: 10px auto;
+                margin: 0 auto;
+                left: 50%;
+                transform: translateX(-50%);
                 border: none;
-                padding: 0;
             }}
         }}
     </style>

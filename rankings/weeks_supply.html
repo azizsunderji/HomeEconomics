@@ -658,20 +658,28 @@
             
             /* MOBILE: Show only essential columns */
             
-            /* Table container - no horizontal scroll needed */
+            /* RADICAL NEW APPROACH - wrapper for everything */
+            .mobile-wrapper {
+                position: relative;
+                width: 100%;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            /* Table container - let it scroll naturally */
             .table-container {
                 width: 100%;
-                overflow-x: hidden; /* No horizontal scroll */
-                overflow-y: auto;
+                height: calc(100vh - 120px); /* Account for header */
+                overflow-y: scroll;
                 -webkit-overflow-scrolling: touch;
-                padding: 0;
-                margin: 0;
+                position: relative;
             }
             
             /* Table fills container width */
             table {
                 width: 100%;
                 border-collapse: collapse;
+                position: relative;
             }
             
             /* Hide all columns except rank (1), metro (2), current (3), and 1Y (7) */
@@ -722,20 +730,24 @@
                 font-weight: bold;
             }
             
-            /* Sticky header for vertical scroll - FIXED */
+            /* FORCE sticky header with webkit hack */
             thead {
+                position: -webkit-sticky !important;
                 position: sticky !important;
                 top: 0 !important;
-                z-index: 100 !important;
+                z-index: 1000 !important;
+                transform: translateZ(0); /* Force GPU layer */
             }
             
             thead th {
+                position: -webkit-sticky !important;
                 position: sticky !important;
                 top: 0 !important;
                 background: white !important;
-                z-index: 100 !important;
+                z-index: 1001 !important;
                 border-bottom: 2px solid #0BB4FF;
                 padding: 10px 6px;
+                transform: translateZ(0); /* Force GPU layer */
             }
             
             /* Chart panel - simple overlay */
@@ -775,35 +787,37 @@
                 z-index: 10;
             }
             
-            /* Move close button out of the way */
+            /* Close button */
             .chart-panel .chart-panel-close {
-                position: fixed !important; /* Fixed instead of absolute */
+                position: absolute !important;
                 top: 10px !important;
                 right: 10px !important;
-                z-index: 10001 !important; /* Higher z-index */
+                z-index: 10001 !important;
             }
             
             .chart-panel-content {
-                flex: 1;
-                padding: 20px 15px; /* Much less padding all around */
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
                 overflow-y: auto;
                 -webkit-overflow-scrolling: touch;
                 background: #F6F7F3;
-                /* Remove flex, use standard block */
-                display: block;
-                text-align: center; /* Center content */
-                width: 100%;
+                padding: 40px 0;
             }
             
-            /* Charts - simplify completely */
+            /* CENTER charts with absolute positioning */
             .chart-image {
-                width: calc(100% - 20px); /* Account for some margin */
-                max-width: none; /* Remove max-width constraint */
+                position: relative;
+                display: block;
+                width: 90%;
+                max-width: 350px;
                 height: auto;
-                display: inline-block; /* Inline-block for centering */
-                margin: 10px auto;
+                margin: 0 auto;
+                left: 50%;
+                transform: translateX(-50%);
                 border: none;
-                padding: 0;
             }
         }
     </style>
@@ -814,12 +828,12 @@
         
         <div class="controls">
             <div class="metrics">
-                <a href="median_sale_price.html?v=1756833554" class="metric-btn ">Median Sale Price</a><a href="active_listings.html?v=1756833554" class="metric-btn ">Active Listings</a><a href="weeks_supply.html?v=1756833554" class="metric-btn active">Weeks of Supply</a><a href="homes_sold.html?v=1756833554" class="metric-btn ">Homes Sold</a><a href="new_listings.html?v=1756833554" class="metric-btn ">New Listings</a><a href="median_days_on_market.html?v=1756833554" class="metric-btn ">Days on Market</a><a href="pending_sales.html?v=1756833554" class="metric-btn ">Pending Sales</a><a href="off_market_in_2_weeks.html?v=1756833554" class="metric-btn ">Off Market in 2 Weeks</a><a href="median_days_to_close.html?v=1756833554" class="metric-btn ">Days to Close</a><a href="sale_to_list_ratio.html?v=1756833554" class="metric-btn ">Sale to List Ratio</a><a href="pct_listings_w__price_drops.html?v=1756833554" class="metric-btn ">Price Drops</a><a href="age_of_inventory.html?v=1756833554" class="metric-btn ">Age of Inventory</a>
+                <a href="median_sale_price.html?v=1756834383" class="metric-btn ">Median Sale Price</a><a href="active_listings.html?v=1756834383" class="metric-btn ">Active Listings</a><a href="weeks_supply.html?v=1756834383" class="metric-btn active">Weeks of Supply</a><a href="homes_sold.html?v=1756834383" class="metric-btn ">Homes Sold</a><a href="new_listings.html?v=1756834383" class="metric-btn ">New Listings</a><a href="median_days_on_market.html?v=1756834383" class="metric-btn ">Days on Market</a><a href="pending_sales.html?v=1756834383" class="metric-btn ">Pending Sales</a><a href="off_market_in_2_weeks.html?v=1756834383" class="metric-btn ">Off Market in 2 Weeks</a><a href="median_days_to_close.html?v=1756834383" class="metric-btn ">Days to Close</a><a href="sale_to_list_ratio.html?v=1756834383" class="metric-btn ">Sale to List Ratio</a><a href="pct_listings_w__price_drops.html?v=1756834383" class="metric-btn ">Price Drops</a><a href="age_of_inventory.html?v=1756834383" class="metric-btn ">Age of Inventory</a>
             </div>
             
             <!-- Mobile metric dropdown -->
             <select class="metric-dropdown" id="metricDropdown" onchange="window.location.href=this.value">
-                <option value="median_sale_price.html?v=1756833554" >Median Sale Price</option><option value="active_listings.html?v=1756833554" >Active Listings</option><option value="weeks_supply.html?v=1756833554" selected>Weeks of Supply</option><option value="homes_sold.html?v=1756833554" >Homes Sold</option><option value="new_listings.html?v=1756833554" >New Listings</option><option value="median_days_on_market.html?v=1756833554" >Days on Market</option><option value="pending_sales.html?v=1756833554" >Pending Sales</option><option value="off_market_in_2_weeks.html?v=1756833554" >Off Market in 2 Weeks</option><option value="median_days_to_close.html?v=1756833554" >Days to Close</option><option value="sale_to_list_ratio.html?v=1756833554" >Sale to List Ratio</option><option value="pct_listings_w__price_drops.html?v=1756833554" >Price Drops</option><option value="age_of_inventory.html?v=1756833554" >Age of Inventory</option>
+                <option value="median_sale_price.html?v=1756834383" >Median Sale Price</option><option value="active_listings.html?v=1756834383" >Active Listings</option><option value="weeks_supply.html?v=1756834383" selected>Weeks of Supply</option><option value="homes_sold.html?v=1756834383" >Homes Sold</option><option value="new_listings.html?v=1756834383" >New Listings</option><option value="median_days_on_market.html?v=1756834383" >Days on Market</option><option value="pending_sales.html?v=1756834383" >Pending Sales</option><option value="off_market_in_2_weeks.html?v=1756834383" >Off Market in 2 Weeks</option><option value="median_days_to_close.html?v=1756834383" >Days to Close</option><option value="sale_to_list_ratio.html?v=1756834383" >Sale to List Ratio</option><option value="pct_listings_w__price_drops.html?v=1756834383" >Price Drops</option><option value="age_of_inventory.html?v=1756834383" >Age of Inventory</option>
             </select>
             
             <div class="filter">
@@ -10087,7 +10101,7 @@
     <div class="footer">
         <strong>Data:</strong> Redfin weekly housing market data | <strong>Updated:</strong> August 24, 2025 | <strong>Methodology:</strong> Based on rolling 4-week windows<br>
         <a href="https://www.home-economics.us">Home Economics</a><br>
-        <small style="color: #999;">Version: 1756833554 | Generated: 2025-09-02 13:19:14</small>
+        <small style="color: #999;">Version: 1756834383 | Generated: 2025-09-02 13:33:03</small>
     </div>
     
     <!-- Chart Panel VERSION 2.0 WITH SCROLLBAR -->
