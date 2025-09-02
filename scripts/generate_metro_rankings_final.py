@@ -1336,39 +1336,63 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
                 flex-shrink: 0;
             }}
             
-            /* SIMPLE SCROLLABLE TABLE */
+            /* MOBILE: Show only essential columns */
             
-            /* Wrapper div for horizontal scroll */
+            /* Table container - no horizontal scroll needed */
             .table-container {{
                 width: 100%;
-                overflow-x: auto !important;
-                overflow-y: visible;
+                overflow-x: hidden; /* No horizontal scroll */
+                overflow-y: auto;
                 -webkit-overflow-scrolling: touch;
                 padding: 0;
                 margin: 0;
             }}
             
-            /* Table must be wider than container */
+            /* Table fills container width */
             table {{
-                width: 700px; /* Fixed width, wider than phones */
+                width: 100%;
                 border-collapse: collapse;
             }}
             
-            /* Simple column widths */
+            /* Hide all columns except rank (1), metro (2), and 1Y change (7) */
+            th:nth-child(3), td:nth-child(3), /* Current value */
+            th:nth-child(4), td:nth-child(4), /* 1M */
+            th:nth-child(5), td:nth-child(5), /* 3M */
+            th:nth-child(6), td:nth-child(6), /* 6M */
+            th:nth-child(8), td:nth-child(8), /* 3Y */
+            th:nth-child(9), td:nth-child(9)  /* Percentile */ {{
+                display: none !important;
+            }}
+            
+            /* Style the visible columns */
             th, td {{
-                padding: 6px;
-                border: 1px solid #e0e0e0;
+                padding: 8px 6px;
+                border-bottom: 1px solid #e0e0e0;
                 white-space: nowrap;
             }}
             
+            /* Rank column - narrow */
             th:first-child, td:first-child {{
-                width: 30px;
+                width: 35px;
                 text-align: center;
+                font-weight: bold;
             }}
             
+            /* Metro column - takes most space */
             th:nth-child(2), td:nth-child(2) {{
-                width: 120px;
                 text-align: left;
+                padding-left: 10px;
+                /* Allow wrapping for long metro names */
+                white-space: normal;
+                word-break: break-word;
+            }}
+            
+            /* 1Y change column */
+            th:nth-child(7), td:nth-child(7) {{
+                width: 70px;
+                text-align: right;
+                padding-right: 10px;
+                font-weight: bold;
             }}
             
             /* Sticky header for vertical scroll */
@@ -1376,8 +1400,9 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
                 position: sticky;
                 top: 0;
                 background: white;
-                z-index: 10;
+                z-index: 100;
                 border-bottom: 2px solid #0BB4FF;
+                padding: 10px 6px;
             }}
             
             /* Chart panel - simple overlay */
