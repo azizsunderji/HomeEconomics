@@ -1410,61 +1410,49 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
                 font-weight: bold;
             }}
             
-            /* FORCE sticky header with webkit hack */
+            /* BULLETPROOF STICKY HEADERS */
+            table {{
+                position: relative;
+            }}
+            
             thead {{
                 position: -webkit-sticky !important;
                 position: sticky !important;
-                top: 0 !important;
-                z-index: 1000 !important;
-                transform: translateZ(0); /* Force GPU layer */
+                top: -1px !important; /* -1px helps with some browsers */
+                z-index: 500 !important;
             }}
             
             thead th {{
                 position: -webkit-sticky !important;
                 position: sticky !important;
-                top: 0 !important;
+                top: -1px !important;
                 background: white !important;
-                z-index: 1001 !important;
-                border-bottom: 2px solid #0BB4FF;
-                padding: 10px 6px;
-                transform: translateZ(0); /* Force GPU layer */
+                z-index: 501 !important;
+                border-bottom: 3px solid #0BB4FF !important;
+                padding: 12px 6px !important;
             }}
             
-            /* MODAL APPROACH - Opaque overlay background */
-            .modal-overlay {{
+            /* SIMPLEST SOLUTION - Full screen takeover */
+            .chart-panel {{
                 display: none;
                 position: fixed;
                 top: 0;
                 left: 0;
-                right: 0;
-                bottom: 0;
-                background: #F6F7F3; /* Opaque cream background */
-                z-index: 9998;
-            }}
-            
-            .modal-overlay.open {{
-                display: block;
-            }}
-            
-            /* Chart panel as centered modal - COMPACT */
-            .chart-panel {{
-                display: none;
-                position: fixed;
-                top: 50%;
-                left: 50%;
-                transform: translate(-50%, -50%);
-                width: 90%;
-                height: auto; /* Let content determine height */
-                max-height: 80vh; /* Maximum height */
-                background: white;
+                width: 100%;
+                height: 100%;
+                background: #F6F7F3;
                 z-index: 9999;
-                border-radius: 12px;
-                box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-                overflow: visible; /* Allow content to show */
+                overflow-y: auto; /* Simple vertical scroll */
+                -webkit-overflow-scrolling: touch;
             }}
             
             .chart-panel.open {{
-                display: block; /* Simple block, not flex */
+                display: block;
+            }}
+            
+            /* No separate overlay needed */
+            .modal-overlay {{
+                display: none !important;
             }}
             
             /* Close button - ONLY inside panel, not global */
@@ -1486,48 +1474,46 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
                 z-index: 10;
             }}
             
-            /* Close button - VISIBLE */
+            /* Close button - FIXED at top right */
             .chart-panel .chart-panel-close {{
-                position: absolute !important;
-                top: 10px !important;
-                right: 10px !important;
-                z-index: 10001 !important;
-                width: 40px !important;
-                height: 40px !important;
+                position: fixed !important; /* Fixed so it stays visible */
+                top: 15px !important;
+                right: 15px !important;
+                z-index: 10000 !important;
+                width: 50px !important;
+                height: 50px !important;
                 background: #0BB4FF !important;
                 color: white !important;
-                border: none !important;
+                border: 2px solid white !important;
                 border-radius: 50% !important;
-                font-size: 24px !important;
+                font-size: 28px !important;
                 display: flex !important;
                 align-items: center !important;
                 justify-content: center !important;
                 cursor: pointer !important;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.2) !important;
             }}
             
+            /* Content is just the whole panel - SIMPLE */
             .chart-panel-content {{
-                max-height: 70vh; /* Limit height */
-                overflow-y: auto !important; /* Force scrolling */
-                overflow-x: hidden;
-                -webkit-overflow-scrolling: touch;
-                background: #F6F7F3; /* Cream background */
-                padding: 50px 15px 20px 15px; /* Top padding for close button */
-                text-align: center;
+                padding: 80px 20px 40px 20px; /* Top padding for close button */
+                width: 100%;
+                height: auto;
+                /* No special overflow - parent handles it */
             }}
             
-            /* Simple chart centering in modal */
+            /* Charts - just display them naturally */
             .chart-image {{
                 display: block;
-                width: 85%; /* Creates natural buffer */
-                max-width: 320px;
+                width: 90%;
+                max-width: 400px; /* Bigger on full screen */
                 height: auto;
-                margin: 10px auto; /* Simple auto margins */
+                margin: 20px auto;
                 border: none;
-                /* No transform needed - modal handles centering */
             }}
             
-            /* Hide scroll indicator on mobile modal */
-            .scroll-indicator {{
+            /* Hide unnecessary elements */
+            .scroll-indicator, .chart-loading, .chart-error {{
                 display: none !important;
             }}
         }}
