@@ -562,10 +562,10 @@
         }
         
         @media (max-width: 768px) {
-            /* Mobile: Reset layout for freeze panes */
+            /* Mobile: Allow natural scrolling in iframe */
             html { 
                 width: 100%;
-                overflow: hidden;
+                overflow: visible; /* Don't block scrolling */
             }
             
             body { 
@@ -574,10 +574,9 @@
                 padding: 0;
                 width: 100%;
                 height: 100vh;
-                overflow: hidden;
+                overflow: visible; /* Don't block scrolling */
                 display: flex;
                 flex-direction: column;
-            }
             th { font-size: 10px; }
             td { font-size: 11px; padding: 4px 6px; }
             
@@ -656,18 +655,26 @@
             
             /* FREEZE PANES LAYOUT FOR MOBILE */
             
-            /* Table container becomes scrollable */
+            /* Table container becomes scrollable - FIXED for iframe */
             .table-container {
                 position: relative;
-                overflow: auto;
+                overflow: auto !important; /* Force scrolling */
                 -webkit-overflow-scrolling: touch;
                 height: calc(100vh - 150px); /* Account for header */
+                width: 100vw !important; /* Full viewport width */
+                max-width: 100vw !important;
+                /* Force scrollbars to appear */
+                overflow-x: auto !important;
+                overflow-y: auto !important;
             }
             
             table {
                 position: relative;
                 border-collapse: separate;
                 border-spacing: 0;
+                /* Force table to be wider than container */
+                width: auto !important;
+                min-width: 600px !important; /* Ensure it's wider than most phones */
             }
             
             /* Sticky header row */
@@ -804,12 +811,12 @@
         
         <div class="controls">
             <div class="metrics">
-                <a href="median_sale_price.html?v=1756826611" class="metric-btn active">Median Sale Price</a><a href="active_listings.html?v=1756826611" class="metric-btn ">Active Listings</a><a href="weeks_supply.html?v=1756826611" class="metric-btn ">Weeks of Supply</a><a href="homes_sold.html?v=1756826611" class="metric-btn ">Homes Sold</a><a href="new_listings.html?v=1756826611" class="metric-btn ">New Listings</a><a href="median_days_on_market.html?v=1756826611" class="metric-btn ">Days on Market</a><a href="pending_sales.html?v=1756826611" class="metric-btn ">Pending Sales</a><a href="off_market_in_2_weeks.html?v=1756826611" class="metric-btn ">Off Market in 2 Weeks</a><a href="median_days_to_close.html?v=1756826611" class="metric-btn ">Days to Close</a><a href="sale_to_list_ratio.html?v=1756826611" class="metric-btn ">Sale to List Ratio</a><a href="pct_listings_w__price_drops.html?v=1756826611" class="metric-btn ">Price Drops</a><a href="age_of_inventory.html?v=1756826611" class="metric-btn ">Age of Inventory</a>
+                <a href="median_sale_price.html?v=1756827375" class="metric-btn active">Median Sale Price</a><a href="active_listings.html?v=1756827375" class="metric-btn ">Active Listings</a><a href="weeks_supply.html?v=1756827375" class="metric-btn ">Weeks of Supply</a><a href="homes_sold.html?v=1756827375" class="metric-btn ">Homes Sold</a><a href="new_listings.html?v=1756827375" class="metric-btn ">New Listings</a><a href="median_days_on_market.html?v=1756827375" class="metric-btn ">Days on Market</a><a href="pending_sales.html?v=1756827375" class="metric-btn ">Pending Sales</a><a href="off_market_in_2_weeks.html?v=1756827375" class="metric-btn ">Off Market in 2 Weeks</a><a href="median_days_to_close.html?v=1756827375" class="metric-btn ">Days to Close</a><a href="sale_to_list_ratio.html?v=1756827375" class="metric-btn ">Sale to List Ratio</a><a href="pct_listings_w__price_drops.html?v=1756827375" class="metric-btn ">Price Drops</a><a href="age_of_inventory.html?v=1756827375" class="metric-btn ">Age of Inventory</a>
             </div>
             
             <!-- Mobile metric dropdown -->
             <select class="metric-dropdown" id="metricDropdown" onchange="window.location.href=this.value">
-                <option value="median_sale_price.html?v=1756826611" selected>Median Sale Price</option><option value="active_listings.html?v=1756826611" >Active Listings</option><option value="weeks_supply.html?v=1756826611" >Weeks of Supply</option><option value="homes_sold.html?v=1756826611" >Homes Sold</option><option value="new_listings.html?v=1756826611" >New Listings</option><option value="median_days_on_market.html?v=1756826611" >Days on Market</option><option value="pending_sales.html?v=1756826611" >Pending Sales</option><option value="off_market_in_2_weeks.html?v=1756826611" >Off Market in 2 Weeks</option><option value="median_days_to_close.html?v=1756826611" >Days to Close</option><option value="sale_to_list_ratio.html?v=1756826611" >Sale to List Ratio</option><option value="pct_listings_w__price_drops.html?v=1756826611" >Price Drops</option><option value="age_of_inventory.html?v=1756826611" >Age of Inventory</option>
+                <option value="median_sale_price.html?v=1756827375" selected>Median Sale Price</option><option value="active_listings.html?v=1756827375" >Active Listings</option><option value="weeks_supply.html?v=1756827375" >Weeks of Supply</option><option value="homes_sold.html?v=1756827375" >Homes Sold</option><option value="new_listings.html?v=1756827375" >New Listings</option><option value="median_days_on_market.html?v=1756827375" >Days on Market</option><option value="pending_sales.html?v=1756827375" >Pending Sales</option><option value="off_market_in_2_weeks.html?v=1756827375" >Off Market in 2 Weeks</option><option value="median_days_to_close.html?v=1756827375" >Days to Close</option><option value="sale_to_list_ratio.html?v=1756827375" >Sale to List Ratio</option><option value="pct_listings_w__price_drops.html?v=1756827375" >Price Drops</option><option value="age_of_inventory.html?v=1756827375" >Age of Inventory</option>
             </select>
             
             <div class="filter">
@@ -10077,7 +10084,7 @@
     <div class="footer">
         <strong>Data:</strong> Redfin weekly housing market data | <strong>Updated:</strong> August 24, 2025 | <strong>Methodology:</strong> Based on rolling 4-week windows<br>
         <a href="https://www.home-economics.us">Home Economics</a><br>
-        <small style="color: #999;">Version: 1756826611 | Generated: 2025-09-02 11:23:31</small>
+        <small style="color: #999;">Version: 1756827375 | Generated: 2025-09-02 11:36:15</small>
     </div>
     
     <!-- Chart Panel VERSION 2.0 WITH SCROLLBAR -->

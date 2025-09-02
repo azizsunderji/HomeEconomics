@@ -1242,10 +1242,10 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
         }}
         
         @media (max-width: 768px) {{
-            /* Mobile: Reset layout for freeze panes */
+            /* Mobile: Allow natural scrolling in iframe */
             html {{ 
                 width: 100%;
-                overflow: hidden;
+                overflow: visible; /* Don't block scrolling */
             }}
             
             body {{ 
@@ -1254,10 +1254,9 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
                 padding: 0;
                 width: 100%;
                 height: 100vh;
-                overflow: hidden;
+                overflow: visible; /* Don't block scrolling */
                 display: flex;
                 flex-direction: column;
-            }}
             th {{ font-size: 10px; }}
             td {{ font-size: 11px; padding: 4px 6px; }}
             
@@ -1336,18 +1335,26 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
             
             /* FREEZE PANES LAYOUT FOR MOBILE */
             
-            /* Table container becomes scrollable */
+            /* Table container becomes scrollable - FIXED for iframe */
             .table-container {{
                 position: relative;
-                overflow: auto;
+                overflow: auto !important; /* Force scrolling */
                 -webkit-overflow-scrolling: touch;
                 height: calc(100vh - 150px); /* Account for header */
+                width: 100vw !important; /* Full viewport width */
+                max-width: 100vw !important;
+                /* Force scrollbars to appear */
+                overflow-x: auto !important;
+                overflow-y: auto !important;
             }}
             
             table {{
                 position: relative;
                 border-collapse: separate;
                 border-spacing: 0;
+                /* Force table to be wider than container */
+                width: auto !important;
+                min-width: 600px !important; /* Ensure it's wider than most phones */
             }}
             
             /* Sticky header row */
