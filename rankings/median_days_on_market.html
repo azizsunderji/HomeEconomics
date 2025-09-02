@@ -624,35 +624,40 @@
                 display: none !important;
             }
             
-            /* Make table container use remaining space */
+            /* Make table container use remaining space with horizontal scroll */
             .table-container {
                 flex: 1;
                 overflow-y: auto !important;
-                overflow-x: hidden !important;
+                overflow-x: auto !important; /* Allow horizontal scroll for table */
                 padding: 5px !important;
                 height: auto !important;
                 min-height: 0;
+                -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
             }
             
-            /* Ensure table is visible */
+            /* Let table be its natural width */
             table {
-                width: 100% !important;
+                width: auto !important; /* Don't force 100% - let it be wide */
+                min-width: 100%; /* But at least fill the container */
             }
             
-            /* Make panel full-screen on mobile */
+            /* Make panel full-screen on mobile - absolute positioning */
             .chart-panel {
+                position: fixed !important; /* Force fixed positioning */
                 width: 100%;
                 height: 100vh !important;
                 max-height: 100vh !important;
                 top: 0 !important;
                 bottom: 0 !important;
-                right: -100%;
+                left: 100%; /* Start off-screen to the right */
+                right: auto !important;
                 border: none !important;
-                z-index: 10000 !important;
+                z-index: 99999 !important; /* Very high z-index */
+                background: #F6F7F3 !important; /* Ensure opaque background */
             }
             
             .chart-panel.open {
-                right: 0;
+                left: 0 !important; /* Slide in from right */
             }
             
             .chart-panel-content {
@@ -687,7 +692,7 @@
         
         <div class="controls">
             <div class="metrics">
-                <a href="median_sale_price.html?v=1756775762" class="metric-btn ">Median Sale Price</a><a href="active_listings.html?v=1756775762" class="metric-btn ">Active Listings</a><a href="weeks_supply.html?v=1756775762" class="metric-btn ">Weeks of Supply</a><a href="homes_sold.html?v=1756775762" class="metric-btn ">Homes Sold</a><a href="new_listings.html?v=1756775762" class="metric-btn ">New Listings</a><a href="median_days_on_market.html?v=1756775762" class="metric-btn active">Days on Market</a><a href="pending_sales.html?v=1756775762" class="metric-btn ">Pending Sales</a><a href="off_market_in_2_weeks.html?v=1756775762" class="metric-btn ">Off Market in 2 Weeks</a><a href="median_days_to_close.html?v=1756775762" class="metric-btn ">Days to Close</a><a href="sale_to_list_ratio.html?v=1756775762" class="metric-btn ">Sale to List Ratio</a><a href="pct_listings_w__price_drops.html?v=1756775762" class="metric-btn ">Price Drops</a><a href="age_of_inventory.html?v=1756775762" class="metric-btn ">Age of Inventory</a>
+                <a href="median_sale_price.html?v=1756777742" class="metric-btn ">Median Sale Price</a><a href="active_listings.html?v=1756777742" class="metric-btn ">Active Listings</a><a href="weeks_supply.html?v=1756777742" class="metric-btn ">Weeks of Supply</a><a href="homes_sold.html?v=1756777742" class="metric-btn ">Homes Sold</a><a href="new_listings.html?v=1756777742" class="metric-btn ">New Listings</a><a href="median_days_on_market.html?v=1756777742" class="metric-btn active">Days on Market</a><a href="pending_sales.html?v=1756777742" class="metric-btn ">Pending Sales</a><a href="off_market_in_2_weeks.html?v=1756777742" class="metric-btn ">Off Market in 2 Weeks</a><a href="median_days_to_close.html?v=1756777742" class="metric-btn ">Days to Close</a><a href="sale_to_list_ratio.html?v=1756777742" class="metric-btn ">Sale to List Ratio</a><a href="pct_listings_w__price_drops.html?v=1756777742" class="metric-btn ">Price Drops</a><a href="age_of_inventory.html?v=1756777742" class="metric-btn ">Age of Inventory</a>
             </div>
             
             <div class="filter">
@@ -9955,7 +9960,7 @@
     <div class="footer">
         <strong>Data:</strong> Redfin weekly housing market data | <strong>Updated:</strong> August 24, 2025 | <strong>Methodology:</strong> Based on rolling 4-week windows<br>
         <a href="https://www.home-economics.us">Home Economics</a><br>
-        <small style="color: #999;">Version: 1756775762 | Generated: 2025-09-01 21:16:02</small>
+        <small style="color: #999;">Version: 1756777742 | Generated: 2025-09-01 21:49:02</small>
     </div>
     
     <!-- Chart Panel VERSION 2.0 WITH SCROLLBAR -->

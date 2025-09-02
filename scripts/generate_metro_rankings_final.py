@@ -1298,35 +1298,40 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
                 display: none !important;
             }}
             
-            /* Make table container use remaining space */
+            /* Make table container use remaining space with horizontal scroll */
             .table-container {{
                 flex: 1;
                 overflow-y: auto !important;
-                overflow-x: hidden !important;
+                overflow-x: auto !important; /* Allow horizontal scroll for table */
                 padding: 5px !important;
                 height: auto !important;
                 min-height: 0;
+                -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
             }}
             
-            /* Ensure table is visible */
+            /* Let table be its natural width */
             table {{
-                width: 100% !important;
+                width: auto !important; /* Don't force 100% - let it be wide */
+                min-width: 100%; /* But at least fill the container */
             }}
             
-            /* Make panel full-screen on mobile */
+            /* Make panel full-screen on mobile - absolute positioning */
             .chart-panel {{
+                position: fixed !important; /* Force fixed positioning */
                 width: 100%;
                 height: 100vh !important;
                 max-height: 100vh !important;
                 top: 0 !important;
                 bottom: 0 !important;
-                right: -100%;
+                left: 100%; /* Start off-screen to the right */
+                right: auto !important;
                 border: none !important;
-                z-index: 10000 !important;
+                z-index: 99999 !important; /* Very high z-index */
+                background: #F6F7F3 !important; /* Ensure opaque background */
             }}
             
             .chart-panel.open {{
-                right: 0;
+                left: 0 !important; /* Slide in from right */
             }}
             
             .chart-panel-content {{
