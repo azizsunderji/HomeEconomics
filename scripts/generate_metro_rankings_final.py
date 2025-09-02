@@ -1457,7 +1457,7 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
             
             .chart-panel-content {{
                 flex: 1;
-                padding: 50px 10px 20px 10px; /* Less top padding, less side padding */
+                padding: 45px 0 20px 0; /* Much less top padding, NO side padding */
                 overflow-y: auto;
                 -webkit-overflow-scrolling: touch;
                 background: #F6F7F3;
@@ -1465,18 +1465,19 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
                 flex-direction: column;
                 align-items: center; /* Center horizontally */
                 justify-content: flex-start; /* Start from top */
+                width: 100%; /* Full width */
             }}
             
-            /* Charts properly sized and centered */
+            /* Charts properly sized and TRULY centered */
             .chart-image {{
-                width: 95%; /* Use more width */
-                max-width: 340px; /* Slightly bigger */
+                width: 100%; /* Full width */
+                max-width: 360px; /* Reasonable max */
                 height: auto;
                 display: block;
-                margin: 5px auto; /* Less vertical margin */
+                margin: 0 auto 10px auto; /* No top margin, auto for centering */
                 border: none; /* NO border */
-                position: relative;
-                left: 0; /* Ensure no left offset */
+                padding: 0 15px; /* Add padding instead of margin */
+                box-sizing: border-box; /* Include padding in width */
             }}
         }}
     </style>
