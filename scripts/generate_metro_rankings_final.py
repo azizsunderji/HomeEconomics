@@ -1242,21 +1242,24 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
         }}
         
         @media (max-width: 768px) {{
-            /* Mobile: Allow natural scrolling in iframe */
-            html {{ 
+            /* BACK TO BASICS - Simple scrollable table */
+            * {{
+                -webkit-overflow-scrolling: touch !important;
+            }}
+            
+            html, body {{ 
+                margin: 0;
+                padding: 0;
+                overflow: auto;
                 width: 100%;
-                overflow: visible; /* Don't block scrolling */
+                height: 100%;
             }}
             
             body {{ 
                 font-size: 11px;
-                margin: 0;
-                padding: 0;
-                width: 100%;
-                height: 100vh;
-                overflow: visible; /* Don't block scrolling */
-                display: flex;
-                flex-direction: column;
+                display: block;
+            }}
+            
             th {{ font-size: 10px; }}
             td {{ font-size: 11px; padding: 4px 6px; }}
             
@@ -1333,95 +1336,48 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
                 flex-shrink: 0;
             }}
             
-            /* FREEZE PANES LAYOUT FOR MOBILE */
+            /* SIMPLE SCROLLABLE TABLE */
             
-            /* Table container - KEY: Don't set width, let it be natural */
+            /* Wrapper div for horizontal scroll */
             .table-container {{
-                position: relative;
-                overflow-x: scroll !important; /* FORCE horizontal scroll */
-                overflow-y: auto !important;
+                width: 100%;
+                overflow-x: auto !important;
+                overflow-y: visible;
                 -webkit-overflow-scrolling: touch;
-                height: calc(100vh - 150px);
-                /* NO WIDTH SET - this is crucial! Container stays within parent */
-                /* Container will be as wide as the iframe (100%) */
-                /* Table inside will be wider, creating scroll */
+                padding: 0;
+                margin: 0;
             }}
             
+            /* Table must be wider than container */
             table {{
-                position: relative;
-                border-collapse: separate;
-                border-spacing: 0;
-                /* Table MUST be wider than container to create scroll */
-                /* 25px (rank) + 100px (metro) + 65px * 8 columns = 645px minimum */
-                width: 650px !important; /* Fixed width wider than any phone */
-                display: table !important; /* Ensure it behaves as a table */
+                width: 700px; /* Fixed width, wider than phones */
+                border-collapse: collapse;
             }}
             
-            /* Sticky header row */
-            thead th {{
-                position: sticky;
-                top: 0;
-                z-index: 10;
-                background: white;
-                border-bottom: 2px solid #0BB4FF;
-                padding: 6px 4px;
-                font-size: 10px;
-            }}
-            
-            /* Sticky first column (rank) */
-            tbody td:first-child,
-            thead th:first-child {{
-                position: sticky;
-                left: 0;
-                z-index: 9;
-                background: white;
-                width: 25px !important; /* Narrow rank column */
-                min-width: 25px !important;
-                max-width: 25px !important;
-                text-align: center;
-                padding: 4px 2px;
-            }}
-            
-            /* Sticky second column (metro) */
-            tbody td:nth-child(2),
-            thead th:nth-child(2) {{
-                position: sticky;
-                left: 25px; /* Width of first column */
-                z-index: 9;
-                background: white;
-                width: 100px !important; /* Narrower metro column */
-                min-width: 100px !important;
-                max-width: 100px !important;
-                padding: 4px 6px;
-                overflow: hidden;
-                text-overflow: ellipsis;
+            /* Simple column widths */
+            th, td {{
+                padding: 6px;
+                border: 1px solid #e0e0e0;
                 white-space: nowrap;
             }}
             
-            /* Corner cells need higher z-index */
-            thead th:first-child {{
-                z-index: 11;
-            }}
-            thead th:nth-child(2) {{
-                z-index: 11;
+            th:first-child, td:first-child {{
+                width: 30px;
+                text-align: center;
             }}
             
-            /* Data columns */
-            th:nth-child(n+3), td:nth-child(n+3) {{
-                min-width: 65px;
-                padding: 4px 6px;
-                text-align: right;
+            th:nth-child(2), td:nth-child(2) {{
+                width: 120px;
+                text-align: left;
             }}
             
-            /* Add borders for clarity */
-            tbody td {{
-                border-right: 1px solid #f0f0f0;
-                border-bottom: 1px solid #f0f0f0;
-            }}
-            
-            /* Frozen columns get stronger border */
-            td:nth-child(2) {{
-                border-right: 2px solid #DADFCE !important;
+            /* Sticky header for vertical scroll */
+            thead th {{
+                position: sticky;
+                top: 0;
+                background: white;
+                z-index: 10;
+                border-bottom: 2px solid #0BB4FF;
             }}
             
             /* Chart panel - simple overlay */
