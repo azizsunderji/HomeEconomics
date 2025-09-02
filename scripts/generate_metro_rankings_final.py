@@ -1446,7 +1446,7 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
                 display: block;
             }}
             
-            /* Chart panel as centered modal */
+            /* Chart panel as centered modal - COMPACT */
             .chart-panel {{
                 display: none;
                 position: fixed;
@@ -1454,18 +1454,17 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
                 left: 50%;
                 transform: translate(-50%, -50%);
                 width: 90%;
-                height: 70vh;
-                max-height: 500px;
+                height: auto; /* Let content determine height */
+                max-height: 80vh; /* Maximum height */
                 background: white;
                 z-index: 9999;
                 border-radius: 12px;
                 box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-                overflow: hidden;
+                overflow: visible; /* Allow content to show */
             }}
             
             .chart-panel.open {{
-                display: flex;
-                flex-direction: column;
+                display: block; /* Simple block, not flex */
             }}
             
             /* Close button - ONLY inside panel, not global */
@@ -1487,23 +1486,33 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
                 z-index: 10;
             }}
             
-            /* Close button */
+            /* Close button - VISIBLE */
             .chart-panel .chart-panel-close {{
                 position: absolute !important;
                 top: 10px !important;
                 right: 10px !important;
                 z-index: 10001 !important;
+                width: 40px !important;
+                height: 40px !important;
+                background: #0BB4FF !important;
+                color: white !important;
+                border: none !important;
+                border-radius: 50% !important;
+                font-size: 24px !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                cursor: pointer !important;
             }}
             
             .chart-panel-content {{
-                flex: 1;
-                overflow-y: auto;
+                max-height: 70vh; /* Limit height */
+                overflow-y: auto !important; /* Force scrolling */
+                overflow-x: hidden;
                 -webkit-overflow-scrolling: touch;
                 background: #F6F7F3; /* Cream background */
-                padding: 40px 20px; /* Simple padding */
-                display: flex;
-                flex-direction: column;
-                align-items: center;
+                padding: 50px 15px 20px 15px; /* Top padding for close button */
+                text-align: center;
             }}
             
             /* Simple chart centering in modal */
@@ -1515,6 +1524,11 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
                 margin: 10px auto; /* Simple auto margins */
                 border: none;
                 /* No transform needed - modal handles centering */
+            }}
+            
+            /* Hide scroll indicator on mobile modal */
+            .scroll-indicator {{
+                display: none !important;
             }}
         }}
     </style>
