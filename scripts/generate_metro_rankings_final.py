@@ -1430,18 +1430,20 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
                 transform: translateZ(0); /* Force GPU layer */
             }}
             
-            /* Chart panel - simple overlay */
+            /* Chart panel - shorter height for better UX */
             .chart-panel {{
                 position: fixed;
-                top: 0;
+                top: 10px; /* Small gap from top */
                 right: -100%;
                 width: 100%;
-                height: 100vh;
+                height: calc(100vh - 60px); /* Shorter than viewport */
                 background: white;
                 z-index: 9999;
                 transition: right 0.3s ease;
                 display: flex;
                 flex-direction: column;
+                border-radius: 10px 0 0 10px; /* Rounded left corners */
+                box-shadow: -2px 0 10px rgba(0,0,0,0.1); /* Subtle shadow */
             }}
             
             .chart-panel.open {{
@@ -1483,21 +1485,24 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
                 bottom: 0;
                 overflow-y: auto;
                 -webkit-overflow-scrolling: touch;
-                background: #F6F7F3;
-                padding: 40px 0;
+                background: #F6F7F3; /* Cream background */
+                padding: 50px 20px; /* Good padding for buffer */
             }}
             
-            /* CENTER charts with absolute positioning */
+            /* Charts smaller and perfectly centered */
             .chart-image {{
                 position: relative;
                 display: block;
-                width: 90%;
-                max-width: 350px;
+                width: 85%; /* Smaller - was 90% */
+                max-width: 320px; /* Smaller max width */
                 height: auto;
-                margin: 0 auto;
+                margin: 0 auto 15px auto;
                 left: 50%;
                 transform: translateX(-50%);
                 border: none;
+                background: #F6F7F3; /* Match cream background */
+                padding: 10px; /* Add padding for buffer effect */
+                box-sizing: border-box;
             }}
         }}
     </style>
