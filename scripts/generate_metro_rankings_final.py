@@ -1455,29 +1455,35 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
                 z-index: 10;
             }}
             
+            /* Move close button out of the way */
+            .chart-panel .chart-panel-close {{
+                position: fixed !important; /* Fixed instead of absolute */
+                top: 10px !important;
+                right: 10px !important;
+                z-index: 10001 !important; /* Higher z-index */
+            }}
+            
             .chart-panel-content {{
                 flex: 1;
-                padding: 45px 0 20px 0; /* Much less top padding, NO side padding */
+                padding: 20px 15px; /* Much less padding all around */
                 overflow-y: auto;
                 -webkit-overflow-scrolling: touch;
                 background: #F6F7F3;
-                display: flex;
-                flex-direction: column;
-                align-items: center; /* Center horizontally */
-                justify-content: flex-start; /* Start from top */
-                width: 100%; /* Full width */
+                /* Remove flex, use standard block */
+                display: block;
+                text-align: center; /* Center content */
+                width: 100%;
             }}
             
-            /* Charts properly sized and TRULY centered */
+            /* Charts - simplify completely */
             .chart-image {{
-                width: 100%; /* Full width */
-                max-width: 360px; /* Reasonable max */
+                width: calc(100% - 20px); /* Account for some margin */
+                max-width: none; /* Remove max-width constraint */
                 height: auto;
-                display: block;
-                margin: 0 auto 10px auto; /* No top margin, auto for centering */
-                border: none; /* NO border */
-                padding: 0 15px; /* Add padding instead of margin */
-                box-sizing: border-box; /* Include padding in width */
+                display: inline-block; /* Inline-block for centering */
+                margin: 10px auto;
+                border: none;
+                padding: 0;
             }}
         }}
     </style>
