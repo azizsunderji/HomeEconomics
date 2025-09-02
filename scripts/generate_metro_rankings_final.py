@@ -1298,21 +1298,27 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
                 display: none !important;
             }}
             
-            /* Make table container use remaining space with horizontal scroll */
+            /* Make table container scrollable both ways */
             .table-container {{
                 flex: 1;
-                overflow-y: auto !important;
-                overflow-x: auto !important; /* Allow horizontal scroll for table */
+                overflow: auto !important; /* Both directions */
+                -webkit-overflow-scrolling: touch !important; /* iOS smooth scroll */
                 padding: 5px !important;
                 height: auto !important;
                 min-height: 0;
-                -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+                position: relative !important;
             }}
             
-            /* Let table be its natural width */
+            /* Force table to maintain its width */
             table {{
-                width: auto !important; /* Don't force 100% - let it be wide */
-                min-width: 100%; /* But at least fill the container */
+                width: max-content !important; /* Natural width of content */
+                min-width: 600px !important; /* Force minimum width to ensure scroll */
+                white-space: nowrap !important; /* Prevent text wrapping */
+            }}
+            
+            /* Prevent cell content from wrapping */
+            td, th {{
+                white-space: nowrap !important;
             }}
             
             /* Make panel full-screen on mobile - absolute positioning */
@@ -1341,11 +1347,15 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
                 -webkit-overflow-scrolling: touch;
             }}
             
-            /* Ensure charts fit mobile width */
+            /* Scale charts to fit mobile screen properly */
             .chart-image {{
-                width: 100% !important;
-                max-width: 100% !important;
+                width: calc(100% - 20px) !important; /* Leave margin on sides */
+                max-width: calc(100% - 20px) !important;
                 height: auto !important;
+                max-height: 70vh !important; /* Limit height so close button visible */
+                object-fit: contain !important; /* Scale down if needed */
+                margin: 10px auto !important;
+                display: block !important;
             }}
             
             .table-container.panel-open {{
