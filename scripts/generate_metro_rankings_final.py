@@ -966,15 +966,7 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
             text-decoration: underline;
         }}
         
-        td.metro:hover::after {{
-            content: "View chart →";
-            position: absolute;
-            right: -85px;
-            color: #0BB4FF;
-            font-size: 11px;
-            font-weight: normal;
-            opacity: 0.8;
-        }}
+        /* Removed 'View chart' text - cleaner interface */
         
         /* Click hint for first metro */
         .click-hint {{
@@ -1277,18 +1269,41 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
                 margin-bottom: 8px;
             }}
             
-            /* Hide search and summary to save space */
-            #searchBox, .filter label, .summary-box {{
+            /* Show search on mobile but hide summary */
+            .summary-box {{
                 display: none !important;
             }}
             
-            /* Simplify controls - left-aligned with reasonable widths */
+            /* Style search box for mobile */
+            #searchBox {{
+                width: 100% !important;
+                padding: 10px 14px !important;
+                font-size: 14px !important;
+                border: 1px solid #DADFCE !important;
+                border-radius: 4px !important;
+                margin-bottom: 10px !important;
+                margin-right: 0 !important;
+                display: block !important;
+            }}
+            
+            .filter label {{
+                display: none !important; /* Hide the 'Show:' label */
+            }}
+            
+            /* Simplify controls - full width for search */
             .controls {{
                 margin-bottom: 12px;
                 display: flex;
                 flex-direction: column;
                 gap: 10px;
-                align-items: flex-start; /* Left align */
+                align-items: stretch; /* Full width for search */
+            }}
+            
+            /* Group search and market filter */
+            .filter {{
+                display: flex !important;
+                flex-direction: column !important;
+                gap: 10px !important;
             }}
             
             /* Hide metric buttons on mobile */
@@ -1346,13 +1361,14 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
                 overflow: hidden;
             }}
             
-            /* Table container - let it scroll naturally */
+            /* Table container - limited height for better mobile experience */
             .table-container {{
                 width: 100%;
-                height: calc(100vh - 120px); /* Account for header */
-                overflow-y: scroll;
+                max-height: calc(100vh - 240px); /* Account for header, search, filters */
+                overflow-y: auto;
                 -webkit-overflow-scrolling: touch;
                 position: relative;
+                flex: 1;
             }}
             
             /* Table fills container width */
