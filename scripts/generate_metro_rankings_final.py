@@ -1242,20 +1242,21 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
         }}
         
         @media (max-width: 768px) {{
-            /* Mobile: Force the entire document to be wider than viewport */
+            /* Mobile: Reset layout for freeze panes */
             html {{ 
-                min-width: 800px !important; /* Force horizontal scroll in iframe */
-                width: 800px !important;
+                width: 100%;
+                overflow: hidden;
             }}
             
             body {{ 
                 font-size: 11px;
                 margin: 0;
                 padding: 0;
-                min-width: 800px !important;
-                width: 800px !important;
-                overflow: visible !important;
-                display: block !important;
+                width: 100%;
+                height: 100vh;
+                overflow: hidden;
+                display: flex;
+                flex-direction: column;
             }}
             th {{ font-size: 10px; }}
             td {{ font-size: 11px; padding: 4px 6px; }}
@@ -1328,51 +1329,92 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
                 background-size: 20px;
             }}
             
-            /* Everything inherits the 800px width */
+            /* Fixed header stays in place */
             .fixed-header {{
-                width: 100%;
+                flex-shrink: 0;
             }}
             
+            /* FREEZE PANES LAYOUT FOR MOBILE */
+            
+            /* Table container becomes scrollable */
             .table-container {{
-                width: 100%;
-                overflow: visible; /* No container scrolling needed */
+                position: relative;
+                overflow: auto;
+                -webkit-overflow-scrolling: touch;
+                height: calc(100vh - 150px); /* Account for header */
             }}
             
-            /* Table fills the available width */
             table {{
-                width: 100%;
-                table-layout: auto; /* Let columns size naturally */
+                position: relative;
+                border-collapse: separate;
+                border-spacing: 0;
             }}
             
-            /* Sticky table header on mobile - FIXED */
-            thead {{
-                position: sticky;
-                top: 0; /* Stick to top of scrollable area */
-                z-index: 100; /* Higher z-index */
-                background: white;
-            }}
-            
-            /* Ensure header stays on top and visible */
-            thead tr {{
-                background: white;
-            }}
-            
+            /* Sticky header row */
             thead th {{
-                background: white;
-                padding: 8px 6px;
-                border-bottom: 2px solid #0BB4FF; /* Brand blue accent */
                 position: sticky;
-                top: 0; /* Each th also sticky */
-                z-index: 101;
+                top: 0;
+                z-index: 10;
+                background: white;
+                border-bottom: 2px solid #0BB4FF;
+                padding: 6px 4px;
+                font-size: 10px;
             }}
             
-            /* Ensure minimum column widths for readability */
-            th, td {{ 
-                white-space: nowrap; /* Prevent wrapping */
-                min-width: 60px; /* Minimum width for all columns */
+            /* Sticky first column (rank) */
+            tbody td:first-child,
+            thead th:first-child {{
+                position: sticky;
+                left: 0;
+                z-index: 9;
+                background: white;
+                width: 25px !important; /* Narrow rank column */
+                min-width: 25px !important;
+                max-width: 25px !important;
+                text-align: center;
+                padding: 4px 2px;
             }}
-            th:nth-child(2), td:nth-child(2) {{ 
-                min-width: 150px; /* Metro name needs more space */
+            
+            /* Sticky second column (metro) */
+            tbody td:nth-child(2),
+            thead th:nth-child(2) {{
+                position: sticky;
+                left: 25px; /* Width of first column */
+                z-index: 9;
+                background: white;
+                width: 100px !important; /* Narrower metro column */
+                min-width: 100px !important;
+                max-width: 100px !important;
+                padding: 4px 6px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }}
+            
+            /* Corner cells need higher z-index */
+            thead th:first-child {{
+                z-index: 11;
+            }}
+            thead th:nth-child(2) {{
+                z-index: 11;
+            }}
+            
+            /* Data columns */
+            th:nth-child(n+3), td:nth-child(n+3) {{
+                min-width: 65px;
+                padding: 4px 6px;
+                text-align: right;
+            }}
+            
+            /* Add borders for clarity */
+            tbody td {{
+                border-right: 1px solid #f0f0f0;
+                border-bottom: 1px solid #f0f0f0;
+            }}
+            
+            /* Frozen columns get stronger border */
+            td:nth-child(2) {{
+                border-right: 2px solid #DADFCE !important;
             }}
             
             /* Chart panel - simple overlay */
