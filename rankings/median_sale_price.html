@@ -557,13 +557,15 @@
         }
         
         @media (max-width: 768px) {
-            /* Basic mobile typography */
+            /* COMPLETELY RESET BODY FOR MOBILE */
             body { 
                 font-size: 11px;
                 margin: 0;
                 padding: 0;
-                overflow: visible !important; /* Allow scrolling on mobile */
-                height: auto !important; /* Remove height constraint */
+                overflow: visible !important;
+                height: auto !important;
+                display: block !important; /* KILL THE FLEX LAYOUT */
+                position: relative;
             }
             th { font-size: 10px; }
             td { font-size: 11px; padding: 4px 6px; }
@@ -612,22 +614,28 @@
                 flex-shrink: 0;
             }
             
-            /* SIMPLE table container - just horizontal scroll */
+            /* ULTRA-SIMPLE table container */
             .table-container {
-                width: 100%;
-                overflow-x: auto !important;
-                overflow-y: visible;
+                overflow-x: auto;
                 -webkit-overflow-scrolling: touch;
-                /* Remove any height constraints */
-                height: auto !important;
-                max-height: none !important;
             }
             
-            /* Table wider than viewport to trigger scroll */
+            /* Force table to be wide with fixed layout */
             table {
-                min-width: 650px;
-                width: 650px; /* Fixed width to ensure scrolling */
+                table-layout: fixed;
+                width: 700px; /* Definitely wider than any phone */
             }
+            
+            /* Set explicit column widths that add up to 700px */
+            th:nth-child(1), td:nth-child(1) { width: 30px; }  /* # */
+            th:nth-child(2), td:nth-child(2) { width: 180px; } /* Metro */
+            th:nth-child(3), td:nth-child(3) { width: 70px; }  /* Value */
+            th:nth-child(4), td:nth-child(4) { width: 70px; }  /* 1m */
+            th:nth-child(5), td:nth-child(5) { width: 70px; }  /* 3m */
+            th:nth-child(6), td:nth-child(6) { width: 70px; }  /* 6m */
+            th:nth-child(7), td:nth-child(7) { width: 70px; }  /* 1y */
+            th:nth-child(8), td:nth-child(8) { width: 70px; }  /* 3y */
+            th:nth-child(9), td:nth-child(9) { width: 70px; }  /* Percentile */
             
             /* Chart panel - simple overlay */
             .chart-panel {
@@ -696,7 +704,7 @@
         
         <div class="controls">
             <div class="metrics">
-                <a href="median_sale_price.html?v=1756821060" class="metric-btn active">Median Sale Price</a><a href="active_listings.html?v=1756821060" class="metric-btn ">Active Listings</a><a href="weeks_supply.html?v=1756821060" class="metric-btn ">Weeks of Supply</a><a href="homes_sold.html?v=1756821060" class="metric-btn ">Homes Sold</a><a href="new_listings.html?v=1756821060" class="metric-btn ">New Listings</a><a href="median_days_on_market.html?v=1756821060" class="metric-btn ">Days on Market</a><a href="pending_sales.html?v=1756821060" class="metric-btn ">Pending Sales</a><a href="off_market_in_2_weeks.html?v=1756821060" class="metric-btn ">Off Market in 2 Weeks</a><a href="median_days_to_close.html?v=1756821060" class="metric-btn ">Days to Close</a><a href="sale_to_list_ratio.html?v=1756821060" class="metric-btn ">Sale to List Ratio</a><a href="pct_listings_w__price_drops.html?v=1756821060" class="metric-btn ">Price Drops</a><a href="age_of_inventory.html?v=1756821060" class="metric-btn ">Age of Inventory</a>
+                <a href="median_sale_price.html?v=1756822225" class="metric-btn active">Median Sale Price</a><a href="active_listings.html?v=1756822225" class="metric-btn ">Active Listings</a><a href="weeks_supply.html?v=1756822225" class="metric-btn ">Weeks of Supply</a><a href="homes_sold.html?v=1756822225" class="metric-btn ">Homes Sold</a><a href="new_listings.html?v=1756822225" class="metric-btn ">New Listings</a><a href="median_days_on_market.html?v=1756822225" class="metric-btn ">Days on Market</a><a href="pending_sales.html?v=1756822225" class="metric-btn ">Pending Sales</a><a href="off_market_in_2_weeks.html?v=1756822225" class="metric-btn ">Off Market in 2 Weeks</a><a href="median_days_to_close.html?v=1756822225" class="metric-btn ">Days to Close</a><a href="sale_to_list_ratio.html?v=1756822225" class="metric-btn ">Sale to List Ratio</a><a href="pct_listings_w__price_drops.html?v=1756822225" class="metric-btn ">Price Drops</a><a href="age_of_inventory.html?v=1756822225" class="metric-btn ">Age of Inventory</a>
             </div>
             
             <div class="filter">
@@ -9964,7 +9972,7 @@
     <div class="footer">
         <strong>Data:</strong> Redfin weekly housing market data | <strong>Updated:</strong> August 24, 2025 | <strong>Methodology:</strong> Based on rolling 4-week windows<br>
         <a href="https://www.home-economics.us">Home Economics</a><br>
-        <small style="color: #999;">Version: 1756821060 | Generated: 2025-09-02 09:51:00</small>
+        <small style="color: #999;">Version: 1756822225 | Generated: 2025-09-02 10:10:25</small>
     </div>
     
     <!-- Chart Panel VERSION 2.0 WITH SCROLLBAR -->

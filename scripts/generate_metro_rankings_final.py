@@ -1231,13 +1231,15 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
         }}
         
         @media (max-width: 768px) {{
-            /* Basic mobile typography */
+            /* COMPLETELY RESET BODY FOR MOBILE */
             body {{ 
                 font-size: 11px;
                 margin: 0;
                 padding: 0;
-                overflow: visible !important; /* Allow scrolling on mobile */
-                height: auto !important; /* Remove height constraint */
+                overflow: visible !important;
+                height: auto !important;
+                display: block !important; /* KILL THE FLEX LAYOUT */
+                position: relative;
             }}
             th {{ font-size: 10px; }}
             td {{ font-size: 11px; padding: 4px 6px; }}
@@ -1286,22 +1288,28 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
                 flex-shrink: 0;
             }}
             
-            /* SIMPLE table container - just horizontal scroll */
+            /* ULTRA-SIMPLE table container */
             .table-container {{
-                width: 100%;
-                overflow-x: auto !important;
-                overflow-y: visible;
+                overflow-x: auto;
                 -webkit-overflow-scrolling: touch;
-                /* Remove any height constraints */
-                height: auto !important;
-                max-height: none !important;
             }}
             
-            /* Table wider than viewport to trigger scroll */
+            /* Force table to be wide with fixed layout */
             table {{
-                min-width: 650px;
-                width: 650px; /* Fixed width to ensure scrolling */
+                table-layout: fixed;
+                width: 700px; /* Definitely wider than any phone */
             }}
+            
+            /* Set explicit column widths that add up to 700px */
+            th:nth-child(1), td:nth-child(1) {{ width: 30px; }}  /* # */
+            th:nth-child(2), td:nth-child(2) {{ width: 180px; }} /* Metro */
+            th:nth-child(3), td:nth-child(3) {{ width: 70px; }}  /* Value */
+            th:nth-child(4), td:nth-child(4) {{ width: 70px; }}  /* 1m */
+            th:nth-child(5), td:nth-child(5) {{ width: 70px; }}  /* 3m */
+            th:nth-child(6), td:nth-child(6) {{ width: 70px; }}  /* 6m */
+            th:nth-child(7), td:nth-child(7) {{ width: 70px; }}  /* 1y */
+            th:nth-child(8), td:nth-child(8) {{ width: 70px; }}  /* 3y */
+            th:nth-child(9), td:nth-child(9) {{ width: 70px; }}  /* Percentile */
             
             /* Chart panel - simple overlay */
             .chart-panel {{
