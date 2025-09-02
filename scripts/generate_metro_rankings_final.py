@@ -1236,53 +1236,45 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
                 font-size: 11px;
                 margin: 0;
                 padding: 0;
-                /* Remove height and overflow constraints that break scrolling */
-                height: auto !important;
-                overflow: visible !important;
             }}
             th {{ font-size: 10px; }}
             td {{ font-size: 11px; padding: 4px 6px; }}
             
             /* Compact header on mobile */
             .fixed-header {{
-                position: relative !important;
-                padding: 10px !important;
-                flex-shrink: 0;
-                max-height: 120px;
-                overflow: hidden;
+                position: sticky;
+                top: 0;
+                background: white;
+                z-index: 100;
+                padding: 10px;
             }}
             
             h1 {{
-                font-size: 16px !important;
-                margin-bottom: 8px !important;
+                font-size: 16px;
+                margin-bottom: 8px;
             }}
             
-            /* Simplify controls on mobile */
+            /* Hide search and summary to save space */
+            #searchBox, .filter label, .summary-box {{
+                display: none !important;
+            }}
+            
+            /* Simplify controls */
             .controls {{
-                margin-bottom: 8px !important;
+                margin-bottom: 8px;
             }}
             
-            /* Hide search box and label on mobile */
-            #searchBox {{
-                display: none !important;
-            }}
-            
-            .filter label {{
-                display: none !important;
-            }}
-            
-            /* Make filter dropdown more prominent */
             #marketFilter {{
-                font-size: 12px !important;
-                padding: 4px !important;
+                font-size: 12px;
+                padding: 4px;
             }}
             
-            /* Horizontal scroll for metric buttons */
+            /* Metric buttons horizontal scroll */
             .metrics {{
-                width: 100%;
+                display: flex;
                 overflow-x: auto;
-                overflow-y: hidden;
                 -webkit-overflow-scrolling: touch;
+                gap: 5px;
                 padding-bottom: 5px;
             }}
             
@@ -1292,96 +1284,74 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
                 flex-shrink: 0;
             }}
             
-            /* Hide summary box on mobile to save space */
-            .summary-box {{
-                display: none !important;
-            }}
-            
-            /* Make table container properly scrollable */
+            /* SIMPLE table container - just horizontal scroll */
             .table-container {{
-                /* Remove flex constraints */
-                display: block !important;
-                width: 100% !important;
-                height: calc(100vh - 150px) !important; /* Fixed height for scrolling */
-                overflow: scroll !important; /* Force both scrollbars */
-                -webkit-overflow-scrolling: touch !important;
-                padding: 0 !important;
-                margin: 0 !important;
-                position: relative !important;
+                width: 100%;
+                overflow-x: auto;
+                overflow-y: visible;
+                -webkit-overflow-scrolling: touch;
             }}
             
-            /* Force table width for horizontal scroll */
+            /* Table wider than viewport to trigger scroll */
             table {{
-                width: 700px !important; /* Fixed width wider than viewport */
-                table-layout: fixed !important;
+                min-width: 650px;
             }}
             
-            /* Keep content from wrapping */
-            td, th {{
-                white-space: nowrap !important;
-                overflow: hidden !important;
-                text-overflow: ellipsis !important;
-            }}
-            
-            /* Full-screen panel with visible close button */
+            /* Chart panel - simple overlay */
             .chart-panel {{
-                position: fixed !important;
-                width: 100% !important;
-                height: 100vh !important;
-                top: 0 !important;
-                left: 100% !important;
-                background: white !important; /* White background for contrast */
-                z-index: 99999 !important;
-                transition: left 0.3s ease !important;
+                position: fixed;
+                top: 0;
+                right: -100%;
+                width: 100%;
+                height: 100vh;
+                background: white;
+                z-index: 9999;
+                transition: right 0.3s ease;
+                display: flex;
+                flex-direction: column;
             }}
             
             .chart-panel.open {{
-                left: 0 !important;
+                right: 0;
             }}
             
-            /* Make close button VERY visible on mobile */
-            .chart-panel-close {{
-                position: fixed !important; /* Fixed position */
-                top: 10px !important;
-                right: 10px !important;
-                width: 50px !important; /* Larger on mobile */
-                height: 50px !important;
-                background: #0BB4FF !important; /* Blue background */
-                color: white !important;
-                font-size: 30px !important; /* Large X */
-                border-radius: 50% !important;
-                z-index: 100000 !important; /* Above everything */
-                display: flex !important;
-                align-items: center !important;
-                justify-content: center !important;
-                box-shadow: 0 2px 10px rgba(0,0,0,0.3) !important;
+            /* Close button - ONLY inside panel, not global */
+            .chart-panel .chart-panel-close {{
+                position: absolute;
+                top: 15px;
+                right: 15px;
+                width: 40px;
+                height: 40px;
+                background: #0BB4FF;
+                color: white;
+                font-size: 24px;
+                border-radius: 50%;
+                border: none;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+                z-index: 10;
             }}
             
             .chart-panel-content {{
-                height: 100vh !important;
-                padding: 70px 5px 20px 5px !important; /* Top padding for close button */
-                overflow-y: auto !important;
+                flex: 1;
+                padding: 60px 15px 20px 15px;
+                overflow-y: auto;
                 -webkit-overflow-scrolling: touch;
-                background: #F6F7F3 !important;
+                background: #F6F7F3;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
             }}
             
-            /* Make charts use full width on mobile */
+            /* Charts centered and full width */
             .chart-image {{
-                width: 100% !important;
-                max-width: 100% !important;
-                height: auto !important;
-                display: block !important;
-                margin: 0 0 20px 0 !important;
-            }}
-            
-            .table-container.panel-open {{
-                margin-right: 0;
-            }}
-            
-            /* Fix rendering issues on mobile */
-            tbody {{
-                will-change: transform;
-                transform: translateZ(0);
+                width: 100%;
+                max-width: 100%;
+                height: auto;
+                display: block;
+                margin: 0 auto 20px auto;
             }}
         }}
     </style>
