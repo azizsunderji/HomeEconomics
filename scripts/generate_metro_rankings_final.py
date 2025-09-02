@@ -1402,12 +1402,18 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
                 font-weight: bold;
             }}
             
-            /* Sticky header for vertical scroll */
+            /* Sticky header for vertical scroll - FIXED */
+            thead {{
+                position: sticky !important;
+                top: 0 !important;
+                z-index: 100 !important;
+            }}
+            
             thead th {{
-                position: sticky;
-                top: 0;
-                background: white;
-                z-index: 100;
+                position: sticky !important;
+                top: 0 !important;
+                background: white !important;
+                z-index: 100 !important;
                 border-bottom: 2px solid #0BB4FF;
                 padding: 10px 6px;
             }}
@@ -1451,7 +1457,7 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
             
             .chart-panel-content {{
                 flex: 1;
-                padding: 60px 20px 20px 20px; /* More balanced padding */
+                padding: 50px 10px 20px 10px; /* Less top padding, less side padding */
                 overflow-y: auto;
                 -webkit-overflow-scrolling: touch;
                 background: #F6F7F3;
@@ -1463,12 +1469,14 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
             
             /* Charts properly sized and centered */
             .chart-image {{
-                width: 90%; /* Slightly smaller */
-                max-width: 320px; /* Smaller max width for better fit */
+                width: 95%; /* Use more width */
+                max-width: 340px; /* Slightly bigger */
                 height: auto;
                 display: block;
-                margin: 10px auto; /* Center with auto margins */
+                margin: 5px auto; /* Less vertical margin */
                 border: none; /* NO border */
+                position: relative;
+                left: 0; /* Ensure no left offset */
             }}
         }}
     </style>
