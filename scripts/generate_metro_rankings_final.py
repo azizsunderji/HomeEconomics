@@ -1430,24 +1430,42 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
                 transform: translateZ(0); /* Force GPU layer */
             }}
             
-            /* Chart panel - shorter height for better UX */
-            .chart-panel {{
+            /* MODAL APPROACH - Opaque overlay background */
+            .modal-overlay {{
+                display: none;
                 position: fixed;
-                top: 10px; /* Small gap from top */
-                right: -100%;
-                width: 100%;
-                height: calc(100vh - 60px); /* Shorter than viewport */
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: #F6F7F3; /* Opaque cream background */
+                z-index: 9998;
+            }}
+            
+            .modal-overlay.open {{
+                display: block;
+            }}
+            
+            /* Chart panel as centered modal */
+            .chart-panel {{
+                display: none;
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                width: 90%;
+                height: 70vh;
+                max-height: 500px;
                 background: white;
                 z-index: 9999;
-                transition: right 0.3s ease;
-                display: flex;
-                flex-direction: column;
-                border-radius: 10px 0 0 10px; /* Rounded left corners */
-                box-shadow: -2px 0 10px rgba(0,0,0,0.1); /* Subtle shadow */
+                border-radius: 12px;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+                overflow: hidden;
             }}
             
             .chart-panel.open {{
-                right: 0;
+                display: flex;
+                flex-direction: column;
             }}
             
             /* Close button - ONLY inside panel, not global */
@@ -1478,29 +1496,25 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
             }}
             
             .chart-panel-content {{
-                position: absolute;
-                top: 0;
-                left: 0;
-                right: 0;
-                bottom: 0;
+                flex: 1;
                 overflow-y: auto;
                 -webkit-overflow-scrolling: touch;
                 background: #F6F7F3; /* Cream background */
-                padding: 50px 20px; /* Good padding for buffer */
+                padding: 40px 20px; /* Simple padding */
+                display: flex;
+                flex-direction: column;
+                align-items: center;
             }}
             
-            /* Charts smaller and perfectly centered */
+            /* Simple chart centering in modal */
             .chart-image {{
-                position: relative;
                 display: block;
-                width: 85%; /* Smaller size creates natural buffer */
-                max-width: 320px; /* Smaller max width */
+                width: 85%; /* Creates natural buffer */
+                max-width: 320px;
                 height: auto;
-                margin: 0 auto 15px auto;
-                left: 50%;
-                transform: translateX(-50%);
+                margin: 10px auto; /* Simple auto margins */
                 border: none;
-                /* No padding needed - cream background provides buffer */
+                /* No transform needed - modal handles centering */
             }}
         }}
     </style>
@@ -1617,7 +1631,10 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
         <small style="color: #999;">Version: {version} | Generated: {time.strftime('%Y-%m-%d %H:%M:%S')}</small>
     </div>
     
-    <!-- Chart Panel VERSION 2.0 WITH SCROLLBAR -->
+    <!-- Modal Overlay for mobile -->
+    <div class="modal-overlay" id="modalOverlay" onclick="closeChartPanel()"></div>
+    
+    <!-- Chart Panel VERSION 3.0 MODAL -->
     <div class="chart-panel" id="chartPanel">
         <button class="chart-panel-close" onclick="closeChartPanel()">×</button>
         <div class="chart-panel-content">
@@ -1982,8 +1999,9 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
             document.getElementById('chartImage').classList.remove('loaded');
             document.getElementById('chartError').classList.remove('active');
             
-            // Open panel
+            // Open panel and overlay (on mobile)
             document.getElementById('chartPanel').classList.add('open');
+            document.getElementById('modalOverlay').classList.add('open');
             document.querySelector('.table-container').classList.add('panel-open');
             
             // Construct chart URL - using mobile charts (higher res)
@@ -2034,6 +2052,7 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
         
         function closeChartPanel() {{
             document.getElementById('chartPanel').classList.remove('open');
+            document.getElementById('modalOverlay').classList.remove('open');
             document.querySelector('.table-container').classList.remove('panel-open');
             document.getElementById('scrollIndicator').classList.remove('visible');
             currentChartMetro = null;
