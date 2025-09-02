@@ -1234,12 +1234,11 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
             /* Basic mobile typography */
             body {{ 
                 font-size: 11px;
-                display: flex;
-                flex-direction: column;
-                height: 100vh;
                 margin: 0;
                 padding: 0;
-                overflow: hidden;
+                /* Remove height and overflow constraints that break scrolling */
+                height: auto !important;
+                overflow: visible !important;
             }}
             th {{ font-size: 10px; }}
             td {{ font-size: 11px; padding: 4px 6px; }}
@@ -1298,64 +1297,81 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
                 display: none !important;
             }}
             
-            /* Make table container scrollable both ways */
+            /* Make table container properly scrollable */
             .table-container {{
-                flex: 1;
-                overflow: auto !important; /* Both directions */
-                -webkit-overflow-scrolling: touch !important; /* iOS smooth scroll */
-                padding: 5px !important;
-                height: auto !important;
-                min-height: 0;
+                /* Remove flex constraints */
+                display: block !important;
+                width: 100% !important;
+                height: calc(100vh - 150px) !important; /* Fixed height for scrolling */
+                overflow: scroll !important; /* Force both scrollbars */
+                -webkit-overflow-scrolling: touch !important;
+                padding: 0 !important;
+                margin: 0 !important;
                 position: relative !important;
             }}
             
-            /* Force table to maintain its width */
+            /* Force table width for horizontal scroll */
             table {{
-                width: max-content !important; /* Natural width of content */
-                min-width: 600px !important; /* Force minimum width to ensure scroll */
-                white-space: nowrap !important; /* Prevent text wrapping */
+                width: 700px !important; /* Fixed width wider than viewport */
+                table-layout: fixed !important;
             }}
             
-            /* Prevent cell content from wrapping */
+            /* Keep content from wrapping */
             td, th {{
                 white-space: nowrap !important;
+                overflow: hidden !important;
+                text-overflow: ellipsis !important;
             }}
             
-            /* Make panel full-screen on mobile - absolute positioning */
+            /* Full-screen panel with visible close button */
             .chart-panel {{
-                position: fixed !important; /* Force fixed positioning */
-                width: 100%;
+                position: fixed !important;
+                width: 100% !important;
                 height: 100vh !important;
-                max-height: 100vh !important;
                 top: 0 !important;
-                bottom: 0 !important;
-                left: 100%; /* Start off-screen to the right */
-                right: auto !important;
-                border: none !important;
-                z-index: 99999 !important; /* Very high z-index */
-                background: #F6F7F3 !important; /* Ensure opaque background */
+                left: 100% !important;
+                background: white !important; /* White background for contrast */
+                z-index: 99999 !important;
+                transition: left 0.3s ease !important;
             }}
             
             .chart-panel.open {{
-                left: 0 !important; /* Slide in from right */
+                left: 0 !important;
+            }}
+            
+            /* Make close button VERY visible on mobile */
+            .chart-panel-close {{
+                position: fixed !important; /* Fixed position */
+                top: 10px !important;
+                right: 10px !important;
+                width: 50px !important; /* Larger on mobile */
+                height: 50px !important;
+                background: #0BB4FF !important; /* Blue background */
+                color: white !important;
+                font-size: 30px !important; /* Large X */
+                border-radius: 50% !important;
+                z-index: 100000 !important; /* Above everything */
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.3) !important;
             }}
             
             .chart-panel-content {{
-                height: calc(100vh - 50px) !important;
-                padding: 45px 10px 30px 10px !important;
+                height: 100vh !important;
+                padding: 70px 5px 20px 5px !important; /* Top padding for close button */
                 overflow-y: auto !important;
                 -webkit-overflow-scrolling: touch;
+                background: #F6F7F3 !important;
             }}
             
-            /* Scale charts to fit mobile screen properly */
+            /* Make charts use full width on mobile */
             .chart-image {{
-                width: calc(100% - 20px) !important; /* Leave margin on sides */
-                max-width: calc(100% - 20px) !important;
+                width: 100% !important;
+                max-width: 100% !important;
                 height: auto !important;
-                max-height: 70vh !important; /* Limit height so close button visible */
-                object-fit: contain !important; /* Scale down if needed */
-                margin: 10px auto !important;
                 display: block !important;
+                margin: 0 0 20px 0 !important;
             }}
             
             .table-container.panel-open {{
