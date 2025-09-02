@@ -1354,8 +1354,7 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
                 border-collapse: collapse;
             }}
             
-            /* Hide all columns except rank (1), metro (2), and 1Y change (7) */
-            th:nth-child(3), td:nth-child(3), /* Current value */
+            /* Hide all columns except rank (1), metro (2), current (3), and 1Y (7) */
             th:nth-child(4), td:nth-child(4), /* 1M */
             th:nth-child(5), td:nth-child(5), /* 3M */
             th:nth-child(6), td:nth-child(6), /* 6M */
@@ -1371,27 +1370,35 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
                 white-space: nowrap;
             }}
             
-            /* Rank column - narrow */
+            /* Rank column - very narrow */
             th:first-child, td:first-child {{
-                width: 35px;
+                width: 25px;
                 text-align: center;
                 font-weight: bold;
+                padding: 6px 2px;
             }}
             
-            /* Metro column - takes most space */
+            /* Metro column - flexible width */
             th:nth-child(2), td:nth-child(2) {{
                 text-align: left;
-                padding-left: 10px;
+                padding: 6px 8px;
                 /* Allow wrapping for long metro names */
                 white-space: normal;
                 word-break: break-word;
             }}
             
+            /* Current value column */
+            th:nth-child(3), td:nth-child(3) {{
+                width: 80px;
+                text-align: right;
+                padding: 6px 4px;
+            }}
+            
             /* 1Y change column */
             th:nth-child(7), td:nth-child(7) {{
-                width: 70px;
+                width: 60px;
                 text-align: right;
-                padding-right: 10px;
+                padding: 6px 8px;
                 font-weight: bold;
             }}
             
@@ -1444,24 +1451,24 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
             
             .chart-panel-content {{
                 flex: 1;
-                padding: 60px 10px 20px 10px; /* Less padding on sides */
+                padding: 60px 20px 20px 20px; /* More balanced padding */
                 overflow-y: auto;
                 -webkit-overflow-scrolling: touch;
                 background: #F6F7F3;
                 display: flex;
                 flex-direction: column;
-                align-items: center;
+                align-items: center; /* Center horizontally */
                 justify-content: flex-start; /* Start from top */
             }}
             
             /* Charts properly sized and centered */
             .chart-image {{
-                width: calc(100% - 20px); /* Account for padding */
-                max-width: 350px; /* Reasonable max width for mobile */
+                width: 90%; /* Slightly smaller */
+                max-width: 320px; /* Smaller max width for better fit */
                 height: auto;
                 display: block;
-                margin: 0 auto 15px auto;
-                border: 1px solid #DADFCE; /* Add subtle border */
+                margin: 10px auto; /* Center with auto margins */
+                border: none; /* NO border */
             }}
         }}
     </style>
@@ -1550,9 +1557,7 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
         
         html += f'                <td class="rank">{i}</td>\n'
         metro_url = format_metro_for_url(row["metro_name"])
-        # Add click hint only for the first row
-        click_hint = '<span class="click-hint">Click for chart</span>' if i == 1 else ''
-        html += f'                <td class="metro" data-metro-url="{metro_url}" onclick="showChart(this)">{row["metro_name"]}{click_hint}</td>\n'
+        html += f'                <td class="metro" data-metro-url="{metro_url}" onclick="showChart(this)">{row["metro_name"]}</td>\n'
         
         # Current value with class for targeting
         multiplier = metric_info.get('multiplier', 1)
