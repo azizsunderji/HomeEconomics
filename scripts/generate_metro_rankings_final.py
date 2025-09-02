@@ -1335,26 +1335,26 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
             
             /* FREEZE PANES LAYOUT FOR MOBILE */
             
-            /* Table container becomes scrollable - FIXED for iframe */
+            /* Table container - KEY: Don't set width, let it be natural */
             .table-container {{
                 position: relative;
-                overflow: auto !important; /* Force scrolling */
-                -webkit-overflow-scrolling: touch;
-                height: calc(100vh - 150px); /* Account for header */
-                width: 100vw !important; /* Full viewport width */
-                max-width: 100vw !important;
-                /* Force scrollbars to appear */
-                overflow-x: auto !important;
+                overflow-x: scroll !important; /* FORCE horizontal scroll */
                 overflow-y: auto !important;
+                -webkit-overflow-scrolling: touch;
+                height: calc(100vh - 150px);
+                /* NO WIDTH SET - this is crucial! Container stays within parent */
+                /* Container will be as wide as the iframe (100%) */
+                /* Table inside will be wider, creating scroll */
             }}
             
             table {{
                 position: relative;
                 border-collapse: separate;
                 border-spacing: 0;
-                /* Force table to be wider than container */
-                width: auto !important;
-                min-width: 600px !important; /* Ensure it's wider than most phones */
+                /* Table MUST be wider than container to create scroll */
+                /* 25px (rank) + 100px (metro) + 65px * 8 columns = 645px minimum */
+                width: 650px !important; /* Fixed width wider than any phone */
+                display: table !important; /* Ensure it behaves as a table */
             }}
             
             /* Sticky header row */
