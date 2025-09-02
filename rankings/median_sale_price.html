@@ -562,6 +562,8 @@
                 font-size: 11px;
                 margin: 0;
                 padding: 0;
+                overflow: visible !important; /* Allow scrolling on mobile */
+                height: auto !important; /* Remove height constraint */
             }
             th { font-size: 10px; }
             td { font-size: 11px; padding: 4px 6px; }
@@ -613,14 +615,18 @@
             /* SIMPLE table container - just horizontal scroll */
             .table-container {
                 width: 100%;
-                overflow-x: auto;
+                overflow-x: auto !important;
                 overflow-y: visible;
                 -webkit-overflow-scrolling: touch;
+                /* Remove any height constraints */
+                height: auto !important;
+                max-height: none !important;
             }
             
             /* Table wider than viewport to trigger scroll */
             table {
                 min-width: 650px;
+                width: 650px; /* Fixed width to ensure scrolling */
             }
             
             /* Chart panel - simple overlay */
@@ -662,22 +668,24 @@
             
             .chart-panel-content {
                 flex: 1;
-                padding: 60px 15px 20px 15px;
+                padding: 60px 10px 20px 10px; /* Less padding on sides */
                 overflow-y: auto;
                 -webkit-overflow-scrolling: touch;
                 background: #F6F7F3;
                 display: flex;
                 flex-direction: column;
                 align-items: center;
+                justify-content: flex-start; /* Start from top */
             }
             
-            /* Charts centered and full width */
+            /* Charts properly sized and centered */
             .chart-image {
-                width: 100%;
-                max-width: 100%;
+                width: calc(100% - 20px); /* Account for padding */
+                max-width: 350px; /* Reasonable max width for mobile */
                 height: auto;
                 display: block;
-                margin: 0 auto 20px auto;
+                margin: 0 auto 15px auto;
+                border: 1px solid #DADFCE; /* Add subtle border */
             }
         }
     </style>
@@ -688,7 +696,7 @@
         
         <div class="controls">
             <div class="metrics">
-                <a href="median_sale_price.html?v=1756818530" class="metric-btn active">Median Sale Price</a><a href="active_listings.html?v=1756818530" class="metric-btn ">Active Listings</a><a href="weeks_supply.html?v=1756818530" class="metric-btn ">Weeks of Supply</a><a href="homes_sold.html?v=1756818530" class="metric-btn ">Homes Sold</a><a href="new_listings.html?v=1756818530" class="metric-btn ">New Listings</a><a href="median_days_on_market.html?v=1756818530" class="metric-btn ">Days on Market</a><a href="pending_sales.html?v=1756818530" class="metric-btn ">Pending Sales</a><a href="off_market_in_2_weeks.html?v=1756818530" class="metric-btn ">Off Market in 2 Weeks</a><a href="median_days_to_close.html?v=1756818530" class="metric-btn ">Days to Close</a><a href="sale_to_list_ratio.html?v=1756818530" class="metric-btn ">Sale to List Ratio</a><a href="pct_listings_w__price_drops.html?v=1756818530" class="metric-btn ">Price Drops</a><a href="age_of_inventory.html?v=1756818530" class="metric-btn ">Age of Inventory</a>
+                <a href="median_sale_price.html?v=1756821060" class="metric-btn active">Median Sale Price</a><a href="active_listings.html?v=1756821060" class="metric-btn ">Active Listings</a><a href="weeks_supply.html?v=1756821060" class="metric-btn ">Weeks of Supply</a><a href="homes_sold.html?v=1756821060" class="metric-btn ">Homes Sold</a><a href="new_listings.html?v=1756821060" class="metric-btn ">New Listings</a><a href="median_days_on_market.html?v=1756821060" class="metric-btn ">Days on Market</a><a href="pending_sales.html?v=1756821060" class="metric-btn ">Pending Sales</a><a href="off_market_in_2_weeks.html?v=1756821060" class="metric-btn ">Off Market in 2 Weeks</a><a href="median_days_to_close.html?v=1756821060" class="metric-btn ">Days to Close</a><a href="sale_to_list_ratio.html?v=1756821060" class="metric-btn ">Sale to List Ratio</a><a href="pct_listings_w__price_drops.html?v=1756821060" class="metric-btn ">Price Drops</a><a href="age_of_inventory.html?v=1756821060" class="metric-btn ">Age of Inventory</a>
             </div>
             
             <div class="filter">
@@ -9956,7 +9964,7 @@
     <div class="footer">
         <strong>Data:</strong> Redfin weekly housing market data | <strong>Updated:</strong> August 24, 2025 | <strong>Methodology:</strong> Based on rolling 4-week windows<br>
         <a href="https://www.home-economics.us">Home Economics</a><br>
-        <small style="color: #999;">Version: 1756818530 | Generated: 2025-09-02 09:08:50</small>
+        <small style="color: #999;">Version: 1756821060 | Generated: 2025-09-02 09:51:00</small>
     </div>
     
     <!-- Chart Panel VERSION 2.0 WITH SCROLLBAR -->

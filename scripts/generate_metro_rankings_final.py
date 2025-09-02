@@ -1236,6 +1236,8 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
                 font-size: 11px;
                 margin: 0;
                 padding: 0;
+                overflow: visible !important; /* Allow scrolling on mobile */
+                height: auto !important; /* Remove height constraint */
             }}
             th {{ font-size: 10px; }}
             td {{ font-size: 11px; padding: 4px 6px; }}
@@ -1287,14 +1289,18 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
             /* SIMPLE table container - just horizontal scroll */
             .table-container {{
                 width: 100%;
-                overflow-x: auto;
+                overflow-x: auto !important;
                 overflow-y: visible;
                 -webkit-overflow-scrolling: touch;
+                /* Remove any height constraints */
+                height: auto !important;
+                max-height: none !important;
             }}
             
             /* Table wider than viewport to trigger scroll */
             table {{
                 min-width: 650px;
+                width: 650px; /* Fixed width to ensure scrolling */
             }}
             
             /* Chart panel - simple overlay */
@@ -1336,22 +1342,24 @@ def generate_html_page(rankings_data, metric_key, metric_info, all_metrics, date
             
             .chart-panel-content {{
                 flex: 1;
-                padding: 60px 15px 20px 15px;
+                padding: 60px 10px 20px 10px; /* Less padding on sides */
                 overflow-y: auto;
                 -webkit-overflow-scrolling: touch;
                 background: #F6F7F3;
                 display: flex;
                 flex-direction: column;
                 align-items: center;
+                justify-content: flex-start; /* Start from top */
             }}
             
-            /* Charts centered and full width */
+            /* Charts properly sized and centered */
             .chart-image {{
-                width: 100%;
-                max-width: 100%;
+                width: calc(100% - 20px); /* Account for padding */
+                max-width: 350px; /* Reasonable max width for mobile */
                 height: auto;
                 display: block;
-                margin: 0 auto 20px auto;
+                margin: 0 auto 15px auto;
+                border: 1px solid #DADFCE; /* Add subtle border */
             }}
         }}
     </style>
