@@ -244,13 +244,13 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
     gs = gridspec.GridSpec(
         3,
         2,
-        height_ratios=[1.1, 0.68, 0.68],  # Compressed histograms even more
+        height_ratios=[1.1, 0.64, 0.64],  # Reduced histogram heights to create more space
         width_ratios=[1, 1],
         top=0.84,  # Reduced further for better fit
         bottom=0.09,  # Slightly more bottom margin
         left=0.11,
         right=0.89,
-        hspace=0.58,  # Increased vertical spacing further
+        hspace=0.62,  # Increased vertical spacing to push histograms down
         wspace=0.32   # Slightly more horizontal space
     )
 
@@ -445,8 +445,8 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
         # Homes Sold should always show integers
         ax_history.yaxis.set_major_formatter(FuncFormatter(lambda x, p: f'{int(x):,}'))
     elif unit_label == "$":
-        # Format median sale price as thousands
-        ax_history.yaxis.set_major_formatter(FuncFormatter(lambda x, p: f'${int(x/1000)}K' if x >= 1000 else f'${int(x)}'))
+        # Format median sale price as millions for high-value markets
+        ax_history.yaxis.set_major_formatter(FuncFormatter(lambda x, p: f'${x/1000000:.1f}M' if x >= 1000000 else f'${int(x/1000)}K' if x >= 1000 else f'${int(x)}'))
     elif max_value > 5000 and unit_label != "$":
         # Format with 'k' for thousands for large numbers
         ax_history.yaxis.set_major_formatter(FuncFormatter(format_thousands))
@@ -549,8 +549,13 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
             # Sale to List Ratio: always show as percentage with 1 decimal
             label = f"{val*100:.1f}%"
         elif unit_label == "$":
-            # Median Sale Price should show as thousands
-            label = f"\${int(val/1000)}K" if val >= 1000 else f"\${int(val)}"
+            # Median Sale Price should show as millions for high values
+            if val >= 1000000:
+                label = f"${val/1000000:.1f}M"
+            elif val >= 1000:
+                label = f"${int(val/1000)}K"
+            else:
+                label = f"${int(val)}"
         elif column_name == "PERCENT_ACTIVE_LISTINGS_WITH_PRICE_DROPS":
             # This metric is stored as decimal (0.25 = 25%)
             label = f"{val*100:.{decimals}f}%"
@@ -622,8 +627,8 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
         # Generic percentage handling
         ax_ranking.yaxis.set_major_formatter(FuncFormatter(lambda x, p: f'{x*100:.0f}%'))
     elif unit_label == "$":
-        # Format median sale price y-axis as thousands
-        ax_ranking.yaxis.set_major_formatter(FuncFormatter(lambda x, p: f'${int(x/1000)}K' if x >= 1000 else f'${int(x)}'))
+        # Format median sale price y-axis as millions for high-value markets
+        ax_ranking.yaxis.set_major_formatter(FuncFormatter(lambda x, p: f'${x/1000000:.1f}M' if x >= 1000000 else f'${int(x/1000)}K' if x >= 1000 else f'${int(x)}'))
     elif max(sorted_values) > 5000 and unit_label != "$":
         # Format with 'k' for thousands for large numbers
         ax_ranking.yaxis.set_major_formatter(FuncFormatter(format_thousands))
@@ -875,6 +880,7 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
     # ============================
     ax_hist1 = fig.add_subplot(gs[1, 1])
     ax_hist1.set_facecolor(COLORS["background"])
+    
 
     metro_data_all = df[
         (df["REGION_TYPE_ID"] == -2)
@@ -942,15 +948,24 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
         lower_bound = max(lower_percentile_bound, median_val - 3 * iqr)
         upper_bound = min(upper_percentile_bound, median_val + 3 * iqr)
         
-        # Only slightly expand if target is outside but close
-        if target_value_hist < lower_bound and target_value_hist > lower_percentile_bound * 0.5:
-            lower_bound = target_value_hist - iqr * 0.2
-        if target_value_hist > upper_bound and target_value_hist < upper_percentile_bound * 1.5:
-            upper_bound = target_value_hist + iqr * 0.2
+        # Check if target city is an outlier
+        target_is_outlier = target_value_hist < lower_bound or target_value_hist > upper_bound
+        
+        # If target is an outlier, include it in the data but keep bounds reasonable
+        if target_is_outlier:
+            # Expand bounds just enough to include the target city's bin
+            if target_value_hist < lower_bound:
+                lower_bound = target_value_hist - abs(target_value_hist) * 0.01  # Small padding
+            if target_value_hist > upper_bound:
+                upper_bound = target_value_hist + abs(target_value_hist) * 0.01  # Small padding
 
         values_filtered = values_for_hist[
             (values_for_hist >= lower_bound) & (values_for_hist <= upper_bound)
         ]
+        
+        # Always include the target value in the filtered dataset
+        if target_is_outlier:
+            values_filtered = pd.concat([values_filtered, pd.Series([target_value_hist])])
 
         # Histogram with explicit range
         n_bins = min(50, len(values_filtered.unique()))  # Fewer bins for cleaner look
@@ -970,6 +985,15 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
             patches[target_bin_idx].set_facecolor(COLORS["black"])
             patches[target_bin_idx].set_edgecolor(COLORS["black"])
             patches[target_bin_idx].set_alpha(1.0)
+            
+            # Set minimum height for featured city bar to ensure visibility
+            current_height = patches[target_bin_idx].get_height()
+            # Double the height if it's a single-city bin for visibility
+            if current_height <= 1:
+                patches[target_bin_idx].set_height(2)
+            elif current_height < 2:
+                patches[target_bin_idx].set_height(current_height * 2)
+        
 
         # Percentile
         percentile = (values_for_hist < target_value_hist).sum() / len(values_for_hist) * 100
@@ -1040,7 +1064,7 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
             subtitle_text = f"Current Level, {percentile:.0f}th %ile"
         ax_hist1.text(
             -0.15,  # Moved further left
-            1.01,  # Moved up just a tiny bit
+            1.01,  # Back to original position
             subtitle_text,
             transform=ax_hist1.transAxes,
             fontsize=10,  # Made smaller
@@ -1055,8 +1079,8 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
         
         # Format x-axis based on metric type for first histogram
         if unit_label == "$":
-            # Format as thousands with K for median sale price
-            ax_hist1.xaxis.set_major_formatter(FuncFormatter(lambda x, p: f'\${int(x/1000)}K' if x >= 1000 else f'\${int(x)}'))
+            # Format as millions for high-value markets
+            ax_hist1.xaxis.set_major_formatter(FuncFormatter(lambda x, p: f'${x/1000000:.1f}M' if x >= 1000000 else f'${int(x/1000)}K' if x >= 1000 else f'${int(x)}'))
         elif unit_label == "%" or column_name == "PERCENT_ACTIVE_LISTINGS_WITH_PRICE_DROPS":
             # Format as percentage - data is stored as decimal so multiply by 100
             ax_hist1.xaxis.set_major_formatter(FuncFormatter(lambda x, p: f'{x*100:.0f}%'))
@@ -1081,6 +1105,7 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
     # ============================
     ax_hist2 = fig.add_subplot(gs[2, 1])
     ax_hist2.set_facecolor(COLORS["background"])
+    
 
     three_months_ago = latest_date - timedelta(days=90)
     past_data_all = df[
@@ -1142,15 +1167,24 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
             lower_bound_change = max(lower_percentile, median_change - 3 * iqr_change)
             upper_bound_change = min(upper_percentile, median_change + 3 * iqr_change)
 
-            # Only slightly expand if target is outside but close
-            if target_change < lower_bound_change and target_change > lower_percentile - iqr_change:
-                lower_bound_change = target_change - iqr_change * 0.2
-            if target_change > upper_bound_change and target_change < upper_percentile + iqr_change:
-                upper_bound_change = target_change + iqr_change * 0.2
+            # Check if target city is an outlier
+            target_is_outlier_change = target_change < lower_bound_change or target_change > upper_bound_change
+            
+            # If target is an outlier, include it in the data but keep bounds reasonable
+            if target_is_outlier_change:
+                # Expand bounds just enough to include the target city's bin
+                if target_change < lower_bound_change:
+                    lower_bound_change = target_change - abs(target_change) * 0.01  # Small padding
+                if target_change > upper_bound_change:
+                    upper_bound_change = target_change + abs(target_change) * 0.01  # Small padding
 
             change_values_filtered = change_values[
                 (change_values >= lower_bound_change) & (change_values <= upper_bound_change)
             ]
+            
+            # Always include the target value in the filtered dataset
+            if target_is_outlier_change:
+                change_values_filtered = np.append(change_values_filtered, target_change)
         else:
             change_values_filtered = change_values
             lower_bound_change = change_values.min()
@@ -1178,6 +1212,15 @@ def create_exact_metro_chart(df, metro_name, metric_config, output_filename):
                 patches[target_change_bin_idx].set_facecolor(COLORS["black"])
                 patches[target_change_bin_idx].set_edgecolor(COLORS["black"])
                 patches[target_change_bin_idx].set_alpha(1.0)
+                
+                # Set minimum height for featured city bar to ensure visibility
+                current_height = patches[target_change_bin_idx].get_height()
+                # Double the height if it's a single-city bin for visibility
+                if current_height <= 1:
+                    patches[target_change_bin_idx].set_height(2)
+                elif current_height < 2:
+                    patches[target_change_bin_idx].set_height(current_height * 2)
+            
 
             percentile_change = (change_values < target_change).sum() / len(change_values) * 100
 
