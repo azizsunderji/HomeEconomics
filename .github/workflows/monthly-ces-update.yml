@@ -1,0 +1,92 @@
+name: Monthly CES Data Update
+
+on:
+  # Runs on the 5th of each month at 2:00 AM Eastern (handles EDT/EST)
+  schedule:
+    - cron: "0 6 5 * *"  # 2:00am ET during EDT (UTC-4)
+    - cron: "0 7 5 * *"  # 2:00am ET during EST (UTC-5)
+  workflow_dispatch: {}   # Allow manual trigger for testing
+
+jobs:
+  update-ces-data:
+    runs-on: ubuntu-latest
+    env:
+      TZ: America/New_York
+      BLS_API_KEY: a7d81877b6374d11a6b7e15fa63b5f9b
+      REMOTE_BASE: ${{ secrets.REMOTE_BASE }}
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r ces-viewer/requirements.txt
+      
+      - name: Fetch CES data from BLS API
+        run: |
+          mkdir -p ces-viewer/data
+          python ces-viewer/scripts/fetch_ces_data.py --output ces-viewer/data/ces_data.json
+      
+      - name: Verify data integrity
+        run: |
+          echo "Data file size:"
+          ls -lh ces-viewer/data/ces_data.json
+          echo "Series count:"
+          python -c "import json; data=json.load(open('ces-viewer/data/ces_data.json')); print(f'{len(data[\"series\"])} series loaded')"
+      
+      - name: Install lftp
+        run: sudo apt-get update && sudo apt-get install -y lftp
+      
+      - name: Upload to server via SFTP
+        env:
+          HOST: ${{ secrets.SFTP_HOST }}
+          USER: ${{ secrets.SFTP_USER }}
+          KEY: ${{ secrets.SFTP_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$KEY" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H $HOST >> ~/.ssh/known_hosts 2>/dev/null || true
+          
+          # Upload to /uploads/CES/ (single live version)
+          lftp -e "
+            set sftp:auto-confirm yes;
+            set sftp:connect-program 'ssh -i ~/.ssh/id_rsa';
+            set net:max-retries 3;
+            set net:timeout 60;
+            open -u $USER,dummy sftp://$HOST;
+            mkdir -p ${REMOTE_BASE}/uploads/CES;
+            put ces-viewer/data/ces_data.json -o ${REMOTE_BASE}/uploads/CES/ces_data.json;
+            put ces-viewer/src/ces-viewer.html -o ${REMOTE_BASE}/uploads/CES/index.html;
+            bye
+          " || echo "Upload completed"
+      
+      - name: Generate update report
+        run: |
+          echo "## CES Data Update Report" > summary.md
+          echo "" >> summary.md
+          echo "**Updated:** $(date +'%Y-%m-%d %H:%M %Z')" >> summary.md
+          echo "" >> summary.md
+          echo "### Statistics" >> summary.md
+          python -c "
+          import json
+          data = json.load(open('ces-viewer/data/ces_data.json'))
+          print(f'- Total series: {len(data[\"series\"])}')
+          print(f'- Date range: {data[\"meta\"][\"start_date\"]} to {data[\"meta\"][\"end_date\"]}')
+          print(f'- File size: {len(json.dumps(data)) / 1024 / 1024:.1f} MB')
+          " >> summary.md
+          cat summary.md
+      
+      - name: Upload summary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: update-summary
+          path: summary.md
+          retention-days: 30

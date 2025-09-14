@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CES Employment Data Viewer</title>
+    <script src="https://cdn.plot.ly/plotly-2.34.0.min.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #F6F7F3;
+            color: #3D3733;
+        }
+        
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+        
+        .sidebar {
+            width: 320px;
+            background: white;
+            padding: 20px;
+            overflow-y: auto;
+            box-shadow: 2px 0 4px rgba(0,0,0,0.05);
+            border-right: 1px solid #DADFCE;
+        }
+        
+        .main {
+            flex: 1;
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+        
+        h1 {
+            margin: 0 0 15px 0;
+            font-size: 22px;
+            color: #3D3733;
+        }
+        
+        h2 {
+            margin: 0 0 20px 0;
+            font-size: 18px;
+            color: #3D3733;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            align-items: center;
+        }
+        
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        label {
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        select, button {
+            padding: 8px 12px;
+            border: 1px solid #DADFCE;
+            border-radius: 4px;
+            background: white;
+            color: #3D3733;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        
+        select:hover, button:hover {
+            border-color: #67A275;
+        }
+        
+        button {
+            background: #67A275;
+            color: white;
+            border: none;
+            font-weight: 500;
+        }
+        
+        button:hover {
+            background: #5A8F66;
+        }
+        
+        /* Hierarchy styling */
+        .tree-item {
+            margin: 1px 0;
+            display: flex;
+            align-items: center;
+            padding: 2px 0;
+        }
+        
+        .tree-item input[type="checkbox"] {
+            margin-right: 8px;
+            cursor: pointer;
+        }
+        
+        .tree-item label {
+            cursor: pointer;
+            font-size: 14px;
+            color: #3D3733;
+            text-transform: none;
+            letter-spacing: normal;
+            flex: 1;
+        }
+        
+        /* Supersector level */
+        .level-supersector {
+            font-weight: bold;
+            background: rgba(11, 180, 255, 0.1);
+            padding: 6px 10px;
+            border-left: 4px solid #0BB4FF;
+            margin-top: 8px;
+        }
+        
+        /* Sector level */
+        .level-sector {
+            margin-left: 20px;
+            background: rgba(103, 162, 117, 0.08);
+            padding: 4px 10px;
+            border-left: 3px solid #67A275;
+        }
+        
+        /* Subsector level */
+        .level-subsector {
+            margin-left: 40px;
+            padding: 3px 10px;
+            border-left: 2px solid #FEC439;
+        }
+        
+        /* Industry level */
+        .level-industry {
+            margin-left: 60px;
+            font-size: 0.95em;
+            padding: 2px 10px;
+            border-left: 2px solid #C6DCCB;
+        }
+        
+        .value {
+            font-size: 11px;
+            color: #999;
+            margin-left: auto;
+            padding-left: 10px;
+        }
+        
+        #chart {
+            flex: 1;
+            min-height: 400px;
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+        
+        .error {
+            color: #F4743B;
+            padding: 20px;
+            background: #FBCAB5;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <h1>Employment Data</h1>
+            <div id="hierarchy">
+                <div class="loading">Loading data...</div>
+            </div>
+        </div>
+        
+        <div class="main">
+            <div class="controls">
+                <div class="control-group">
+                    <label>View</label>
+                    <select id="viewType">
+                        <option value="monthly">Monthly</option>
+                        <option value="quarterly">Quarterly</option>
+                        <option value="annual">Annual</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label>Data Type</label>
+                    <select id="dataType">
+                        <option value="level">Levels</option>
+                        <option value="mom" class="monthly-only">Month-over-month %</option>
+                        <option value="3m" class="monthly-only">3-month change %</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label>Date Range</label>
+                    <select id="dateRange">
+                        <option value="1">1 year</option>
+                        <option value="1.5">18 months</option>
+                        <option value="2">2 years</option>
+                        <option value="3" selected>3 years</option>
+                        <option value="5">5 years</option>
+                        <option value="10">10 years</option>
+                        <option value="all">All available</option>
+                    </select>
+                </div>
+                
+                <button id="clearAll">Clear All</button>
+            </div>
+            
+            <div id="chart"></div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration - this URL will be updated by the GitHub action
+        // For local testing, use relative path; for production, use absolute URL
+        const DATA_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+            ? '../data/ces_data.json' 
+            : 'https://home-economics.us/uploads/CES/ces_data.json';
+        
+        // Brand colors
+        const COLORS = [
+            '#0BB4FF', '#FEC439', '#67A275', '#F4743B',
+            '#C6DCCB', '#FBCAB5', '#DADFCE', '#3D3733'
+        ];
+        
+        // State management
+        let cesData = null;
+        let selectedSeries = new Set();
+        let currentView = 'monthly';
+        let currentDataType = 'level';
+        let currentDateRange = 3;
+        
+        // Load data on startup
+        async function loadData() {
+            try {
+                const response = await fetch(DATA_URL);
+                if (!response.ok) throw new Error('Failed to load data');
+                
+                cesData = await response.json();
+                console.log(`Loaded ${cesData.meta.series_count} series`);
+                
+                buildHierarchy();
+                updateChart();
+            } catch (error) {
+                console.error('Error loading data:', error);
+                document.getElementById('hierarchy').innerHTML = 
+                    `<div class="error">Error loading data: ${error.message}</div>`;
+            }
+        }
+        
+        function buildHierarchy() {
+            if (!cesData) return;
+            
+            const container = document.getElementById('hierarchy');
+            container.innerHTML = '';
+            
+            // Group series by hierarchy
+            const hierarchy = {};
+            
+            cesData.series.forEach(series => {
+                const level = series.level || 'supersector';
+                if (!hierarchy[level]) hierarchy[level] = [];
+                hierarchy[level].push(series);
+            });
+            
+            // Sort and display
+            ['supersector', 'sector', 'subsector', 'industry'].forEach(level => {
+                if (hierarchy[level]) {
+                    hierarchy[level].sort((a, b) => a.name.localeCompare(b.name));
+                    
+                    hierarchy[level].forEach(series => {
+                        const item = createTreeItem(series, level);
+                        container.appendChild(item);
+                    });
+                }
+            });
+        }
+        
+        function createTreeItem(series, level) {
+            const div = document.createElement('div');
+            div.className = `tree-item level-${level}`;
+            
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.id = series.id;
+            checkbox.addEventListener('change', (e) => {
+                if (e.target.checked) {
+                    selectedSeries.add(series.id);
+                } else {
+                    selectedSeries.delete(series.id);
+                }
+                updateChart();
+            });
+            
+            const label = document.createElement('label');
+            label.htmlFor = series.id;
+            label.textContent = series.name;
+            
+            // Get latest value
+            const dates = Object.keys(series.data).sort();
+            if (dates.length > 0) {
+                const latestValue = series.data[dates[dates.length - 1]];
+                const span = document.createElement('span');
+                span.className = 'value';
+                span.textContent = formatNumber(latestValue);
+                label.appendChild(span);
+            }
+            
+            div.appendChild(checkbox);
+            div.appendChild(label);
+            
+            return div;
+        }
+        
+        function formatNumber(num) {
+            if (num >= 1000) {
+                return (num / 1000).toFixed(1) + 'k';
+            }
+            return num.toFixed(0);
+        }
+        
+        function getFilteredDates() {
+            if (!cesData) return [];
+            
+            // Get all dates from first series
+            const allDates = Object.keys(cesData.series[0].data).sort();
+            
+            if (currentDateRange === 'all') {
+                return allDates;
+            }
+            
+            const cutoffDate = new Date();
+            cutoffDate.setFullYear(cutoffDate.getFullYear() - parseFloat(currentDateRange));
+            
+            return allDates.filter(date => new Date(date) >= cutoffDate);
+        }
+        
+        function aggregateData(dates, data, viewType) {
+            if (viewType === 'monthly') {
+                return { dates, values: dates.map(d => data[d] || null) };
+            }
+            
+            const aggregated = { dates: [], values: [] };
+            
+            if (viewType === 'quarterly') {
+                // Group by quarter
+                const quarters = {};
+                dates.forEach(date => {
+                    const d = new Date(date);
+                    const quarter = `${d.getFullYear()}-Q${Math.floor(d.getMonth() / 3) + 1}`;
+                    if (!quarters[quarter]) quarters[quarter] = [];
+                    if (data[date]) quarters[quarter].push(data[date]);
+                });
+                
+                Object.keys(quarters).sort().forEach(q => {
+                    aggregated.dates.push(q);
+                    const avg = quarters[q].reduce((a, b) => a + b, 0) / quarters[q].length;
+                    aggregated.values.push(avg);
+                });
+            } else if (viewType === 'annual') {
+                // Group by year
+                const years = {};
+                dates.forEach(date => {
+                    const year = date.substring(0, 4);
+                    if (!years[year]) years[year] = [];
+                    if (data[date]) years[year].push(data[date]);
+                });
+                
+                Object.keys(years).sort().forEach(y => {
+                    aggregated.dates.push(y);
+                    const avg = years[y].reduce((a, b) => a + b, 0) / years[y].length;
+                    aggregated.values.push(avg);
+                });
+            }
+            
+            return aggregated;
+        }
+        
+        function transformData(values, dataType, allDates, filteredDates) {
+            if (dataType === 'level') return values;
+            
+            // For m/m and 3m changes, we need to use ALL dates to calculate changes
+            // then filter to show only the requested range
+            const transformed = [];
+            
+            if (dataType === 'mom' && currentView === 'monthly') {
+                for (let i = 0; i < filteredDates.length; i++) {
+                    const currentDate = filteredDates[i];
+                    const currentIdx = allDates.indexOf(currentDate);
+                    
+                    if (currentIdx > 0 && values[currentIdx] && values[currentIdx - 1]) {
+                        const change = ((values[currentIdx] - values[currentIdx - 1]) / values[currentIdx - 1]) * 100;
+                        transformed.push(change);
+                    } else {
+                        transformed.push(null);
+                    }
+                }
+            } else if (dataType === '3m' && currentView === 'monthly') {
+                for (let i = 0; i < filteredDates.length; i++) {
+                    const currentDate = filteredDates[i];
+                    const currentIdx = allDates.indexOf(currentDate);
+                    
+                    if (currentIdx >= 3 && values[currentIdx] && values[currentIdx - 3]) {
+                        const change = ((values[currentIdx] - values[currentIdx - 3]) / values[currentIdx - 3]) * 100;
+                        transformed.push(change);
+                    } else {
+                        transformed.push(null);
+                    }
+                }
+            } else {
+                return values;
+            }
+            
+            return transformed;
+        }
+        
+        function updateChart() {
+            if (!cesData || selectedSeries.size === 0) {
+                document.getElementById('chart').innerHTML = 
+                    '<div class="loading">Select series to display</div>';
+                return;
+            }
+            
+            const allDates = Object.keys(cesData.series[0].data).sort();
+            const filteredDates = getFilteredDates();
+            const traces = [];
+            let colorIndex = 0;
+            
+            selectedSeries.forEach(seriesId => {
+                const series = cesData.series.find(s => s.id === seriesId);
+                if (!series) return;
+                
+                // Get data for all dates (for calculations) and filtered dates (for display)
+                const allValues = allDates.map(d => series.data[d] || null);
+                const aggregated = aggregateData(filteredDates, series.data, currentView);
+                
+                // Transform data based on type
+                const transformed = transformData(
+                    allDates.map(d => series.data[d] || null),
+                    currentDataType,
+                    allDates,
+                    filteredDates
+                );
+                
+                traces.push({
+                    x: aggregated.dates,
+                    y: currentDataType === 'level' ? aggregated.values : transformed,
+                    name: series.name,
+                    type: 'bar',
+                    marker: { color: COLORS[colorIndex % COLORS.length] }
+                });
+                
+                colorIndex++;
+            });
+            
+            const layout = {
+                barmode: 'stack',
+                title: '',
+                xaxis: {
+                    title: '',
+                    tickangle: -45
+                },
+                yaxis: {
+                    title: currentDataType === 'level' ? 'Employment (thousands)' : 'Change (%)',
+                    tickformat: currentDataType === 'level' ? ',.0f' : '.1f'
+                },
+                margin: { t: 40, r: 40, b: 100, l: 80 },
+                showlegend: true,
+                legend: {
+                    orientation: 'h',
+                    y: 1.15,
+                    x: 0
+                },
+                paper_bgcolor: 'white',
+                plot_bgcolor: 'white'
+            };
+            
+            const config = {
+                responsive: true,
+                displayModeBar: true,
+                displaylogo: false
+            };
+            
+            Plotly.newPlot('chart', traces, layout, config);
+        }
+        
+        // Event listeners
+        document.getElementById('viewType').addEventListener('change', (e) => {
+            currentView = e.target.value;
+            
+            // Update data type options
+            const dataTypeSelect = document.getElementById('dataType');
+            if (currentView !== 'monthly') {
+                // Hide m/m and 3m options for non-monthly views
+                dataTypeSelect.value = 'level';
+                currentDataType = 'level';
+                Array.from(dataTypeSelect.options).forEach(option => {
+                    if (option.value === 'mom' || option.value === '3m') {
+                        option.style.display = 'none';
+                    }
+                });
+            } else {
+                Array.from(dataTypeSelect.options).forEach(option => {
+                    option.style.display = '';
+                });
+            }
+            
+            updateChart();
+        });
+        
+        document.getElementById('dataType').addEventListener('change', (e) => {
+            currentDataType = e.target.value;
+            updateChart();
+        });
+        
+        document.getElementById('dateRange').addEventListener('change', (e) => {
+            currentDateRange = e.target.value;
+            updateChart();
+        });
+        
+        document.getElementById('clearAll').addEventListener('click', () => {
+            selectedSeries.clear();
+            document.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+                cb.checked = false;
+            });
+            updateChart();
+        });
+        
+        // Initialize
+        loadData();
+    </script>
+</body>
+</html>
