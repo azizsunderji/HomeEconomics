@@ -55,16 +55,16 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H $HOST >> ~/.ssh/known_hosts 2>/dev/null || true
           
-          # Upload to /uploads/CES/ (single live version)
+          # Upload to /wp-content/uploads/reports/uploads/CES/ (single live version)
           lftp -e "
             set sftp:auto-confirm yes;
             set sftp:connect-program 'ssh -i ~/.ssh/id_rsa';
             set net:max-retries 3;
             set net:timeout 60;
             open -u $USER,dummy sftp://$HOST;
-            mkdir -p ${REMOTE_BASE}/uploads/CES;
-            put ces-viewer/data/ces_data.json -o ${REMOTE_BASE}/uploads/CES/ces_data.json;
-            put ces-viewer/src/ces-viewer.html -o ${REMOTE_BASE}/uploads/CES/index.html;
+            mkdir -p ${REMOTE_BASE}/wp-content/uploads/reports/uploads/CES;
+            put ces-viewer/data/ces_data.json -o ${REMOTE_BASE}/wp-content/uploads/reports/uploads/CES/ces_data.json;
+            put ces-viewer/src/ces-viewer.html -o ${REMOTE_BASE}/wp-content/uploads/reports/uploads/CES/index.html;
             bye
           " || echo "Upload completed"
       
