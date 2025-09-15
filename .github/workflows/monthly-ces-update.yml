@@ -29,10 +29,15 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r ces-viewer/requirements.txt
       
-      - name: Fetch CES data from BLS API
+      - name: Prepare CES data
         run: |
-          mkdir -p ces-viewer/data
-          python ces-viewer/scripts/fetch_ces_data.py --output ces-viewer/data/ces_data.json
+          # DEVELOPMENT MODE: Use committed data file, don't fetch from API
+          # TODO: Switch to production mode (uncomment below) when ready
+          echo "DEVELOPMENT MODE: Using stored data file"
+          
+          # PRODUCTION MODE (currently disabled):
+          # mkdir -p ces-viewer/data
+          # python ces-viewer/scripts/fetch_ces_data.py --output ces-viewer/data/ces_data.json
       
       - name: Verify data integrity
         run: |
