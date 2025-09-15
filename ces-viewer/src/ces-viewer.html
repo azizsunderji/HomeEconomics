@@ -175,7 +175,7 @@
             display: block;
         }
         
-        /* Hierarchy levels with clear visual distinction */
+        /* Hierarchy levels with background shading using brand colors */
         .level-total {
             font-weight: bold;
             font-size: 16px;
@@ -183,49 +183,66 @@
             color: white;
             margin: 10px 0;
             border-radius: 4px;
+            padding-left: 12px !important;
         }
         
         .level-total .value { color: rgba(255,255,255,0.8); }
+        .level-total label { color: white; }
         
         .level-major {
             font-weight: 600;
             font-size: 15px;
-            background: rgba(11, 180, 255, 0.12);
-            margin-left: 16px;
+            background: rgba(11, 180, 255, 0.15);
+            margin-left: 0;
             margin-top: 8px;
+            padding-left: 24px !important;
             color: #0A99DB;
-            border-left: 3px solid #0BB4FF;
+            border-radius: 3px;
         }
+        
+        .level-major label { color: #0A99DB; }
         
         .level-supersector {
             font-weight: 500;
             font-size: 14px;
-            background: rgba(103, 162, 117, 0.08);
-            margin-left: 32px;
+            background: #F6F7F3;
+            margin-left: 0;
             margin-top: 6px;
-            color: #67A275;
-            border-left: 2px solid #67A275;
+            padding-left: 36px !important;
+            color: #3D3733;
+            border-radius: 2px;
         }
         
         .level-sector {
             font-weight: normal;
             font-size: 13px;
-            margin-left: 48px;
-            background: rgba(254, 196, 57, 0.06);
-            color: #B8941F;
-            border-left: 2px solid #FEC439;
+            margin-left: 0;
+            padding-left: 48px !important;
+            background: rgba(218, 223, 206, 0.3);
+            color: #3D3733;
+            border-radius: 2px;
         }
         
         .level-subsector {
-            margin-left: 64px;
+            margin-left: 0;
+            padding-left: 60px !important;
             font-size: 12px;
             color: #666;
-            background: rgba(61, 55, 51, 0.03);
-            border-left: 1px solid #DADFCE;
+            background: rgba(218, 223, 206, 0.15);
+            border-radius: 2px;
+        }
+        
+        .level-industry_group {
+            margin-left: 0;
+            padding-left: 72px !important;
+            font-size: 11px;
+            color: #777;
+            background: rgba(246, 247, 243, 0.5);
         }
         
         .level-industry {
-            margin-left: 80px;
+            margin-left: 0;
+            padding-left: 84px !important;
             font-size: 11px;
             color: #888;
             opacity: 0.9;

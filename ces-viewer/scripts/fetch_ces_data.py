@@ -56,6 +56,53 @@ def fetch_from_bls(series_ids: List[str], start_year: int = 2015) -> Dict[str, A
                 
     return {"Results": {"series": []}}
 
+def determine_level_from_id(series_id: str) -> str:
+    """Determine the hierarchy level from series ID structure"""
+    if series_id == "CES0000000001":
+        return "total"
+    elif series_id in ["CES0500000001", "CES0600000001", "CES0700000001", "CES0800000001", "CES9000000001"]:
+        return "major"
+    
+    industry_code = series_id[5:11] if len(series_id) >= 11 else ""
+    
+    if industry_code == "000000":
+        return "supersector"
+    elif industry_code[2:] == "0000":
+        return "sector"
+    elif industry_code[4:] == "00":
+        return "subsector"
+    elif industry_code[5:] == "0":
+        return "industry_group"
+    else:
+        return "industry"
+
+def get_order_from_id(series_id: str) -> int:
+    """Get sort order from series ID"""
+    if series_id == "CES0000000001":
+        return 0
+    elif series_id == "CES0500000001":
+        return 1
+    elif series_id == "CES0600000001":
+        return 2
+    elif series_id == "CES0700000001":
+        return 3
+    elif series_id == "CES0800000001":
+        return 4
+    elif series_id == "CES9000000001":
+        return 100
+    
+    # Extract numeric portion for ordering
+    industry_code = series_id[5:11] if len(series_id) >= 11 else "999999"
+    
+    # Try to convert to int for ordering
+    for i in range(6, 0, -1):
+        try:
+            return int(industry_code[:i])
+        except:
+            continue
+    
+    return 999
+
 def determine_hierarchy_level(series_id: str, all_series_set: set = None) -> Dict[str, Any]:
     """Determine the hierarchy level and parent from series ID
     
@@ -151,8 +198,18 @@ def compress_data(data: Dict) -> Dict:
     
     all_dates = set()
     
-    # First, collect all series IDs to help with parent determination
-    all_series_ids = {s['seriesID'] for s in data.get('Results', {}).get('series', [])}
+    # Load the hierarchy mapping
+    hierarchy_mapping = {}
+    mapping_file = os.path.join(os.path.dirname(__file__), 'ces_complete_hierarchy.json')
+    if os.path.exists(mapping_file):
+        with open(mapping_file, 'r') as f:
+            mapping_data = json.load(f)
+            hierarchy_mapping = mapping_data.get('parent_mapping', {})
+        print(f"Loaded hierarchy mapping with {len(hierarchy_mapping)} entries")
+    else:
+        print("Warning: Hierarchy mapping file not found, using inference")
+        # Fallback to collect all series IDs for inference
+        all_series_ids = {s['seriesID'] for s in data.get('Results', {}).get('series', [])}
     
     for series in data.get('Results', {}).get('series', []):
         series_id = series['seriesID']
@@ -160,8 +217,17 @@ def compress_data(data: Dict) -> Dict:
         # Get series name
         name = INDUSTRY_NAMES.get(series_id, series_id)
         
-        # Determine hierarchy with series set for parent lookup
-        hierarchy_info = determine_hierarchy_level(series_id, all_series_ids)
+        # Use mapping if available, otherwise fall back to inference
+        if hierarchy_mapping:
+            parent = hierarchy_mapping.get(series_id)
+            hierarchy_info = {
+                'parent': parent,
+                'level': determine_level_from_id(series_id),
+                'order': get_order_from_id(series_id)
+            }
+        else:
+            # Fallback to old logic
+            hierarchy_info = determine_hierarchy_level(series_id, all_series_ids)
         
         # Extract and sort data points
         data_points = {}
