@@ -56,17 +56,23 @@ jobs:
           ssh-keyscan -H $HOST >> ~/.ssh/known_hosts 2>/dev/null || true
           
           # Upload to /wp-content/uploads/reports/uploads/CES/ (single live version)
+          echo "Starting upload..."
+          echo "Uploading to: ${REMOTE_BASE}/wp-content/uploads/reports/uploads/CES/"
+          
           lftp -e "
             set sftp:auto-confirm yes;
             set sftp:connect-program 'ssh -i ~/.ssh/id_rsa';
             set net:max-retries 3;
             set net:timeout 60;
+            set net:reconnect-interval-base 5;
             open -u $USER,dummy sftp://$HOST;
             mkdir -p ${REMOTE_BASE}/wp-content/uploads/reports/uploads/CES;
             put ces-viewer/data/ces_data.json -o ${REMOTE_BASE}/wp-content/uploads/reports/uploads/CES/ces_data.json;
             put ces-viewer/src/ces-viewer.html -o ${REMOTE_BASE}/wp-content/uploads/reports/uploads/CES/index.html;
             bye
-          " || echo "Upload completed"
+          "
+          
+          echo "Upload completed with exit code: $?"
       
       - name: Generate update report
         run: |
