@@ -55,15 +55,20 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H $HOST >> ~/.ssh/known_hosts 2>/dev/null || true
           
-          # Upload to /live/ces/ (bypasses WordPress/CDN caching like weekly rankings)
+          # Upload with timestamp-based filenames to force cache invalidation
           echo "Starting upload..."
+          
+          # Generate timestamp for cache busting
+          TIMESTAMP=$(date +%s)
           
           # Create temp directory for upload
           mkdir -p upload_temp
-          cp ces-viewer/data/ces_data.json upload_temp/
-          cp ces-viewer/src/ces-viewer.html upload_temp/index.html
+          cp ces-viewer/data/ces_data.json upload_temp/ces_data_${TIMESTAMP}.json
           
-          # Use mirror like weekly-rankings for proper cache handling
+          # Update HTML to use timestamped data file
+          sed "s|ces_data\.json|ces_data_${TIMESTAMP}.json|g" ces-viewer/src/ces-viewer.html > upload_temp/index.html
+          
+          # Upload with forced overwrite
           lftp -e "
             set sftp:auto-confirm yes;
             set sftp:connect-program 'ssh -i ~/.ssh/id_rsa';
@@ -71,10 +76,12 @@ jobs:
             set net:timeout 60;
             set net:reconnect-interval-base 5;
             open -u $USER,dummy sftp://$HOST;
-            mkdir -p ${REMOTE_BASE}/live/ces;
-            mirror -R --only-newer --delete --parallel=2 --verbose \
-              upload_temp/ \
-              ${REMOTE_BASE}/live/ces/;
+            cd ${REMOTE_BASE}/wp-content/uploads/reports/uploads/CES;
+            put upload_temp/ces_data_${TIMESTAMP}.json;
+            put upload_temp/index.html;
+            rm -f ces_data.json;
+            ln -s ces_data_${TIMESTAMP}.json ces_data.json;
+            ls -la;
             bye
           " || echo "Upload finished with warnings"
           

@@ -252,10 +252,10 @@
         // Configuration with cache-busting
         const CACHE_BUST = Date.now();
         const DATA_URL = window.location.hostname === 'home-economics.us' || window.location.hostname === 'www.home-economics.us'
-            ? `https://home-economics.us/live/ces/ces_data.json?v=${CACHE_BUST}`
+            ? `https://home-economics.us/wp-content/uploads/reports/uploads/CES/ces_data.json?v=${CACHE_BUST}`
             : window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
             ? '../data/ces_data.json'
-            : `https://home-economics.us/live/ces/ces_data.json?v=${CACHE_BUST}`;
+            : `https://home-economics.us/wp-content/uploads/reports/uploads/CES/ces_data.json?v=${CACHE_BUST}`;
         
         // Brand colors
         const COLORS = [
