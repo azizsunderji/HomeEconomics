@@ -57,8 +57,8 @@ jobs:
           
           # Upload to /wp-content/uploads/reports/uploads/CES/ (single live version)
           echo "Starting upload..."
-          echo "Uploading to: ${REMOTE_BASE}/wp-content/uploads/reports/uploads/CES/"
           
+          # Create directories and upload files
           lftp -e "
             set sftp:auto-confirm yes;
             set sftp:connect-program 'ssh -i ~/.ssh/id_rsa';
@@ -66,9 +66,12 @@ jobs:
             set net:timeout 60;
             set net:reconnect-interval-base 5;
             open -u $USER,dummy sftp://$HOST;
-            mkdir -p ${REMOTE_BASE}/wp-content/uploads/reports/uploads/CES;
-            put ces-viewer/data/ces_data.json -o ${REMOTE_BASE}/wp-content/uploads/reports/uploads/CES/ces_data.json;
-            put ces-viewer/src/ces-viewer.html -o ${REMOTE_BASE}/wp-content/uploads/reports/uploads/CES/index.html;
+            cd ${REMOTE_BASE};
+            mkdir -fp wp-content/uploads/reports/uploads/CES;
+            cd wp-content/uploads/reports/uploads/CES;
+            put ces-viewer/data/ces_data.json;
+            put ces-viewer/src/ces-viewer.html -o index.html;
+            ls -la;
             bye
           "
           
