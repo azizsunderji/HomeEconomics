@@ -37,7 +37,7 @@
         }
         
         .sidebar {
-            width: 400px;
+            width: 500px;
             background: white;
             padding: 20px;
             overflow-y: auto;
@@ -117,10 +117,11 @@
             cursor: pointer;
             padding: 4px 8px;
             border-radius: 4px;
-            font-size: 14px;
+            font-size: 12px;
             color: #3D3733;
             text-transform: none;
             letter-spacing: normal;
+            white-space: nowrap;
         }
         
         .tree-item label:hover {
@@ -159,12 +160,32 @@
         
         .tree-item .name {
             flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .select-children {
+            padding: 2px 6px;
+            margin: 0 4px;
+            background: #67A275;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 10px;
+            flex-shrink: 0;
+        }
+        
+        .select-children:hover {
+            background: #5A8F66;
         }
         
         .tree-item .value {
-            font-size: 12px;
-            color: #999;
-            margin-left: 10px;
+            font-size: 11px;
+            color: #3D3733;
+            margin-left: auto;
+            padding-left: 10px;
+            font-weight: 500;
         }
         
         .tree-children {
@@ -307,8 +328,8 @@
                     <label>Data Type</label>
                     <select id="dataType">
                         <option value="level">Levels</option>
-                        <option value="mom" class="monthly-only">Month-over-month %</option>
-                        <option value="3m" class="monthly-only">3-month change %</option>
+                        <option value="mom" class="monthly-only">Month-over-month change</option>
+                        <option value="yoy" class="monthly-only">Year-over-year change</option>
                     </select>
                 </div>
                 
@@ -439,53 +460,71 @@
                 checkbox.addEventListener('change', (e) => {
                     e.stopPropagation();
                     
-                    // Helper function to get all descendant IDs
-                    function getDescendants(seriesId) {
-                        const descendants = [];
-                        const stack = [seriesId];
-                        while (stack.length > 0) {
-                            const currentId = stack.pop();
-                            const children = tree[currentId] || [];
-                            children.forEach(child => {
-                                descendants.push(child.id);
-                                stack.push(child.id);
-                            });
-                        }
-                        return descendants;
-                    }
-                    
                     if (e.target.checked) {
-                        // When checking a parent, select all children
+                        // Just select this series only
                         selectedSeries.add(series.id);
-                        const descendants = getDescendants(series.id);
-                        
-                        if (descendants.length > 0) {
-                            // Has children - add them and remove parent to avoid duplication
-                            descendants.forEach(id => selectedSeries.add(id));
-                            selectedSeries.delete(series.id); // Remove parent to avoid double-counting
-                            
-                            // Update child checkboxes visually
-                            descendants.forEach(id => {
-                                const childCheckbox = document.querySelector(`input[value="${id}"]`);
-                                if (childCheckbox) childCheckbox.checked = true;
-                            });
-                            checkbox.checked = false; // Uncheck parent since children are selected
-                        }
                     } else {
-                        // When unchecking, remove this and all descendants
+                        // Uncheck this series only
                         selectedSeries.delete(series.id);
-                        const descendants = getDescendants(series.id);
-                        descendants.forEach(id => {
-                            selectedSeries.delete(id);
-                            const childCheckbox = document.querySelector(`input[value="${id}"]`);
-                            if (childCheckbox) childCheckbox.checked = false;
-                        });
                     }
                     updateChart();
                 });
                 checkbox.addEventListener('click', (e) => {
                     e.stopPropagation();
                 });
+                
+                // Add "select all children" button for items with children
+                let selectChildrenBtn = null;
+                if (hasChildren) {
+                    selectChildrenBtn = document.createElement('button');
+                    selectChildrenBtn.className = 'select-children';
+                    selectChildrenBtn.innerHTML = '▼';
+                    selectChildrenBtn.title = 'Select all children';
+                    selectChildrenBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        
+                        // Helper function to get all descendant IDs
+                        function getDescendants(seriesId) {
+                            const descendants = [];
+                            const stack = [seriesId];
+                            while (stack.length > 0) {
+                                const currentId = stack.pop();
+                                const children = tree[currentId] || [];
+                                children.forEach(child => {
+                                    descendants.push(child.id);
+                                    stack.push(child.id);
+                                });
+                            }
+                            return descendants;
+                        }
+                        
+                        const descendants = getDescendants(series.id);
+                        
+                        // Toggle all descendants
+                        const allChecked = descendants.every(id => selectedSeries.has(id));
+                        
+                        if (allChecked) {
+                            // Uncheck all descendants
+                            descendants.forEach(id => {
+                                selectedSeries.delete(id);
+                                const childCheckbox = document.querySelector(`input[value="${id}"]`);
+                                if (childCheckbox) childCheckbox.checked = false;
+                            });
+                        } else {
+                            // Check all descendants
+                            descendants.forEach(id => {
+                                selectedSeries.add(id);
+                                const childCheckbox = document.querySelector(`input[value="${id}"]`);
+                                if (childCheckbox) childCheckbox.checked = true;
+                            });
+                        }
+                        
+                        // Make sure parent checkbox reflects state
+                        checkbox.checked = false; // Parent itself is not selected when children are
+                        updateChart();
+                    });
+                }
                 
                 const nameSpan = document.createElement('span');
                 nameSpan.className = 'name';
@@ -502,6 +541,9 @@
                 
                 label.appendChild(toggle);
                 label.appendChild(checkbox);
+                if (selectChildrenBtn) {
+                    label.appendChild(selectChildrenBtn);
+                }
                 label.appendChild(nameSpan);
                 label.appendChild(valueSpan);
                 
@@ -570,6 +612,9 @@
             return allDates.filter(date => new Date(date) >= cutoffDate);
         }
         
+        let isolatedSeries = null; // Track which series is isolated
+        let originalSelectedSeries = new Set(); // Store original selection
+        
         function updateChart() {
             if (!cesData || selectedSeries.size === 0) {
                 document.getElementById('chart').innerHTML = 
@@ -579,9 +624,9 @@
             
             const filteredDates = getFilteredDates();
             const traces = [];
-            let colorIndex = 0;
+            const seriesArray = Array.from(selectedSeries);
             
-            selectedSeries.forEach(seriesId => {
+            seriesArray.forEach((seriesId, index) => {
                 const series = seriesById[seriesId];
                 if (!series || !series.data) return;
                 
@@ -592,13 +637,28 @@
                 let x = filteredDates;
                 let y = values;
                 
+                // Handle different data types (absolute changes vs levels)
+                if (currentDataType === 'mom') {
+                    // Month-over-month absolute change
+                    y = values.map((val, i) => {
+                        if (i === 0) return null;
+                        return val - values[i - 1];
+                    });
+                } else if (currentDataType === 'yoy') {
+                    // Year-over-year absolute change
+                    y = values.map((val, i) => {
+                        if (i < 12) return null;
+                        return val - values[i - 12];
+                    });
+                }
+                
                 if (currentView === 'annual') {
                     // Aggregate by year
                     const yearData = {};
                     filteredDates.forEach((date, i) => {
                         const year = date.substring(0, 4);
                         if (!yearData[year]) yearData[year] = [];
-                        if (values[i]) yearData[year].push(values[i]);
+                        if (y[i] !== null && y[i] !== undefined) yearData[year].push(y[i]);
                     });
                     x = Object.keys(yearData).sort();
                     y = x.map(year => {
@@ -612,11 +672,20 @@
                     y: y,
                     name: series.name,
                     type: 'bar',
-                    marker: { color: COLORS[colorIndex % COLORS.length] }
+                    marker: { 
+                        color: isolatedSeries && seriesId !== isolatedSeries ? '#E0E0E0' : COLORS[index % COLORS.length] 
+                    },
+                    hovertemplate: '%{y:,.0f}<extra></extra>'
                 });
-                
-                colorIndex++;
             });
+            
+            // Update y-axis label based on data type
+            let yAxisTitle = 'Employment (thousands)';
+            if (currentDataType === 'mom') {
+                yAxisTitle = 'Month-over-Month Change (thousands)';
+            } else if (currentDataType === 'yoy') {
+                yAxisTitle = 'Year-over-Year Change (thousands)';
+            }
             
             const layout = {
                 barmode: 'stack',
@@ -626,7 +695,7 @@
                     tickangle: -45
                 },
                 yaxis: {
-                    title: 'Employment (thousands)',
+                    title: yAxisTitle,
                     tickformat: ',.0f'
                 },
                 margin: { t: 40, r: 40, b: 100, l: 80 },
@@ -648,26 +717,34 @@
             
             Plotly.newPlot('chart', traces, layout, config);
             
-            // Handle double-click on legend to grey out other series
+            // Handle double-click on legend to isolate/reset series
             const chartDiv = document.getElementById('chart');
             chartDiv.on('plotly_legenddoubleclick', function(eventData) {
-                // Prevent default behavior (hiding traces)
-                return false;
+                return false; // Prevent default behavior
             });
             
             chartDiv.on('plotly_legendclick', function(eventData) {
                 if (eventData.event.detail === 2) { // Double-click detected
                     const clickedIndex = eventData.curveNumber;
-                    const update = {
-                        'marker.color': traces.map((t, i) => {
-                            if (i === clickedIndex) {
-                                return COLORS[i % COLORS.length];
-                            } else {
-                                return '#E0E0E0'; // Light grey for non-selected
-                            }
-                        })
-                    };
-                    Plotly.restyle('chart', update);
+                    const clickedSeriesId = seriesArray[clickedIndex];
+                    
+                    if (isolatedSeries === clickedSeriesId) {
+                        // Reset to show all originally selected series normally
+                        isolatedSeries = null;
+                        const update = {
+                            'marker.color': traces.map((t, i) => COLORS[i % COLORS.length])
+                        };
+                        Plotly.restyle('chart', update);
+                    } else {
+                        // Isolate the clicked series
+                        isolatedSeries = clickedSeriesId;
+                        const update = {
+                            'marker.color': traces.map((t, i) => {
+                                return i === clickedIndex ? COLORS[i % COLORS.length] : '#E0E0E0';
+                            })
+                        };
+                        Plotly.restyle('chart', update);
+                    }
                     return false; // Prevent default toggle
                 }
             });
