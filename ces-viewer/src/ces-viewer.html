@@ -2,6 +2,9 @@
 <html>
 <head>
     <title>CES Employment Data Viewer</title>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <script src="https://cdn.plot.ly/plotly-2.34.0.min.js"></script>
     <style>
         body {
@@ -246,12 +249,13 @@
     </div>
 
     <script>
-        // Configuration
+        // Configuration with cache-busting
+        const CACHE_BUST = Date.now();
         const DATA_URL = window.location.hostname === 'home-economics.us' 
-            ? './ces_data.json'
+            ? `./ces_data.json?v=${CACHE_BUST}`
             : window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
             ? '../data/ces_data.json'
-            : 'https://home-economics.us/wp-content/uploads/reports/uploads/CES/ces_data.json';
+            : `https://home-economics.us/wp-content/uploads/reports/uploads/CES/ces_data.json?v=${CACHE_BUST}`;
         
         // Brand colors
         const COLORS = [

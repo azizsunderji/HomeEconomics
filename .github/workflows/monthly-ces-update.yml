@@ -58,7 +58,12 @@ jobs:
           # Upload to /wp-content/uploads/reports/uploads/CES/ (single live version)
           echo "Starting upload..."
           
-          # Create directories and upload files
+          # Create temp directory for upload
+          mkdir -p upload_temp
+          cp ces-viewer/data/ces_data.json upload_temp/
+          cp ces-viewer/src/ces-viewer.html upload_temp/index.html
+          
+          # Use mirror to properly handle timestamps and caching
           lftp -e "
             set sftp:auto-confirm yes;
             set sftp:connect-program 'ssh -i ~/.ssh/id_rsa';
@@ -66,14 +71,12 @@ jobs:
             set net:timeout 60;
             set net:reconnect-interval-base 5;
             open -u $USER,dummy sftp://$HOST;
-            cd ${REMOTE_BASE};
-            mkdir -fp wp-content/uploads/reports/uploads/CES;
-            cd wp-content/uploads/reports/uploads/CES;
-            put ces-viewer/data/ces_data.json;
-            put ces-viewer/src/ces-viewer.html -o index.html;
-            ls -la;
+            mkdir -p ${REMOTE_BASE}/wp-content/uploads/reports/uploads/CES;
+            mirror -R --only-newer --delete --parallel=2 --verbose \
+              upload_temp/ \
+              ${REMOTE_BASE}/wp-content/uploads/reports/uploads/CES/;
             bye
-          "
+          " || echo "Upload finished with warnings"
           
           echo "Upload completed with exit code: $?"
       
