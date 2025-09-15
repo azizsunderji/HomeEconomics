@@ -134,6 +134,10 @@ def compress_data(data: Dict) -> Dict:
                 all_dates.add(date_str)
         
         if data_points:
+            # Debug: print first few parent relationships
+            if len(compressed['series']) < 5:
+                print(f"DEBUG: {series_id} -> parent={hierarchy_info.get('parent')}, level={hierarchy_info['level']}")
+            
             compressed['series'].append({
                 'id': series_id,
                 'name': name,
