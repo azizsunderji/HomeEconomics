@@ -63,7 +63,7 @@ jobs:
           cp ces-viewer/data/ces_data.json upload_temp/
           cp ces-viewer/src/ces-viewer.html upload_temp/index.html
           
-          # Use mirror to properly handle timestamps and caching
+          # Use put with overwrite to force update
           lftp -e "
             set sftp:auto-confirm yes;
             set sftp:connect-program 'ssh -i ~/.ssh/id_rsa';
@@ -71,10 +71,10 @@ jobs:
             set net:timeout 60;
             set net:reconnect-interval-base 5;
             open -u $USER,dummy sftp://$HOST;
-            mkdir -p ${REMOTE_BASE}/wp-content/uploads/reports/uploads/CES;
-            mirror -R --only-newer --delete --parallel=2 --verbose \
-              upload_temp/ \
-              ${REMOTE_BASE}/wp-content/uploads/reports/uploads/CES/;
+            cd ${REMOTE_BASE}/wp-content/uploads/reports/uploads/CES;
+            put -O . upload_temp/ces_data.json;
+            put -O . upload_temp/index.html;
+            ls -la;
             bye
           " || echo "Upload finished with warnings"
           
