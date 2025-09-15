@@ -116,6 +116,29 @@
             cursor: pointer;
         }
         
+        .tree-item .toggle {
+            width: 20px;
+            height: 20px;
+            margin-right: 5px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            color: #67A275;
+            user-select: none;
+            flex-shrink: 0;
+        }
+        
+        .tree-item .toggle:hover {
+            background: rgba(103, 162, 117, 0.2);
+            border-radius: 3px;
+        }
+        
+        .tree-item .toggle.empty {
+            visibility: hidden;
+        }
+        
         .tree-item .name {
             flex: 1;
         }
@@ -124,6 +147,14 @@
             font-size: 12px;
             color: #999;
             margin-left: 10px;
+        }
+        
+        .tree-children {
+            display: none;
+        }
+        
+        .tree-children.expanded {
+            display: block;
         }
         
         /* Hierarchy levels */
@@ -202,6 +233,10 @@
         <div class="sidebar">
             <h1>Employment Data</h1>
             <div class="status" id="status">Loading...</div>
+            <div style="margin: 10px 0;">
+                <button id="expandAll" style="margin-right: 5px; padding: 5px 10px; font-size: 12px;">Expand All</button>
+                <button id="collapseAll" style="padding: 5px 10px; font-size: 12px;">Collapse All</button>
+            </div>
             <div id="hierarchy">
                 <div class="loading">Loading data...</div>
             </div>
@@ -322,22 +357,46 @@
             roots.sort((a, b) => (a.order || 999) - (b.order || 999));
             
             // Recursive function to build tree UI
-            function buildTreeNode(series, container) {
+            function buildTreeNode(series, container, startExpanded = false) {
                 const div = document.createElement('div');
                 div.className = `tree-item level-${series.level}`;
                 
                 const label = document.createElement('label');
                 
+                // Check if this node has children
+                const children = tree[series.id];
+                const hasChildren = children && children.length > 0;
+                
+                // Add toggle button
+                const toggle = document.createElement('span');
+                toggle.className = hasChildren ? 'toggle' : 'toggle empty';
+                toggle.textContent = hasChildren ? '▶' : '';
+                if (hasChildren) {
+                    toggle.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const childrenDiv = div.querySelector('.tree-children');
+                        if (childrenDiv) {
+                            childrenDiv.classList.toggle('expanded');
+                            toggle.textContent = childrenDiv.classList.contains('expanded') ? '▼' : '▶';
+                        }
+                    });
+                }
+                
                 const checkbox = document.createElement('input');
                 checkbox.type = 'checkbox';
                 checkbox.value = series.id;
                 checkbox.addEventListener('change', (e) => {
+                    e.stopPropagation();
                     if (e.target.checked) {
                         selectedSeries.add(series.id);
                     } else {
                         selectedSeries.delete(series.id);
                     }
                     updateChart();
+                });
+                checkbox.addEventListener('click', (e) => {
+                    e.stopPropagation();
                 });
                 
                 const nameSpan = document.createElement('span');
@@ -346,35 +405,55 @@
                 
                 // Get latest value
                 const dates = Object.keys(series.data).sort();
+                const valueSpan = document.createElement('span');
+                valueSpan.className = 'value';
                 if (dates.length > 0) {
                     const latestValue = series.data[dates[dates.length - 1]];
-                    const valueSpan = document.createElement('span');
-                    valueSpan.className = 'value';
                     valueSpan.textContent = formatNumber(latestValue);
-                    label.appendChild(checkbox);
-                    label.appendChild(nameSpan);
-                    label.appendChild(valueSpan);
-                } else {
-                    label.appendChild(checkbox);
-                    label.appendChild(nameSpan);
                 }
+                
+                label.appendChild(toggle);
+                label.appendChild(checkbox);
+                label.appendChild(nameSpan);
+                label.appendChild(valueSpan);
+                
+                // Clicking on label (but not checkbox or toggle) toggles expansion
+                label.addEventListener('click', (e) => {
+                    if (e.target === checkbox || e.target === toggle) return;
+                    e.preventDefault();
+                    if (hasChildren) {
+                        toggle.click();
+                    }
+                });
                 
                 div.appendChild(label);
-                container.appendChild(div);
                 
-                // Add children
-                const children = tree[series.id];
-                if (children && children.length > 0) {
+                // Add children in collapsible container
+                if (hasChildren) {
+                    const childrenDiv = document.createElement('div');
+                    childrenDiv.className = startExpanded ? 'tree-children expanded' : 'tree-children';
+                    
                     children.sort((a, b) => (a.order || 999) - (b.order || 999));
                     children.forEach(child => {
-                        buildTreeNode(child, container);
+                        // Only expand major and supersector levels by default
+                        const shouldExpand = startExpanded && (child.level === 'major' || child.level === 'supersector');
+                        buildTreeNode(child, childrenDiv, shouldExpand);
                     });
+                    
+                    div.appendChild(childrenDiv);
+                    
+                    // Update toggle icon if expanded
+                    if (startExpanded) {
+                        toggle.textContent = '▼';
+                    }
                 }
+                
+                container.appendChild(div);
             }
             
-            // Build the tree starting from roots
+            // Build the tree starting from roots, with top level expanded
             roots.forEach(root => {
-                buildTreeNode(root, container);
+                buildTreeNode(root, container, true);
             });
         }
         
@@ -518,6 +597,24 @@
                 cb.checked = selectedSeries.has(cb.value);
             });
             updateChart();
+        });
+        
+        document.getElementById('expandAll').addEventListener('click', () => {
+            document.querySelectorAll('.tree-children').forEach(div => {
+                div.classList.add('expanded');
+            });
+            document.querySelectorAll('.toggle:not(.empty)').forEach(toggle => {
+                toggle.textContent = '▼';
+            });
+        });
+        
+        document.getElementById('collapseAll').addEventListener('click', () => {
+            document.querySelectorAll('.tree-children').forEach(div => {
+                div.classList.remove('expanded');
+            });
+            document.querySelectorAll('.toggle:not(.empty)').forEach(toggle => {
+                toggle.textContent = '▶';
+            });
         });
         
         // Initialize
