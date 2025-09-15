@@ -71,10 +71,10 @@ jobs:
             set net:timeout 60;
             set net:reconnect-interval-base 5;
             open -u $USER,dummy sftp://$HOST;
-            mkdir -p ${REMOTE_BASE}/wp-content/uploads/reports/uploads/CES;
+            mkdir -p ${REMOTE_BASE}/uploads/CES;
             mirror -R --only-newer --delete --parallel=2 --verbose \
               upload_temp/ \
-              ${REMOTE_BASE}/wp-content/uploads/reports/uploads/CES/;
+              ${REMOTE_BASE}/uploads/CES/;
             bye
           " || echo "Upload finished with warnings"
           
