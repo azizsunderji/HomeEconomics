@@ -55,20 +55,15 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H $HOST >> ~/.ssh/known_hosts 2>/dev/null || true
           
-          # Upload with timestamp-based filenames to force cache invalidation
+          # Upload to WordPress uploads directory
           echo "Starting upload..."
-          
-          # Generate timestamp for cache busting
-          TIMESTAMP=$(date +%s)
           
           # Create temp directory for upload
           mkdir -p upload_temp
-          cp ces-viewer/data/ces_data.json upload_temp/ces_data_${TIMESTAMP}.json
+          cp ces-viewer/data/ces_data.json upload_temp/
+          cp ces-viewer/src/ces-viewer.html upload_temp/index.html
           
-          # Update HTML to use timestamped data file
-          sed "s|ces_data\.json|ces_data_${TIMESTAMP}.json|g" ces-viewer/src/ces-viewer.html > upload_temp/index.html
-          
-          # Upload with forced overwrite
+          # Use direct put to force overwrite
           lftp -e "
             set sftp:auto-confirm yes;
             set sftp:connect-program 'ssh -i ~/.ssh/id_rsa';
@@ -77,10 +72,9 @@ jobs:
             set net:reconnect-interval-base 5;
             open -u $USER,dummy sftp://$HOST;
             cd ${REMOTE_BASE}/wp-content/uploads/reports/uploads/CES;
-            put upload_temp/ces_data_${TIMESTAMP}.json;
+            rm -f ces_data.json index.html;
+            put upload_temp/ces_data.json;
             put upload_temp/index.html;
-            rm -f ces_data.json;
-            ln -s ces_data_${TIMESTAMP}.json ces_data.json;
             ls -la;
             bye
           " || echo "Upload finished with warnings"
