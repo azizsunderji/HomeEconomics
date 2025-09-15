@@ -56,8 +56,13 @@ def fetch_from_bls(series_ids: List[str], start_year: int = 2015) -> Dict[str, A
                 
     return {"Results": {"series": []}}
 
-def determine_hierarchy_level(series_id: str) -> Dict[str, Any]:
-    """Determine the hierarchy level and parent from series ID"""
+def determine_hierarchy_level(series_id: str, all_series_set: set = None) -> Dict[str, Any]:
+    """Determine the hierarchy level and parent from series ID
+    
+    Args:
+        series_id: The CES series ID to analyze
+        all_series_set: Optional set of all series IDs to check parent existence
+    """
     # CES format: CES + supersector(2) + industry(6) + datatype(2)
     if len(series_id) < 13:
         return {"level": "unknown", "parent": None}
@@ -89,18 +94,48 @@ def determine_hierarchy_level(series_id: str) -> Dict[str, Any]:
         else:
             return {"level": "supersector", "parent": "CES0500000001", "order": int(supersector)}
     else:
-        # This is an industry under a supersector
-        parent_id = f"CES{supersector}00000001"
+        # This is an industry - find its proper parent
+        # Try to find parent based on NAICS hierarchy
+        potential_parents = []
         
-        # Check if it's a major industry group (3-digit NAICS)
+        # For 6-digit codes (e.g., 541310), check for 5-digit parent (54131)
+        if industry_code[5:] != "0":
+            potential_parents.append(f"CES{supersector}{industry_code[:5]}001")
+        
+        # For 5 or 6-digit codes, check for 4-digit parent (5413)
+        if industry_code[4:] != "00":
+            potential_parents.append(f"CES{supersector}{industry_code[:4]}0001")
+        
+        # For 4, 5 or 6-digit codes, check for 3-digit parent (541)
+        if industry_code[2:] != "0000":
+            potential_parents.append(f"CES{supersector}{industry_code[:2]}00001")
+        
+        # Always check for supersector parent as fallback
+        potential_parents.append(f"CES{supersector}00000001")
+        
+        # Find the most specific parent that exists
+        parent_id = f"CES{supersector}00000001"  # Default to supersector
+        if all_series_set:
+            for potential_parent in potential_parents:
+                if potential_parent in all_series_set and potential_parent != series_id:
+                    parent_id = potential_parent
+                    break
+        
+        # Determine level based on NAICS code structure
         if industry_code[2:] == "0000":
-            return {"level": "sector", "parent": parent_id, "order": int(industry_code[:2]) if industry_code[:2].isdigit() else 999}
-        # 4-digit NAICS
+            level = "sector"
+            order = int(industry_code[:2]) if industry_code[:2].isdigit() else 999
         elif industry_code[4:] == "00":
-            return {"level": "subsector", "parent": parent_id, "order": int(industry_code[:4]) if industry_code[:4].isdigit() else 999}
-        # 5 or 6-digit NAICS
+            level = "subsector"
+            order = int(industry_code[:4]) if industry_code[:4].isdigit() else 999
+        elif industry_code[5:] == "0":
+            level = "industry_group"
+            order = int(industry_code[:5]) if industry_code[:5].isdigit() else 999
         else:
-            return {"level": "industry", "parent": parent_id, "order": int(industry_code) if industry_code.isdigit() else 999}
+            level = "industry"
+            order = int(industry_code) if industry_code.isdigit() else 999
+        
+        return {"level": level, "parent": parent_id, "order": order}
 
 def compress_data(data: Dict) -> Dict:
     """Compress data with proper hierarchy"""
@@ -116,14 +151,17 @@ def compress_data(data: Dict) -> Dict:
     
     all_dates = set()
     
+    # First, collect all series IDs to help with parent determination
+    all_series_ids = {s['seriesID'] for s in data.get('Results', {}).get('series', [])}
+    
     for series in data.get('Results', {}).get('series', []):
         series_id = series['seriesID']
         
         # Get series name
         name = INDUSTRY_NAMES.get(series_id, series_id)
         
-        # Determine hierarchy
-        hierarchy_info = determine_hierarchy_level(series_id)
+        # Determine hierarchy with series set for parent lookup
+        hierarchy_info = determine_hierarchy_level(series_id, all_series_ids)
         
         # Extract and sort data points
         data_points = {}
@@ -148,7 +186,7 @@ def compress_data(data: Dict) -> Dict:
             })
     
     # Sort series by hierarchy level and order
-    level_order = ['total', 'major', 'supersector', 'sector', 'subsector', 'industry']
+    level_order = ['total', 'major', 'supersector', 'sector', 'subsector', 'industry_group', 'industry']
     compressed['series'].sort(key=lambda x: (
         level_order.index(x['level']) if x['level'] in level_order else 999,
         x.get('order', 999),
