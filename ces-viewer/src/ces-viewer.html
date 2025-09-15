@@ -7,8 +7,24 @@
     <meta http-equiv="Expires" content="0">
     <script src="https://cdn.plot.ly/plotly-2.34.0.min.js"></script>
     <style>
+        @font-face {
+            font-family: 'Oracle';
+            src: url('/fonts/Oracle-Regular.woff2') format('woff2'),
+                 url('/fonts/Oracle-Regular.woff') format('woff');
+            font-weight: normal;
+            font-style: normal;
+        }
+        
+        @font-face {
+            font-family: 'Oracle';
+            src: url('/fonts/Oracle-Bold.woff2') format('woff2'),
+                 url('/fonts/Oracle-Bold.woff') format('woff');
+            font-weight: bold;
+            font-style: normal;
+        }
+        
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-family: 'Oracle', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             margin: 0;
             padding: 0;
             background: #F6F7F3;
@@ -159,45 +175,60 @@
             display: block;
         }
         
-        /* Hierarchy levels */
+        /* Hierarchy levels with clear visual distinction */
         .level-total {
             font-weight: bold;
             font-size: 16px;
             background: #0BB4FF;
             color: white;
             margin: 10px 0;
+            border-radius: 4px;
         }
         
         .level-total .value { color: rgba(255,255,255,0.8); }
         
         .level-major {
-            font-weight: bold;
-            background: rgba(11, 180, 255, 0.15);
-            margin-left: 15px;
+            font-weight: 600;
+            font-size: 15px;
+            background: rgba(11, 180, 255, 0.12);
+            margin-left: 16px;
             margin-top: 8px;
+            color: #0A99DB;
+            border-left: 3px solid #0BB4FF;
         }
         
         .level-supersector {
-            font-weight: 600;
-            background: rgba(103, 162, 117, 0.1);
-            margin-left: 30px;
+            font-weight: 500;
+            font-size: 14px;
+            background: rgba(103, 162, 117, 0.08);
+            margin-left: 32px;
             margin-top: 6px;
+            color: #67A275;
+            border-left: 2px solid #67A275;
         }
         
         .level-sector {
-            margin-left: 45px;
-            background: rgba(254, 196, 57, 0.08);
+            font-weight: normal;
+            font-size: 13px;
+            margin-left: 48px;
+            background: rgba(254, 196, 57, 0.06);
+            color: #B8941F;
+            border-left: 2px solid #FEC439;
         }
         
         .level-subsector {
-            margin-left: 60px;
-            font-size: 13px;
+            margin-left: 64px;
+            font-size: 12px;
+            color: #666;
+            background: rgba(61, 55, 51, 0.03);
+            border-left: 1px solid #DADFCE;
         }
         
         .level-industry {
-            margin-left: 75px;
-            font-size: 12px;
-            color: #666;
+            margin-left: 80px;
+            font-size: 11px;
+            color: #888;
+            opacity: 0.9;
         }
         
         #chart {
@@ -369,18 +400,18 @@
                 const children = tree[series.id];
                 const hasChildren = children && children.length > 0;
                 
-                // Add toggle button
+                // Add toggle button with better arrows
                 const toggle = document.createElement('span');
                 toggle.className = hasChildren ? 'toggle' : 'toggle empty';
-                toggle.textContent = hasChildren ? '▶' : '';
+                toggle.innerHTML = hasChildren ? '&#9654;' : ''; // Right-pointing triangle
                 if (hasChildren) {
                     toggle.addEventListener('click', (e) => {
                         e.preventDefault();
                         e.stopPropagation();
                         const childrenDiv = div.querySelector('.tree-children');
                         if (childrenDiv) {
-                            childrenDiv.classList.toggle('expanded');
-                            toggle.textContent = childrenDiv.classList.contains('expanded') ? '▼' : '▶';
+                            const isExpanded = childrenDiv.classList.toggle('expanded');
+                            toggle.innerHTML = isExpanded ? '&#9660;' : '&#9654;'; // Down or right triangle
                         }
                     });
                 }
@@ -390,10 +421,48 @@
                 checkbox.value = series.id;
                 checkbox.addEventListener('change', (e) => {
                     e.stopPropagation();
+                    
+                    // Helper function to get all descendant IDs
+                    function getDescendants(seriesId) {
+                        const descendants = [];
+                        const stack = [seriesId];
+                        while (stack.length > 0) {
+                            const currentId = stack.pop();
+                            const children = tree[currentId] || [];
+                            children.forEach(child => {
+                                descendants.push(child.id);
+                                stack.push(child.id);
+                            });
+                        }
+                        return descendants;
+                    }
+                    
                     if (e.target.checked) {
+                        // When checking a parent, select all children
                         selectedSeries.add(series.id);
+                        const descendants = getDescendants(series.id);
+                        
+                        if (descendants.length > 0) {
+                            // Has children - add them and remove parent to avoid duplication
+                            descendants.forEach(id => selectedSeries.add(id));
+                            selectedSeries.delete(series.id); // Remove parent to avoid double-counting
+                            
+                            // Update child checkboxes visually
+                            descendants.forEach(id => {
+                                const childCheckbox = document.querySelector(`input[value="${id}"]`);
+                                if (childCheckbox) childCheckbox.checked = true;
+                            });
+                            checkbox.checked = false; // Uncheck parent since children are selected
+                        }
                     } else {
+                        // When unchecking, remove this and all descendants
                         selectedSeries.delete(series.id);
+                        const descendants = getDescendants(series.id);
+                        descendants.forEach(id => {
+                            selectedSeries.delete(id);
+                            const childCheckbox = document.querySelector(`input[value="${id}"]`);
+                            if (childCheckbox) childCheckbox.checked = false;
+                        });
                     }
                     updateChart();
                 });
@@ -445,7 +514,7 @@
                     
                     // Update toggle icon if expanded
                     if (startExpanded) {
-                        toggle.textContent = '▼';
+                        toggle.innerHTML = '&#9660;'; // Down triangle
                     }
                 }
                 
@@ -561,6 +630,30 @@
             };
             
             Plotly.newPlot('chart', traces, layout, config);
+            
+            // Handle double-click on legend to grey out other series
+            const chartDiv = document.getElementById('chart');
+            chartDiv.on('plotly_legenddoubleclick', function(eventData) {
+                // Prevent default behavior (hiding traces)
+                return false;
+            });
+            
+            chartDiv.on('plotly_legendclick', function(eventData) {
+                if (eventData.event.detail === 2) { // Double-click detected
+                    const clickedIndex = eventData.curveNumber;
+                    const update = {
+                        'marker.color': traces.map((t, i) => {
+                            if (i === clickedIndex) {
+                                return COLORS[i % COLORS.length];
+                            } else {
+                                return '#E0E0E0'; // Light grey for non-selected
+                            }
+                        })
+                    };
+                    Plotly.restyle('chart', update);
+                    return false; // Prevent default toggle
+                }
+            });
         }
         
         // Event listeners
@@ -605,7 +698,7 @@
                 div.classList.add('expanded');
             });
             document.querySelectorAll('.toggle:not(.empty)').forEach(toggle => {
-                toggle.textContent = '▼';
+                toggle.innerHTML = '&#9660;'; // Down triangle
             });
         });
         
@@ -614,7 +707,7 @@
                 div.classList.remove('expanded');
             });
             document.querySelectorAll('.toggle:not(.empty)').forEach(toggle => {
-                toggle.textContent = '▶';
+                toggle.innerHTML = '&#9654;'; // Right triangle
             });
         });
         
