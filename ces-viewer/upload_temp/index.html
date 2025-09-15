@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CES Employment Data Viewer</title>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <script src="https://cdn.plot.ly/plotly-2.34.0.min.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #F6F7F3;
+            color: #3D3733;
+        }
+        
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+        
+        .sidebar {
+            width: 400px;
+            background: white;
+            padding: 20px;
+            overflow-y: auto;
+            box-shadow: 2px 0 4px rgba(0,0,0,0.05);
+            border-right: 1px solid #DADFCE;
+        }
+        
+        .main {
+            flex: 1;
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+        
+        h1 {
+            margin: 0 0 15px 0;
+            font-size: 22px;
+            color: #3D3733;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        label {
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        select, button {
+            padding: 8px 12px;
+            border: 1px solid #DADFCE;
+            border-radius: 4px;
+            background: white;
+            color: #3D3733;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        
+        select:hover, button:hover {
+            border-color: #67A275;
+        }
+        
+        button {
+            background: #67A275;
+            color: white;
+            border: none;
+            font-weight: 500;
+        }
+        
+        button:hover {
+            background: #5A8F66;
+        }
+        
+        /* Tree styling */
+        .tree-item {
+            margin: 2px 0;
+            line-height: 1.6;
+        }
+        
+        .tree-item label {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 14px;
+            color: #3D3733;
+            text-transform: none;
+            letter-spacing: normal;
+        }
+        
+        .tree-item label:hover {
+            background: rgba(103, 162, 117, 0.1);
+        }
+        
+        .tree-item input[type="checkbox"] {
+            margin-right: 8px;
+            cursor: pointer;
+        }
+        
+        .tree-item .name {
+            flex: 1;
+        }
+        
+        .tree-item .value {
+            font-size: 12px;
+            color: #999;
+            margin-left: 10px;
+        }
+        
+        /* Hierarchy levels */
+        .level-total {
+            font-weight: bold;
+            font-size: 16px;
+            background: #0BB4FF;
+            color: white;
+            margin: 10px 0;
+        }
+        
+        .level-total .value { color: rgba(255,255,255,0.8); }
+        
+        .level-major {
+            font-weight: bold;
+            background: rgba(11, 180, 255, 0.15);
+            margin-left: 15px;
+            margin-top: 8px;
+        }
+        
+        .level-supersector {
+            font-weight: 600;
+            background: rgba(103, 162, 117, 0.1);
+            margin-left: 30px;
+            margin-top: 6px;
+        }
+        
+        .level-sector {
+            margin-left: 45px;
+            background: rgba(254, 196, 57, 0.08);
+        }
+        
+        .level-subsector {
+            margin-left: 60px;
+            font-size: 13px;
+        }
+        
+        .level-industry {
+            margin-left: 75px;
+            font-size: 12px;
+            color: #666;
+        }
+        
+        #chart {
+            flex: 1;
+            min-height: 400px;
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+        
+        .error {
+            color: #F4743B;
+            padding: 20px;
+            background: #FBCAB5;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+        
+        .status {
+            font-size: 12px;
+            color: #999;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <h1>Employment Data</h1>
+            <div class="status" id="status">Loading...</div>
+            <div id="hierarchy">
+                <div class="loading">Loading data...</div>
+            </div>
+        </div>
+        
+        <div class="main">
+            <div class="controls">
+                <div class="control-group">
+                    <label>View</label>
+                    <select id="viewType">
+                        <option value="monthly">Monthly</option>
+                        <option value="quarterly">Quarterly</option>
+                        <option value="annual">Annual</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label>Data Type</label>
+                    <select id="dataType">
+                        <option value="level">Levels</option>
+                        <option value="mom" class="monthly-only">Month-over-month %</option>
+                        <option value="3m" class="monthly-only">3-month change %</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label>Date Range</label>
+                    <select id="dateRange">
+                        <option value="1">1 year</option>
+                        <option value="1.5">18 months</option>
+                        <option value="2">2 years</option>
+                        <option value="3" selected>3 years</option>
+                        <option value="5">5 years</option>
+                        <option value="10">10 years</option>
+                        <option value="all">All available</option>
+                    </select>
+                </div>
+                
+                <button id="clearAll">Clear All</button>
+                <button id="selectMajor">Major Sectors</button>
+            </div>
+            
+            <div id="chart"></div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration with cache-busting
+        const CACHE_BUST = Date.now();
+        const DATA_URL = window.location.hostname === 'home-economics.us' 
+            ? `./ces_data.json?v=${CACHE_BUST}`
+            : window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+            ? '../data/ces_data.json'
+            : `https://home-economics.us/wp-content/uploads/reports/uploads/CES/ces_data.json?v=${CACHE_BUST}`;
+        
+        // Brand colors
+        const COLORS = [
+            '#0BB4FF', '#FEC439', '#67A275', '#F4743B',
+            '#C6DCCB', '#FBCAB5', '#DADFCE', '#3D3733'
+        ];
+        
+        // State management
+        let cesData = null;
+        let seriesById = {};
+        let selectedSeries = new Set();
+        let currentView = 'monthly';
+        let currentDataType = 'level';
+        let currentDateRange = 3;
+        
+        // Load data on startup
+        async function loadData() {
+            try {
+                const response = await fetch(DATA_URL);
+                if (!response.ok) throw new Error('Failed to load data');
+                
+                cesData = await response.json();
+                
+                // Create lookup map
+                cesData.series.forEach(s => {
+                    seriesById[s.id] = s;
+                });
+                
+                document.getElementById('status').textContent = 
+                    `${cesData.meta.series_count} series • ${cesData.meta.start_date} to ${cesData.meta.end_date}`;
+                
+                buildHierarchy();
+                updateChart();
+            } catch (error) {
+                console.error('Error loading data:', error);
+                document.getElementById('hierarchy').innerHTML = 
+                    `<div class="error">Error loading data: ${error.message}</div>`;
+            }
+        }
+        
+        function buildHierarchy() {
+            if (!cesData) return;
+            
+            const container = document.getElementById('hierarchy');
+            container.innerHTML = '';
+            
+            // Build tree structure
+            const tree = {};
+            const roots = [];
+            
+            // First pass: identify roots and build parent map
+            cesData.series.forEach(series => {
+                if (!series.parent) {
+                    roots.push(series);
+                } else {
+                    if (!tree[series.parent]) {
+                        tree[series.parent] = [];
+                    }
+                    tree[series.parent].push(series);
+                }
+            });
+            
+            // Sort roots
+            roots.sort((a, b) => (a.order || 999) - (b.order || 999));
+            
+            // Recursive function to build tree UI
+            function buildTreeNode(series, container) {
+                const div = document.createElement('div');
+                div.className = `tree-item level-${series.level}`;
+                
+                const label = document.createElement('label');
+                
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.value = series.id;
+                checkbox.addEventListener('change', (e) => {
+                    if (e.target.checked) {
+                        selectedSeries.add(series.id);
+                    } else {
+                        selectedSeries.delete(series.id);
+                    }
+                    updateChart();
+                });
+                
+                const nameSpan = document.createElement('span');
+                nameSpan.className = 'name';
+                nameSpan.textContent = series.name;
+                
+                // Get latest value
+                const dates = Object.keys(series.data).sort();
+                if (dates.length > 0) {
+                    const latestValue = series.data[dates[dates.length - 1]];
+                    const valueSpan = document.createElement('span');
+                    valueSpan.className = 'value';
+                    valueSpan.textContent = formatNumber(latestValue);
+                    label.appendChild(checkbox);
+                    label.appendChild(nameSpan);
+                    label.appendChild(valueSpan);
+                } else {
+                    label.appendChild(checkbox);
+                    label.appendChild(nameSpan);
+                }
+                
+                div.appendChild(label);
+                container.appendChild(div);
+                
+                // Add children
+                const children = tree[series.id];
+                if (children && children.length > 0) {
+                    children.sort((a, b) => (a.order || 999) - (b.order || 999));
+                    children.forEach(child => {
+                        buildTreeNode(child, container);
+                    });
+                }
+            }
+            
+            // Build the tree starting from roots
+            roots.forEach(root => {
+                buildTreeNode(root, container);
+            });
+        }
+        
+        function formatNumber(num) {
+            if (num >= 1000) {
+                return (num / 1000).toFixed(1) + 'k';
+            }
+            return num.toFixed(0);
+        }
+        
+        function getFilteredDates() {
+            if (!cesData) return [];
+            
+            // Get all dates from first series with data
+            const seriesWithData = cesData.series.find(s => s.data && Object.keys(s.data).length > 0);
+            if (!seriesWithData) return [];
+            
+            const allDates = Object.keys(seriesWithData.data).sort();
+            
+            if (currentDateRange === 'all') {
+                return allDates;
+            }
+            
+            const cutoffDate = new Date();
+            cutoffDate.setFullYear(cutoffDate.getFullYear() - parseFloat(currentDateRange));
+            
+            return allDates.filter(date => new Date(date) >= cutoffDate);
+        }
+        
+        function updateChart() {
+            if (!cesData || selectedSeries.size === 0) {
+                document.getElementById('chart').innerHTML = 
+                    '<div class="loading">Select series to display</div>';
+                return;
+            }
+            
+            const filteredDates = getFilteredDates();
+            const traces = [];
+            let colorIndex = 0;
+            
+            selectedSeries.forEach(seriesId => {
+                const series = seriesById[seriesId];
+                if (!series || !series.data) return;
+                
+                // Get data for filtered dates
+                const values = filteredDates.map(d => series.data[d] || 0);
+                
+                // Transform based on view and data type
+                let x = filteredDates;
+                let y = values;
+                
+                if (currentView === 'annual') {
+                    // Aggregate by year
+                    const yearData = {};
+                    filteredDates.forEach((date, i) => {
+                        const year = date.substring(0, 4);
+                        if (!yearData[year]) yearData[year] = [];
+                        if (values[i]) yearData[year].push(values[i]);
+                    });
+                    x = Object.keys(yearData).sort();
+                    y = x.map(year => {
+                        const vals = yearData[year];
+                        return vals.length > 0 ? vals.reduce((a, b) => a + b) / vals.length : 0;
+                    });
+                }
+                
+                traces.push({
+                    x: x,
+                    y: y,
+                    name: series.name,
+                    type: 'bar',
+                    marker: { color: COLORS[colorIndex % COLORS.length] }
+                });
+                
+                colorIndex++;
+            });
+            
+            const layout = {
+                barmode: 'stack',
+                title: '',
+                xaxis: {
+                    title: '',
+                    tickangle: -45
+                },
+                yaxis: {
+                    title: 'Employment (thousands)',
+                    tickformat: ',.0f'
+                },
+                margin: { t: 40, r: 40, b: 100, l: 80 },
+                showlegend: true,
+                legend: {
+                    orientation: 'h',
+                    y: 1.15,
+                    x: 0
+                },
+                paper_bgcolor: 'white',
+                plot_bgcolor: 'white'
+            };
+            
+            const config = {
+                responsive: true,
+                displayModeBar: true,
+                displaylogo: false
+            };
+            
+            Plotly.newPlot('chart', traces, layout, config);
+        }
+        
+        // Event listeners
+        document.getElementById('viewType').addEventListener('change', (e) => {
+            currentView = e.target.value;
+            updateChart();
+        });
+        
+        document.getElementById('dataType').addEventListener('change', (e) => {
+            currentDataType = e.target.value;
+            updateChart();
+        });
+        
+        document.getElementById('dateRange').addEventListener('change', (e) => {
+            currentDateRange = e.target.value;
+            updateChart();
+        });
+        
+        document.getElementById('clearAll').addEventListener('click', () => {
+            selectedSeries.clear();
+            document.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+                cb.checked = false;
+            });
+            updateChart();
+        });
+        
+        document.getElementById('selectMajor').addEventListener('click', () => {
+            selectedSeries.clear();
+            cesData.series.forEach(s => {
+                if (s.level === 'major' || s.level === 'supersector') {
+                    selectedSeries.add(s.id);
+                }
+            });
+            document.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+                cb.checked = selectedSeries.has(cb.value);
+            });
+            updateChart();
+        });
+        
+        // Initialize
+        loadData();
+    </script>
+</body>
+</html>
