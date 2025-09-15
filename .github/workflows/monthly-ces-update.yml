@@ -55,7 +55,7 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H $HOST >> ~/.ssh/known_hosts 2>/dev/null || true
           
-          # Upload to /wp-content/uploads/reports/uploads/CES/ (single live version)
+          # Upload to /live/ces/ (bypasses WordPress/CDN caching like weekly rankings)
           echo "Starting upload..."
           
           # Create temp directory for upload
@@ -63,7 +63,7 @@ jobs:
           cp ces-viewer/data/ces_data.json upload_temp/
           cp ces-viewer/src/ces-viewer.html upload_temp/index.html
           
-          # Use put with overwrite to force update
+          # Use mirror like weekly-rankings for proper cache handling
           lftp -e "
             set sftp:auto-confirm yes;
             set sftp:connect-program 'ssh -i ~/.ssh/id_rsa';
@@ -71,10 +71,10 @@ jobs:
             set net:timeout 60;
             set net:reconnect-interval-base 5;
             open -u $USER,dummy sftp://$HOST;
-            cd ${REMOTE_BASE}/wp-content/uploads/reports/uploads/CES;
-            put -O . upload_temp/ces_data.json;
-            put -O . upload_temp/index.html;
-            ls -la;
+            mkdir -p ${REMOTE_BASE}/live/ces;
+            mirror -R --only-newer --delete --parallel=2 --verbose \
+              upload_temp/ \
+              ${REMOTE_BASE}/live/ces/;
             bye
           " || echo "Upload finished with warnings"
           
