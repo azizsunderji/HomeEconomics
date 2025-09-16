@@ -1,10 +1,13 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>CES Employment Data Viewer</title>
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <title>CES Employment Data Viewer - Updated 2025-09-16 21:15</title>
+    <meta charset="UTF-8">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate, max-age=0">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Version: 2025-09-16-21:15 -->
     <script src="https://cdn.plot.ly/plotly-2.34.0.min.js"></script>
     <style>
         body {
@@ -216,6 +219,15 @@
             color: #999;
             margin-bottom: 15px;
         }
+
+        .version {
+            position: absolute;
+            bottom: 10px;
+            left: 20px;
+            font-size: 10px;
+            color: #ccc;
+            opacity: 0.7;
+        }
     </style>
 </head>
 <body>
@@ -226,6 +238,7 @@
             <div id="hierarchy">
                 <div class="loading">Loading data...</div>
             </div>
+            <div class="version">v2025.09.16.2115</div>
         </div>
 
         <div class="main">
@@ -271,13 +284,23 @@
     </div>
 
     <script>
-        // Configuration with cache-busting
+        // Version and cache-busting
+        const VERSION = '2025.09.16.2115';
         const CACHE_BUST = Date.now();
+        console.log('CES Viewer Version:', VERSION, 'Cache:', CACHE_BUST);
+
+        // Force reload if cached version detected
+        window.addEventListener('pageshow', function(event) {
+            if (event.persisted) {
+                window.location.reload();
+            }
+        });
+
         const DATA_URL = window.location.hostname === 'home-economics.us'
-            ? `./ces_data.json?v=${CACHE_BUST}`
+            ? `./ces_data.json?v=${CACHE_BUST}&ver=${VERSION}`
             : window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-            ? '../data/ces_data.json'
-            : `https://home-economics.us/wp-content/uploads/reports/uploads/CES/ces_data.json?v=${CACHE_BUST}`;
+            ? '../data/ces_data.json?v=' + CACHE_BUST
+            : `https://home-economics.us/wp-content/uploads/reports/uploads/CES/ces_data.json?v=${CACHE_BUST}&ver=${VERSION}`;
 
         // Brand colors
         const COLORS = [
@@ -396,7 +419,14 @@
         // Load data on startup
         async function loadData() {
             try {
-                const response = await fetch(DATA_URL);
+                // Add cache-busting headers to fetch
+                const response = await fetch(DATA_URL, {
+                    cache: 'no-cache',
+                    headers: {
+                        'Cache-Control': 'no-cache',
+                        'Pragma': 'no-cache'
+                    }
+                });
                 if (!response.ok) throw new Error('Failed to load data');
 
                 cesData = await response.json();
