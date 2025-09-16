@@ -63,10 +63,28 @@ def determine_level_from_id(series_id: str) -> str:
     elif series_id in ["CES0500000001", "CES0600000001", "CES0700000001", "CES0800000001", "CES9000000001"]:
         return "major"
     
+    supersector = series_id[3:5] if len(series_id) >= 5 else ""
     industry_code = series_id[5:11] if len(series_id) >= 11 else ""
     
     if industry_code == "000000":
         return "supersector"
+    
+    # Special handling for Construction (20) - it has a unique structure
+    if supersector == "20":
+        # 236, 237, 238 are the main sectors under Construction
+        if industry_code[:3] in ["236", "237", "238"] and industry_code[3:] == "000":
+            return "sector"
+        # 2361, 2362, 2371, etc. are subsectors
+        elif industry_code[:4] in ["2361", "2362", "2371", "2372", "2373", "2379", "2381", "2382", "2383", "2389"]:
+            if industry_code[4:] == "00":
+                return "subsector"
+            else:
+                return "industry"
+        # Direct children of main sectors like 23611501 are industries
+        else:
+            return "industry"
+    
+    # Standard hierarchy for other supersectors
     elif industry_code[2:] == "0000":
         return "sector"
     elif industry_code[4:] == "00":
