@@ -2,7 +2,6 @@
 <html>
 <head>
     <title>CES Employment Data Viewer</title>
-    <meta charset="UTF-8">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -15,12 +14,12 @@
             background: #F6F7F3;
             color: #3D3733;
         }
-        
+
         .container {
             display: flex;
             height: 100vh;
         }
-        
+
         .sidebar {
             width: 400px;
             background: white;
@@ -29,7 +28,7 @@
             box-shadow: 2px 0 4px rgba(0,0,0,0.05);
             border-right: 1px solid #DADFCE;
         }
-        
+
         .main {
             flex: 1;
             padding: 30px;
@@ -37,13 +36,13 @@
             flex-direction: column;
             min-width: 0;
         }
-        
+
         h1 {
             margin: 0 0 15px 0;
             font-size: 22px;
             color: #3D3733;
         }
-        
+
         .controls {
             display: flex;
             gap: 15px;
@@ -51,20 +50,20 @@
             align-items: center;
             flex-wrap: wrap;
         }
-        
+
         .control-group {
             display: flex;
             flex-direction: column;
             gap: 5px;
         }
-        
+
         label {
             font-size: 12px;
             color: #666;
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
-        
+
         select, button {
             padding: 8px 12px;
             border: 1px solid #DADFCE;
@@ -74,28 +73,28 @@
             font-size: 14px;
             cursor: pointer;
         }
-        
+
         select:hover, button:hover {
             border-color: #67A275;
         }
-        
+
         button {
             background: #67A275;
             color: white;
             border: none;
             font-weight: 500;
         }
-        
+
         button:hover {
             background: #5A8F66;
         }
-        
+
         /* Tree styling */
         .tree-item {
             margin: 2px 0;
             line-height: 1.6;
         }
-        
+
         .tree-item label {
             display: flex;
             align-items: center;
@@ -107,30 +106,41 @@
             text-transform: none;
             letter-spacing: normal;
         }
-        
+
         .tree-item label:hover {
             background: rgba(103, 162, 117, 0.1);
         }
-        
+
         .tree-item input[type="checkbox"] {
             margin-right: 8px;
             cursor: pointer;
         }
-        
+
         .tree-item .name {
             flex: 1;
         }
-        
+
         .tree-item .value {
             font-size: 12px;
             color: #999;
             margin-left: 10px;
         }
-        
-        .tree-children {
-            margin-left: 20px;
+
+        .tree-item.structural label {
+            cursor: default;
+            color: #555;
+            background: transparent;
         }
-        
+
+        .tree-item.structural label:hover {
+            background: none;
+        }
+
+        .tree-item.structural input[type="checkbox"] {
+            cursor: default;
+            opacity: 0.35;
+        }
+
         /* Hierarchy levels */
         .level-total {
             font-weight: bold;
@@ -139,39 +149,45 @@
             color: white;
             margin: 10px 0;
         }
-        
+
         .level-total .value { color: rgba(255,255,255,0.8); }
-        
+
         .level-major {
             font-weight: bold;
             background: rgba(11, 180, 255, 0.15);
             margin-left: 15px;
             margin-top: 8px;
         }
-        
+
         .level-supersector {
             font-weight: 600;
             background: rgba(103, 162, 117, 0.1);
             margin-left: 30px;
             margin-top: 6px;
         }
-        
+
         .level-sector {
             margin-left: 45px;
             background: rgba(254, 196, 57, 0.08);
         }
-        
+
         .level-subsector {
             margin-left: 60px;
             font-size: 13px;
         }
-        
+
+        .level-industry_group {
+            margin-left: 70px;
+            font-size: 12px;
+            color: #555;
+        }
+
         .level-industry {
-            margin-left: 75px;
+            margin-left: 85px;
             font-size: 12px;
             color: #666;
         }
-        
+
         #chart {
             flex: 1;
             min-height: 400px;
@@ -180,13 +196,13 @@
             padding: 20px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.05);
         }
-        
+
         .loading {
             text-align: center;
             padding: 40px;
             color: #999;
         }
-        
+
         .error {
             color: #F4743B;
             padding: 20px;
@@ -194,7 +210,7 @@
             border-radius: 4px;
             margin: 20px 0;
         }
-        
+
         .status {
             font-size: 12px;
             color: #999;
@@ -211,7 +227,7 @@
                 <div class="loading">Loading data...</div>
             </div>
         </div>
-        
+
         <div class="main">
             <div class="controls">
                 <div class="control-group">
@@ -222,16 +238,17 @@
                         <option value="annual">Annual</option>
                     </select>
                 </div>
-                
+
                 <div class="control-group">
                     <label>Data Type</label>
                     <select id="dataType">
                         <option value="level">Levels</option>
-                        <option value="mom" class="monthly-only">Month-over-month %</option>
-                        <option value="3m" class="monthly-only">3-month change %</option>
+                        <option value="mom" class="monthly-only">Month-over-month change</option>
+                        <option value="m3m" class="monthly-only">3-Month Change</option>
+                        <option value="yoy" class="monthly-only">Year-over-year change</option>
                     </select>
                 </div>
-                
+
                 <div class="control-group">
                     <label>Date Range</label>
                     <select id="dateRange">
@@ -244,11 +261,11 @@
                         <option value="all">All available</option>
                     </select>
                 </div>
-                
+
                 <button id="clearAll">Clear All</button>
                 <button id="selectMajor">Major Sectors</button>
             </div>
-            
+
             <div id="chart"></div>
         </div>
     </div>
@@ -256,18 +273,23 @@
     <script>
         // Configuration with cache-busting
         const CACHE_BUST = Date.now();
-        const DATA_URL = window.location.hostname === 'home-economics.us' 
+        const DATA_URL = window.location.hostname === 'home-economics.us'
             ? `./ces_data.json?v=${CACHE_BUST}`
             : window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
             ? '../data/ces_data.json'
-            : `https://home-economics.us/wp-content/uploads/reports/live/ces/ces_data.json?v=${CACHE_BUST}`;
-        
+            : `https://home-economics.us/wp-content/uploads/reports/uploads/CES/ces_data.json?v=${CACHE_BUST}`;
+
         // Brand colors
         const COLORS = [
             '#0BB4FF', '#FEC439', '#67A275', '#F4743B',
             '#C6DCCB', '#FBCAB5', '#DADFCE', '#3D3733'
         ];
-        
+
+        const STRUCTURAL_SERIES = {
+            'CES4100000001': { name: 'Wholesale trade', parent: 'CES4000000001' },
+            'CES4400000001': { name: 'Utilities', parent: 'CES4000000001' }
+        };
+
         // State management
         let cesData = null;
         let seriesById = {};
@@ -275,7 +297,102 @@
         let currentView = 'monthly';
         let currentDataType = 'level';
         let currentDateRange = 3;
-        
+
+        function inferLevelFromId(seriesId) {
+            if (!seriesId) return 'industry';
+            if (seriesId === 'CES0000000001') return 'total';
+            const majorIds = ['CES0500000001', 'CES0600000001', 'CES0700000001', 'CES0800000001', 'CES9000000001'];
+            if (majorIds.includes(seriesId)) {
+                return 'major';
+            }
+
+            const supersector = seriesId.slice(3, 5);
+            const industryCode = seriesId.slice(5, 11);
+
+            if (industryCode === '000000') {
+                return 'supersector';
+            }
+
+            if (supersector === '20') {
+                const sectorPrefixes = ['236', '237', '238'];
+                if (sectorPrefixes.includes(industryCode.slice(0, 3)) && industryCode.slice(3) === '000') {
+                    return 'sector';
+                }
+
+                const subsectorPrefixes = ['2361', '2362', '2371', '2372', '2373', '2379', '2381', '2382', '2383', '2389'];
+                if (subsectorPrefixes.includes(industryCode.slice(0, 4))) {
+                    return industryCode.slice(4) === '00' ? 'subsector' : 'industry';
+                }
+
+                return 'industry';
+            }
+
+            if (industryCode.slice(2) === '0000') return 'sector';
+            if (industryCode.slice(4) === '00') return 'subsector';
+            if (industryCode.slice(5) === '0') return 'industry_group';
+            return 'industry';
+        }
+
+        function inferOrderFromId(seriesId) {
+            if (!seriesId) return 999;
+
+            const specialOrders = {
+                'CES0000000001': 0,
+                'CES0500000001': 1,
+                'CES0600000001': 2,
+                'CES0700000001': 3,
+                'CES0800000001': 4,
+                'CES9000000001': 100
+            };
+
+            if (Object.prototype.hasOwnProperty.call(specialOrders, seriesId)) {
+                return specialOrders[seriesId];
+            }
+
+            const supersector = seriesId.slice(3, 5);
+            const industryCode = seriesId.slice(5, 11);
+
+            if (industryCode === '000000' && /^\d+$/.test(supersector)) {
+                return parseInt(supersector, 10);
+            }
+
+            for (let i = industryCode.length; i > 0; i--) {
+                const snippet = industryCode.slice(0, i);
+                if (/^\d+$/.test(snippet)) {
+                    return parseInt(snippet, 10);
+                }
+            }
+
+            return 999;
+        }
+
+        function addStructuralParents() {
+            const missingParents = new Set();
+
+            cesData.series.forEach(series => {
+                const parentId = series.parent;
+                if (parentId && !seriesById[parentId] && STRUCTURAL_SERIES[parentId]) {
+                    missingParents.add(parentId);
+                }
+            });
+
+            missingParents.forEach(parentId => {
+                const info = STRUCTURAL_SERIES[parentId];
+                const stub = {
+                    id: parentId,
+                    name: info.name,
+                    level: info.level || inferLevelFromId(parentId),
+                    parent: info.parent || null,
+                    order: info.order !== undefined ? info.order : inferOrderFromId(parentId),
+                    data: null,
+                    isStructural: true
+                };
+
+                cesData.series.push(stub);
+                seriesById[parentId] = stub;
+            });
+        }
+
         // Load data on startup
         async function loadData() {
             try {
@@ -289,6 +406,8 @@
                     seriesById[s.id] = s;
                 });
 
+                addStructuralParents();
+
                 // Resolve parent relationships against available series
                 cesData.series.forEach(series => {
                     series.resolvedParent = resolveParent(series);
@@ -301,11 +420,11 @@
                 updateChart();
             } catch (error) {
                 console.error('Error loading data:', error);
-                document.getElementById('hierarchy').innerHTML = 
+                document.getElementById('hierarchy').innerHTML =
                     `<div class="error">Error loading data: ${error.message}</div>`;
             }
         }
-        
+
         function resolveParent(series) {
             if (!series) return null;
 
@@ -397,7 +516,7 @@
             // Build tree structure
             const tree = {};
             const roots = [];
-            
+
             // First pass: identify roots and build parent map
             cesData.series.forEach(series => {
                 const parentId = series.resolvedParent;
@@ -410,35 +529,41 @@
                     tree[parentId].push(series);
                 }
             });
-            
+
             // Sort roots
             roots.sort((a, b) => (a.order || 999) - (b.order || 999));
-            
+
             // Recursive function to build tree UI
             function buildTreeNode(series, container) {
+                const hasData = series.data && Object.keys(series.data).length > 0;
+
                 const div = document.createElement('div');
-                div.className = `tree-item level-${series.level}`;
-                
+                div.className = `tree-item level-${series.level}${hasData ? '' : ' structural'}`;
+
                 const label = document.createElement('label');
-                
+
                 const checkbox = document.createElement('input');
                 checkbox.type = 'checkbox';
                 checkbox.value = series.id;
-                checkbox.addEventListener('change', (e) => {
-                    if (e.target.checked) {
-                        selectedSeries.add(series.id);
-                    } else {
-                        selectedSeries.delete(series.id);
-                    }
-                    updateChart();
-                });
-                
+                if (hasData) {
+                    checkbox.addEventListener('change', (e) => {
+                        if (e.target.checked) {
+                            selectedSeries.add(series.id);
+                        } else {
+                            selectedSeries.delete(series.id);
+                        }
+                        updateChart();
+                    });
+                } else {
+                    checkbox.disabled = true;
+                }
+
                 const nameSpan = document.createElement('span');
                 nameSpan.className = 'name';
                 nameSpan.textContent = series.name;
-                
+
                 // Get latest value
-                const dates = Object.keys(series.data).sort();
+                const dates = series.data ? Object.keys(series.data).sort() : [];
                 if (dates.length > 0) {
                     const latestValue = series.data[dates[dates.length - 1]];
                     const valueSpan = document.createElement('span');
@@ -451,10 +576,10 @@
                     label.appendChild(checkbox);
                     label.appendChild(nameSpan);
                 }
-                
+
                 div.appendChild(label);
                 container.appendChild(div);
-                
+
                 // Add children
                 const children = tree[series.id];
                 if (children && children.length > 0) {
@@ -467,87 +592,150 @@
                     });
                 }
             }
-            
+
             // Build the tree starting from roots
             roots.forEach(root => {
                 buildTreeNode(root, container);
             });
         }
-        
+
         function formatNumber(num) {
             if (num >= 1000) {
                 return (num / 1000).toFixed(1) + 'k';
             }
             return num.toFixed(0);
         }
-        
+
         function getFilteredDates() {
             if (!cesData) return [];
-            
+
             // Get all dates from first series with data
             const seriesWithData = cesData.series.find(s => s.data && Object.keys(s.data).length > 0);
             if (!seriesWithData) return [];
-            
+
             const allDates = Object.keys(seriesWithData.data).sort();
-            
+
             if (currentDateRange === 'all') {
                 return allDates;
             }
-            
+
             const cutoffDate = new Date();
             cutoffDate.setFullYear(cutoffDate.getFullYear() - parseFloat(currentDateRange));
-            
+
             return allDates.filter(date => new Date(date) >= cutoffDate);
         }
-        
+
         function updateChart() {
             if (!cesData || selectedSeries.size === 0) {
-                document.getElementById('chart').innerHTML = 
+                document.getElementById('chart').innerHTML =
                     '<div class="loading">Select series to display</div>';
                 return;
             }
-            
-            const filteredDates = getFilteredDates();
+
+            let filteredDates = getFilteredDates();
+
+            const lastValidDate = filteredDates.reduce((lastDate, date) => {
+                const allHaveData = Array.from(selectedSeries).every(seriesId => {
+                    const series = seriesById[seriesId];
+                    return series && series.data && series.data[date] != null && series.data[date] !== 0;
+                });
+                return allHaveData ? date : lastDate;
+            }, null);
+
+            if (lastValidDate) {
+                filteredDates = filteredDates.filter(date => date <= lastValidDate);
+            }
+
             const traces = [];
-            let colorIndex = 0;
-            
-            selectedSeries.forEach(seriesId => {
+            const seriesArray = Array.from(selectedSeries);
+
+            seriesArray.forEach((seriesId, index) => {
                 const series = seriesById[seriesId];
                 if (!series || !series.data) return;
-                
-                // Get data for filtered dates
+
                 const values = filteredDates.map(d => series.data[d] || 0);
-                
-                // Transform based on view and data type
-                let x = filteredDates;
-                let y = values;
-                
-                if (currentView === 'annual') {
-                    // Aggregate by year
+
+                let x = filteredDates.slice();
+                let y = values.slice();
+
+                if (currentDataType === 'mom') {
+                    y = values.map((val, i) => {
+                        if (i === 0) return null;
+                        const prev = values[i - 1];
+                        if (val === 0 || prev === 0) return null;
+                        return val - prev;
+                    });
+                } else if (currentDataType === 'm3m') {
+                    y = values.map((val, i) => {
+                        if (i < 3) return null;
+                        const prev = values[i - 3];
+                        if (val === 0 || prev === 0) return null;
+                        return val - prev;
+                    });
+                } else if (currentDataType === 'yoy') {
+                    y = values.map((val, i) => {
+                        if (i < 12) return null;
+                        const prev = values[i - 12];
+                        if (val === 0 || prev === 0) return null;
+                        return val - prev;
+                    });
+                }
+
+                if (currentView === 'quarterly') {
+                    const quarterData = {};
+                    filteredDates.forEach((date, i) => {
+                        const val = y[i];
+                        if (val === null || val === undefined) return;
+                        const year = date.substring(0, 4);
+                        const month = parseInt(date.substring(5, 7), 10);
+                        const quarter = Math.ceil(month / 3);
+                        const key = `${year}-Q${quarter}`;
+                        if (!quarterData[key]) quarterData[key] = [];
+                        quarterData[key].push(val);
+                    });
+                    x = Object.keys(quarterData).sort((a, b) => {
+                        const [aYear, aQuarter] = a.split('-Q').map(Number);
+                        const [bYear, bQuarter] = b.split('-Q').map(Number);
+                        return aYear === bYear ? aQuarter - bQuarter : aYear - bYear;
+                    });
+                    y = x.map(key => {
+                        const vals = quarterData[key];
+                        return vals.length > 0 ? vals.reduce((sum, v) => sum + v, 0) / vals.length : 0;
+                    });
+                } else if (currentView === 'annual') {
                     const yearData = {};
                     filteredDates.forEach((date, i) => {
+                        const val = y[i];
+                        if (val === null || val === undefined) return;
                         const year = date.substring(0, 4);
                         if (!yearData[year]) yearData[year] = [];
-                        if (values[i]) yearData[year].push(values[i]);
+                        yearData[year].push(val);
                     });
                     x = Object.keys(yearData).sort();
                     y = x.map(year => {
                         const vals = yearData[year];
-                        return vals.length > 0 ? vals.reduce((a, b) => a + b) / vals.length : 0;
+                        return vals.length > 0 ? vals.reduce((sum, v) => sum + v, 0) / vals.length : 0;
                     });
                 }
-                
+
                 traces.push({
                     x: x,
                     y: y,
                     name: series.name,
                     type: 'bar',
-                    marker: { color: COLORS[colorIndex % COLORS.length] }
+                    marker: { color: COLORS[index % COLORS.length] }
                 });
-                
-                colorIndex++;
             });
-            
+
+            let yAxisTitle = 'Employment (thousands)';
+            if (currentDataType === 'mom') {
+                yAxisTitle = 'Month-over-Month Change (thousands)';
+            } else if (currentDataType === 'm3m') {
+                yAxisTitle = '3-Month Change (thousands)';
+            } else if (currentDataType === 'yoy') {
+                yAxisTitle = 'Year-over-Year Change (thousands)';
+            }
+
             const layout = {
                 barmode: 'stack',
                 title: '',
@@ -556,7 +744,7 @@
                     tickangle: -45
                 },
                 yaxis: {
-                    title: 'Employment (thousands)',
+                    title: yAxisTitle,
                     tickformat: ',.0f'
                 },
                 margin: { t: 40, r: 40, b: 100, l: 80 },
@@ -569,32 +757,32 @@
                 paper_bgcolor: 'white',
                 plot_bgcolor: 'white'
             };
-            
+
             const config = {
                 responsive: true,
-                displayModeBar: false,
+                displayModeBar: true,
                 displaylogo: false
             };
-            
+
             Plotly.newPlot('chart', traces, layout, config);
         }
-        
+
         // Event listeners
         document.getElementById('viewType').addEventListener('change', (e) => {
             currentView = e.target.value;
             updateChart();
         });
-        
+
         document.getElementById('dataType').addEventListener('change', (e) => {
             currentDataType = e.target.value;
             updateChart();
         });
-        
+
         document.getElementById('dateRange').addEventListener('change', (e) => {
             currentDateRange = e.target.value;
             updateChart();
         });
-        
+
         document.getElementById('clearAll').addEventListener('click', () => {
             selectedSeries.clear();
             document.querySelectorAll('input[type="checkbox"]').forEach(cb => {
@@ -602,11 +790,11 @@
             });
             updateChart();
         });
-        
+
         document.getElementById('selectMajor').addEventListener('click', () => {
             selectedSeries.clear();
             cesData.series.forEach(s => {
-                if (s.level === 'major' || s.level === 'supersector') {
+                if ((s.level === 'major' || s.level === 'supersector') && s.data && Object.keys(s.data).length > 0) {
                     selectedSeries.add(s.id);
                 }
             });
@@ -615,7 +803,7 @@
             });
             updateChart();
         });
-        
+
         // Initialize
         loadData();
     </script>
