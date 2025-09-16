@@ -76,7 +76,7 @@ jobs:
             set net:timeout 60;
             set net:reconnect-interval-base 5;
             open -u $USER,dummy sftp://$HOST;
-            cd ${REMOTE_BASE}/uploads/reports/live/ces;
+            cd ${REMOTE_BASE}/live/ces;
             put upload_temp/ces_data.json;
             put upload_temp/index.html;
             bye
