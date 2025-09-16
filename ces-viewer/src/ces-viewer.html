@@ -370,11 +370,9 @@
     <script>
         // Configuration with aggressive cache-busting
         const CACHE_BUST = Date.now();
-        const DATA_URL = window.location.hostname === 'home-economics.us' || window.location.hostname === 'www.home-economics.us'
-            ? `./ces_data.json?nocache=${CACHE_BUST}&t=${Math.random()}`
-            : window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+        const DATA_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
             ? '../data/ces_data.json'
-            : `https://home-economics.us/wp-content/uploads/reports/uploads/CES/ces_data.json?nocache=${CACHE_BUST}&t=${Math.random()}`;
+            : `./ces_data.json?nocache=${CACHE_BUST}&t=${Math.random()}`;
         
         // Brand colors
         const COLORS = [
