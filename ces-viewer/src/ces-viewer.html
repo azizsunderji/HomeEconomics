@@ -37,7 +37,7 @@
         }
         
         .sidebar {
-            width: 500px;
+            width: 600px;
             background: white;
             padding: 20px;
             overflow-y: auto;
@@ -75,7 +75,7 @@
         
         label {
             font-size: 12px;
-            color: #666;
+            color: #3D3733;
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
@@ -142,7 +142,7 @@
             align-items: center;
             justify-content: center;
             font-size: 10px;
-            color: #666;
+            color: #3D3733;
             user-select: none;
             flex-shrink: 0;
             font-family: monospace;
@@ -165,19 +165,20 @@
         }
         
         .select-children {
-            padding: 2px 6px;
+            padding: 4px 8px;
             margin: 0 4px;
-            background: #67A275;
+            background: #0BB4FF;
             color: white;
             border: none;
-            border-radius: 3px;
+            border-radius: 4px;
             cursor: pointer;
-            font-size: 10px;
+            font-size: 11px;
+            font-weight: 500;
             flex-shrink: 0;
         }
         
         .select-children:hover {
-            background: #5A8F66;
+            background: #0A99DB;
         }
         
         .tree-item .value {
@@ -212,60 +213,61 @@
         
         .level-major {
             font-weight: 600;
-            font-size: 15px;
-            background: rgba(11, 180, 255, 0.15);
+            font-size: 14px;
+            background: #FEC439;
             margin-left: 0;
             margin-top: 8px;
-            padding-left: 24px !important;
-            color: #0A99DB;
+            padding-left: 20px !important;
+            color: #3D3733;
             border-radius: 3px;
         }
         
-        .level-major label { color: #0A99DB; }
+        .level-major label { color: #3D3733; }
         
         .level-supersector {
             font-weight: 500;
-            font-size: 14px;
-            background: #F6F7F3;
+            font-size: 13px;
+            background: #C6DCCB;
             margin-left: 0;
             margin-top: 6px;
-            padding-left: 36px !important;
+            padding-left: 30px !important;
             color: #3D3733;
             border-radius: 2px;
         }
         
         .level-sector {
             font-weight: normal;
-            font-size: 13px;
+            font-size: 12px;
             margin-left: 0;
-            padding-left: 48px !important;
-            background: rgba(218, 223, 206, 0.3);
+            padding-left: 40px !important;
+            background: #F6F7F3;
             color: #3D3733;
             border-radius: 2px;
+            border-left: 3px solid #67A275;
         }
         
         .level-subsector {
             margin-left: 0;
-            padding-left: 60px !important;
-            font-size: 12px;
-            color: #666;
+            padding-left: 50px !important;
+            font-size: 11px;
+            color: #3D3733;
             background: rgba(218, 223, 206, 0.15);
             border-radius: 2px;
         }
         
         .level-industry_group {
             margin-left: 0;
-            padding-left: 72px !important;
-            font-size: 11px;
-            color: #777;
+            padding-left: 60px !important;
+            font-size: 10px;
+            color: #3D3733;
             background: rgba(246, 247, 243, 0.5);
         }
         
         .level-industry {
             margin-left: 0;
-            padding-left: 84px !important;
-            font-size: 11px;
-            color: #888;
+            padding-left: 70px !important;
+            font-size: 10px;
+            color: #3D3733;
             opacity: 0.9;
         }
         
@@ -281,7 +283,7 @@
         .loading {
             text-align: center;
             padding: 40px;
-            color: #999;
+            color: #3D3733;
         }
         
         .error {
@@ -294,7 +296,7 @@
         
         .status {
             font-size: 12px;
-            color: #999;
+            color: #3D3733;
             margin-bottom: 15px;
         }
     </style>
@@ -329,6 +331,7 @@
                     <select id="dataType">
                         <option value="level">Levels</option>
                         <option value="mom" class="monthly-only">Month-over-month change</option>
+                        <option value="m3m" class="monthly-only">3-Month Change</option>
                         <option value="yoy" class="monthly-only">Year-over-year change</option>
                     </select>
                 </div>
@@ -478,7 +481,7 @@
                 if (hasChildren) {
                     selectChildrenBtn = document.createElement('button');
                     selectChildrenBtn.className = 'select-children';
-                    selectChildrenBtn.innerHTML = '▼';
+                    selectChildrenBtn.innerHTML = 'All';
                     selectChildrenBtn.title = 'Select all children';
                     selectChildrenBtn.addEventListener('click', (e) => {
                         e.stopPropagation();
@@ -644,6 +647,12 @@
                         if (i === 0) return null;
                         return val - values[i - 1];
                     });
+                } else if (currentDataType === 'm3m') {
+                    // 3-month absolute change
+                    y = values.map((val, i) => {
+                        if (i < 3) return null;
+                        return val - values[i - 3];
+                    });
                 } else if (currentDataType === 'yoy') {
                     // Year-over-year absolute change
                     y = values.map((val, i) => {
@@ -652,7 +661,23 @@
                     });
                 }
                 
-                if (currentView === 'annual') {
+                if (currentView === 'quarterly') {
+                    // Aggregate by quarter
+                    const quarterData = {};
+                    filteredDates.forEach((date, i) => {
+                        const year = date.substring(0, 4);
+                        const month = parseInt(date.substring(5, 7));
+                        const quarter = Math.ceil(month / 3);
+                        const quarterKey = `${year}-Q${quarter}`;
+                        if (!quarterData[quarterKey]) quarterData[quarterKey] = [];
+                        if (y[i] !== null && y[i] !== undefined) quarterData[quarterKey].push(y[i]);
+                    });
+                    x = Object.keys(quarterData).sort();
+                    y = x.map(quarter => {
+                        const vals = quarterData[quarter];
+                        return vals.length > 0 ? vals.reduce((a, b) => a + b) / vals.length : 0;
+                    });
+                } else if (currentView === 'annual') {
                     // Aggregate by year
                     const yearData = {};
                     filteredDates.forEach((date, i) => {
@@ -683,6 +708,8 @@
             let yAxisTitle = 'Employment (thousands)';
             if (currentDataType === 'mom') {
                 yAxisTitle = 'Month-over-Month Change (thousands)';
+            } else if (currentDataType === 'm3m') {
+                yAxisTitle = '3-Month Change (thousands)';
             } else if (currentDataType === 'yoy') {
                 yAxisTitle = 'Year-over-Year Change (thousands)';
             }
@@ -717,36 +744,11 @@
             
             Plotly.newPlot('chart', traces, layout, config);
             
-            // Handle double-click on legend to isolate/reset series
+            // Handle double-click on legend to isolate/reset series using Plotly's built-in behavior
             const chartDiv = document.getElementById('chart');
             chartDiv.on('plotly_legenddoubleclick', function(eventData) {
-                return false; // Prevent default behavior
-            });
-            
-            chartDiv.on('plotly_legendclick', function(eventData) {
-                if (eventData.event.detail === 2) { // Double-click detected
-                    const clickedIndex = eventData.curveNumber;
-                    const clickedSeriesId = seriesArray[clickedIndex];
-                    
-                    if (isolatedSeries === clickedSeriesId) {
-                        // Reset to show all originally selected series normally
-                        isolatedSeries = null;
-                        const update = {
-                            'marker.color': traces.map((t, i) => COLORS[i % COLORS.length])
-                        };
-                        Plotly.restyle('chart', update);
-                    } else {
-                        // Isolate the clicked series
-                        isolatedSeries = clickedSeriesId;
-                        const update = {
-                            'marker.color': traces.map((t, i) => {
-                                return i === clickedIndex ? COLORS[i % COLORS.length] : '#E0E0E0';
-                            })
-                        };
-                        Plotly.restyle('chart', update);
-                    }
-                    return false; // Prevent default toggle
-                }
+                // Use Plotly's built-in 'toggleothers' behavior
+                return 'toggleothers';
             });
         }
         
