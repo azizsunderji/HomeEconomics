@@ -71,7 +71,7 @@ def build_hierarchy_rules() -> Dict[str, Optional[str]]:
     mapping["CES2023800001"] = "CES2000000001"  # Specialty trade contractors
     mapping["CES2023800101"] = "CES2023800001"  # Residential specialty trade contractors
     mapping["CES2023800201"] = "CES2023800001"  # Nonresidential specialty trade contractors
-    mapping["CES2023810001"] = "CES2023800001"  # Foundation, structure, and building exterior
+    mapping["CES2023810001"] = "CES2023800201"  # Foundation, structure, and building exterior - under Nonresidential
     mapping["CES2023811001"] = "CES2023810001"  # Poured concrete foundation
     mapping["CES2023812001"] = "CES2023810001"  # Structural steel
     mapping["CES2023813001"] = "CES2023810001"  # Framing
@@ -81,12 +81,12 @@ def build_hierarchy_rules() -> Dict[str, Optional[str]]:
     mapping["CES2023817001"] = "CES2023810001"  # Siding
     mapping["CES2023819001"] = "CES2023810001"  # Other foundation
     
-    mapping["CES2023820001"] = "CES2023800001"  # Building equipment contractors
+    mapping["CES2023820001"] = "CES2023800201"  # Building equipment contractors - under Nonresidential
     mapping["CES2023821001"] = "CES2023820001"  # Electrical contractors
     mapping["CES2023822001"] = "CES2023820001"  # Plumbing, heating
     mapping["CES2023829001"] = "CES2023820001"  # Other building equipment
     
-    mapping["CES2023830001"] = "CES2023800001"  # Building finishing contractors
+    mapping["CES2023830001"] = "CES2023800201"  # Building finishing contractors - under Nonresidential
     mapping["CES2023831001"] = "CES2023830001"  # Drywall and insulation
     mapping["CES2023832001"] = "CES2023830001"  # Painting and wall
     mapping["CES2023833001"] = "CES2023830001"  # Flooring
@@ -94,7 +94,7 @@ def build_hierarchy_rules() -> Dict[str, Optional[str]]:
     mapping["CES2023835001"] = "CES2023830001"  # Finish carpentry
     mapping["CES2023839001"] = "CES2023830001"  # Other building finishing
     
-    mapping["CES2023890001"] = "CES2023800001"  # Other specialty trade contractors
+    mapping["CES2023890001"] = "CES2023800201"  # Other specialty trade contractors - under Nonresidential
     mapping["CES2023891001"] = "CES2023890001"  # Site preparation
     mapping["CES2023899001"] = "CES2023890001"  # All other specialty trade
     
