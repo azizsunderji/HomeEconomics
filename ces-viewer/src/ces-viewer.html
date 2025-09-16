@@ -487,38 +487,24 @@
                         e.stopPropagation();
                         e.preventDefault();
                         
-                        // Helper function to get all descendant IDs
-                        function getDescendants(seriesId) {
-                            const descendants = [];
-                            const stack = [seriesId];
-                            while (stack.length > 0) {
-                                const currentId = stack.pop();
-                                const children = tree[currentId] || [];
-                                children.forEach(child => {
-                                    descendants.push(child.id);
-                                    stack.push(child.id);
-                                });
-                            }
-                            return descendants;
-                        }
+                        // Get only immediate children (not all descendants)
+                        const immediateChildren = tree[series.id] || [];
                         
-                        const descendants = getDescendants(series.id);
-                        
-                        // Toggle all descendants
-                        const allChecked = descendants.every(id => selectedSeries.has(id));
+                        // Check if all immediate children are selected
+                        const allChecked = immediateChildren.every(child => selectedSeries.has(child.id));
                         
                         if (allChecked) {
-                            // Uncheck all descendants
-                            descendants.forEach(id => {
-                                selectedSeries.delete(id);
-                                const childCheckbox = document.querySelector(`input[value="${id}"]`);
+                            // Uncheck all immediate children
+                            immediateChildren.forEach(child => {
+                                selectedSeries.delete(child.id);
+                                const childCheckbox = document.querySelector(`input[value="${child.id}"]`);
                                 if (childCheckbox) childCheckbox.checked = false;
                             });
                         } else {
-                            // Check all descendants
-                            descendants.forEach(id => {
-                                selectedSeries.add(id);
-                                const childCheckbox = document.querySelector(`input[value="${id}"]`);
+                            // Check all immediate children
+                            immediateChildren.forEach(child => {
+                                selectedSeries.add(child.id);
+                                const childCheckbox = document.querySelector(`input[value="${child.id}"]`);
                                 if (childCheckbox) childCheckbox.checked = true;
                             });
                         }
