@@ -49,24 +49,24 @@ def build_hierarchy_rules() -> Dict[str, Optional[str]]:
     mapping["CES2000000001"] = "CES0600000001"  # Construction
     
     # Construction hierarchy (20)
-    mapping["CES2023600001"] = "CES2000000001"  # Construction of buildings
-    mapping["CES2023610001"] = "CES2023600001"  # Residential building construction
+    mapping["CES2023600001"] = "CES2000000001"  # Construction of buildings - SECTOR under Construction
+    mapping["CES2023610001"] = "CES2023600001"  # Residential building construction - under Construction of buildings
     mapping["CES2023611501"] = "CES2023610001"  # New single-family housing
     mapping["CES2023611601"] = "CES2023610001"  # New multifamily housing
     mapping["CES2023611701"] = "CES2023610001"  # New housing for-sale builders
     mapping["CES2023611801"] = "CES2023610001"  # Residential remodelers
-    mapping["CES2023620001"] = "CES2023600001"  # Nonresidential building construction
+    mapping["CES2023620001"] = "CES2023600001"  # Nonresidential building construction - under Construction of buildings
     mapping["CES2023621001"] = "CES2023620001"  # Industrial building construction
     mapping["CES2023622001"] = "CES2023620001"  # Commercial and institutional
     
-    mapping["CES2023700001"] = "CES2000000001"  # Heavy and civil engineering construction
-    mapping["CES2023710001"] = "CES2023700001"  # Utility system construction
+    mapping["CES2023700001"] = "CES2000000001"  # Heavy and civil engineering construction - SECTOR under Construction
+    mapping["CES2023710001"] = "CES2023700001"  # Utility system construction - under Heavy and civil
     mapping["CES2023711001"] = "CES2023710001"  # Water and sewer line
     mapping["CES2023712001"] = "CES2023710001"  # Oil and gas pipeline
     mapping["CES2023713001"] = "CES2023710001"  # Power and communication line
-    mapping["CES2023720001"] = "CES2023700001"  # Land subdivision
-    mapping["CES2023730001"] = "CES2023700001"  # Highway, street, and bridge
-    mapping["CES2023790001"] = "CES2023700001"  # Other heavy and civil
+    mapping["CES2023720001"] = "CES2023700001"  # Land subdivision - under Heavy and civil
+    mapping["CES2023730001"] = "CES2023700001"  # Highway, street, and bridge - under Heavy and civil
+    mapping["CES2023790001"] = "CES2023700001"  # Other heavy and civil - under Heavy and civil
     
     mapping["CES2023800001"] = "CES2000000001"  # Specialty trade contractors
     mapping["CES2023800101"] = "CES2023800001"  # Residential specialty trade contractors
