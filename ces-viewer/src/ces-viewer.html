@@ -715,7 +715,9 @@
                     marker: { 
                         color: isolatedSeries && seriesId !== isolatedSeries ? '#E0E0E0' : COLORS[index % COLORS.length] 
                     },
-                    hovertemplate: '%{y:,.0f}<extra></extra>'
+                    hovertemplate: '<b>%{data.name}</b><br>' +
+                                   '%{x|%b %Y}<br>' +
+                                   'Value: %{y:,.0f}<extra></extra>'
                 });
             });
             
@@ -753,8 +755,7 @@
             
             const config = {
                 responsive: true,
-                displayModeBar: true,
-                displaylogo: false
+                displayModeBar: false  // Hide the Plotly toolbar
             };
             
             Plotly.newPlot('chart', traces, layout, config);
