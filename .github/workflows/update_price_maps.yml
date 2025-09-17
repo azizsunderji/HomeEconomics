@@ -65,13 +65,13 @@ jobs:
       if: steps.check.outputs.new_data == 'true'
       working-directory: PriceMaps
       run: |
-        python scripts/create_price_levels.py
+        python scripts/create_price_levels_original.py
 
     - name: Generate YoY map
       if: steps.check.outputs.new_data == 'true'
       working-directory: PriceMaps
       run: |
-        python scripts/create_yoy_map.py
+        python scripts/create_yoy_map_original.py
 
     - name: Commit and push changes
       if: steps.check.outputs.new_data == 'true'
