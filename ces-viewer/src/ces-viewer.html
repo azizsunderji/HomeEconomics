@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CES Employment Data Viewer - v2025.09.16.1740</title>
+    <title>CES Employment Data Viewer - v2025.09.16.1745</title>
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -226,24 +226,24 @@
         .level-major {
             font-weight: 600;
             font-size: 14px;
-            background: #FEC439;
+            background: #5CC5FF;  /* Lighter blue */
             margin-left: 0;
             margin-top: 8px;
             padding-left: 20px !important;
-            color: #3D3733;
+            color: white;
             border-radius: 3px;
         }
         
-        .level-major label { color: #3D3733; }
+        .level-major label { color: white; }
         
         .level-supersector {
             font-weight: 500;
             font-size: 13px;
-            background: #C6DCCB;
+            background: #67A275;  /* Dark green */
             margin-left: 0;
             margin-top: 6px;
             padding-left: 30px !important;
-            color: #3D3733;
+            color: white;
             border-radius: 2px;
         }
         
@@ -252,7 +252,7 @@
             font-size: 12px;
             margin-left: 0;
             padding-left: 40px !important;
-            background: #F6F7F3;
+            background: #C6DCCB;  /* Light green */
             color: #3D3733;
             border-radius: 2px;
             border-left: 3px solid #67A275;
@@ -263,7 +263,7 @@
             padding-left: 50px !important;
             font-size: 11px;
             color: #3D3733;
-            background: rgba(218, 223, 206, 0.15);
+            background: #FEC439;  /* Yellow */
             border-radius: 2px;
         }
         
@@ -272,7 +272,7 @@
             padding-left: 60px !important;
             font-size: 10px;
             color: #3D3733;
-            background: rgba(246, 247, 243, 0.5);
+            background: #DADFCE;  /* Cream */
         }
         
         .level-industry {
@@ -318,7 +318,7 @@
         <div class="sidebar">
             <h1>Employment Data</h1>
             <div class="status" id="status">Loading...</div>
-            <div style="font-size: 10px; color: #999; margin-top: 2px;">v2025.09.16.1740</div>
+            <div style="font-size: 10px; color: #999; margin-top: 2px;">v2025.09.16.1745</div>
             <div style="margin: 10px 0;">
                 <button id="expandAll" style="margin-right: 5px; padding: 5px 10px; font-size: 12px;">Expand All</button>
                 <button id="collapseAll" style="padding: 5px 10px; font-size: 12px;">Collapse All</button>
@@ -372,16 +372,23 @@
 
     <script>
         // Configuration with aggressive cache-busting
-        const VERSION = 'v2025.09.16.1740';
+        const VERSION = 'v2025.09.16.1745';
         const CACHE_BUST = Date.now();
         const DATA_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
             ? '../data/ces_data.json'
             : `./ces_data.json?v=${VERSION}&nocache=${CACHE_BUST}&t=${Math.random()}`;
         
-        // Brand colors
+        // Brand colors - ordered for better visual progression
         const COLORS = [
-            '#0BB4FF', '#FEC439', '#67A275', '#F4743B',
-            '#C6DCCB', '#FBCAB5', '#DADFCE', '#3D3733'
+            '#0BB4FF',  // Blue (primary)
+            '#5CC5FF',  // Lighter blue
+            '#67A275',  // Green
+            '#C6DCCB',  // Light green
+            '#FEC439',  // Yellow
+            '#FFD873',  // Light yellow
+            '#9BD1FF',  // Very light blue
+            '#DADFCE',  // Cream
+            '#F6F7F3'   // Background cream
         ];
         
         // State management
