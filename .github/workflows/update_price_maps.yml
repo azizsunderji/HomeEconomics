@@ -88,29 +88,36 @@ jobs:
         git commit -m "Update price maps with data from $DATE" || echo "No changes to commit"
         git push
 
-    - name: Deploy to Server
+    - name: Install lftp
+      if: steps.check.outputs.new_data == 'true'
+      run: sudo apt-get update && sudo apt-get install -y lftp
+
+    - name: Deploy to Server via SFTP
       if: steps.check.outputs.new_data == 'true'
       env:
-        SERVER_HOST: ${{ secrets.SERVER_HOST }}
-        SERVER_USER: ${{ secrets.SERVER_USER }}
-        SERVER_PASS: ${{ secrets.SERVER_PASS }}
-        SERVER_PATH: /home2/yxwrmjmy/public_html/wp-content/uploads/reports/live/PriceMaps
+        HOST: ${{ secrets.SFTP_HOST }}
+        USER: ${{ secrets.SFTP_USER }}
+        KEY: ${{ secrets.SFTP_KEY }}
+        REMOTE_BASE: ${{ secrets.REMOTE_BASE }}
       run: |
-        # Install lftp for FTP upload
-        sudo apt-get update && sudo apt-get install -y lftp
+        # Set up SSH key
+        mkdir -p ~/.ssh
+        echo "$KEY" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        ssh-keyscan -H $HOST >> ~/.ssh/known_hosts 2>/dev/null || true
 
-        # Create PriceMaps directory if it doesn't exist and upload files
-        lftp -c "
-          set ftp:ssl-allow no;
-          set ftp:passive-mode yes;
-          open -u $SERVER_USER,$SERVER_PASS ftp://$SERVER_HOST;
-          mkdir -pf $SERVER_PATH || echo 'Directory may already exist';
-          cd $SERVER_PATH;
-          put PriceMaps/output/us_price_levels_with_search.html;
-          put PriceMaps/output/us_yoy_price_map_with_search.html;
-          ls -la;
+        # Upload maps to server
+        lftp -e "
+          set sftp:auto-confirm yes;
+          set sftp:connect-program 'ssh -i ~/.ssh/id_rsa';
+          set net:max-retries 3;
+          set net:timeout 60;
+          open -u $USER,dummy sftp://$HOST;
+          mkdir -p ${REMOTE_BASE}/live/PriceMaps;
+          put PriceMaps/output/us_price_levels_with_search.html -o ${REMOTE_BASE}/live/PriceMaps/us_price_levels_with_search.html;
+          put PriceMaps/output/us_yoy_price_map_with_search.html -o ${REMOTE_BASE}/live/PriceMaps/us_yoy_price_map_with_search.html;
           bye
-        "
+        " || echo "Upload finished with warnings"
 
         echo "✅ Maps deployed to server at $SERVER_PATH"
         echo "URLs:"
