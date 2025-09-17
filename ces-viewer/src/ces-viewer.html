@@ -384,7 +384,7 @@
 
     <script>
         // Configuration with aggressive cache-busting
-        const VERSION = 'v2025.09.16.1810';
+        const VERSION = 'v2025.09.17.1335';
         const CACHE_BUST = Date.now();
         // Try historical data first, fall back to regular data
         const HISTORICAL_DATA_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
@@ -430,6 +430,7 @@
         async function loadData() {
             try {
                 document.getElementById('status').textContent = 'Loading data...';
+                console.log('Starting data load at', new Date().toISOString());
 
                 // Try historical data first
                 let cesResponse = await fetch(HISTORICAL_DATA_URL).catch(() => null);
@@ -443,7 +444,9 @@
                     return null;
                 });
 
+                console.log('Parsing CES data...');
                 cesData = await cesResponse.json();
+                console.log('CES data loaded:', cesData.meta, 'Series count:', cesData.series ? cesData.series.length : 0);
 
                 if (recessionResponse && recessionResponse.ok) {
                     try {
@@ -479,7 +482,9 @@
                 document.getElementById('startYear').value = currentStartYear;
                 document.getElementById('endYear').value = currentEndYear;
 
+                console.log('Building hierarchy...');
                 buildHierarchy();
+                console.log('Data load complete');
 
                 const seriesCount = cesData.series.length;
                 const dateRange = `${cesData.meta.start_date || '?'} to ${cesData.meta.end_date || '?'}`;
@@ -529,9 +534,17 @@
         }
 
         function buildHierarchy() {
+            console.log('Building hierarchy with', cesData.series ? cesData.series.length : 0, 'series');
             const hierarchy = {};
 
             // Build parent-child relationships
+            if (!cesData.series || !Array.isArray(cesData.series)) {
+                console.error('Invalid data structure: cesData.series is not an array');
+                document.getElementById('hierarchy').innerHTML =
+                    '<div class="error">Invalid data structure. Please refresh the page.</div>';
+                return;
+            }
+
             cesData.series.forEach(series => {
                 const parent = series.parent || 'root';
                 if (!hierarchy[parent]) {
