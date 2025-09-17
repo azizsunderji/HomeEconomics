@@ -18,6 +18,48 @@ try:
 except ImportError:
     exec(open(os.path.join(os.path.dirname(__file__), 'all_series.py')).read())
 
+# Import hierarchy functions from the historical fetch script
+try:
+    from fetch_ces_historical_data import determine_hierarchy_level, determine_level_from_id, get_order_from_id
+except ImportError:
+    # Define them inline if import fails
+    def determine_hierarchy_level(series_id: str, all_series_set: set = None) -> Dict[str, Any]:
+        """Determine the hierarchy level and parent from series ID"""
+        # CES format: CES + supersector(2) + industry(6) + datatype(2)
+        if len(series_id) < 13:
+            return {"level": "unknown", "parent": None}
+
+        supersector = series_id[3:5]
+        industry_code = series_id[5:11]
+
+        # Special cases for top-level aggregates
+        if series_id == "CES0000000001":
+            return {"level": "total", "parent": None, "order": 0}
+        elif series_id == "CES0500000001":
+            return {"level": "major", "parent": "CES0000000001", "order": 1}
+        elif series_id == "CES0600000001":
+            return {"level": "major", "parent": "CES0500000001", "order": 2}
+        elif series_id == "CES0700000001":
+            return {"level": "major", "parent": "CES0000000001", "order": 3}
+        elif series_id == "CES0800000001":
+            return {"level": "major", "parent": "CES0500000001", "order": 4}
+        elif series_id == "CES9000000001":
+            return {"level": "major", "parent": "CES0000000001", "order": 100}
+
+        # Regular hierarchy
+        if industry_code == "000000":
+            # This is a supersector
+            if supersector in ["10", "20", "30", "31", "32", "40", "50", "55", "60", "65", "70", "80"]:
+                # These are under private
+                parent = "CES0800000001" if supersector not in ["10", "20", "30", "31", "32"] else "CES0600000001"
+                return {"level": "supersector", "parent": parent, "order": int(supersector)}
+            else:
+                return {"level": "supersector", "parent": "CES0500000001", "order": int(supersector)}
+        else:
+            # This is an industry - find its proper parent
+            parent_id = f"CES{supersector}00000001"  # Default to supersector
+            return {"level": "industry", "parent": parent_id, "order": 999}
+
 # BLS API configuration
 BLS_API_KEY = os.environ.get('BLS_API_KEY', 'a7d81877b6374d11a6b7e15fa63b5f9b')
 BLS_API_URL = 'https://api.bls.gov/publicAPI/v2/timeseries/data/'
