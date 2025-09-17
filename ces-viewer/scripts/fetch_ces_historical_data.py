@@ -178,12 +178,17 @@ def determine_hierarchy_level(series_id: str, all_series_set: set = None) -> Dic
     # Regular hierarchy
     if industry_code == "000000":
         # This is a supersector
-        if supersector in ["10", "20", "30", "31", "32", "40", "50", "55", "60", "65", "70", "80"]:
-            # These are under private
-            parent = "CES0800000001" if supersector not in ["10", "20", "30", "31", "32"] else "CES0600000001"
-            return {"level": "supersector", "parent": parent, "order": int(supersector)}
-        else:
+        # Supersectors 10 (Mining), 20 (Construction), 30-32 (Manufacturing) are under Goods-producing
+        if supersector in ["10", "20", "30", "31", "32"]:
             return {"level": "supersector", "parent": "CES0500000001", "order": int(supersector)}
+        # Supersectors 40+ are under Service-providing
+        elif supersector in ["40", "41", "42", "43", "44", "50", "55", "60", "65", "70", "80"]:
+            return {"level": "supersector", "parent": "CES0800000001", "order": int(supersector)}
+        # Government (90)
+        elif supersector == "90":
+            return {"level": "supersector", "parent": "CES0000000001", "order": int(supersector)}
+        else:
+            return {"level": "supersector", "parent": None, "order": int(supersector) if supersector.isdigit() else 999}
     else:
         # This is an industry - find its proper parent
         # Try to find parent based on NAICS hierarchy
