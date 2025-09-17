@@ -29,22 +29,46 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r ces-viewer/requirements.txt
       
-      - name: Prepare CES data
+      - name: Update CES data from BLS API
         run: |
-          # DEVELOPMENT MODE: Use committed data file, don't fetch from API
-          # TODO: Switch to production mode (uncomment below) when ready
-          echo "DEVELOPMENT MODE: Using stored data file"
-          
-          # PRODUCTION MODE (currently disabled):
-          # mkdir -p ces-viewer/data
-          # python ces-viewer/scripts/fetch_ces_data.py --output ces-viewer/data/ces_data.json
+          echo "Updating CES historical data with recent months..."
+
+          # Check if historical data exists, if not create it
+          if [ -f "ces-viewer/data/ces_historical_data.json" ]; then
+            echo "Historical data exists, updating with recent data only..."
+            python ces-viewer/scripts/update_ces_recent.py
+          else
+            echo "No historical data found, fetching full history (this will take ~15-20 minutes)..."
+            python ces-viewer/scripts/fetch_ces_historical_data.py --start-year 1939 --output ces-viewer/data/ces_historical_data.json
+          fi
+
+          # Generate recession periods
+          echo "Generating recession periods..."
+          cd ces-viewer/scripts && python process_recessions.py && cd ../..
+
+          # Keep a copy of the regular data file for backwards compatibility
+          echo "Creating regular data file for backwards compatibility..."
+          python ces-viewer/scripts/fetch_ces_data.py --output ces-viewer/data/ces_data.json --start-year 2015 || echo "Note: Regular data fetch failed, continuing with historical data"
       
       - name: Verify data integrity
         run: |
-          echo "Data file size:"
-          ls -lh ces-viewer/data/ces_data.json
-          echo "Series count:"
-          python -c "import json; data=json.load(open('ces-viewer/data/ces_data.json')); print(f'{len(data[\"series\"])} series loaded')"
+          echo "Historical data file:"
+          if [ -f "ces-viewer/data/ces_historical_data.json" ]; then
+            ls -lh ces-viewer/data/ces_historical_data.json
+            python -c "import json; data=json.load(open('ces-viewer/data/ces_historical_data.json')); print(f'{data[\"meta\"][\"series_count\"]} series, {data[\"meta\"][\"total_data_points\"]:,} points, {data[\"meta\"][\"earliest_year\"]}-{data[\"meta\"][\"latest_year\"]}')"
+          fi
+          echo ""
+          echo "Regular data file:"
+          if [ -f "ces-viewer/data/ces_data.json" ]; then
+            ls -lh ces-viewer/data/ces_data.json
+            python -c "import json; data=json.load(open('ces-viewer/data/ces_data.json')); print(f'{len(data[\"series\"])} series loaded')"
+          fi
+          echo ""
+          echo "Recession periods:"
+          if [ -f "ces-viewer/data/recession_periods.json" ]; then
+            ls -lh ces-viewer/data/recession_periods.json
+            python -c "import json; data=json.load(open('ces-viewer/data/recession_periods.json')); print(f'{len(data[\"recessions\"])} recession periods')"
+          fi
       
       - name: Install lftp
         run: sudo apt-get update && sudo apt-get install -y lftp
@@ -65,7 +89,13 @@ jobs:
           
           # Create temp directory for upload
           mkdir -p upload_temp
-          cp ces-viewer/data/ces_data.json upload_temp/
+
+          # Copy all data files
+          cp ces-viewer/data/ces_data.json upload_temp/ 2>/dev/null || echo "No regular data file"
+          cp ces-viewer/data/ces_historical_data.json upload_temp/ 2>/dev/null || echo "No historical data file"
+          cp ces-viewer/data/recession_periods.json upload_temp/ 2>/dev/null || echo "No recession periods file"
+
+          # Copy HTML viewer
           cp ces-viewer/src/ces-viewer.html upload_temp/index.html
           
           # Use mirror -R like all working workflows
@@ -78,6 +108,8 @@ jobs:
             open -u $USER,dummy sftp://$HOST;
             cd ${REMOTE_BASE}/live/ces;
             put upload_temp/ces_data.json;
+            put upload_temp/ces_historical_data.json;
+            put upload_temp/recession_periods.json;
             put upload_temp/index.html;
             bye
           " || echo "Upload finished with warnings"
