@@ -3,212 +3,182 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CES Employment Data Viewer - v2025.09.16.1750</title>
+    <title>CES Employment Data Viewer - v2025.09.16.1810</title>
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <script src="https://cdn.plot.ly/plotly-2.34.0.min.js"></script>
     <style>
         @font-face {
-            font-family: 'Oracle';
-            src: url('/fonts/Oracle-Regular.woff2') format('woff2'),
-                 url('/fonts/Oracle-Regular.woff') format('woff');
-            font-weight: normal;
-            font-style: normal;
+            font-family: 'OracleAzizFont';
+            src: url('https://home-economics.us/wp-content/uploads/webfont/OracleAzizsunFontFamily.ttf') format('truetype');
         }
-        
-        @font-face {
-            font-family: 'Oracle';
-            src: url('/fonts/Oracle-Bold.woff2') format('woff2'),
-                 url('/fonts/Oracle-Bold.woff') format('woff');
-            font-weight: bold;
-            font-style: normal;
-        }
-        
-        body {
-            font-family: 'Oracle', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+
+        * {
             margin: 0;
             padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'OracleAzizFont', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: #F6F7F3;
             color: #3D3733;
+            line-height: 1.6;
         }
-        
+
         .container {
             display: flex;
             height: 100vh;
+            overflow: hidden;
         }
-        
+
         .sidebar {
             width: 600px;
             background: white;
             padding: 20px;
             overflow-y: auto;
-            box-shadow: 2px 0 4px rgba(0,0,0,0.05);
-            border-right: 1px solid #DADFCE;
+            border-right: 1px solid #e0e0e0;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.05);
         }
-        
+
         .main {
             flex: 1;
-            padding: 30px;
+            padding: 20px;
+            overflow-y: auto;
             display: flex;
             flex-direction: column;
-            min-width: 0;
         }
-        
+
         h1 {
             margin: 0 0 15px 0;
             font-size: 22px;
             color: #3D3733;
         }
-        
+
         .controls {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+        }
+
+        .control-row {
             display: flex;
             gap: 15px;
-            margin-bottom: 20px;
-            align-items: center;
-            flex-wrap: wrap;
+            align-items: flex-end;
+            margin-bottom: 15px;
         }
-        
+
+        .control-row:last-child {
+            margin-bottom: 0;
+        }
+
         .control-group {
             display: flex;
             flex-direction: column;
             gap: 5px;
+            flex: 1;
         }
-        
-        label {
+
+        .control-group label {
             font-size: 12px;
-            color: #3D3733;
+            color: #666;
+            font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
-        
+
         select, button {
             padding: 8px 12px;
-            border: 1px solid #DADFCE;
+            border: 1px solid #ddd;
             border-radius: 4px;
             background: white;
             color: #3D3733;
             font-size: 14px;
             cursor: pointer;
+            transition: all 0.2s;
+            height: 36px;
         }
-        
+
         select:hover, button:hover {
-            border-color: #67A275;
+            border-color: #0BB4FF;
         }
-        
+
         button {
-            background: #67A275;
-            color: white;
-            border: none;
-            font-weight: 500;
-        }
-        
-        button:hover {
-            background: #5A8F66;
-        }
-        
-        /* Tree styling */
-        .tree-item {
-            margin: 2px 0;
-            line-height: 1.6;
-        }
-        
-        .tree-item label {
-            display: flex;
-            align-items: center;
-            cursor: pointer;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 12px;
-            color: #3D3733;
-            text-transform: none;
-            letter-spacing: normal;
-            white-space: nowrap;
-        }
-        
-        .tree-item label:hover {
-            background: rgba(103, 162, 117, 0.1);
-        }
-        
-        .tree-item input[type="checkbox"] {
-            margin-right: 8px;
-            cursor: pointer;
-        }
-        
-        .tree-item .toggle {
-            width: 16px;
-            height: 16px;
-            margin-right: 4px;
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 10px;
-            color: #3D3733;
-            user-select: none;
-            flex-shrink: 0;
-            font-family: monospace;
-        }
-        
-        .tree-item .toggle:hover {
-            background: rgba(103, 162, 117, 0.15);
-            border-radius: 2px;
-            color: #67A275;
-        }
-        
-        .tree-item .toggle.empty {
-            visibility: hidden;
-        }
-        
-        .tree-item .name {
-            flex: 1;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        
-        /* Depth-based indentation for proper tree structure */
-        .depth-0 { padding-left: 12px !important; }
-        .depth-1 { padding-left: 30px !important; }
-        .depth-2 { padding-left: 50px !important; }
-        .depth-3 { padding-left: 70px !important; }
-        .depth-4 { padding-left: 90px !important; }
-        .depth-5 { padding-left: 110px !important; }
-        .depth-6 { padding-left: 130px !important; }
-        .depth-7 { padding-left: 150px !important; }
-        
-        .select-children {
-            padding: 4px 8px;
-            margin: 0 4px;
             background: #0BB4FF;
             color: white;
             border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 11px;
             font-weight: 500;
-            flex-shrink: 0;
+            padding: 0 20px;
         }
-        
-        .select-children:hover {
-            background: #0A99DB;
+
+        button:hover {
+            background: #0AA0E0;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
-        
+
+        input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            margin-top: 5px;
+        }
+
+        .tree-item {
+            padding: 4px 8px;
+            border-radius: 3px;
+            transition: all 0.2s;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            user-select: none;
+        }
+
+        .tree-item:hover {
+            background: rgba(11, 180, 255, 0.1);
+        }
+
+        .tree-item input[type="checkbox"] {
+            margin-right: 8px;
+        }
+
         .tree-item .value {
             font-size: 11px;
-            color: #3D3733;
+            color: #999;
             margin-left: auto;
             padding-left: 10px;
-            font-weight: 500;
+            font-family: monospace;
         }
-        
+
+        .tree-toggle {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            margin-right: 4px;
+            text-align: center;
+            line-height: 14px;
+            border-radius: 2px;
+            background: #f0f0f0;
+            font-size: 10px;
+            cursor: pointer;
+        }
+
+        .tree-toggle:hover {
+            background: #e0e0e0;
+        }
+
         .tree-children {
             display: none;
         }
-        
+
         .tree-children.expanded {
             display: block;
         }
-        
+
         /* Hierarchy levels with background shading using brand colors */
         .level-total {
             font-weight: bold;
@@ -219,10 +189,10 @@
             border-radius: 4px;
             padding-left: 12px !important;
         }
-        
+
         .level-total .value { color: rgba(255,255,255,0.8); }
         .level-total label { color: white; }
-        
+
         .level-major {
             font-weight: 600;
             font-size: 14px;
@@ -235,7 +205,7 @@
         }
 
         .level-major label { color: #3D3733; }
-        
+
         .level-supersector {
             font-weight: 500;
             font-size: 13px;
@@ -247,7 +217,7 @@
             border-radius: 2px;
             text-shadow: 0 0 2px rgba(0,0,0,0.2);  /* Subtle shadow for better readability */
         }
-        
+
         .level-sector {
             font-weight: normal;
             font-size: 12px;
@@ -258,7 +228,7 @@
             border-radius: 2px;
             border-left: 3px solid #67A275;
         }
-        
+
         .level-subsector {
             margin-left: 0;
             padding-left: 50px !important;
@@ -267,7 +237,7 @@
             background: #FEC439;  /* Yellow */
             border-radius: 2px;
         }
-        
+
         .level-industry_group {
             margin-left: 0;
             padding-left: 60px !important;
@@ -275,7 +245,7 @@
             color: #3D3733;
             background: #DADFCE;  /* Cream */
         }
-        
+
         .level-industry {
             margin-left: 0;
             padding-left: 70px !important;
@@ -283,7 +253,7 @@
             color: #3D3733;
             opacity: 0.9;
         }
-        
+
         #chart {
             flex: 1;
             min-height: 400px;
@@ -292,13 +262,13 @@
             padding: 20px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.05);
         }
-        
+
         .loading {
             text-align: center;
             padding: 40px;
             color: #3D3733;
         }
-        
+
         .error {
             color: #F4743B;
             padding: 20px;
@@ -306,10 +276,10 @@
             border-radius: 4px;
             margin: 20px 0;
         }
-        
+
         .status {
             font-size: 12px;
-            color: #3D3733;
+            color: #999;
             margin-bottom: 15px;
         }
     </style>
@@ -319,7 +289,7 @@
         <div class="sidebar">
             <h1>Employment Data</h1>
             <div class="status" id="status">Loading...</div>
-            <div style="font-size: 10px; color: #999; margin-top: 2px;">v2025.09.16.1750</div>
+            <div style="font-size: 10px; color: #999; margin-top: 2px;">v2025.09.16.1810 | 86 years of data</div>
             <div style="margin: 10px 0;">
                 <button id="expandAll" style="margin-right: 5px; padding: 5px 10px; font-size: 12px;">Expand All</button>
                 <button id="collapseAll" style="padding: 5px 10px; font-size: 12px;">Collapse All</button>
@@ -328,57 +298,82 @@
                 <div class="loading">Loading data...</div>
             </div>
         </div>
-        
+
         <div class="main">
             <div class="controls">
-                <div class="control-group">
-                    <label>View</label>
-                    <select id="viewType">
-                        <option value="monthly">Monthly</option>
-                        <option value="quarterly">Quarterly</option>
-                        <option value="annual">Annual</option>
-                    </select>
-                </div>
-                
-                <div class="control-group">
-                    <label>Data Type</label>
-                    <select id="dataType">
-                        <option value="level">Levels</option>
-                        <option value="mom" class="monthly-only">Month-over-month change</option>
-                        <option value="m3m" class="monthly-only">3-Month Change</option>
-                        <option value="yoy" class="monthly-only">Year-over-year change</option>
-                    </select>
-                </div>
-                
-                <div class="control-group">
-                    <label>Date Range</label>
-                    <select id="dateRange">
-                        <option value="1">1 year</option>
-                        <option value="1.5">18 months</option>
-                        <option value="2">2 years</option>
-                        <option value="3" selected>3 years</option>
-                        <option value="5">5 years</option>
-                        <option value="10">10 years</option>
-                        <option value="all">All available</option>
-                    </select>
+                <div class="control-row">
+                    <div class="control-group">
+                        <label>View</label>
+                        <select id="viewType">
+                            <option value="monthly">Monthly</option>
+                            <option value="quarterly">Quarterly</option>
+                            <option value="annual">Annual</option>
+                        </select>
+                    </div>
+
+                    <div class="control-group">
+                        <label>Data Type</label>
+                        <select id="dataType">
+                            <option value="level">Levels</option>
+                            <option value="mom" class="monthly-only">Month-over-month change</option>
+                            <option value="m3m" class="monthly-only">3-Month Change</option>
+                            <option value="yoy" class="monthly-only">Year-over-year change</option>
+                        </select>
+                    </div>
+
+                    <div class="control-group">
+                        <label>Start Year</label>
+                        <select id="startYear"></select>
+                    </div>
+
+                    <div class="control-group">
+                        <label>End Year</label>
+                        <select id="endYear"></select>
+                    </div>
+
+                    <div class="control-group" style="flex: 0 0 auto;">
+                        <button id="clearAll">Clear All</button>
+                    </div>
                 </div>
 
-                <button id="clearAll">Clear All</button>
-                <button id="selectMajor">Major Sectors</button>
+                <div class="control-row">
+                    <div class="control-group" style="flex: 0 0 auto;">
+                        <label style="display: flex; align-items: center; gap: 8px;">
+                            <input type="checkbox" id="showRecessions" checked style="width: auto; margin: 0;">
+                            Show Recessions
+                        </label>
+                    </div>
+
+                    <div class="control-group" style="flex: 2;">
+                        <label>View Recession Period</label>
+                        <select id="recessionPeriod">
+                            <option value="">Custom Date Range</option>
+                        </select>
+                    </div>
+                </div>
             </div>
-            
+
             <div id="chart"></div>
         </div>
     </div>
 
     <script>
         // Configuration with aggressive cache-busting
-        const VERSION = 'v2025.09.16.1750';
+        const VERSION = 'v2025.09.16.1810';
         const CACHE_BUST = Date.now();
+        // Try historical data first, fall back to regular data
+        const HISTORICAL_DATA_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+            ? '../data/ces_historical_data.json'
+            : `./ces_historical_data.json?v=${VERSION}&nocache=${CACHE_BUST}&t=${Math.random()}`;
+
         const DATA_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
             ? '../data/ces_data.json'
             : `./ces_data.json?v=${VERSION}&nocache=${CACHE_BUST}&t=${Math.random()}`;
-        
+
+        const RECESSION_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+            ? '../data/recession_periods.json'
+            : `./recession_periods.json?v=${VERSION}&nocache=${CACHE_BUST}&t=${Math.random()}`;
+
         // Brand colors - ordered for better visual progression
         const COLORS = [
             '#0BB4FF',  // Blue (primary)
@@ -391,248 +386,277 @@
             '#DADFCE',  // Cream
             '#F6F7F3'   // Background cream
         ];
-        
+
         // State management
         let cesData = null;
+        let recessionData = null;
         let seriesById = {};
         let selectedSeries = new Set();
         let currentView = 'monthly';
         let currentDataType = 'level';
-        let currentDateRange = 3;
-        
+        let currentStartYear = null;
+        let currentEndYear = null;
+        let showRecessions = true;
+        let dataMinYear = 2015;
+        let dataMaxYear = 2025;
+
         // Load data on startup
         async function loadData() {
             try {
-                const response = await fetch(DATA_URL);
-                if (!response.ok) throw new Error('Failed to load data');
-                
-                cesData = await response.json();
-                
-                // Create lookup map
+                // Try loading historical data first, fall back to regular data
+                let cesResponse;
+                try {
+                    cesResponse = await fetch(HISTORICAL_DATA_URL);
+                    if (!cesResponse.ok) {
+                        cesResponse = await fetch(DATA_URL);
+                    }
+                } catch (e) {
+                    cesResponse = await fetch(DATA_URL);
+                }
+
+                const recessionResponse = await fetch(RECESSION_URL).catch(() => null);
+
+                cesData = await cesResponse.json();
+
+                if (recessionResponse) {
+                    recessionData = await recessionResponse.json();
+                    populateRecessionSelector();
+                }
+
+                // Build lookup
                 cesData.series.forEach(s => {
                     seriesById[s.id] = s;
                 });
-                
+
+                // Determine data range
+                if (cesData.meta.start_date && cesData.meta.end_date) {
+                    dataMinYear = parseInt(cesData.meta.start_date.substring(0, 4));
+                    dataMaxYear = parseInt(cesData.meta.end_date.substring(0, 4));
+                }
+
+                // Populate year selectors
+                populateYearSelectors();
+
+                // Set initial years (last 3 years)
+                currentStartYear = Math.max(dataMinYear, dataMaxYear - 2);
+                currentEndYear = dataMaxYear;
+                document.getElementById('startYear').value = currentStartYear;
+                document.getElementById('endYear').value = currentEndYear;
+
                 document.getElementById('status').textContent =
                     `${cesData.meta.series_count} series | ${cesData.meta.start_date} to ${cesData.meta.end_date}`;
-                
+
                 buildHierarchy();
                 updateChart();
             } catch (error) {
                 console.error('Error loading data:', error);
-                document.getElementById('hierarchy').innerHTML = 
-                    `<div class="error">Error loading data: ${error.message}</div>`;
+                document.getElementById('hierarchy').innerHTML =
+                    '<div class="error">Error loading data. Please refresh the page.</div>';
             }
         }
-        
-        function buildHierarchy() {
-            if (!cesData) return;
-            
-            const container = document.getElementById('hierarchy');
-            container.innerHTML = '';
-            
-            // Build tree structure
-            const tree = {};
-            const roots = [];
-            
-            // First pass: identify roots and build parent map
-            cesData.series.forEach(series => {
-                if (!series.parent) {
-                    roots.push(series);
-                } else {
-                    if (!tree[series.parent]) {
-                        tree[series.parent] = [];
+
+        function populateYearSelectors() {
+            const startSelect = document.getElementById('startYear');
+            const endSelect = document.getElementById('endYear');
+
+            startSelect.innerHTML = '';
+            endSelect.innerHTML = '';
+
+            for (let year = dataMinYear; year <= dataMaxYear; year++) {
+                startSelect.innerHTML += `<option value="${year}">${year}</option>`;
+                endSelect.innerHTML += `<option value="${year}">${year}</option>`;
+            }
+        }
+
+        function populateRecessionSelector() {
+            if (!recessionData || !recessionData.recessions) return;
+
+            const selector = document.getElementById('recessionPeriod');
+            selector.innerHTML = '<option value="">Custom Date Range</option>';
+
+            recessionData.recessions.forEach(rec => {
+                // Only show recessions that overlap with our data
+                if (rec.end_year >= dataMinYear) {
+                    const option = document.createElement('option');
+                    option.value = JSON.stringify(rec);
+                    option.textContent = rec.label || rec.name;
+
+                    // Disable if data not available for this period
+                    const viewStart = Math.max(dataMinYear, rec.start_year - 5);
+                    if (viewStart > dataMaxYear) {
+                        option.disabled = true;
+                        option.textContent += ' (no data)';
                     }
-                    tree[series.parent].push(series);
+
+                    selector.appendChild(option);
                 }
             });
-            
-            // Sort roots
-            roots.sort((a, b) => (a.order || 999) - (b.order || 999));
-            
-            // Recursive function to build tree UI
-            function buildTreeNode(series, container, startExpanded = false, depth = 0) {
-                const div = document.createElement('div');
-                div.className = `tree-item level-${series.level} depth-${depth}`;
-                
-                const label = document.createElement('label');
-                
-                // Check if this node has children
-                const children = tree[series.id];
-                const hasChildren = children && children.length > 0;
-                
-                // Add toggle button with better arrows
-                const toggle = document.createElement('span');
-                toggle.className = hasChildren ? 'toggle' : 'toggle empty';
-                toggle.innerHTML = hasChildren ? '&#9654;' : ''; // Right-pointing triangle
-                if (hasChildren) {
-                    toggle.addEventListener('click', (e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        const childrenDiv = div.querySelector('.tree-children');
-                        if (childrenDiv) {
-                            const isExpanded = childrenDiv.classList.toggle('expanded');
-                            toggle.innerHTML = isExpanded ? '&#9660;' : '&#9654;'; // Down or right triangle
-                        }
-                    });
+        }
+
+        function buildHierarchy() {
+            const hierarchy = {};
+
+            // Build parent-child relationships
+            cesData.series.forEach(series => {
+                const parent = series.parent || 'root';
+                if (!hierarchy[parent]) {
+                    hierarchy[parent] = [];
                 }
-                
-                const checkbox = document.createElement('input');
-                checkbox.type = 'checkbox';
-                checkbox.value = series.id;
-                checkbox.addEventListener('change', (e) => {
+                hierarchy[parent].push(series);
+            });
+
+            // Sort children
+            Object.keys(hierarchy).forEach(parent => {
+                hierarchy[parent].sort((a, b) => {
+                    const orderA = a.order || 9999;
+                    const orderB = b.order || 9999;
+                    return orderA - orderB;
+                });
+            });
+
+            // Build HTML
+            function buildNode(series, level = 0) {
+                const hasChildren = hierarchy[series.id] && hierarchy[series.id].length > 0;
+                const levelClass = `level-${series.level || 'unknown'}`;
+                const latestValue = getLatestValue(series);
+
+                let html = `<div class="tree-item ${levelClass}" data-series-id="${series.id}">`;
+
+                if (hasChildren) {
+                    html += `<span class="tree-toggle">▶</span>`;
+                } else {
+                    html += `<span style="display: inline-block; width: 20px;"></span>`;
+                }
+
+                // Add "All" button for parent nodes
+                if (hasChildren) {
+                    html += `<button class="select-all-btn" data-parent-id="${series.id}" style="margin-right: 5px; padding: 2px 6px; font-size: 10px;">All</button>`;
+                }
+
+                html += `<label style="flex: 1; display: flex; align-items: center;">`;
+                html += `<input type="checkbox" value="${series.id}">`;
+                html += `<span>${series.name}</span>`;
+                html += `</label>`;
+
+                if (latestValue !== null) {
+                    html += `<span class="value">${latestValue.toLocaleString()}</span>`;
+                }
+
+                html += `</div>`;
+
+                if (hasChildren) {
+                    html += `<div class="tree-children" data-parent="${series.id}">`;
+                    hierarchy[series.id].forEach(child => {
+                        html += buildNode(child, level + 1);
+                    });
+                    html += `</div>`;
+                }
+
+                return html;
+            }
+
+            // Start with root nodes
+            let html = '';
+            const rootSeries = cesData.series.filter(s => !s.parent);
+            rootSeries.forEach(series => {
+                html += buildNode(series);
+            });
+
+            document.getElementById('hierarchy').innerHTML = html;
+
+            // Add event listeners
+            setupTreeInteractions();
+        }
+
+        function getLatestValue(series) {
+            if (!series.data) return null;
+            const dates = Object.keys(series.data).sort();
+            if (dates.length === 0) return null;
+            return series.data[dates[dates.length - 1]];
+        }
+
+        function setupTreeInteractions() {
+            // Toggle expansion
+            document.querySelectorAll('.tree-toggle').forEach(toggle => {
+                toggle.addEventListener('click', (e) => {
                     e.stopPropagation();
-                    
-                    if (e.target.checked) {
-                        // Just select this series only
-                        selectedSeries.add(series.id);
-                    } else {
-                        // Uncheck this series only
-                        selectedSeries.delete(series.id);
+                    const item = toggle.parentElement;
+                    const children = item.nextElementSibling;
+
+                    if (children && children.classList.contains('tree-children')) {
+                        children.classList.toggle('expanded');
+                        toggle.textContent = children.classList.contains('expanded') ? '▼' : '▶';
                     }
+                });
+            });
+
+            // Checkbox changes
+            document.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+                checkbox.addEventListener('change', (e) => {
+                    const seriesId = checkbox.value;
+
+                    if (checkbox.checked) {
+                        selectedSeries.add(seriesId);
+                    } else {
+                        selectedSeries.delete(seriesId);
+                    }
+
                     updateChart();
                 });
-                checkbox.addEventListener('click', (e) => {
+            });
+
+            // "All" buttons for parent nodes
+            document.querySelectorAll('.select-all-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
                     e.stopPropagation();
-                });
-                
-                // Add "select all children" button for items with children
-                let selectChildrenBtn = null;
-                if (hasChildren) {
-                    selectChildrenBtn = document.createElement('button');
-                    selectChildrenBtn.className = 'select-children';
-                    selectChildrenBtn.innerHTML = 'All';
-                    selectChildrenBtn.title = 'Select all children';
-                    selectChildrenBtn.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        e.preventDefault();
-                        
-                        // Get only immediate children (not all descendants)
-                        const immediateChildren = tree[series.id] || [];
-                        
-                        // Check if all immediate children are selected
-                        const allChecked = immediateChildren.every(child => selectedSeries.has(child.id));
-                        
-                        if (allChecked) {
-                            // Uncheck all immediate children
-                            immediateChildren.forEach(child => {
-                                selectedSeries.delete(child.id);
-                                const childCheckbox = document.querySelector(`input[value="${child.id}"]`);
-                                if (childCheckbox) childCheckbox.checked = false;
-                            });
-                        } else {
-                            // Check all immediate children
-                            immediateChildren.forEach(child => {
-                                selectedSeries.add(child.id);
-                                const childCheckbox = document.querySelector(`input[value="${child.id}"]`);
-                                if (childCheckbox) childCheckbox.checked = true;
-                            });
-                        }
-                        
-                        // Make sure parent checkbox reflects state
-                        checkbox.checked = false; // Parent itself is not selected when children are
+                    const parentId = btn.dataset.parentId;
+                    const childrenContainer = document.querySelector(`.tree-children[data-parent="${parentId}"]`);
+
+                    if (childrenContainer) {
+                        const checkboxes = childrenContainer.querySelectorAll('input[type="checkbox"]');
+                        const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+
+                        checkboxes.forEach(cb => {
+                            cb.checked = !allChecked;
+                            const seriesId = cb.value;
+                            if (cb.checked) {
+                                selectedSeries.add(seriesId);
+                            } else {
+                                selectedSeries.delete(seriesId);
+                            }
+                        });
+
                         updateChart();
-                    });
-                }
-                
-                const nameSpan = document.createElement('span');
-                nameSpan.className = 'name';
-                nameSpan.textContent = series.name;
-                
-                // Get latest value
-                const dates = Object.keys(series.data).sort();
-                const valueSpan = document.createElement('span');
-                valueSpan.className = 'value';
-                if (dates.length > 0) {
-                    const latestValue = series.data[dates[dates.length - 1]];
-                    valueSpan.textContent = formatNumber(latestValue);
-                }
-                
-                label.appendChild(toggle);
-                label.appendChild(checkbox);
-                if (selectChildrenBtn) {
-                    label.appendChild(selectChildrenBtn);
-                }
-                label.appendChild(nameSpan);
-                label.appendChild(valueSpan);
-                
-                // Clicking on label (but not checkbox or toggle) toggles expansion
-                label.addEventListener('click', (e) => {
-                    if (e.target === checkbox || e.target === toggle) return;
-                    e.preventDefault();
-                    if (hasChildren) {
-                        toggle.click();
                     }
                 });
-                
-                div.appendChild(label);
-                
-                // Add children in collapsible container
-                if (hasChildren) {
-                    const childrenDiv = document.createElement('div');
-                    childrenDiv.className = startExpanded ? 'tree-children expanded' : 'tree-children';
-                    
-                    children.sort((a, b) => (a.order || 999) - (b.order || 999));
-                    children.forEach(child => {
-                        // Don't auto-expand children
-                        buildTreeNode(child, childrenDiv, false, depth + 1);
-                    });
-                    
-                    div.appendChild(childrenDiv);
-                    
-                    // Update toggle icon if expanded
-                    if (startExpanded) {
-                        toggle.innerHTML = '&#9660;'; // Down triangle
-                    }
-                }
-                
-                container.appendChild(div);
-            }
-            
-            // Build the tree starting from roots, collapsed by default
-            roots.forEach(root => {
-                buildTreeNode(root, container, false, 0);
             });
         }
-        
-        function formatNumber(num) {
-            if (num >= 1000) {
-                return (num / 1000).toFixed(1) + 'k';
-            }
-            return num.toFixed(0);
-        }
-        
+
         function getFilteredDates() {
-            if (!cesData) return [];
-            
+            if (!cesData || !cesData.series) return [];
+
             // Get all dates from first series with data
             const seriesWithData = cesData.series.find(s => s.data && Object.keys(s.data).length > 0);
             if (!seriesWithData) return [];
-            
+
             const allDates = Object.keys(seriesWithData.data).sort();
-            
-            if (currentDateRange === 'all') {
-                return allDates;
-            }
-            
-            const cutoffDate = new Date();
-            cutoffDate.setFullYear(cutoffDate.getFullYear() - parseFloat(currentDateRange));
-            
-            return allDates.filter(date => new Date(date) >= cutoffDate);
+
+            // Filter by year range
+            const startDate = `${currentStartYear}-01-01`;
+            const endDate = `${currentEndYear}-12-31`;
+
+            return allDates.filter(date => date >= startDate && date <= endDate);
         }
-        
-        let isolatedSeries = null; // Track which series is isolated
-        let originalSelectedSeries = new Set(); // Store original selection
-        
+
         function updateChart() {
             if (!cesData || selectedSeries.size === 0) {
-                document.getElementById('chart').innerHTML = 
+                document.getElementById('chart').innerHTML =
                     '<div class="loading">Select series to display</div>';
                 return;
             }
-            
+
             let filteredDates = getFilteredDates();
-            
+
             // Find the last date where all selected series have data
             const lastValidDate = filteredDates.reduce((lastDate, date) => {
                 const allHaveData = Array.from(selectedSeries).every(seriesId => {
@@ -641,73 +665,74 @@
                 });
                 return allHaveData ? date : lastDate;
             }, null);
-            
+
             // Filter dates to only include up to the last valid date
             if (lastValidDate) {
                 filteredDates = filteredDates.filter(date => date <= lastValidDate);
             }
-            
+
+            // Build traces for each selected series
             const traces = [];
-            const seriesArray = Array.from(selectedSeries);
-            
-            seriesArray.forEach((seriesId, index) => {
+            Array.from(selectedSeries).forEach((seriesId, index) => {
                 const series = seriesById[seriesId];
                 if (!series || !series.data) return;
-                
-                // Get data for filtered dates
-                const values = filteredDates.map(d => series.data[d] || 0);
-                
-                // Transform based on view and data type
-                let x = filteredDates;
-                let y = values;
-                
-                // Handle different data types (absolute changes vs levels)
-                if (currentDataType === 'mom') {
-                    // Month-over-month absolute change
-                    y = values.map((val, i) => {
-                        if (i === 0) return null;
-                        // Check if both current and previous values exist
-                        if (val === 0 || values[i - 1] === 0) return null;
-                        return val - values[i - 1];
-                    });
-                } else if (currentDataType === 'm3m') {
-                    // 3-month absolute change
-                    y = values.map((val, i) => {
-                        if (i < 3) return null;
-                        // Check if both current and 3-month-ago values exist
-                        if (val === 0 || values[i - 3] === 0) return null;
-                        return val - values[i - 3];
-                    });
-                } else if (currentDataType === 'yoy') {
-                    // Year-over-year absolute change
-                    y = values.map((val, i) => {
-                        if (i < 12) return null;
-                        // Check if both current and year-ago values exist
-                        if (val === 0 || values[i - 12] === 0) return null;
-                        return val - values[i - 12];
-                    });
-                }
-                
+
+                let x = [];
+                let y = [];
+
+                filteredDates.forEach(date => {
+                    if (series.data[date] != null) {
+                        x.push(date);
+
+                        if (currentDataType === 'mom') {
+                            // Month-over-month change
+                            const prevMonth = getPreviousMonth(date);
+                            if (series.data[prevMonth] != null) {
+                                y.push(series.data[date] - series.data[prevMonth]);
+                            } else {
+                                y.push(null);
+                            }
+                        } else if (currentDataType === 'm3m') {
+                            // 3-month change
+                            const prev3Month = getPreviousMonth(date, 3);
+                            if (series.data[prev3Month] != null) {
+                                y.push(series.data[date] - series.data[prev3Month]);
+                            } else {
+                                y.push(null);
+                            }
+                        } else if (currentDataType === 'yoy') {
+                            // Year-over-year change
+                            const prevYear = getPreviousMonth(date, 12);
+                            if (series.data[prevYear] != null) {
+                                y.push(series.data[date] - series.data[prevYear]);
+                            } else {
+                                y.push(null);
+                            }
+                        } else {
+                            // Levels
+                            y.push(series.data[date]);
+                        }
+                    }
+                });
+
+                // Convert to quarterly or annual if needed
                 if (currentView === 'quarterly') {
-                    // Aggregate by quarter
-                    const quarterData = {};
-                    filteredDates.forEach((date, i) => {
-                        const year = date.substring(0, 4);
-                        const month = parseInt(date.substring(5, 7));
-                        const quarter = Math.ceil(month / 3);
+                    const quarterlyData = {};
+                    x.forEach((date, i) => {
+                        const [year, month] = date.split('-');
+                        const quarter = Math.floor((parseInt(month) - 1) / 3) + 1;
                         const quarterKey = `${year}-Q${quarter}`;
-                        if (!quarterData[quarterKey]) quarterData[quarterKey] = [];
-                        if (y[i] !== null && y[i] !== undefined) quarterData[quarterKey].push(y[i]);
+                        if (!quarterlyData[quarterKey]) quarterlyData[quarterKey] = [];
+                        if (y[i] !== null && y[i] !== undefined) quarterlyData[quarterKey].push(y[i]);
                     });
-                    x = Object.keys(quarterData).sort();
+                    x = Object.keys(quarterlyData).sort();
                     y = x.map(quarter => {
-                        const vals = quarterData[quarter];
+                        const vals = quarterlyData[quarter];
                         return vals.length > 0 ? vals.reduce((a, b) => a + b) / vals.length : 0;
                     });
                 } else if (currentView === 'annual') {
-                    // Aggregate by year
                     const yearData = {};
-                    filteredDates.forEach((date, i) => {
+                    x.forEach((date, i) => {
                         const year = date.substring(0, 4);
                         if (!yearData[year]) yearData[year] = [];
                         if (y[i] !== null && y[i] !== undefined) yearData[year].push(y[i]);
@@ -718,21 +743,21 @@
                         return vals.length > 0 ? vals.reduce((a, b) => a + b) / vals.length : 0;
                     });
                 }
-                
+
                 traces.push({
                     x: x,
                     y: y,
                     name: series.name,
                     type: 'bar',
-                    marker: { 
-                        color: isolatedSeries && seriesId !== isolatedSeries ? '#E0E0E0' : COLORS[index % COLORS.length] 
+                    marker: {
+                        color: COLORS[index % COLORS.length]
                     },
                     hovertemplate: '<b>%{data.name}</b><br>' +
                                    '%{x|%b %Y}<br>' +
                                    'Value: %{y:,.0f}<extra></extra>'
                 });
             });
-            
+
             // Update y-axis label based on data type
             let yAxisTitle = 'Employment (thousands)';
             if (currentDataType === 'mom') {
@@ -742,7 +767,37 @@
             } else if (currentDataType === 'yoy') {
                 yAxisTitle = 'Year-over-Year Change (thousands)';
             }
-            
+
+            // Add recession shading if enabled
+            const shapes = [];
+            if (showRecessions && recessionData && recessionData.recessions) {
+                recessionData.recessions.forEach(rec => {
+                    // Only show recessions that overlap with visible date range
+                    const recStart = rec.start;
+                    const recEnd = rec.end;
+                    const rangeStart = `${currentStartYear}-01-01`;
+                    const rangeEnd = `${currentEndYear}-12-31`;
+
+                    if (recEnd >= rangeStart && recStart <= rangeEnd) {
+                        shapes.push({
+                            type: 'rect',
+                            xref: 'x',
+                            yref: 'paper',
+                            x0: Math.max(recStart, rangeStart),
+                            x1: Math.min(recEnd, rangeEnd),
+                            y0: 0,
+                            y1: 1,
+                            fillcolor: '#DADFCE',  // Cream color
+                            opacity: 0.3,
+                            layer: 'below',
+                            line: {
+                                width: 0
+                            }
+                        });
+                    }
+                });
+            }
+
             const layout = {
                 barmode: 'relative',  // Use 'relative' mode for proper negative stacking
                 title: '',
@@ -765,40 +820,75 @@
                     x: 0
                 },
                 paper_bgcolor: 'white',
-                plot_bgcolor: 'white'
+                plot_bgcolor: 'white',
+                shapes: shapes  // Add recession shading
             };
-            
+
             const config = {
                 responsive: true,
                 displayModeBar: false  // Hide the Plotly toolbar
             };
-            
+
             Plotly.newPlot('chart', traces, layout, config);
-            
-            // Handle double-click on legend to isolate/reset series using Plotly's built-in behavior
-            const chartDiv = document.getElementById('chart');
-            chartDiv.on('plotly_legenddoubleclick', function(eventData) {
-                // Use Plotly's built-in 'toggleothers' behavior
-                return 'toggleothers';
-            });
         }
-        
+
+        function getPreviousMonth(dateStr, months = 1) {
+            const [year, month, day] = dateStr.split('-').map(Number);
+            const date = new Date(year, month - 1, day);
+            date.setMonth(date.getMonth() - months);
+            const newYear = date.getFullYear();
+            const newMonth = String(date.getMonth() + 1).padStart(2, '0');
+            return `${newYear}-${newMonth}-01`;
+        }
+
         // Event listeners
         document.getElementById('viewType').addEventListener('change', (e) => {
             currentView = e.target.value;
             updateChart();
         });
-        
+
         document.getElementById('dataType').addEventListener('change', (e) => {
             currentDataType = e.target.value;
             updateChart();
         });
-        
-        document.getElementById('dateRange').addEventListener('change', (e) => {
-            currentDateRange = e.target.value;
+
+        document.getElementById('startYear').addEventListener('change', (e) => {
+            currentStartYear = parseInt(e.target.value);
+            // Ensure end year is not before start year
+            if (currentEndYear < currentStartYear) {
+                currentEndYear = currentStartYear;
+                document.getElementById('endYear').value = currentEndYear;
+            }
             updateChart();
         });
-        
+
+        document.getElementById('endYear').addEventListener('change', (e) => {
+            currentEndYear = parseInt(e.target.value);
+            // Ensure start year is not after end year
+            if (currentStartYear > currentEndYear) {
+                currentStartYear = currentEndYear;
+                document.getElementById('startYear').value = currentStartYear;
+            }
+            updateChart();
+        });
+
+        document.getElementById('showRecessions').addEventListener('change', (e) => {
+            showRecessions = e.target.checked;
+            updateChart();
+        });
+
+        document.getElementById('recessionPeriod').addEventListener('change', (e) => {
+            if (e.target.value) {
+                const recession = JSON.parse(e.target.value);
+                // Set date range to 5 years before and after recession
+                currentStartYear = Math.max(dataMinYear, recession.start_year - 5);
+                currentEndYear = Math.min(dataMaxYear, recession.end_year + 5);
+                document.getElementById('startYear').value = currentStartYear;
+                document.getElementById('endYear').value = currentEndYear;
+                updateChart();
+            }
+        });
+
         document.getElementById('clearAll').addEventListener('click', () => {
             selectedSeries.clear();
             document.querySelectorAll('input[type="checkbox"]').forEach(cb => {
@@ -806,39 +896,26 @@
             });
             updateChart();
         });
-        
-        document.getElementById('selectMajor').addEventListener('click', () => {
-            selectedSeries.clear();
-            cesData.series.forEach(s => {
-                if (s.level === 'major' || s.level === 'supersector') {
-                    selectedSeries.add(s.id);
-                }
-            });
-            document.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-                cb.checked = selectedSeries.has(cb.value);
-            });
-            updateChart();
-        });
-        
+
         document.getElementById('expandAll').addEventListener('click', () => {
-            document.querySelectorAll('.tree-children').forEach(div => {
-                div.classList.add('expanded');
+            document.querySelectorAll('.tree-children').forEach(child => {
+                child.classList.add('expanded');
             });
-            document.querySelectorAll('.toggle:not(.empty)').forEach(toggle => {
-                toggle.innerHTML = '&#9660;'; // Down triangle
+            document.querySelectorAll('.tree-toggle').forEach(toggle => {
+                toggle.textContent = '▼';
             });
         });
-        
+
         document.getElementById('collapseAll').addEventListener('click', () => {
-            document.querySelectorAll('.tree-children').forEach(div => {
-                div.classList.remove('expanded');
+            document.querySelectorAll('.tree-children').forEach(child => {
+                child.classList.remove('expanded');
             });
-            document.querySelectorAll('.toggle:not(.empty)').forEach(toggle => {
-                toggle.innerHTML = '&#9654;'; // Right triangle
+            document.querySelectorAll('.tree-toggle').forEach(toggle => {
+                toggle.textContent = '▶';
             });
         });
-        
-        // Initialize
+
+        // Load data when page loads
         loadData();
     </script>
 </body>
