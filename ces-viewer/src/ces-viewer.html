@@ -359,14 +359,6 @@
                     </select>
                 </div>
 
-                <div class="control-group">
-                    <label>Chart Type</label>
-                    <select id="chartType">
-                        <option value="stacked">Stacked Bar</option>
-                        <option value="stacked100">100% Stacked Bar</option>
-                    </select>
-                </div>
-
                 <button id="clearAll">Clear All</button>
                 <button id="selectMajor">Major Sectors</button>
             </div>
@@ -395,7 +387,6 @@
         let currentView = 'monthly';
         let currentDataType = 'level';
         let currentDateRange = 3;
-        let currentChartType = 'stacked';
         
         // Load data on startup
         async function loadData() {
@@ -740,28 +731,16 @@
                 yAxisTitle = 'Year-over-Year Change (thousands)';
             }
             
-            // Configure chart based on type
-            let finalYAxisTitle = yAxisTitle;
-            let yTickFormat = ',.0f';
-            let barnorm = undefined;
-
-            if (currentChartType === 'stacked100') {
-                barnorm = 'percent';
-                finalYAxisTitle = currentDataType === 'level' ? 'Share of Employment (%)' : 'Share of Change (%)';
-                yTickFormat = '.1%';
-            }
-
             const layout = {
                 barmode: 'stack',
-                barnorm: barnorm,
                 title: '',
                 xaxis: {
                     title: '',
                     tickangle: -45
                 },
                 yaxis: {
-                    title: finalYAxisTitle,
-                    tickformat: yTickFormat
+                    title: yAxisTitle,
+                    tickformat: ',.0f'
                 },
                 margin: { t: 40, r: 40, b: 100, l: 80 },
                 showlegend: true,
@@ -802,11 +781,6 @@
         
         document.getElementById('dateRange').addEventListener('change', (e) => {
             currentDateRange = e.target.value;
-            updateChart();
-        });
-
-        document.getElementById('chartType').addEventListener('change', (e) => {
-            currentChartType = e.target.value;
             updateChart();
         });
         
