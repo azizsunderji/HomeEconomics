@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CES Employment Data Viewer - v2025.09.16.1745</title>
+    <title>CES Employment Data Viewer - v2025.09.16.1750</title>
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -226,15 +226,15 @@
         .level-major {
             font-weight: 600;
             font-size: 14px;
-            background: #5CC5FF;  /* Lighter blue */
+            background: #9BD1FF;  /* Very light blue */
             margin-left: 0;
             margin-top: 8px;
             padding-left: 20px !important;
-            color: white;
+            color: #3D3733;  /* Dark text for readability */
             border-radius: 3px;
         }
-        
-        .level-major label { color: white; }
+
+        .level-major label { color: #3D3733; }
         
         .level-supersector {
             font-weight: 500;
@@ -245,6 +245,7 @@
             padding-left: 30px !important;
             color: white;
             border-radius: 2px;
+            text-shadow: 0 0 2px rgba(0,0,0,0.2);  /* Subtle shadow for better readability */
         }
         
         .level-sector {
@@ -318,7 +319,7 @@
         <div class="sidebar">
             <h1>Employment Data</h1>
             <div class="status" id="status">Loading...</div>
-            <div style="font-size: 10px; color: #999; margin-top: 2px;">v2025.09.16.1745</div>
+            <div style="font-size: 10px; color: #999; margin-top: 2px;">v2025.09.16.1750</div>
             <div style="margin: 10px 0;">
                 <button id="expandAll" style="margin-right: 5px; padding: 5px 10px; font-size: 12px;">Expand All</button>
                 <button id="collapseAll" style="padding: 5px 10px; font-size: 12px;">Collapse All</button>
@@ -372,7 +373,7 @@
 
     <script>
         // Configuration with aggressive cache-busting
-        const VERSION = 'v2025.09.16.1745';
+        const VERSION = 'v2025.09.16.1750';
         const CACHE_BUST = Date.now();
         const DATA_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
             ? '../data/ces_data.json'
