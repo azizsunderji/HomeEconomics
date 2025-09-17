@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>CES Employment Data Viewer</title>
+    <title>CES Employment Data Viewer - v2025.09.16.1730</title>
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -316,6 +316,7 @@
         <div class="sidebar">
             <h1>Employment Data</h1>
             <div class="status" id="status">Loading...</div>
+            <div style="font-size: 10px; color: #999; margin-top: 2px;">v2025.09.16.1730</div>
             <div style="margin: 10px 0;">
                 <button id="expandAll" style="margin-right: 5px; padding: 5px 10px; font-size: 12px;">Expand All</button>
                 <button id="collapseAll" style="padding: 5px 10px; font-size: 12px;">Collapse All</button>
@@ -369,10 +370,11 @@
 
     <script>
         // Configuration with aggressive cache-busting
+        const VERSION = 'v2025.09.16.1730';
         const CACHE_BUST = Date.now();
         const DATA_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
             ? '../data/ces_data.json'
-            : `./ces_data.json?nocache=${CACHE_BUST}&t=${Math.random()}`;
+            : `./ces_data.json?v=${VERSION}&nocache=${CACHE_BUST}&t=${Math.random()}`;
         
         // Brand colors
         const COLORS = [
