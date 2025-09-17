@@ -374,17 +374,18 @@
             ? '../data/recession_periods.json'
             : `./recession_periods.json?v=${VERSION}&nocache=${CACHE_BUST}&t=${Math.random()}`;
 
-        // Brand colors - ordered for better visual progression
+        // Brand colors - reordered for better contrast
         const COLORS = [
             '#0BB4FF',  // Blue (primary)
-            '#5CC5FF',  // Lighter blue
             '#67A275',  // Green
-            '#C6DCCB',  // Light green
             '#FEC439',  // Yellow
+            '#F4743B',  // Red
+            '#5CC5FF',  // Lighter blue
+            '#C6DCCB',  // Light green
             '#FFD873',  // Light yellow
+            '#FBCAB5',  // Light red
             '#9BD1FF',  // Very light blue
-            '#DADFCE',  // Cream
-            '#F6F7F3'   // Background cream
+            '#3D3733'   // Dark for contrast
         ];
 
         // State management
@@ -475,21 +476,19 @@
             selector.innerHTML = '<option value="">Custom Date Range</option>';
 
             recessionData.recessions.forEach(rec => {
-                // Only show recessions that overlap with our data
-                if (rec.end_year >= dataMinYear) {
-                    const option = document.createElement('option');
-                    option.value = JSON.stringify(rec);
-                    option.textContent = rec.label || rec.name;
+                const option = document.createElement('option');
+                option.value = JSON.stringify(rec);
+                option.textContent = rec.label || rec.name;
 
-                    // Disable if data not available for this period
-                    const viewStart = Math.max(dataMinYear, rec.start_year - 5);
-                    if (viewStart > dataMaxYear) {
-                        option.disabled = true;
-                        option.textContent += ' (no data)';
-                    }
+                // Check if we have data for this recession period
+                const hasData = rec.start_year <= dataMaxYear;
 
-                    selector.appendChild(option);
+                if (!hasData) {
+                    option.disabled = true;
+                    option.textContent += ' (no data)';
                 }
+
+                selector.appendChild(option);
             });
         }
 
@@ -539,7 +538,10 @@
                 html += `</label>`;
 
                 if (latestValue !== null) {
-                    html += `<span class="value">${latestValue.toLocaleString()}</span>`;
+                    // Get earliest year for this series
+                    const earliestDate = series.earliest || series.data ? Object.keys(series.data || {})[0] : null;
+                    const earliestYear = earliestDate ? earliestDate.substring(0, 4) : '?';
+                    html += `<span class="value">${latestValue.toLocaleString()} <span style="font-size: 9px; opacity: 0.7;">(${earliestYear}+)</span></span>`;
                 }
 
                 html += `</div>`;
@@ -787,8 +789,8 @@
                             x1: Math.min(recEnd, rangeEnd),
                             y0: 0,
                             y1: 1,
-                            fillcolor: '#DADFCE',  // Cream color
-                            opacity: 0.3,
+                            fillcolor: '#F6F7F3',  // Light background cream for better visibility
+                            opacity: 0.5,
                             layer: 'below',
                             line: {
                                 width: 0
