@@ -1,0 +1,110 @@
+{
+  "recessions": [
+    {
+      "start": "1945-02-01",
+      "end": "1945-09-30",
+      "start_year": 1945,
+      "end_year": 1945,
+      "name": "Feb 1945 - Sep 1945",
+      "label": "Post-WWII (Feb 1945 - Sep 1945)"
+    },
+    {
+      "start": "1948-11-01",
+      "end": "1949-09-30",
+      "start_year": 1948,
+      "end_year": 1949,
+      "name": "Nov 1948 - Sep 1949",
+      "label": "Post-War Adjustment (Nov 1948 - Sep 1949)"
+    },
+    {
+      "start": "1953-07-01",
+      "end": "1954-04-30",
+      "start_year": 1953,
+      "end_year": 1954,
+      "name": "Jul 1953 - Apr 1954",
+      "label": "Post-Korean War (Jul 1953 - Apr 1954)"
+    },
+    {
+      "start": "1957-08-01",
+      "end": "1958-03-31",
+      "start_year": 1957,
+      "end_year": 1958,
+      "name": "Aug 1957 - Mar 1958",
+      "label": "Eisenhower Recession (Aug 1957 - Mar 1958)"
+    },
+    {
+      "start": "1960-04-01",
+      "end": "1961-01-31",
+      "start_year": 1960,
+      "end_year": 1961,
+      "name": "Apr 1960 - Jan 1961",
+      "label": "Rolling Adjustment (Apr 1960 - Jan 1961)"
+    },
+    {
+      "start": "1969-12-01",
+      "end": "1970-10-31",
+      "start_year": 1969,
+      "end_year": 1970,
+      "name": "Dec 1969 - Oct 1970",
+      "label": "Nixon Recession (Dec 1969 - Oct 1970)"
+    },
+    {
+      "start": "1973-11-01",
+      "end": "1975-02-28",
+      "start_year": 1973,
+      "end_year": 1975,
+      "name": "Nov 1973 - Feb 1975",
+      "label": "Oil Crisis (Nov 1973 - Feb 1975)"
+    },
+    {
+      "start": "1980-01-01",
+      "end": "1980-06-30",
+      "start_year": 1980,
+      "end_year": 1980,
+      "name": "Jan 1980 - Jun 1980",
+      "label": "Volcker Recession I (Jan 1980 - Jun 1980)"
+    },
+    {
+      "start": "1981-07-01",
+      "end": "1982-10-31",
+      "start_year": 1981,
+      "end_year": 1982,
+      "name": "Jul 1981 - Oct 1982",
+      "label": "Volcker Recession II (Jul 1981 - Oct 1982)"
+    },
+    {
+      "start": "1990-07-01",
+      "end": "1991-02-28",
+      "start_year": 1990,
+      "end_year": 1991,
+      "name": "Jul 1990 - Feb 1991",
+      "label": "Gulf War Recession (Jul 1990 - Feb 1991)"
+    },
+    {
+      "start": "2001-03-01",
+      "end": "2001-10-31",
+      "start_year": 2001,
+      "end_year": 2001,
+      "name": "Mar 2001 - Oct 2001",
+      "label": "Dot-Com Bust (Mar 2001 - Oct 2001)"
+    },
+    {
+      "start": "2007-12-01",
+      "end": "2009-05-31",
+      "start_year": 2007,
+      "end_year": 2009,
+      "name": "Dec 2007 - May 2009",
+      "label": "Great Recession (Dec 2007 - May 2009)"
+    },
+    {
+      "start": "2020-02-01",
+      "end": "2020-03-31",
+      "start_year": 2020,
+      "end_year": 2020,
+      "name": "Feb 2020 - Mar 2020",
+      "label": "COVID-19 (Feb 2020 - Mar 2020)"
+    }
+  ],
+  "updated": "2025-09-17T08:46:37.480502",
+  "source": "FRED USRECDP (NBER Recession Indicators)"
+}
