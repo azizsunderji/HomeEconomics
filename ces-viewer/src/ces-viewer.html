@@ -438,16 +438,25 @@
                     cesResponse = await fetch(DATA_URL);
                 }
 
-                const recessionResponse = await fetch(RECESSION_URL).catch(() => null);
+                const recessionResponse = await fetch(RECESSION_URL).catch((err) => {
+                    console.error('Failed to fetch recession data:', err);
+                    return null;
+                });
 
                 cesData = await cesResponse.json();
 
-                if (recessionResponse) {
-                    recessionData = await recessionResponse.json();
-                    console.log('Loaded recession data:', recessionData);
-                    populateRecessionSelector();
+                if (recessionResponse && recessionResponse.ok) {
+                    try {
+                        recessionData = await recessionResponse.json();
+                        console.log('Successfully loaded recession data:', recessionData);
+                        console.log('Number of recession periods:', recessionData.recessions ? recessionData.recessions.length : 0);
+                        populateRecessionSelector();
+                    } catch (err) {
+                        console.error('Failed to parse recession data:', err);
+                    }
                 } else {
-                    console.warn('Failed to load recession data');
+                    console.error('Failed to load recession data from:', RECESSION_URL);
+                    console.error('Response status:', recessionResponse ? recessionResponse.status : 'No response');
                 }
 
                 // Build lookup
@@ -791,7 +800,8 @@
             // Prepare recession shapes
             const shapes = [];
             if (showRecessions && recessionData && recessionData.recessions) {
-                console.log('Adding recession shading...');
+                console.log('Adding recession shading for', recessionData.recessions.length, 'recession periods');
+                console.log('Current date range:', currentStartYear, '-', currentEndYear);
                 const rangeStart = `${currentStartYear}-01-01`;
                 const rangeEnd = `${currentEndYear}-12-31`;
 
@@ -816,6 +826,8 @@
                             const yRange = yMax - yMin;
                             yMax = yMax + yRange * 0.1;
                             yMin = yMin - yRange * 0.1;
+
+                            console.log(`Adding recession shading from ${visibleStart} to ${visibleEnd}, y range: ${yMin} to ${yMax}`);
 
                             // Add a filled area trace for recession
                             traces.unshift({
