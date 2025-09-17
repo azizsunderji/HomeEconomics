@@ -307,7 +307,7 @@
         <div class="sidebar">
             <h1>Employment Data</h1>
             <div class="status" id="status">Loading...</div>
-            <div style="font-size: 10px; color: #999; margin-top: 2px;">v2025.09.16.1810 | 86 years of data</div>
+            <div id="versionInfo" style="font-size: 10px; color: #999; margin-top: 2px;">Loading version...</div>
             <div style="margin: 10px 0;">
                 <button id="expandAll" style="margin-right: 5px; padding: 5px 10px; font-size: 12px;">Expand All</button>
                 <button id="collapseAll" style="padding: 5px 10px; font-size: 12px;">Collapse All</button>
@@ -425,6 +425,9 @@
         let showRecessions = true;
         let dataMinYear = 2015;
         let dataMaxYear = 2025;
+
+        // Update version display
+        document.getElementById('versionInfo').textContent = `${VERSION} | 86 years of data`;
 
         // Load data on startup
         async function loadData() {
