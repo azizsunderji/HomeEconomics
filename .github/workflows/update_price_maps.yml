@@ -80,7 +80,7 @@ jobs:
 
         # Force add the output files even if gitignored
         git add -f PriceMaps/output/*.html
-        git add PriceMaps/data/last_update.json
+        git add -f PriceMaps/data/last_update.json
         git commit -m "Update price maps with data from $DATE" || echo "No changes to commit"
         git push
 
