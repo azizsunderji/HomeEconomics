@@ -1,0 +1,114 @@
+name: Update Price Maps
+
+on:
+  schedule:
+    # Run daily at 9 AM EST (2 PM UTC)
+    - cron: '0 14 * * *'
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  check-and-update:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Cache Python dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-pricemaps-${{ hashFiles('PriceMaps/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-pricemaps-
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pandas numpy geopandas requests
+
+    - name: Check for updates
+      id: check
+      working-directory: PriceMaps
+      run: |
+        python scripts/check_for_updates.py
+        # Capture the output to determine if there's new data
+        if grep -q "NEW_DATA=true" <<< "$(python scripts/check_for_updates.py)"; then
+          echo "new_data=true" >> $GITHUB_OUTPUT
+        else
+          echo "new_data=false" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Download new data
+      if: steps.check.outputs.new_data == 'true'
+      working-directory: PriceMaps
+      run: |
+        python scripts/download_data.py
+
+    - name: Generate price levels map
+      if: steps.check.outputs.new_data == 'true'
+      working-directory: PriceMaps
+      run: |
+        python scripts/create_price_levels.py
+
+    - name: Generate YoY map
+      if: steps.check.outputs.new_data == 'true'
+      working-directory: PriceMaps
+      run: |
+        python scripts/create_yoy_map.py
+
+    - name: Commit and push changes
+      if: steps.check.outputs.new_data == 'true'
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+
+        # Get the date from the data
+        DATE=$(python -c "import pandas as pd; df=pd.read_csv('PriceMaps/data/ZillowZip.csv'); cols=[c for c in df.columns if '-' in c]; print(cols[-1] if cols else 'unknown')")
+
+        git add PriceMaps/output/*.html
+        git add PriceMaps/data/last_update.json
+        git commit -m "Update price maps with data from $DATE" || echo "No changes to commit"
+        git push
+
+    - name: Deploy to Server
+      if: steps.check.outputs.new_data == 'true'
+      env:
+        SERVER_HOST: ${{ secrets.SERVER_HOST }}
+        SERVER_USER: ${{ secrets.SERVER_USER }}
+        SERVER_PASS: ${{ secrets.SERVER_PASS }}
+        SERVER_PATH: /home2/yxwrmjmy/public_html/wp-content/uploads/reports/live/PriceMaps
+      run: |
+        # Install lftp for FTP upload
+        sudo apt-get update && sudo apt-get install -y lftp
+
+        # Create PriceMaps directory if it doesn't exist and upload files
+        lftp -e "
+          set ftp:ssl-allow no;
+          open ftp://$SERVER_HOST;
+          user $SERVER_USER $SERVER_PASS;
+          mkdir -p $SERVER_PATH;
+          cd $SERVER_PATH;
+          put PriceMaps/output/us_price_levels_with_search.html;
+          put PriceMaps/output/us_yoy_price_map_with_search.html;
+          bye
+        "
+
+        echo "✅ Maps deployed to server at $SERVER_PATH"
+        echo "URLs:"
+        echo "  - https://home-economics.us/wp-content/uploads/reports/live/PriceMaps/us_price_levels_with_search.html"
+        echo "  - https://home-economics.us/wp-content/uploads/reports/live/PriceMaps/us_yoy_price_map_with_search.html"
+
+    - name: Send notification
+      if: steps.check.outputs.new_data == 'true'
+      run: |
+        echo "Maps updated successfully with new data!"
+        # You could add email notification here using GitHub secrets
+        # or post to Slack, Discord, etc.
