@@ -1,10 +1,14 @@
 name: Monthly CES Data Update
 
 on:
-  # Runs on the 5th of each month at 2:00 AM Eastern (handles EDT/EST)
+  # Runs on first Friday of each month at 9:00 AM Eastern
+  # (30 mins after BLS Employment Situation release at 8:30 AM ET)
   schedule:
-    - cron: "0 6 5 * *"  # 2:00am ET during EDT (UTC-4)
-    - cron: "0 7 5 * *"  # 2:00am ET during EST (UTC-5)
+    - cron: "0 13 1-7 * 5"  # 9:00am ET during EDT (UTC-4), days 1-7, Fridays only
+    - cron: "0 14 1-7 * 5"  # 9:00am ET during EST (UTC-5), days 1-7, Fridays only
+    # Also run on the 5th as backup in case Friday schedule misses
+    - cron: "0 13 5 * *"    # 9:00am ET during EDT on 5th of month
+    - cron: "0 14 5 * *"    # 9:00am ET during EST on 5th of month
   workflow_dispatch: {}   # Allow manual trigger for testing
 
 jobs:
