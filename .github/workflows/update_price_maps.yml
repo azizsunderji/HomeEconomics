@@ -100,14 +100,15 @@ jobs:
         sudo apt-get update && sudo apt-get install -y lftp
 
         # Create PriceMaps directory if it doesn't exist and upload files
-        lftp -e "
+        lftp -c "
           set ftp:ssl-allow no;
-          open ftp://$SERVER_HOST;
-          user $SERVER_USER $SERVER_PASS;
-          mkdir -p $SERVER_PATH;
+          set ftp:passive-mode yes;
+          open -u $SERVER_USER,$SERVER_PASS ftp://$SERVER_HOST;
+          mkdir -pf $SERVER_PATH || echo 'Directory may already exist';
           cd $SERVER_PATH;
           put PriceMaps/output/us_price_levels_with_search.html;
           put PriceMaps/output/us_yoy_price_map_with_search.html;
+          ls -la;
           bye
         "
 
