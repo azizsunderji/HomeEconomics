@@ -162,26 +162,25 @@ def determine_hierarchy_level(series_id: str, all_series_set: set = None) -> Dic
     industry_code = series_id[5:11]
 
     # Special cases for top-level aggregates
+    # BLS structure: 00=Total nonfarm, 05=Total private, 06=Goods-producing, 08=Service-providing, 90=Government
     if series_id == "CES0000000001":
-        return {"level": "total", "parent": None, "order": 0}
-    elif series_id == "CES0500000001":
-        return {"level": "major", "parent": "CES0000000001", "order": 1}
-    elif series_id == "CES0600000001":
-        return {"level": "major", "parent": "CES0500000001", "order": 2}
-    elif series_id == "CES0700000001":
-        return {"level": "major", "parent": "CES0000000001", "order": 3}
-    elif series_id == "CES0800000001":
-        return {"level": "major", "parent": "CES0500000001", "order": 4}
-    elif series_id == "CES9000000001":
-        return {"level": "major", "parent": "CES0000000001", "order": 100}
+        return {"level": "root", "parent": None, "order": 0}
+    elif series_id == "CES0500000001":  # Total private
+        return {"level": "supersector", "parent": "CES0000000001", "order": 5}
+    elif series_id == "CES0600000001":  # Goods-producing (under Total private)
+        return {"level": "supersector", "parent": "CES0500000001", "order": 6}
+    elif series_id == "CES0800000001":  # Service-providing (under Total private)
+        return {"level": "supersector", "parent": "CES0500000001", "order": 8}
+    elif series_id == "CES9000000001":  # Government (directly under Total nonfarm)
+        return {"level": "supersector", "parent": "CES0000000001", "order": 90}
 
     # Regular hierarchy
     if industry_code == "000000":
         # This is a supersector
-        # Supersectors 10 (Mining), 20 (Construction), 30-32 (Manufacturing) are under Goods-producing
+        # Supersectors 10 (Mining), 20 (Construction), 30-32 (Manufacturing) are under Goods-producing (06)
         if supersector in ["10", "20", "30", "31", "32"]:
-            return {"level": "supersector", "parent": "CES0500000001", "order": int(supersector)}
-        # Supersectors 40+ are under Service-providing
+            return {"level": "supersector", "parent": "CES0600000001", "order": int(supersector)}
+        # Supersectors 40+ are under Service-providing (08)
         elif supersector in ["40", "41", "42", "43", "44", "50", "55", "60", "65", "70", "80"]:
             return {"level": "supersector", "parent": "CES0800000001", "order": int(supersector)}
         # Government (90)
