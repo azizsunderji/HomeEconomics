@@ -384,7 +384,7 @@
 
     <script>
         // Configuration with aggressive cache-busting
-        const VERSION = 'v2025.09.17.1335';
+        const VERSION = 'v2025.09.17.1400';
         const CACHE_BUST = Date.now();
         // Try historical data first, fall back to regular data
         const HISTORICAL_DATA_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
@@ -582,18 +582,19 @@
 
                 // Checkbox and label
                 const latestDate = cesData.meta.end_date || Object.keys(series.data || {}).pop();
-                const latestValue = latestDate && series.data ? series.data[latestDate] : null;
+                const latestValue = latestDate && series.data && series.data[latestDate] !== undefined ? series.data[latestDate] : null;
 
                 html += `<label class="tree-label">`;
                 html += `<input type="checkbox" value="${series.id}">`;
                 html += `<span>${series.name}</span>`;
                 html += `</label>`;
 
-                if (latestValue !== null) {
+                if (latestValue !== null && latestValue !== undefined) {
                     // Get earliest year for this series
-                    const earliestDate = series.earliest || series.data ? Object.keys(series.data || {})[0] : null;
+                    const earliestDate = series.earliest || (series.data ? Object.keys(series.data || {})[0] : null);
                     const earliestYear = earliestDate ? earliestDate.substring(0, 4) : '?';
-                    html += `<span class="value">${latestValue.toLocaleString()} <span style="font-size: 9px; color: rgba(0,0,0,0.6);">(${earliestYear}+)</span></span>`;
+                    const formattedValue = typeof latestValue === 'number' ? latestValue.toLocaleString() : String(latestValue);
+                    html += `<span class="value">${formattedValue} <span style="font-size: 9px; color: rgba(0,0,0,0.6);">(${earliestYear}+)</span></span>`;
                 }
 
                 html += `</div>`;
