@@ -541,7 +541,7 @@
                     // Get earliest year for this series
                     const earliestDate = series.earliest || series.data ? Object.keys(series.data || {})[0] : null;
                     const earliestYear = earliestDate ? earliestDate.substring(0, 4) : '?';
-                    html += `<span class="value">${latestValue.toLocaleString()} <span style="font-size: 9px; opacity: 0.7;">(${earliestYear}+)</span></span>`;
+                    html += `<span class="value">${latestValue.toLocaleString()} <span style="font-size: 9px; color: rgba(0,0,0,0.6);">(${earliestYear}+)</span></span>`;
                 }
 
                 html += `</div>`;
@@ -773,6 +773,7 @@
             // Add recession shading if enabled
             const shapes = [];
             if (showRecessions && recessionData && recessionData.recessions) {
+                console.log('Drawing recessions, count:', recessionData.recessions.length);
                 recessionData.recessions.forEach(rec => {
                     // Only show recessions that overlap with visible date range
                     const recStart = rec.start;
@@ -781,7 +782,7 @@
                     const rangeEnd = `${currentEndYear}-12-31`;
 
                     if (recEnd >= rangeStart && recStart <= rangeEnd) {
-                        shapes.push({
+                        const shape = {
                             type: 'rect',
                             xref: 'x',
                             yref: 'paper',
@@ -789,13 +790,15 @@
                             x1: Math.min(recEnd, rangeEnd),
                             y0: 0,
                             y1: 1,
-                            fillcolor: '#F6F7F3',  // Light background cream for better visibility
-                            opacity: 0.5,
+                            fillcolor: 'rgba(218, 223, 206, 0.4)',  // Cream with transparency
+                            opacity: 1,
                             layer: 'below',
                             line: {
                                 width: 0
                             }
-                        });
+                        };
+                        console.log('Adding recession shape:', shape);
+                        shapes.push(shape);
                     }
                 });
             }

@@ -198,6 +198,10 @@ def determine_hierarchy_level(series_id: str, all_series_set: set = None) -> Dic
             potential_parents.append(f"CES{supersector}{industry_code[:4]}0001")
 
         # For 4, 5 or 6-digit codes, check for 3-digit parent (541)
+        if industry_code[3:] != "000":
+            potential_parents.append(f"CES{supersector}{industry_code[:3]}0001")
+
+        # For 3, 4, 5 or 6-digit codes, check for 2-digit parent (54)
         if industry_code[2:] != "0000":
             potential_parents.append(f"CES{supersector}{industry_code[:2]}00001")
 
