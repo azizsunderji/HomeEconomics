@@ -401,8 +401,8 @@
                     seriesById[s.id] = s;
                 });
                 
-                document.getElementById('status').textContent = 
-                    `${cesData.meta.series_count} series • ${cesData.meta.start_date} to ${cesData.meta.end_date}`;
+                document.getElementById('status').textContent =
+                    `${cesData.meta.series_count} series · ${cesData.meta.start_date} to ${cesData.meta.end_date}`;
                 
                 buildHierarchy();
                 updateChart();
@@ -732,15 +732,18 @@
             }
             
             const layout = {
-                barmode: 'stack',
+                barmode: 'relative',  // Use 'relative' mode for proper negative stacking
                 title: '',
                 xaxis: {
                     title: '',
-                    tickangle: -45
+                    tickangle: 0  // Keep labels horizontal
                 },
                 yaxis: {
                     title: yAxisTitle,
-                    tickformat: ',.0f'
+                    tickformat: ',.0f',
+                    zeroline: true,
+                    zerolinewidth: 1,
+                    zerolinecolor: '#666'
                 },
                 margin: { t: 40, r: 40, b: 100, l: 80 },
                 showlegend: true,
