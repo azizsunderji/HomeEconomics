@@ -38,12 +38,17 @@ jobs:
       id: check
       working-directory: PriceMaps
       run: |
-        python scripts/check_for_updates.py
-        # Capture the output to determine if there's new data
-        if grep -q "NEW_DATA=true" <<< "$(python scripts/check_for_updates.py)"; then
+        # Run check and capture output
+        OUTPUT=$(python scripts/check_for_updates.py)
+        echo "$OUTPUT"
+
+        # Set output based on result
+        if echo "$OUTPUT" | grep -q "NEW_DATA=true"; then
           echo "new_data=true" >> $GITHUB_OUTPUT
+          echo "Setting new_data=true"
         else
           echo "new_data=false" >> $GITHUB_OUTPUT
+          echo "Setting new_data=false"
         fi
 
     - name: Download new data
