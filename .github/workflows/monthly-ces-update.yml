@@ -43,6 +43,10 @@ jobs:
             python ces-viewer/scripts/fetch_ces_historical_data.py --start-year 1939 --output ces-viewer/data/ces_historical_data.json
           fi
 
+          # Fix hierarchy after fetching data
+          echo "Fixing hierarchy relationships..."
+          cd ces-viewer && python scripts/fix_hierarchy_absolute.py && cd ..
+
           # Generate recession periods
           echo "Generating recession periods..."
           cd ces-viewer/scripts && python process_recessions.py && cd ../..
