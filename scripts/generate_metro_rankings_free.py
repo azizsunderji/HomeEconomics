@@ -1320,7 +1320,7 @@ def generate_html_page_free(rankings_data, metric_key, metric_info, all_metrics,
 </head>
 <body>
     <div class="upgrade-banner">
-        Viewing limited version • Unlock all 12 metrics by <a href="https://www.home-economics.us/subscribe">upgrading</a>
+        Viewing limited version • Unlock all 12 metrics by <a href="https://www.home-economics.us/subscribe" target="_blank">upgrading</a>
     </div>
 
     <div class="fixed-header">
@@ -1431,7 +1431,7 @@ def generate_html_page_free(rankings_data, metric_key, metric_info, all_metrics,
 
     <div class="footer">
         <strong>Data:</strong> Redfin weekly housing market data | <strong>Updated:</strong> {date_str} | <strong>Version:</strong> Free<br>
-        <a href="https://www.home-economics.us">Home Economics</a> | <a href="https://www.home-economics.us/subscribe">Upgrade to Premium</a><br>
+        <a href="https://www.home-economics.us">Home Economics</a> | <a href="https://www.home-economics.us/subscribe" target="_blank">Upgrade to Premium</a><br>
         <small style="color: #999;">Version: {version} | Generated: {time.strftime('%Y-%m-%d %H:%M:%S')}</small>
     </div>
 
@@ -1441,7 +1441,7 @@ def generate_html_page_free(rankings_data, metric_key, metric_info, all_metrics,
         <h3>Premium Feature</h3>
         <p>Access all 12 housing market metrics including inventory levels, days on market, price drops, and more. Get the complete picture of real estate markets across the US.</p>
         <div class="upgrade-modal-buttons">
-            <button class="upgrade-cta" onclick="window.location.href='https://www.home-economics.us/subscribe'">Upgrade Now</button>
+            <button class="upgrade-cta" onclick="window.open('https://www.home-economics.us/subscribe', '_blank')">Upgrade Now</button>
             <button class="cancel" onclick="closeUpgradeModal()">Maybe Later</button>
         </div>
     </div>
