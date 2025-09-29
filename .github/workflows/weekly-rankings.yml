@@ -45,11 +45,14 @@ jobs:
 
       - name: Generate ranking pages
         run: |
-          # Use final version with bulletproof sorting
+          # Generate paid version with all metrics
           python scripts/generate_metro_rankings_final.py --output-dir rankings
-          
+
+          # Generate free version (median_sale_price only)
+          python scripts/generate_metro_rankings_free.py --output-dir rankings
+
           # Count generated files
-          echo "Generated files:"
+          echo "Generated files (paid + free):"
           ls -la rankings/*.html | wc -l
           echo "Total size:"
           du -sh rankings/
