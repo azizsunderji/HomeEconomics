@@ -220,13 +220,20 @@ def generate_mobile_html_page(rankings_data, metric_key, metric_info, all_metric
     import time
     version = int(time.time())
 
-    # Build metric options for dropdown
+    # Build metric options for dropdown (free version: lock all except median_sale_price)
     metric_options = []
     for m_key, m_info in all_metrics.items():
         selected = 'selected' if m_key == metric_key else ''
-        metric_options.append(
-            f'<option value="{m_info["slug"]}_mobile.html?v={version}" {selected}>{m_info["display"]}</option>'
-        )
+        # For free version, only median_sale_price is unlocked
+        if m_key == 'MEDIAN_SALE_PRICE':
+            metric_options.append(
+                f'<option value="{m_info["slug"]}_mobile_free.html?v={version}" {selected}>{m_info["display"]}</option>'
+            )
+        else:
+            # Locked metrics - use lock emoji
+            metric_options.append(
+                f'<option value="locked" data-locked="true" {selected}>🔒 {m_info["display"]}</option>'
+            )
 
     html = f"""<!DOCTYPE html>
 <html lang="en">
@@ -312,7 +319,7 @@ def generate_mobile_html_page(rankings_data, metric_key, metric_info, all_metric
             font-family: inherit;
         }}
 
-        #marketFilter {{
+        #marketFilter, #timePeriod {{
             width: 100%;
             padding: 12px;
             font-size: 14px;
@@ -538,6 +545,18 @@ def generate_mobile_html_page(rankings_data, metric_key, metric_info, all_metric
             border-radius: 8px;
         }}
 
+        .modal-content ul {{
+            padding-left: 30px;
+            margin: 15px 0;
+        }}
+
+        .modal-buttons {{
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 20px;
+        }}
+
         .close {{
             color: #aaa;
             float: right;
@@ -559,8 +578,36 @@ def generate_mobile_html_page(rankings_data, metric_key, metric_info, all_metric
             text-align: center;
             text-decoration: none;
             border-radius: 6px;
-            margin-top: 20px;
             font-weight: 600;
+            border: none;
+            font-family: inherit;
+            font-size: 14px;
+            cursor: pointer;
+        }}
+
+        .login-button {{
+            display: block;
+            width: 100%;
+            padding: 12px;
+            background: white;
+            color: #0BB4FF;
+            text-align: center;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+            border: 2px solid #0BB4FF;
+            font-family: inherit;
+            font-size: 14px;
+            cursor: pointer;
+        }}
+
+        .filter-label {{
+            font-size: 11px;
+            font-weight: 600;
+            color: #6B635C;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }}
     </style>
 </head>
@@ -576,20 +623,26 @@ def generate_mobile_html_page(rankings_data, metric_key, metric_info, all_metric
             <input type="text" id="searchBox" placeholder="Search metros..." onkeyup="searchTable()">
 
             <div style="display: flex; gap: 10px;">
-                <select id="marketFilter" onchange="filterTable()" style="flex: 1;">
-                    <option value="10">Top 10%</option>
-                    <option value="25">Top 25%</option>
-                    <option value="50" selected>Top 50%</option>
-                    <option value="100">All Markets</option>
-                </select>
+                <div style="flex: 1;">
+                    <div class="filter-label">Market</div>
+                    <select id="marketFilter" onchange="filterTable()" style="width: 100%;">
+                        <option value="10">Top 10%</option>
+                        <option value="25">Top 25%</option>
+                        <option value="50" selected>Top 50%</option>
+                        <option value="100">All Markets</option>
+                    </select>
+                </div>
 
-                <select id="timePeriod" onchange="updateTimePeriod()" style="flex: 1;">
-                    <option value="1month">1 Month</option>
-                    <option value="3month">3 Months</option>
-                    <option value="6month">6 Months</option>
-                    <option value="1year" selected>1 Year</option>
-                    <option value="3year">3 Years</option>
-                </select>
+                <div style="flex: 1;">
+                    <div class="filter-label">Period</div>
+                    <select id="timePeriod" onchange="updateTimePeriod()" style="width: 100%;">
+                        <option value="1month">1 Month</option>
+                        <option value="3month">3 Months</option>
+                        <option value="6month">6 Months</option>
+                        <option value="1year" selected>1 Year</option>
+                        <option value="3year">3 Years</option>
+                    </select>
+                </div>
             </div>
         </div>
     </div>
@@ -1007,7 +1060,10 @@ def generate_mobile_html_page(rankings_data, metric_key, metric_info, all_metric
                 <li>Days on Market</li>
                 <li>And much more!</li>
             </ul>
-            <a href="https://www.home-economics.us/subscribe" class="upgrade-button">Upgrade Now</a>
+            <div class="modal-buttons">
+                <a href="https://www.home-economics.us/subscribe" class="upgrade-button">Upgrade Now</a>
+                <a href="https://www.home-economics.us/login" class="login-button">Already a Member? Log In</a>
+            </div>
         </div>
     </div>
 
@@ -1178,7 +1234,10 @@ def main():
                 <li>Days on Market</li>
                 <li>And much more!</li>
             </ul>
-            <a href="https://www.home-economics.us/subscribe" class="upgrade-button">Upgrade Now</a>
+            <div class="modal-buttons">
+                <a href="https://www.home-economics.us/subscribe" class="upgrade-button">Upgrade Now</a>
+                <a href="https://www.home-economics.us/login" class="login-button">Already a Member? Log In</a>
+            </div>
         </div>
     </div>
 

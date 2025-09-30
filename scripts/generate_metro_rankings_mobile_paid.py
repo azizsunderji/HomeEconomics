@@ -302,7 +302,7 @@ def generate_mobile_html_page(rankings_data, metric_key, metric_info, all_metric
             font-family: inherit;
         }}
 
-        #marketFilter {{
+        #marketFilter, #timePeriod {{
             width: 100%;
             padding: 12px;
             font-size: 14px;
@@ -316,6 +316,15 @@ def generate_mobile_html_page(rankings_data, metric_key, metric_info, all_metric
             background-repeat: no-repeat;
             background-position: right 10px center;
             background-size: 20px;
+        }}
+
+        .filter-label {{
+            font-size: 11px;
+            font-weight: 600;
+            color: #6B635C;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }}
 
         .table-container {{
@@ -519,20 +528,26 @@ def generate_mobile_html_page(rankings_data, metric_key, metric_info, all_metric
             <input type="text" id="searchBox" placeholder="Search metros..." onkeyup="searchTable()">
 
             <div style="display: flex; gap: 10px;">
-                <select id="marketFilter" onchange="filterTable()" style="flex: 1;">
-                    <option value="10">Top 10%</option>
-                    <option value="25">Top 25%</option>
-                    <option value="50" selected>Top 50%</option>
-                    <option value="100">All Markets</option>
-                </select>
+                <div style="flex: 1;">
+                    <div class="filter-label">Market</div>
+                    <select id="marketFilter" onchange="filterTable()" style="width: 100%;">
+                        <option value="10">Top 10%</option>
+                        <option value="25">Top 25%</option>
+                        <option value="50" selected>Top 50%</option>
+                        <option value="100">All Markets</option>
+                    </select>
+                </div>
 
-                <select id="timePeriod" onchange="updateTimePeriod()" style="flex: 1;">
-                    <option value="1month">1 Month</option>
-                    <option value="3month">3 Months</option>
-                    <option value="6month">6 Months</option>
-                    <option value="1year" selected>1 Year</option>
-                    <option value="3year">3 Years</option>
-                </select>
+                <div style="flex: 1;">
+                    <div class="filter-label">Period</div>
+                    <select id="timePeriod" onchange="updateTimePeriod()" style="width: 100%;">
+                        <option value="1month">1 Month</option>
+                        <option value="3month">3 Months</option>
+                        <option value="6month">6 Months</option>
+                        <option value="1year" selected>1 Year</option>
+                        <option value="3year">3 Years</option>
+                    </select>
+                </div>
             </div>
         </div>
     </div>
