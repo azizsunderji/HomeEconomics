@@ -724,6 +724,9 @@ def generate_mobile_html_page(rankings_data, metric_key, metric_info, all_metric
             }};
             header.textContent = periodLabels[currentTimePeriod];
 
+            // Update the change column values to show the new period
+            updateChangeColumn();
+
             // Re-sort by the new time period to show best/worst performers
             currentSort = 'change';
             sortAscending = false;
