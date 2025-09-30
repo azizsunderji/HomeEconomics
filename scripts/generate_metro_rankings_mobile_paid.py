@@ -842,23 +842,25 @@ def generate_mobile_html_page(rankings_data, metric_key, metric_info, all_metric
                 headers[headerIndex].textContent += sortAscending ? ' ↑' : ' ↓';
             }}
 
-            // Sort rows
-            allRows.sort((a, b) => {{
+            // Sort rows - need to sort both arrays together to maintain pairing
+            const paired = allRows.map((row, index) => ({{row, expansion: allExpansionRows[index]}}));
+
+            paired.sort((a, b) => {{
                 let aVal, bVal;
 
                 if (column === 'rank') {{
-                    aVal = parseInt(a.querySelector('.rank').textContent);
-                    bVal = parseInt(b.querySelector('.rank').textContent);
+                    aVal = parseInt(a.row.querySelector('.rank').textContent);
+                    bVal = parseInt(b.row.querySelector('.rank').textContent);
                 }} else if (column === 'metro') {{
-                    aVal = a.dataset.metro;
-                    bVal = b.dataset.metro;
+                    aVal = a.row.dataset.metro;
+                    bVal = b.row.dataset.metro;
                     return sortAscending ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
                 }} else if (column === 'current') {{
-                    aVal = parseFloat(a.dataset.current) || 0;
-                    bVal = parseFloat(b.dataset.current) || 0;
+                    aVal = parseFloat(a.row.dataset.current) || 0;
+                    bVal = parseFloat(b.row.dataset.current) || 0;
                 }} else {{ // change column
-                    aVal = parseFloat(a.dataset[currentTimePeriod]) || 0;
-                    bVal = parseFloat(b.dataset[currentTimePeriod]) || 0;
+                    aVal = parseFloat(a.row.dataset[currentTimePeriod]) || 0;
+                    bVal = parseFloat(b.row.dataset[currentTimePeriod]) || 0;
                 }}
 
                 if (sortAscending) {{
@@ -867,6 +869,10 @@ def generate_mobile_html_page(rankings_data, metric_key, metric_info, all_metric
                     return bVal - aVal;
                 }}
             }});
+
+            // Unpack back into separate arrays
+            allRows = paired.map(p => p.row);
+            allExpansionRows = paired.map(p => p.expansion);
 
             filterTable();
 
