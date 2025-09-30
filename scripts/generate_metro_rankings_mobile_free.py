@@ -1042,9 +1042,15 @@ def generate_mobile_html_page(rankings_data, metric_key, metric_info, all_metric
         }}
 
         function openChart(metroUrl, metricSlug) {{
-            const chartUrl = 'https://home-economics.us/wp-content/uploads/reports/live/mobile/' +
-                           metroUrl + '/' + metroUrl + '_' + metricSlug + '_mobile.png';
-            window.open(chartUrl, '_blank');
+            // Free version: only allow charts for median_sale_price
+            if (metricSlug === 'median_sale_price') {{
+                const chartUrl = 'https://home-economics.us/wp-content/uploads/reports/live/mobile/' +
+                               metroUrl + '/' + metroUrl + '_' + metricSlug + '_mobile.png';
+                window.open(chartUrl, '_blank');
+            }} else {{
+                // Locked metric - show upgrade modal
+                showUpgradeModal();
+            }}
         }}
     </script>
 
