@@ -649,6 +649,17 @@ def generate_html_page_free(rankings_data, metric_key, metric_info, all_metrics,
             background: #0995D6;
         }}
 
+        .upgrade-modal-buttons .login-cta {{
+            background: white;
+            color: #0BB4FF;
+            border: 2px solid #0BB4FF;
+            font-weight: 600;
+        }}
+
+        .upgrade-modal-buttons .login-cta:hover {{
+            background: #F0F0EC;
+        }}
+
         .upgrade-modal-buttons .cancel {{
             background: #F0F0EC;
             color: #3D3733;
@@ -1442,6 +1453,7 @@ def generate_html_page_free(rankings_data, metric_key, metric_info, all_metrics,
         <p>Access all 12 housing market metrics including inventory levels, days on market, price drops, and more. Get the complete picture of real estate markets across the US.</p>
         <div class="upgrade-modal-buttons">
             <button class="upgrade-cta" onclick="window.open('https://www.home-economics.us/subscribe', '_blank')">Upgrade Now</button>
+            <button class="login-cta" onclick="window.open('https://www.home-economics.us/login', '_blank')">Already a Member? Log In</button>
             <button class="cancel" onclick="closeUpgradeModal()">Maybe Later</button>
         </div>
     </div>
