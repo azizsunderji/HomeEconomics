@@ -1077,7 +1077,7 @@ def generate_mobile_html_page(rankings_data, metric_key, metric_info, all_metric
             </ul>
             <div class="modal-buttons">
                 <a href="https://www.home-economics.us/subscribe" class="upgrade-button">Upgrade Now</a>
-                <a href="https://www.home-economics.us/login" class="login-button">Already a Member? Log In</a>
+                <a href="https://www.home-economics.us/login" class="login-button">Already a Member?<br>Log In</a>
             </div>
         </div>
     </div>
@@ -1251,7 +1251,7 @@ def main():
             </ul>
             <div class="modal-buttons">
                 <a href="https://www.home-economics.us/subscribe" class="upgrade-button">Upgrade Now</a>
-                <a href="https://www.home-economics.us/login" class="login-button">Already a Member? Log In</a>
+                <a href="https://www.home-economics.us/login" class="login-button">Already a Member?<br>Log In</a>
             </div>
         </div>
     </div>
