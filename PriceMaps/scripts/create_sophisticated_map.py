@@ -71,10 +71,18 @@ df_analysis = df_analysis[(df_analysis['price_change_pct'] >= -50) & (df_analysi
 print(f"📊 Calculated price changes for {len(df_analysis):,} ZIP codes")
 
 # Load population data
-pop_df = pd.read_csv('resources/populations/PopulationByZIP.csv', encoding='latin1')
-pop_df.columns = ['zcta', 'name', 'population']
-pop_df['zcta'] = pop_df['zcta'].astype(str).str.zfill(5)
-pop_df['population'] = pd.to_numeric(pop_df['population'], errors='coerce').fillna(1000)
+try:
+    pop_df = pd.read_csv('resources/populations/PopulationByZIP.csv', encoding='latin1', on_bad_lines='skip')
+    if len(pop_df.columns) >= 3:
+        pop_df.columns = ['zcta', 'name', 'population']
+    else:
+        pop_df.columns = ['zcta', 'population']
+    pop_df['zcta'] = pop_df['zcta'].astype(str).str.zfill(5)
+    pop_df['population'] = pd.to_numeric(pop_df['population'], errors='coerce').fillna(1000)
+except Exception as e:
+    print(f"⚠️  Warning: Could not load population data: {e}")
+    print("Using default population values")
+    pop_df = pd.DataFrame({'zcta': [], 'population': []})
 
 # Load geometry for centroids
 print("\n📍 Loading ZIP code geometries...")
