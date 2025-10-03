@@ -640,7 +640,15 @@ function updateMarkers() {
         // Local mode population-relative sizing
         if (isLocalMode && currentMinPop !== null && currentMaxPop !== null && currentMaxPop > currentMinPop) {
             const relativePosition = (zip.pop - currentMinPop) / (currentMaxPop - currentMinPop);
-            radius = 10 + (relativePosition * 12);
+
+            // Use narrow range for boundary mode with small samples, wider range for regular local view
+            if (drawnBoundary && visibleZips.length < 10) {
+                // Boundary mode with small sample: narrow range to prevent over-shrinking
+                radius = 10 + (relativePosition * 12);  // 10-22px range
+            } else {
+                // Regular local view: wider range for better differentiation
+                radius = 5 + (relativePosition * 20);   // 5-25px range
+            }
             
             if (zoom <= 3) {
                 radius = radius * 0.5;
