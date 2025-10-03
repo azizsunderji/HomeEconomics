@@ -12,7 +12,7 @@ from datetime import datetime
 print("🏠 Creating Year-over-Year Home Price Map with Search...")
 
 # Load Zillow housing data
-df = pd.read_csv('/Users/azizsunderji/Dropbox/Home Economics/localmaps/PriceMaps/data/ZillowZip.csv')
+df = pd.read_csv('data/ZillowZip.csv')
 
 # Get date columns
 date_columns = [col for col in df.columns if '-' in col]
@@ -71,14 +71,14 @@ df_analysis = df_analysis[(df_analysis['price_change_pct'] >= -50) & (df_analysi
 print(f"📊 Calculated price changes for {len(df_analysis):,} ZIP codes")
 
 # Load population data
-pop_df = pd.read_csv('/Users/azizsunderji/Dropbox/Home Economics/Reference/Populations/PopulationByZIP.csv', encoding='latin1')
+pop_df = pd.read_csv('resources/populations/PopulationByZIP.csv', encoding='latin1')
 pop_df.columns = ['zcta', 'name', 'population']
 pop_df['zcta'] = pop_df['zcta'].astype(str).str.zfill(5)
 pop_df['population'] = pd.to_numeric(pop_df['population'], errors='coerce').fillna(1000)
 
 # Load geometry for centroids
 print("\n📍 Loading ZIP code geometries...")
-gdf = gpd.read_file('/Users/azizsunderji/Dropbox/Home Economics/localmaps/PriceMaps/resources/shapefiles/cb_2020_us_zcta520_500k.shp')
+gdf = gpd.read_file('resources/shapefiles/cb_2020_us_zcta520_500k.shp')
 gdf['ZCTA5CE20'] = gdf['ZCTA5CE20'].astype(str).str.zfill(5)
 
 # Calculate centroids
@@ -1126,7 +1126,7 @@ updateMarkers();
 </html>"""
 
 # Write HTML file
-output_file = '/Users/azizsunderji/Dropbox/Home Economics/localmaps/PriceMaps/output/ProMap.html'
+output_file = 'output/ProMap.html'
 with open(output_file, 'w', encoding='utf-8') as f:
     f.write(html_content)
 
