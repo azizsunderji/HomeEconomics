@@ -1,0 +1,117 @@
+name: Update ProMap
+
+on:
+  schedule:
+    # Run daily at 9 AM EST (2 PM UTC)
+    - cron: '0 14 * * *'
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  check-and-update:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Cache Python dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pandas numpy geopandas requests
+
+    - name: Check for updates
+      id: check
+      run: |
+        python scripts/check_for_updates.py
+        # Capture the output to determine if there's new data
+        if grep -q "NEW_DATA=true" <<< "$(python scripts/check_for_updates.py)"; then
+          echo "new_data=true" >> $GITHUB_OUTPUT
+        else
+          echo "new_data=false" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Download new data
+      if: steps.check.outputs.new_data == 'true'
+      run: |
+        python scripts/download_data.py
+
+    - name: Download reference files
+      if: steps.check.outputs.new_data == 'true'
+      run: |
+        # Download population data
+        mkdir -p resources/populations
+        curl -L -o resources/populations/PopulationByZIP.csv \
+          "https://github.com/home-economics/reference-data/raw/main/PopulationByZIP.csv" || true
+
+        # Download shapefile components
+        mkdir -p resources/shapefiles
+        base_url="https://github.com/home-economics/reference-data/raw/main/shapefiles"
+        for ext in shp shx dbf prj; do
+          curl -L -o "resources/shapefiles/cb_2020_us_zcta520_500k.$ext" \
+            "$base_url/cb_2020_us_zcta520_500k.$ext" || true
+        done
+
+    - name: Generate ProMap
+      if: steps.check.outputs.new_data == 'true'
+      run: |
+        python scripts/create_sophisticated_map.py
+
+    - name: Commit and push changes
+      if: steps.check.outputs.new_data == 'true'
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+
+        # Get the date from the data
+        DATE=$(python -c "import pandas as pd; df=pd.read_csv('data/ZillowZip.csv'); cols=[c for c in df.columns if '-' in c]; print(cols[-1] if cols else 'unknown')")
+
+        git add output/ProMap.html
+        git add data/last_update.json
+        git commit -m "Update ProMap with data from $DATE" || echo "No changes to commit"
+        git push
+
+    - name: Deploy to Server
+      if: steps.check.outputs.new_data == 'true'
+      env:
+        SERVER_HOST: ${{ secrets.SERVER_HOST }}
+        SERVER_USER: ${{ secrets.SERVER_USER }}
+        SERVER_PASS: ${{ secrets.SERVER_PASS }}
+        SERVER_PATH: /home2/yxwrmjmy/public_html/wp-content/uploads/reports/live/PriceMaps
+      run: |
+        # Install lftp for FTP upload
+        sudo apt-get update && sudo apt-get install -y lftp
+
+        # Create PriceMaps directory if it doesn't exist and upload ProMap
+        lftp -e "
+          set ftp:ssl-allow no;
+          open ftp://$SERVER_HOST;
+          user $SERVER_USER $SERVER_PASS;
+          mkdir -p $SERVER_PATH;
+          cd $SERVER_PATH;
+          put output/ProMap.html;
+          bye
+        "
+
+        echo "✅ ProMap deployed to server at $SERVER_PATH"
+        echo "URL:"
+        echo "  - https://home-economics.us/wp-content/uploads/reports/live/PriceMaps/ProMap.html"
+
+    - name: Send notification
+      if: steps.check.outputs.new_data == 'true'
+      run: |
+        echo "ProMap updated successfully with new data!"
