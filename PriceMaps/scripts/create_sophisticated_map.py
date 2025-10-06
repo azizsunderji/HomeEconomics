@@ -171,55 +171,64 @@ html_content = f"""<!DOCTYPE html>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
 <style>
-body {{margin:0; padding:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}}
+@import url('https://fonts.googleapis.com/css2?family=Oracle:wght@400;500;600&display=swap');
+body {{margin:0; padding:0; font-family:'Oracle',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}}
 #map {{position:absolute; top:0; bottom:0; width:100%;}}
 
-/* Search container - positioned above legend */
-.search-container {{
+/* Control panel - integrated with legend */
+.control-panel {{
     position:fixed;
-    bottom:280px;
+    bottom:20px;
     left:20px;
-    z-index:1001;
-    display:flex;
-    flex-direction:column;
-    gap:10px;
-    max-width:400px;
+    background:rgba(255,255,255,.95);
+    padding:0;
+    z-index:1000;
+    border:1px solid #e0e0e0;
+    border-radius:4px;
+    width:300px;
+    font-family:'Oracle',sans-serif;
+    font-size:11px;
+}}
+
+/* Search/controls section at top of panel */
+.search-container {{
+    padding:14px;
+    border-bottom:1px solid #f0f0f0;
 }}
 .search-wrapper {{
     position:relative;
     display:flex;
-    background:rgba(255,255,255,0.95);
-    border-radius:4px;
-    box-shadow:0 2px 8px rgba(0,0,0,0.15);
-    padding:2px;
-    width:100%;
+    background:white;
+    border:1px solid #ddd;
+    border-radius:2px;
+    margin-bottom:8px;
 }}
 .search-box {{
     flex:1;
-    padding:8px 12px;
-    border:1px solid #ddd;
-    border-radius:3px 0 0 3px;
-    font-size:13px;
+    padding:6px 8px;
+    border:none;
+    border-radius:2px 0 0 2px;
+    font-size:11px;
+    font-family:'Oracle',sans-serif;
     outline:none;
-    transition: all 0.3s ease;
 }}
 .search-box:focus {{
     outline:none;
-    border-color:#0bb4ff;
-    box-shadow: 0 0 5px rgba(11,180,255,0.3);
 }}
 .search-button {{
-    padding:8px 16px;
-    background:#0bb4ff;
+    padding:6px 12px;
+    background:#3D3733;
     color:white;
     border:none;
-    border-radius:0 3px 3px 0;
+    border-radius:0 2px 2px 0;
     cursor:pointer;
-    font-size:13px;
+    font-size:10px;
+    font-family:'Oracle',sans-serif;
     font-weight:500;
+    transition:background 0.2s;
 }}
 .search-button:hover {{
-    background:#0099dd;
+    background:#555;
 }}
 
 /* Search suggestions */
@@ -256,43 +265,46 @@ body {{margin:0; padding:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe 
 
 /* View toggle button */
 .view-toggle {{
-    padding:8px 16px;
+    padding:6px 8px;
     background:white;
-    border:2px solid #ddd;
-    border-radius:4px;
+    border:1px solid #ddd;
+    border-radius:2px;
     cursor:pointer;
-    font-size:12px;
+    font-size:10px;
+    font-family:'Oracle',sans-serif;
     font-weight:500;
-    box-shadow:0 2px 4px rgba(0,0,0,0.1);
-    transition: all 0.3s ease;
+    transition:all 0.2s;
     width:100%;
     text-align:center;
+    margin-bottom:6px;
 }}
 .view-toggle:hover {{
-    background:#f0f0f0;
+    background:#f8f8f8;
+    border-color:#999;
 }}
 .view-toggle.local-active {{
-    background:#0bb4ff;
+    background:#3D3733;
     color:white;
-    border-color:#0bb4ff;
+    border-color:#3D3733;
 }}
 
 /* Draw boundary button */
 .draw-boundary-button {{
-    padding:8px 16px;
+    padding:6px 8px;
     background:white;
-    border:2px solid #ddd;
-    border-radius:4px;
+    border:1px solid #ddd;
+    border-radius:2px;
     cursor:pointer;
-    font-size:12px;
+    font-size:10px;
+    font-family:'Oracle',sans-serif;
     font-weight:500;
-    box-shadow:0 2px 4px rgba(0,0,0,0.1);
-    transition: all 0.3s ease;
+    transition:all 0.2s;
     width:100%;
     text-align:center;
 }}
 .draw-boundary-button:hover {{
-    background:#f0f0f0;
+    background:#f8f8f8;
+    border-color:#999;
 }}
 .draw-boundary-button.active {{
     background:#67A275;
@@ -300,29 +312,22 @@ body {{margin:0; padding:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe 
     border-color:#67A275;
 }}
 .draw-boundary-button.drawing {{
-    background:#FEC439;
-    color:#3D3733;
-    border-color:#FEC439;
+    background:#67A275;
+    color:white;
+    border-color:#67A275;
 }}
 
-/* Legend */
+/* Legend section inside control panel */
 .legend {{
-    position:fixed;
-    bottom:20px;
-    left:20px;
-    background:rgba(255,255,255,.95);
-    padding:18px 20px;
-    z-index:1000;
-    font-size:11px;
-    line-height:1.5;
+    padding:14px;
+    font-size:10px;
+    line-height:1.6;
     color:#000;
-    border:1px solid #e0e0e0;
-    border-radius:4px;
-    transition: all 0.3s ease;
+    font-family:'Oracle',sans-serif;
+    position:relative;
 }}
 .legend.local-mode {{
-    border-color:#0bb4ff;
-    box-shadow: 0 0 15px rgba(11, 180, 255, 0.4);
+    /* No special styling needed */
 }}
 .local-badge {{
     position:absolute;
@@ -420,6 +425,7 @@ body {{margin:0; padding:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe 
 <body>
 <div id="map"></div>
 <div class="custom-tooltip" id="tooltip"></div>
+<div class="control-panel">
 <div class="search-container">
     <div class="search-wrapper">
         <input type="text" class="search-box" id="searchBox" placeholder="Search ZIP or place name..." onkeyup="handleSearch(event)">
@@ -451,6 +457,7 @@ body {{margin:0; padding:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe 
 <div class="note" id="sizeNote">
 Bubble size reflects population<br>
 Zoom in for details
+</div>
 </div>
 </div>
 <div class="citation">
