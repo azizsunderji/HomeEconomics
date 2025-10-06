@@ -310,14 +310,14 @@ body {{margin:0; padding:0; font-family:'Oracle',-apple-system,BlinkMacSystemFon
     border-color:#999;
 }}
 .draw-boundary-button.active {{
-    background:#FEC439;
-    color:#3D3733;
-    border-color:#FEC439;
+    background:#67A275;
+    color:white;
+    border-color:#67A275;
 }}
 .draw-boundary-button.drawing {{
-    background:#FEC439;
-    color:#3D3733;
-    border-color:#FEC439;
+    background:#67A275;
+    color:white;
+    border-color:#67A275;
 }}
 
 /* Legend section inside control panel */
@@ -419,9 +419,12 @@ body {{margin:0; padding:0; font-family:'Oracle',-apple-system,BlinkMacSystemFon
     color: #0bb4ff;
 }}
 
-/* Local mode glow effect for markers */
+/* Local mode glow effect for markers - but not in boundary mode */
 .leaflet-pane.local-mode {{
     filter: drop-shadow(0 0 3px rgba(11, 180, 255, 0.3));
+}}
+.leaflet-pane.local-mode.boundary-active {{
+    filter: none;
 }}
 </style>
 </head>
@@ -529,17 +532,17 @@ drawControl = new L.Control.Draw({{
     draw: {{
         polygon: {{
             shapeOptions: {{
-                color: '#FEC439',
+                color: '#67A275',
                 weight: 3,
-                fillColor: '#FEC439',
+                fillColor: '#C6DCCB',
                 fillOpacity: 0.15
             }}
         }},
         rectangle: {{
             shapeOptions: {{
-                color: '#FEC439',
+                color: '#67A275',
                 weight: 3,
-                fillColor: '#FEC439',
+                fillColor: '#C6DCCB',
                 fillOpacity: 0.15
             }}
         }},
@@ -711,6 +714,12 @@ function clearDrawnBoundary() {{
         drawBtn.classList.remove('drawing');
         drawBtnText.textContent = 'Draw Boundary';
 
+        // Restore drop-shadow effect when boundary is cleared
+        const markerPane = map.getPane('markerPane');
+        if (markerPane) {{
+            markerPane.classList.remove('boundary-active');
+        }}
+
         // Return to normal local view if active
         if (isLocalMode) {{
             updateLocalQuintiles();
@@ -874,7 +883,7 @@ function updateMarkers() {{
             else if (zip.pop < 15000) fillOpacity = 0.6;
             else if (zip.pop < 30000) fillOpacity = 0.7;
         }}
-        
+
         const marker = L.circleMarker([zip.lat, zip.lon], {{
             radius: radius,
             fillColor: getColor(zip.p),
@@ -1099,6 +1108,12 @@ map.on(L.Draw.Event.CREATED, function(event) {{
     drawBtn.classList.add('drawing');
     drawBtn.classList.remove('active');
     drawBtnText.textContent = 'Clear Boundary';
+
+    // Remove drop-shadow effect in boundary mode
+    const markerPane = map.getPane('markerPane');
+    if (markerPane) {{
+        markerPane.classList.add('boundary-active');
+    }}
 
     // Remove draw control
     map.removeControl(drawControl);

@@ -9,54 +9,64 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
 <style>
-body {margin:0; padding:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
+@import url('https://fonts.googleapis.com/css2?family=Oracle:wght@400;500;600&display=swap');
+body {margin:0; padding:0; font-family:'Oracle',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
 #map {position:absolute; top:0; bottom:0; width:100%;}
 
-/* Search container */
-.search-container {
+/* Control panel - integrated with legend */
+.control-panel {
     position:fixed;
-    top:20px;
-    left:50%;
-    transform:translateX(-50%);
-    z-index:1001;
-    display:flex;
-    align-items:center;
-    gap:10px;
+    bottom:20px;
+    left:20px;
+    background:rgba(255,255,255,.95);
+    padding:0;
+    z-index:1000;
+    border:1px solid #e0e0e0;
+    border-radius:4px;
+    width:300px;
+    font-family:'Oracle',sans-serif;
+    font-size:11px;
+}
+
+/* Search/controls section at top of panel */
+.search-container {
+    padding:14px;
+    border-bottom:1px solid #f0f0f0;
 }
 .search-wrapper {
     position:relative;
     display:flex;
-    background:rgba(255,255,255,0.95);
-    border-radius:4px;
-    box-shadow:0 2px 8px rgba(0,0,0,0.15);
-    padding:2px;
+    background:white;
+    border:1px solid #ddd;
+    border-radius:2px;
+    margin-bottom:8px;
 }
 .search-box {
-    width:250px;
-    padding:8px 12px;
-    border:1px solid #ddd;
-    border-radius:3px 0 0 3px;
-    font-size:13px;
+    flex:1;
+    padding:6px 8px;
+    border:none;
+    border-radius:2px 0 0 2px;
+    font-size:11px;
+    font-family:'Oracle',sans-serif;
     outline:none;
-    transition: all 0.3s ease;
 }
 .search-box:focus {
     outline:none;
-    border-color:#0bb4ff;
-    box-shadow: 0 0 5px rgba(11,180,255,0.3);
 }
 .search-button {
-    padding:8px 16px;
-    background:#0bb4ff;
+    padding:6px 12px;
+    background:#3D3733;
     color:white;
     border:none;
-    border-radius:0 3px 3px 0;
+    border-radius:0 2px 2px 0;
     cursor:pointer;
-    font-size:13px;
+    font-size:10px;
+    font-family:'Oracle',sans-serif;
     font-weight:500;
+    transition:background 0.2s;
 }
 .search-button:hover {
-    background:#0099dd;
+    background:#555;
 }
 
 /* Search suggestions */
@@ -65,23 +75,26 @@ body {margin:0; padding:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe U
     top:100%;
     left:0;
     right:0;
-    background:white;
+    background:rgba(255,255,255,1);
     border:1px solid #ddd;
     border-top:none;
     max-height:200px;
     overflow-y:auto;
     display:none;
-    border-radius:0 0 4px 4px;
-    box-shadow:0 4px 8px rgba(0,0,0,0.1);
+    border-radius:0 0 2px 2px;
+    box-shadow:0 4px 12px rgba(0,0,0,0.15);
+    z-index:10;
 }
 .search-suggestions.active {
     display:block;
 }
 .suggestion-item {
-    padding:8px 12px;
+    padding:6px 8px;
     cursor:pointer;
-    font-size:12px;
+    font-size:10px;
+    font-family:'Oracle',sans-serif;
     border-bottom:1px solid #f0f0f0;
+    background:white;
 }
 .suggestion-item:hover,
 .suggestion-item.selected {
@@ -93,39 +106,46 @@ body {margin:0; padding:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe U
 
 /* View toggle button */
 .view-toggle {
-    padding:6px 16px;
+    padding:6px 8px;
     background:white;
-    border:2px solid #ddd;
-    border-radius:20px;
+    border:1px solid #ddd;
+    border-radius:2px;
     cursor:pointer;
-    font-size:12px;
+    font-size:10px;
+    font-family:'Oracle',sans-serif;
     font-weight:500;
-    box-shadow:0 2px 4px rgba(0,0,0,0.1);
-    transition: all 0.3s ease;
+    transition:all 0.2s;
+    width:100%;
+    text-align:center;
+    margin-bottom:6px;
 }
 .view-toggle:hover {
-    background:#f0f0f0;
+    background:#f8f8f8;
+    border-color:#999;
 }
 .view-toggle.local-active {
-    background:#0bb4ff;
+    background:#3D3733;
     color:white;
-    border-color:#0bb4ff;
+    border-color:#3D3733;
 }
 
 /* Draw boundary button */
 .draw-boundary-button {
-    padding:6px 16px;
+    padding:6px 8px;
     background:white;
-    border:2px solid #ddd;
-    border-radius:20px;
+    border:1px solid #ddd;
+    border-radius:2px;
     cursor:pointer;
-    font-size:12px;
+    font-size:10px;
+    font-family:'Oracle',sans-serif;
     font-weight:500;
-    box-shadow:0 2px 4px rgba(0,0,0,0.1);
-    transition: all 0.3s ease;
+    transition:all 0.2s;
+    width:100%;
+    text-align:center;
 }
 .draw-boundary-button:hover {
-    background:#f0f0f0;
+    background:#f8f8f8;
+    border-color:#999;
 }
 .draw-boundary-button.active {
     background:#67A275;
@@ -133,29 +153,22 @@ body {margin:0; padding:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe U
     border-color:#67A275;
 }
 .draw-boundary-button.drawing {
-    background:#FEC439;
-    color:#3D3733;
-    border-color:#FEC439;
+    background:#67A275;
+    color:white;
+    border-color:#67A275;
 }
 
-/* Legend */
+/* Legend section inside control panel */
 .legend {
-    position:fixed;
-    bottom:20px;
-    left:20px;
-    background:rgba(255,255,255,.95);
-    padding:18px 20px;
-    z-index:1000;
-    font-size:11px;
-    line-height:1.5;
+    padding:14px;
+    font-size:10px;
+    line-height:1.6;
     color:#000;
-    border:1px solid #e0e0e0;
-    border-radius:4px;
-    transition: all 0.3s ease;
+    font-family:'Oracle',sans-serif;
+    position:relative;
 }
 .legend.local-mode {
-    border-color:#0bb4ff;
-    box-shadow: 0 0 15px rgba(11, 180, 255, 0.4);
+    /* No special styling needed */
 }
 .local-badge {
     position:absolute;
@@ -244,15 +257,19 @@ body {margin:0; padding:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe U
     color: #0bb4ff;
 }
 
-/* Local mode glow effect for markers */
+/* Local mode glow effect for markers - but not in boundary mode */
 .leaflet-pane.local-mode {
     filter: drop-shadow(0 0 3px rgba(11, 180, 255, 0.3));
+}
+.leaflet-pane.local-mode.boundary-active {
+    filter: none;
 }
 </style>
 </head>
 <body>
 <div id="map"></div>
 <div class="custom-tooltip" id="tooltip"></div>
+<div class="control-panel">
 <div class="search-container">
     <div class="search-wrapper">
         <input type="text" class="search-box" id="searchBox" placeholder="Search ZIP or place name..." onkeyup="handleSearch(event)">
@@ -284,6 +301,7 @@ body {margin:0; padding:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe U
 <div class="note" id="sizeNote">
 Bubble size reflects population<br>
 Zoom in for details
+</div>
 </div>
 </div>
 <div class="citation">
@@ -353,13 +371,17 @@ drawControl = new L.Control.Draw({
         polygon: {
             shapeOptions: {
                 color: '#67A275',
-                weight: 3
+                weight: 3,
+                fillColor: '#C6DCCB',
+                fillOpacity: 0.15
             }
         },
         rectangle: {
             shapeOptions: {
                 color: '#67A275',
-                weight: 3
+                weight: 3,
+                fillColor: '#C6DCCB',
+                fillOpacity: 0.15
             }
         },
         circle: false,
@@ -377,12 +399,7 @@ drawControl = new L.Control.Draw({
 function getColor(value) {
     if (value <= currentQuintiles[0]) return '#000000';
     if (value <= currentQuintiles[1]) return '#999999';
-
-    // Use light grey for middle quintile when boundary is drawn, light green otherwise
-    if (value <= currentQuintiles[2]) {
-        return (drawnBoundary && isLocalMode) ? '#f8f8f8' : '#C6DCCB';
-    }
-
+    if (value <= currentQuintiles[2]) return '#dadfce';
     if (value <= currentQuintiles[3]) return '#99ccff';
     return '#0bb4ff';
 }
@@ -534,6 +551,12 @@ function clearDrawnBoundary() {
         const drawBtnText = document.getElementById('drawBtnText');
         drawBtn.classList.remove('drawing');
         drawBtnText.textContent = 'Draw Boundary';
+
+        // Restore drop-shadow effect when boundary is cleared
+        const markerPane = map.getPane('markerPane');
+        if (markerPane) {
+            markerPane.classList.remove('boundary-active');
+        }
 
         // Return to normal local view if active
         if (isLocalMode) {
@@ -698,7 +721,7 @@ function updateMarkers() {
             else if (zip.pop < 15000) fillOpacity = 0.6;
             else if (zip.pop < 30000) fillOpacity = 0.7;
         }
-        
+
         const marker = L.circleMarker([zip.lat, zip.lon], {
             radius: radius,
             fillColor: getColor(zip.p),
@@ -923,6 +946,12 @@ map.on(L.Draw.Event.CREATED, function(event) {
     drawBtn.classList.add('drawing');
     drawBtn.classList.remove('active');
     drawBtnText.textContent = 'Clear Boundary';
+
+    // Remove drop-shadow effect in boundary mode
+    const markerPane = map.getPane('markerPane');
+    if (markerPane) {
+        markerPane.classList.add('boundary-active');
+    }
 
     // Remove draw control
     map.removeControl(drawControl);
