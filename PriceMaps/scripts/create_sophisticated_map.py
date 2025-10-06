@@ -237,23 +237,26 @@ body {{margin:0; padding:0; font-family:'Oracle',-apple-system,BlinkMacSystemFon
     top:100%;
     left:0;
     right:0;
-    background:white;
+    background:rgba(255,255,255,1);
     border:1px solid #ddd;
     border-top:none;
     max-height:200px;
     overflow-y:auto;
     display:none;
-    border-radius:0 0 4px 4px;
-    box-shadow:0 4px 8px rgba(0,0,0,0.1);
+    border-radius:0 0 2px 2px;
+    box-shadow:0 4px 12px rgba(0,0,0,0.15);
+    z-index:10;
 }}
 .search-suggestions.active {{
     display:block;
 }}
 .suggestion-item {{
-    padding:8px 12px;
+    padding:6px 8px;
     cursor:pointer;
-    font-size:12px;
+    font-size:10px;
+    font-family:'Oracle',sans-serif;
     border-bottom:1px solid #f0f0f0;
+    background:white;
 }}
 .suggestion-item:hover,
 .suggestion-item.selected {{
