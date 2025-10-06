@@ -174,16 +174,16 @@ html_content = f"""<!DOCTYPE html>
 body {{margin:0; padding:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}}
 #map {{position:absolute; top:0; bottom:0; width:100%;}}
 
-/* Search container */
+/* Search container - positioned above legend */
 .search-container {{
     position:fixed;
-    top:20px;
-    left:50%;
-    transform:translateX(-50%);
+    bottom:280px;
+    left:20px;
     z-index:1001;
     display:flex;
-    align-items:center;
+    flex-direction:column;
     gap:10px;
+    max-width:400px;
 }}
 .search-wrapper {{
     position:relative;
@@ -192,9 +192,10 @@ body {{margin:0; padding:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe 
     border-radius:4px;
     box-shadow:0 2px 8px rgba(0,0,0,0.15);
     padding:2px;
+    width:100%;
 }}
 .search-box {{
-    width:250px;
+    flex:1;
     padding:8px 12px;
     border:1px solid #ddd;
     border-radius:3px 0 0 3px;
@@ -255,15 +256,17 @@ body {{margin:0; padding:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe 
 
 /* View toggle button */
 .view-toggle {{
-    padding:6px 16px;
+    padding:8px 16px;
     background:white;
     border:2px solid #ddd;
-    border-radius:20px;
+    border-radius:4px;
     cursor:pointer;
     font-size:12px;
     font-weight:500;
     box-shadow:0 2px 4px rgba(0,0,0,0.1);
     transition: all 0.3s ease;
+    width:100%;
+    text-align:center;
 }}
 .view-toggle:hover {{
     background:#f0f0f0;
@@ -276,15 +279,17 @@ body {{margin:0; padding:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe 
 
 /* Draw boundary button */
 .draw-boundary-button {{
-    padding:6px 16px;
+    padding:8px 16px;
     background:white;
     border:2px solid #ddd;
-    border-radius:20px;
+    border-radius:4px;
     cursor:pointer;
     font-size:12px;
     font-weight:500;
     box-shadow:0 2px 4px rgba(0,0,0,0.1);
     transition: all 0.3s ease;
+    width:100%;
+    text-align:center;
 }}
 .draw-boundary-button:hover {{
     background:#f0f0f0;
