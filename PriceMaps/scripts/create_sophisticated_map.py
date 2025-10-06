@@ -310,14 +310,14 @@ body {{margin:0; padding:0; font-family:'Oracle',-apple-system,BlinkMacSystemFon
     border-color:#999;
 }}
 .draw-boundary-button.active {{
-    background:#67A275;
-    color:white;
-    border-color:#67A275;
+    background:#FEC439;
+    color:#3D3733;
+    border-color:#FEC439;
 }}
 .draw-boundary-button.drawing {{
-    background:#67A275;
-    color:white;
-    border-color:#67A275;
+    background:#FEC439;
+    color:#3D3733;
+    border-color:#FEC439;
 }}
 
 /* Legend section inside control panel */
@@ -529,14 +529,18 @@ drawControl = new L.Control.Draw({{
     draw: {{
         polygon: {{
             shapeOptions: {{
-                color: '#67A275',
-                weight: 3
+                color: '#FEC439',
+                weight: 3,
+                fillColor: '#FEC439',
+                fillOpacity: 0.15
             }}
         }},
         rectangle: {{
             shapeOptions: {{
-                color: '#67A275',
-                weight: 3
+                color: '#FEC439',
+                weight: 3,
+                fillColor: '#FEC439',
+                fillOpacity: 0.15
             }}
         }},
         circle: false,
@@ -554,12 +558,7 @@ drawControl = new L.Control.Draw({{
 function getColor(value) {{
     if (value <= currentQuintiles[0]) return '#000000';
     if (value <= currentQuintiles[1]) return '#999999';
-
-    // Use light grey for middle quintile when boundary is drawn, light green otherwise
-    if (value <= currentQuintiles[2]) {{
-        return (drawnBoundary && isLocalMode) ? '#f8f8f8' : '#C6DCCB';
-    }}
-
+    if (value <= currentQuintiles[2]) return '#dadfce';
     if (value <= currentQuintiles[3]) return '#99ccff';
     return '#0bb4ff';
 }}
