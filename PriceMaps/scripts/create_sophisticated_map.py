@@ -95,7 +95,7 @@ gdf['lat'] = gdf.centroid.y
 gdf['lon'] = gdf.centroid.x
 
 # Merge all data
-gdf_merged = gdf.merge(df_analysis[['ZCTA5CE20', 'price_change_pct', 'City', 'State']], 
+gdf_merged = gdf.merge(df_analysis[['ZCTA5CE20', 'price_change_pct', 'City', 'State', latest_date]],
                        on='ZCTA5CE20', how='inner')
 gdf_merged = gdf_merged.merge(pop_df[['zcta', 'name', 'population']], 
                               left_on='ZCTA5CE20', right_on='zcta', how='left')
@@ -126,14 +126,23 @@ conditions = [
 choices = [3.0, 4.0, 6.0, 10.0, 16.0, 25.0]
 gdf_merged['radius'] = np.select(conditions, choices, default=1.0)
 
-# Calculate quintiles
+# Calculate quintiles for Y/Y changes
 price_values = gdf_merged['price_change_pct'].values
-quintiles = np.percentile(price_values, [20, 40, 60, 80])
+quintiles_yoy = np.percentile(price_values, [20, 40, 60, 80])
 print(f"\n📊 Price change quintiles:")
-print(f"   20th percentile: {quintiles[0]:.1f}%")
-print(f"   40th percentile: {quintiles[1]:.1f}%")
-print(f"   60th percentile: {quintiles[2]:.1f}%")
-print(f"   80th percentile: {quintiles[3]:.1f}%")
+print(f"   20th percentile: {quintiles_yoy[0]:.1f}%")
+print(f"   40th percentile: {quintiles_yoy[1]:.1f}%")
+print(f"   60th percentile: {quintiles_yoy[2]:.1f}%")
+print(f"   80th percentile: {quintiles_yoy[3]:.1f}%")
+
+# Calculate quintiles for current price levels
+current_prices = gdf_merged[latest_date].values
+quintiles_price = np.percentile(current_prices, [20, 40, 60, 80])
+print(f"\n📊 Current price quintiles:")
+print(f"   20th percentile: ${quintiles_price[0]:,.0f}")
+print(f"   40th percentile: ${quintiles_price[1]:,.0f}")
+print(f"   60th percentile: ${quintiles_price[2]:,.0f}")
+print(f"   80th percentile: ${quintiles_price[3]:,.0f}")
 
 # Create zip data
 zip_data = []
@@ -143,12 +152,13 @@ for _, row in gdf_merged.iterrows():
     if name.startswith('zip code '):
         name = name.replace('zip code ', 'ZIP ')
     name = name.replace(', United States', '')
-    
+
     zip_data.append({
         'z': row['ZCTA5CE20'],
         'lat': round(row['lat'], 3),
         'lon': round(row['lon'], 3),
         'p': round(row['price_change_pct'], 1),
+        'price': int(row[latest_date]),
         'r': round(row['radius'], 1),
         'pop': int(row['population']),
         'n': name
@@ -181,7 +191,7 @@ body {{margin:0; padding:0; font-family:'Oracle',-apple-system,BlinkMacSystemFon
     bottom:20px;
     left:20px;
     background:rgba(255,255,255,.95);
-    padding:0;
+    padding:0 0 5px 0;
     z-index:1000;
     border:1px solid #e0e0e0;
     border-radius:4px;
@@ -200,14 +210,14 @@ body {{margin:0; padding:0; font-family:'Oracle',-apple-system,BlinkMacSystemFon
     display:flex;
     background:white;
     border:1px solid #ddd;
-    border-radius:2px;
-    margin-bottom:8px;
+    border-radius:4px;
+    margin:15px 20px 5px 20px;
 }}
 .search-box {{
     flex:1;
-    padding:6px 8px;
+    padding:8px 10px;
     border:none;
-    border-radius:2px 0 0 2px;
+    border-radius:4px 0 0 4px;
     font-size:11px;
     font-family:'Oracle',sans-serif;
     outline:none;
@@ -216,19 +226,19 @@ body {{margin:0; padding:0; font-family:'Oracle',-apple-system,BlinkMacSystemFon
     outline:none;
 }}
 .search-button {{
-    padding:6px 12px;
-    background:#3D3733;
+    padding:8px 14px;
+    background:#0BB4FF;
     color:white;
     border:none;
-    border-radius:0 2px 2px 0;
+    border-radius:0 4px 4px 0;
     cursor:pointer;
     font-size:10px;
     font-family:'Oracle',sans-serif;
-    font-weight:500;
+    font-weight:600;
     transition:background 0.2s;
 }}
 .search-button:hover {{
-    background:#555;
+    background:#0099dd;
 }}
 
 /* Search suggestions */
@@ -266,44 +276,50 @@ body {{margin:0; padding:0; font-family:'Oracle',-apple-system,BlinkMacSystemFon
     color:#0bb4ff;
 }}
 
-/* View toggle button */
-.view-toggle {{
-    padding:6px 8px;
-    background:white;
-    border:1px solid #ddd;
-    border-radius:2px;
+/* Compact toggles inside legend */
+.toggle-row {{
+    display:flex;
+    gap:8px;
+    margin:5px 10px 10px 10px;
+}}
+.compact-toggle {{
+    flex:1;
+    display:flex;
+    background:#f0f0f0;
+    border-radius:4px;
+    padding:2px;
     cursor:pointer;
-    font-size:10px;
-    font-family:'Oracle',sans-serif;
-    font-weight:500;
-    transition:all 0.2s;
-    width:100%;
+}}
+.toggle-opt {{
+    flex:1;
     text-align:center;
-    margin-bottom:6px;
+    padding:6px 8px;
+    font-size:9px;
+    font-weight:600;
+    letter-spacing:0.3px;
+    color:#999;
+    border-radius:3px;
+    transition:all 0.2s ease;
 }}
-.view-toggle:hover {{
-    background:#f8f8f8;
-    border-color:#999;
-}}
-.view-toggle.local-active {{
-    background:#3D3733;
+.toggle-opt.active {{
+    background:#0BB4FF;
     color:white;
-    border-color:#3D3733;
 }}
 
 /* Draw boundary button */
 .draw-boundary-button {{
-    padding:6px 8px;
+    padding:8px;
     background:white;
     border:1px solid #ddd;
-    border-radius:2px;
+    border-radius:4px;
     cursor:pointer;
-    font-size:10px;
+    font-size:9px;
     font-family:'Oracle',sans-serif;
-    font-weight:500;
+    font-weight:600;
+    letter-spacing:0.3px;
     transition:all 0.2s;
-    width:100%;
     text-align:center;
+    margin:0 10px 10px 10px;
 }}
 .draw-boundary-button:hover {{
     background:#f8f8f8;
@@ -332,21 +348,6 @@ body {{margin:0; padding:0; font-family:'Oracle',-apple-system,BlinkMacSystemFon
 .legend.local-mode {{
     /* No special styling needed */
 }}
-.local-badge {{
-    position:absolute;
-    top:-10px;
-    right:10px;
-    background:#0bb4ff;
-    color:white;
-    padding:2px 8px;
-    font-size:9px;
-    font-weight:bold;
-    border-radius:10px;
-    display:none;
-}}
-.legend.local-mode .local-badge {{
-    display:block;
-}}
 .gradient-bar {{
     height:10px;
     background:linear-gradient(to right,
@@ -355,29 +356,29 @@ body {{margin:0; padding:0; font-family:'Oracle',-apple-system,BlinkMacSystemFon
         #dadfce 40%, #dadfce 60%,
         #99ccff 60%, #99ccff 80%,
         #0bb4ff 80%, #0bb4ff 100%);
-    margin:10px 0 5px 0;
+    margin:10px 10px 5px 10px;
     border:1px solid #ddd;
 }}
 .labels {{
     font-size:9px;
     position:relative;
-    margin-top:2px;
+    margin:2px 10px 0 10px;
     height:15px;
 }}
 .info-line {{
     font-size:10px;
     color:#666;
-    margin:2px 0;
+    margin:2px 10px;
 }}
 .zip-count {{
     font-size:9px;
     color:#999;
-    margin-top:4px;
+    margin:4px 10px 0 10px;
 }}
 .note {{
     font-size:9px;
     color:#999;
-    margin-top:8px;
+    margin:8px 10px 0 10px;
     line-height:1.3;
 }}
 
@@ -432,28 +433,32 @@ body {{margin:0; padding:0; font-family:'Oracle',-apple-system,BlinkMacSystemFon
 <div id="map"></div>
 <div class="custom-tooltip" id="tooltip"></div>
 <div class="control-panel">
-<div class="search-container">
-    <div class="search-wrapper">
-        <input type="text" class="search-box" id="searchBox" placeholder="Search ZIP or place name..." onkeyup="handleSearch(event)">
-        <button class="search-button" onclick="performSearch()">Search</button>
-        <div class="search-suggestions" id="suggestions"></div>
-    </div>
-    <button class="view-toggle" id="viewToggle" onclick="toggleView()">
-        <span id="toggleText">Switch to Local View</span>
-    </button>
-    <button class="draw-boundary-button" id="drawBoundaryBtn" onclick="toggleDrawMode()">
-        <span id="drawBtnText">Draw Boundary</span>
-    </button>
+<div class="search-wrapper">
+    <input type="text" class="search-box" id="searchBox" placeholder="Search ZIP or place name..." onkeyup="handleSearch(event)">
+    <button class="search-button" onclick="performSearch()">Search</button>
+    <div class="search-suggestions" id="suggestions"></div>
 </div>
 <div class="legend" id="legend">
-<div class="local-badge">LOCAL VIEW</div>
+<div class="toggle-row">
+    <div class="compact-toggle" onclick="toggleDataMode()">
+        <div class="toggle-opt" id="toggleLevels">LEVELS</div>
+        <div class="toggle-opt active" id="toggleChanges">CHANGES</div>
+    </div>
+    <div class="compact-toggle" onclick="toggleView()">
+        <div class="toggle-opt active" id="toggleGlobal">GLOBAL</div>
+        <div class="toggle-opt" id="toggleLocal">LOCAL</div>
+    </div>
+</div>
+<button class="draw-boundary-button" id="drawBoundaryBtn" onclick="toggleDrawMode()">
+    <span id="drawBtnText">DRAW BOUNDARY</span>
+</button>
 <div class="gradient-bar"></div>
 <div class="labels" style="font-size:8px; position:relative; margin-top:-2px;">
-<span style="position:absolute; left:0;" id="q0">{quintiles[0]:.0f}%</span>
-<span style="position:absolute; left:20%;" id="q1">{quintiles[1]:.0f}%</span>
-<span style="position:absolute; left:40%;" id="q2">{quintiles[2]:.0f}%</span>
-<span style="position:absolute; left:60%;" id="q3">{quintiles[3]:.0f}%</span>
-<span style="position:absolute; right:0;" id="q4">+{int(max(15, quintiles[3]+5))}%</span>
+<span style="position:absolute; left:0;" id="q0">{quintiles_yoy[0]:.0f}%</span>
+<span style="position:absolute; left:20%;" id="q1">{quintiles_yoy[1]:.0f}%</span>
+<span style="position:absolute; left:40%;" id="q2">{quintiles_yoy[2]:.0f}%</span>
+<span style="position:absolute; left:60%;" id="q3">{quintiles_yoy[3]:.0f}%</span>
+<span style="position:absolute; right:0;" id="q4">+{int(max(15, quintiles_yoy[3]+5))}%</span>
 </div>
 <div class="info-line" id="priceInfo">Year-over-Year Change</div>
 <div class="info-line">Dates: {year_ago_date} to {latest_date}</div>
@@ -473,12 +478,14 @@ Zoom in for details
 // ZIP data
 const zipData = {json.dumps(zip_data, separators=(',', ':'))};
 
-// Global quintiles
-const globalQuintiles = [{quintiles[0]:.1f}, {quintiles[1]:.1f}, {quintiles[2]:.1f}, {quintiles[3]:.1f}];
+// Global quintiles for both modes
+const globalQuintilesYoY = [{quintiles_yoy[0]:.1f}, {quintiles_yoy[1]:.1f}, {quintiles_yoy[2]:.1f}, {quintiles_yoy[3]:.1f}];
+const globalQuintilesPrice = [{quintiles_price[0]:.0f}, {quintiles_price[1]:.0f}, {quintiles_price[2]:.0f}, {quintiles_price[3]:.0f}];
 
 // State variables
 let isLocalMode = false;
-let currentQuintiles = globalQuintiles;
+let dataMode = 'yoy'; // 'yoy' or 'price'
+let currentQuintiles = globalQuintilesYoY;
 let updateTimeout = null;
 let markersLayer = null;
 let selectedSuggestionIndex = -1;
@@ -602,15 +609,17 @@ function updateLocalQuintiles() {{
     if (!isLocalMode) return;
 
     const visibleZips = getVisibleZips();
+    const globalQuintiles = dataMode === 'yoy' ? globalQuintilesYoY : globalQuintilesPrice;
+
     if (visibleZips.length < 2) {{
         currentQuintiles = globalQuintiles;
         currentMinPop = null;
         currentMaxPop = null;
         updateLegend(globalQuintiles, visibleZips.length, null, null, false);
     }} else {{
-        const prices = visibleZips.map(z => z.p);
+        const values = visibleZips.map(z => dataMode === 'yoy' ? z.p : z.price);
         const populations = visibleZips.map(z => z.pop);
-        currentQuintiles = calculateQuintiles(prices);
+        currentQuintiles = calculateQuintiles(values);
         currentMinPop = Math.min(...populations);
         currentMaxPop = Math.max(...populations);
         const isSmallSample = visibleZips.length < 5;
@@ -621,11 +630,22 @@ function updateLocalQuintiles() {{
 
 // Update legend
 function updateLegend(quintiles, zipCount, minPop, maxPop, isSmallSample = false) {{
-    document.getElementById('q0').textContent = quintiles[0].toFixed(0) + '%';
-    document.getElementById('q1').textContent = quintiles[1].toFixed(0) + '%';
-    document.getElementById('q2').textContent = quintiles[2].toFixed(0) + '%';
-    document.getElementById('q3').textContent = quintiles[3].toFixed(0) + '%';
-    document.getElementById('q4').textContent = '+' + Math.max(15, Math.ceil(quintiles[3] + 5)) + '%';
+    // Format labels based on data mode
+    if (dataMode === 'yoy') {{
+        document.getElementById('q0').textContent = quintiles[0].toFixed(0) + '%';
+        document.getElementById('q1').textContent = quintiles[1].toFixed(0) + '%';
+        document.getElementById('q2').textContent = quintiles[2].toFixed(0) + '%';
+        document.getElementById('q3').textContent = quintiles[3].toFixed(0) + '%';
+        document.getElementById('q4').textContent = '+' + Math.max(15, Math.ceil(quintiles[3] + 5)) + '%';
+    }} else {{
+        // Price mode - show dollar amounts
+        const fmt = (v) => '$' + (v >= 1000000 ? (v/1000000).toFixed(1) + 'M' : (v/1000).toFixed(0) + 'K');
+        document.getElementById('q0').textContent = fmt(quintiles[0]);
+        document.getElementById('q1').textContent = fmt(quintiles[1]);
+        document.getElementById('q2').textContent = fmt(quintiles[2]);
+        document.getElementById('q3').textContent = fmt(quintiles[3]);
+        document.getElementById('q4').textContent = fmt(Math.max(quintiles[3] * 1.2, quintiles[3] + 100000));
+    }}
 
     if (isLocalMode) {{
         let zipCountText = `Analyzing ${{zipCount}} ZIP code${{zipCount === 1 ? '' : 's'}} in view`;
@@ -651,10 +671,16 @@ function updateLegend(quintiles, zipCount, minPop, maxPop, isSmallSample = false
 function toggleView() {{
     isLocalMode = !isLocalMode;
 
-    const toggle = document.getElementById('viewToggle');
-    const toggleText = document.getElementById('toggleText');
-    toggle.classList.toggle('local-active', isLocalMode);
-    toggleText.textContent = isLocalMode ? 'Switch to Global View' : 'Switch to Local View';
+    const toggleGlobal = document.getElementById('toggleGlobal');
+    const toggleLocal = document.getElementById('toggleLocal');
+
+    if (isLocalMode) {{
+        toggleGlobal.classList.remove('active');
+        toggleLocal.classList.add('active');
+    }} else {{
+        toggleGlobal.classList.add('active');
+        toggleLocal.classList.remove('active');
+    }}
 
     const legend = document.getElementById('legend');
     legend.classList.toggle('local-mode', isLocalMode);
@@ -667,9 +693,44 @@ function toggleView() {{
     if (isLocalMode) {{
         updateLocalQuintiles();
     }} else {{
+        const globalQuintiles = dataMode === 'yoy' ? globalQuintilesYoY : globalQuintilesPrice;
         currentQuintiles = globalQuintiles;
         currentMinPop = null;
         currentMaxPop = null;
+        updateLegend(globalQuintiles, zipData.length, null, null);
+        updateMarkers();
+    }}
+}}
+
+// Toggle between data modes (Y/Y vs Price Levels)
+function toggleDataMode() {{
+    dataMode = dataMode === 'yoy' ? 'price' : 'yoy';
+
+    const toggleLevels = document.getElementById('toggleLevels');
+    const toggleChanges = document.getElementById('toggleChanges');
+
+    if (dataMode === 'price') {{
+        toggleLevels.classList.add('active');
+        toggleChanges.classList.remove('active');
+    }} else {{
+        toggleLevels.classList.remove('active');
+        toggleChanges.classList.add('active');
+    }}
+
+    // Update price info label
+    const priceInfo = document.getElementById('priceInfo');
+    priceInfo.textContent = dataMode === 'yoy' ? 'Year-over-Year Change' : 'Current Price Level';
+
+    // Recalculate based on current mode
+    if (isLocalMode) {{
+        if (drawnBoundary) {{
+            updateBoundaryQuintiles();
+        }} else {{
+            updateLocalQuintiles();
+        }}
+    }} else {{
+        const globalQuintiles = dataMode === 'yoy' ? globalQuintilesYoY : globalQuintilesPrice;
+        currentQuintiles = globalQuintiles;
         updateLegend(globalQuintiles, zipData.length, null, null);
         updateMarkers();
     }}
@@ -775,6 +836,7 @@ function updateBoundaryQuintiles() {{
     if (!isLocalMode) return;
 
     const boundaryZips = getZipsInBoundary();
+    const globalQuintiles = dataMode === 'yoy' ? globalQuintilesYoY : globalQuintilesPrice;
     console.log('updateBoundaryQuintiles called, found', boundaryZips ? boundaryZips.length : 0, 'ZIPs');
 
     if (!boundaryZips || boundaryZips.length < 2) {{
@@ -783,9 +845,9 @@ function updateBoundaryQuintiles() {{
         currentMaxPop = null;
         updateLegend(globalQuintiles, boundaryZips ? boundaryZips.length : 0, null, null, false);
     }} else {{
-        const prices = boundaryZips.map(z => z.p);
+        const values = boundaryZips.map(z => dataMode === 'yoy' ? z.p : z.price);
         const populations = boundaryZips.map(z => z.pop);
-        currentQuintiles = calculateQuintiles(prices);
+        currentQuintiles = calculateQuintiles(values);
         currentMinPop = Math.min(...populations);
         currentMaxPop = Math.max(...populations);
         const isSmallSample = boundaryZips.length < 5;
@@ -886,7 +948,7 @@ function updateMarkers() {{
 
         const marker = L.circleMarker([zip.lat, zip.lon], {{
             radius: radius,
-            fillColor: getColor(zip.p),
+            fillColor: getColor(dataMode === 'yoy' ? zip.p : zip.price),
             color: 'transparent',
             weight: 0,
             opacity: 1,
@@ -900,10 +962,16 @@ function updateMarkers() {{
             
             marker.on('mouseover', function(e) {{
                 const data = e.target.zipData;
-                const changeText = data.p >= 0 ? `+${{data.p}}%` : `${{data.p}}%`;
+                let dataLine;
+                if (dataMode === 'yoy') {{
+                    const changeText = data.p >= 0 ? `+${{data.p}}%` : `${{data.p}}%`;
+                    dataLine = 'YoY Change: ' + changeText;
+                }} else {{
+                    dataLine = 'Price: $' + data.price.toLocaleString();
+                }}
                 tooltip.innerHTML = '<strong>' + data.z + '</strong><br>' +
                                   data.n + '<br>' +
-                                  'YoY Change: ' + changeText + '<br>' +
+                                  dataLine + '<br>' +
                                   data.pop.toLocaleString() + ' pop';
                 tooltip.style.display = 'block';
             }});
