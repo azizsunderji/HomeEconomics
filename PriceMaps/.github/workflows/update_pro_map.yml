@@ -9,6 +9,9 @@ on:
 jobs:
   check-and-update:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: PriceMaps
 
     steps:
     - name: Checkout repository
