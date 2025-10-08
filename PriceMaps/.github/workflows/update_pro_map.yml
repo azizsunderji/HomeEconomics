@@ -37,21 +37,26 @@ jobs:
     - name: Check for updates
       id: check
       run: |
-        python scripts/check_for_updates.py
-        # Capture the output to determine if there's new data
-        if grep -q "NEW_DATA=true" <<< "$(python scripts/check_for_updates.py)"; then
+        # For manual triggers, always run
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
           echo "new_data=true" >> $GITHUB_OUTPUT
         else
-          echo "new_data=false" >> $GITHUB_OUTPUT
+          python scripts/check_for_updates.py
+          # Capture the output to determine if there's new data
+          if grep -q "NEW_DATA=true" <<< "$(python scripts/check_for_updates.py)"; then
+            echo "new_data=true" >> $GITHUB_OUTPUT
+          else
+            echo "new_data=false" >> $GITHUB_OUTPUT
+          fi
         fi
 
     - name: Download new data
-      if: steps.check.outputs.new_data == 'true'
+      if: steps.check.outputs.new_data == 'true' && github.event_name != 'workflow_dispatch'
       run: |
         python scripts/download_data.py
 
     - name: Download reference files
-      if: steps.check.outputs.new_data == 'true'
+      if: steps.check.outputs.new_data == 'true' && github.event_name != 'workflow_dispatch'
       run: |
         # Download population data
         mkdir -p resources/populations
