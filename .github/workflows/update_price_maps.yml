@@ -127,32 +127,31 @@ jobs:
 
     - name: Create GitHub Issue for new data
       if: steps.check.outputs.new_data == 'true'
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         # Get the date from the data
         DATE=$(python -c "import pandas as pd; df=pd.read_csv('PriceMaps/data/ZillowZip.csv'); cols=[c for c in df.columns if '-' in c]; print(cols[-1] if cols else 'unknown')")
+        TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S %Z')
+        WORKFLOW_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
-        # Create issue with gh CLI
+        # Create issue
         gh issue create \
           --title "🗺️ Price Maps Updated - Data from $DATE" \
           --body "## New Price Map Data Available
 
-**Data Date:** $DATE
-**Updated:** $(date '+%Y-%m-%d %H:%M:%S %Z')
-**Workflow Run:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        Data Date: $DATE
+        Updated: $TIMESTAMP
+        Workflow Run: $WORKFLOW_URL
 
-### Updated Maps
-- [Price Levels Map](https://home-economics.us/wp-content/uploads/reports/live/PriceMaps/us_price_levels_with_search.html)
-- [Year-over-Year Map](https://home-economics.us/wp-content/uploads/reports/live/PriceMaps/us_yoy_price_map_with_search.html)
+        ### Updated Maps
+        - Price Levels Map: https://home-economics.us/wp-content/uploads/reports/live/PriceMaps/us_price_levels_with_search.html
+        - Year-over-Year Map: https://home-economics.us/wp-content/uploads/reports/live/PriceMaps/us_yoy_price_map_with_search.html
 
-### Actions Taken
-✅ Downloaded new Zillow data
-✅ Generated price levels map
-✅ Generated YoY price change map
-✅ Deployed to server
-✅ Committed to repository
-
----
-*This issue was automatically created by the [Update Price Maps workflow](${{ github.server_url }}/${{ github.repository }}/blob/main/.github/workflows/update_price_maps.yml)*" \
+        ### Actions Taken
+        - Downloaded new Zillow data
+        - Generated price levels map
+        - Generated YoY price change map
+        - Deployed to server
+        - Committed to repository" \
           --label "automated,price-maps,data-update"
-      env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
