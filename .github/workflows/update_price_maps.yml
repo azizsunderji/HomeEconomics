@@ -13,6 +13,9 @@ permissions:
 jobs:
   check-and-update:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: PriceMaps
 
     steps:
     - name: Checkout repository
@@ -41,7 +44,6 @@ jobs:
 
     - name: Check for updates
       id: check
-      working-directory: PriceMaps
       run: |
         # Run check and capture output
         OUTPUT=$(python scripts/check_for_updates.py)
@@ -135,10 +137,11 @@ jobs:
         TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S %Z')
         WORKFLOW_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
-        # Create issue
+        # Create issue using heredoc for better multiline handling
         gh issue create \
           --title "Price Maps Updated - Data from $DATE" \
-          --body "## New Price Map Data Available
+          --body "$(cat <<EOF
+## New Price Map Data Available
 
 Data Date: $DATE
 Updated: $TIMESTAMP
@@ -153,5 +156,7 @@ Workflow Run: $WORKFLOW_URL
 - Generated price levels map
 - Generated YoY price change map
 - Deployed to server
-- Committed to repository" \
+- Committed to repository
+EOF
+          )" \
           --label "automated,price-maps,data-update"
