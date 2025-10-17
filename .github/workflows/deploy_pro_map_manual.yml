@@ -33,25 +33,39 @@ jobs:
         cd PriceMaps
         python scripts/create_sophisticated_map.py
 
-    - name: Deploy to Server
+    - name: Install lftp
+      run: sudo apt-get update && sudo apt-get install -y lftp
+
+    - name: Deploy to Server via SFTP
       env:
-        SERVER_HOST: ${{ secrets.SERVER_HOST }}
-        SERVER_USER: ${{ secrets.SERVER_USER }}
-        SERVER_PASS: ${{ secrets.SERVER_PASS }}
-        SERVER_PATH: /home2/yxwrmjmy/public_html/wp-content/uploads/reports/live/PriceMaps
+        HOST: ${{ secrets.SFTP_HOST }}
+        USER: ${{ secrets.SFTP_USER }}
+        KEY: ${{ secrets.SFTP_KEY }}
+        REMOTE_BASE: ${{ secrets.REMOTE_BASE }}
       run: |
         cd PriceMaps
-        sudo apt-get update && sudo apt-get install -y lftp
 
+        # Set up SSH key
+        mkdir -p ~/.ssh
+        echo "$KEY" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        ssh-keyscan -H $HOST >> ~/.ssh/known_hosts 2>/dev/null || true
+
+        # Upload ProMap and geometry files
         lftp -e "
-          set ftp:ssl-allow no;
-          open ftp://$SERVER_HOST;
-          user $SERVER_USER $SERVER_PASS;
-          mkdir -p $SERVER_PATH;
-          cd $SERVER_PATH;
-          put output/ProMap.html;
+          set sftp:auto-confirm yes;
+          set sftp:connect-program 'ssh -i ~/.ssh/id_rsa';
+          set net:max-retries 3;
+          set net:timeout 60;
+          open -u $USER,dummy sftp://$HOST;
+          mkdir -p ${REMOTE_BASE}/live/PriceMaps;
+          put output/ProMap.html -o ${REMOTE_BASE}/live/PriceMaps/ProMap.html;
+          put output/long_term_changes.json -o ${REMOTE_BASE}/live/PriceMaps/long_term_changes.json;
+          put output/zip_geometries_ultra.json -o ${REMOTE_BASE}/live/PriceMaps/zip_geometries_ultra.json;
+          put output/zip_geometries_medium.json -o ${REMOTE_BASE}/live/PriceMaps/zip_geometries_medium.json;
+          put output/zip_geometries_detail.json -o ${REMOTE_BASE}/live/PriceMaps/zip_geometries_detail.json;
           bye
-        "
+        " || echo "Upload finished with warnings"
 
-        echo "✅ ProMap deployed to server at $SERVER_PATH"
+        echo "✅ ProMap and geometry files deployed"
         echo "URL: https://home-economics.us/wp-content/uploads/reports/live/PriceMaps/ProMap.html"
