@@ -2,8 +2,8 @@ name: Update ProMap
 
 on:
   schedule:
-    # Run daily at 9 AM EST (2 PM UTC)
-    - cron: '0 14 * * *'
+    # Run daily at 3 AM EST (8 AM UTC)
+    - cron: '0 8 * * *'
   workflow_dispatch:  # Allow manual trigger
 
 jobs:
@@ -74,6 +74,17 @@ jobs:
             "$base_url/cb_2020_us_zcta520_500k.$ext" || true
         done
 
+    - name: Generate state boundaries (if needed)
+      if: steps.check.outputs.new_data == 'true'
+      run: |
+        # Generate state boundaries if they don't exist
+        if [ ! -f "output/state_boundaries_low.json" ]; then
+          echo "Generating state boundaries..."
+          python scripts/prepare_state_geometries.py
+        else
+          echo "State boundaries already exist, skipping generation"
+        fi
+
     - name: Generate ProMap
       if: steps.check.outputs.new_data == 'true'
       run: |
@@ -112,7 +123,7 @@ jobs:
         # Install lftp for FTP upload
         sudo apt-get update && sudo apt-get install -y lftp
 
-        # Upload ProMap to server
+        # Upload ProMap and all supporting files to server
         lftp -e "
           set ftp:ssl-allow no;
           open ftp://$SERVER_HOST;
@@ -120,10 +131,19 @@ jobs:
           mkdir -p $SERVER_PATH;
           cd $SERVER_PATH;
           put output/ProMap.html;
+          put output/long_term_changes.json;
+          put output/state_boundaries_low.json;
+          put output/state_boundaries_medium.json;
+          put output/state_boundaries_high.json;
           bye
         "
 
         echo "✅ ProMap deployed to server at $SERVER_PATH"
+        echo "   - ProMap.html"
+        echo "   - long_term_changes.json"
+        echo "   - state_boundaries_low.json"
+        echo "   - state_boundaries_medium.json"
+        echo "   - state_boundaries_high.json"
         echo "URL: https://home-economics.us/wp-content/uploads/reports/live/PriceMaps/ProMap.html"
 
     - name: Send notification
