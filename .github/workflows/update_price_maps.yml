@@ -137,21 +137,21 @@ jobs:
 
         # Create issue
         gh issue create \
-          --title "🗺️ Price Maps Updated - Data from $DATE" \
+          --title "Price Maps Updated - Data from $DATE" \
           --body "## New Price Map Data Available
 
-        Data Date: $DATE
-        Updated: $TIMESTAMP
-        Workflow Run: $WORKFLOW_URL
+Data Date: $DATE
+Updated: $TIMESTAMP
+Workflow Run: $WORKFLOW_URL
 
-        ### Updated Maps
-        - Price Levels Map: https://home-economics.us/wp-content/uploads/reports/live/PriceMaps/us_price_levels_with_search.html
-        - Year-over-Year Map: https://home-economics.us/wp-content/uploads/reports/live/PriceMaps/us_yoy_price_map_with_search.html
+### Updated Maps
+- Price Levels Map: https://home-economics.us/wp-content/uploads/reports/live/PriceMaps/us_price_levels_with_search.html
+- Year-over-Year Map: https://home-economics.us/wp-content/uploads/reports/live/PriceMaps/us_yoy_price_map_with_search.html
 
-        ### Actions Taken
-        - Downloaded new Zillow data
-        - Generated price levels map
-        - Generated YoY price change map
-        - Deployed to server
-        - Committed to repository" \
+### Actions Taken
+- Downloaded new Zillow data
+- Generated price levels map
+- Generated YoY price change map
+- Deployed to server
+- Committed to repository" \
           --label "automated,price-maps,data-update"
