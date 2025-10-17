@@ -23,52 +23,96 @@ if not date_columns:
 # Get latest date
 latest_date = date_columns[-1]
 print(f"📅 Latest date: {latest_date}")
-
-# Parse the date to find year-ago
 date_obj = datetime.strptime(latest_date, "%Y-%m-%d")
-target_year = date_obj.year - 1
-target_month = date_obj.month
 
-# Find year-ago date
-year_ago_date = None
-for col in date_columns:
-    try:
-        col_date = datetime.strptime(col, "%Y-%m-%d")
-        if col_date.year == target_year and col_date.month == target_month:
-            year_ago_date = col
-            break
-    except:
-        continue
+# Helper function to find closest date N months ago
+def find_date_n_months_ago(target_months):
+    from dateutil.relativedelta import relativedelta
+    target_date = date_obj - relativedelta(months=target_months)
 
-if not year_ago_date:
-    # Find closest date from previous year
-    year_ago_candidates = []
+    # Find closest available date
+    best_match = None
+    min_diff = float('inf')
+
     for col in date_columns:
         try:
             col_date = datetime.strptime(col, "%Y-%m-%d")
-            if col_date.year == target_year:
-                year_ago_candidates.append((col, abs(col_date.month - target_month)))
+            diff = abs((col_date - target_date).days)
+            if diff < min_diff:
+                min_diff = diff
+                best_match = col
         except:
             continue
 
-    if year_ago_candidates:
-        year_ago_candidates.sort(key=lambda x: x[1])
-        year_ago_date = year_ago_candidates[0][0]
+    return best_match
 
-if not year_ago_date:
-    print("❌ Error: Could not find year-ago data")
-    exit(1)
+# Find dates for all time horizons
+print("\n📅 Finding dates for all time horizons...")
+date_3m = find_date_n_months_ago(3)
+date_6m = find_date_n_months_ago(6)
+date_1y = find_date_n_months_ago(12)
+date_3y = find_date_n_months_ago(36)
+date_5y = find_date_n_months_ago(60)
+date_10y = find_date_n_months_ago(120)
+date_15y = find_date_n_months_ago(180)
 
-print(f"📅 Year-ago date: {year_ago_date}")
+print(f"   3-month ago:  {date_3m}")
+print(f"   6-month ago:  {date_6m}")
+print(f"   1-year ago:   {date_1y}")
+print(f"   3-year ago:   {date_3y}")
+print(f"   5-year ago:   {date_5y}")
+print(f"   10-year ago:  {date_10y}")
+print(f"   15-year ago:  {date_15y}")
 
-# Calculate price appreciation
-df_analysis = df[['RegionName', 'State', 'City', year_ago_date, latest_date]].copy()
-df_analysis = df_analysis.dropna(subset=[year_ago_date, latest_date])
-df_analysis['price_change_pct'] = ((df_analysis[latest_date] - df_analysis[year_ago_date]) / df_analysis[year_ago_date]) * 100
+# Collect all required date columns
+required_dates = [latest_date, date_3m, date_6m, date_1y, date_3y, date_5y, date_10y, date_15y]
+required_dates = [d for d in required_dates if d is not None]
+
+# Calculate price appreciation for all horizons
+df_analysis = df[['RegionName', 'State', 'City'] + required_dates].copy()
+# Only require latest_date and at least 1y data (we'll handle missing data per-horizon)
+df_analysis = df_analysis.dropna(subset=[latest_date, date_1y])
+
+# Calculate changes for each horizon (as integers), handling missing data gracefully
+if date_3m:
+    mask = df_analysis[date_3m].notna()
+    df_analysis.loc[mask, 'change_3m'] = ((df_analysis.loc[mask, latest_date] - df_analysis.loc[mask, date_3m]) / df_analysis.loc[mask, date_3m] * 100).round(0).astype(int)
+
+if date_6m:
+    mask = df_analysis[date_6m].notna()
+    df_analysis.loc[mask, 'change_6m'] = ((df_analysis.loc[mask, latest_date] - df_analysis.loc[mask, date_6m]) / df_analysis.loc[mask, date_6m] * 100).round(0).astype(int)
+
+if date_1y:
+    mask = df_analysis[date_1y].notna()
+    df_analysis.loc[mask, 'change_1y'] = ((df_analysis.loc[mask, latest_date] - df_analysis.loc[mask, date_1y]) / df_analysis.loc[mask, date_1y] * 100).round(0).astype(int)
+
+if date_3y:
+    mask = df_analysis[date_3y].notna()
+    df_analysis.loc[mask, 'change_3y'] = ((df_analysis.loc[mask, latest_date] - df_analysis.loc[mask, date_3y]) / df_analysis.loc[mask, date_3y] * 100).round(0).astype(int)
+
+if date_5y:
+    mask = df_analysis[date_5y].notna()
+    df_analysis.loc[mask, 'change_5y'] = ((df_analysis.loc[mask, latest_date] - df_analysis.loc[mask, date_5y]) / df_analysis.loc[mask, date_5y] * 100).round(0).astype(int)
+
+if date_10y:
+    mask = df_analysis[date_10y].notna()
+    df_analysis.loc[mask, 'change_10y'] = ((df_analysis.loc[mask, latest_date] - df_analysis.loc[mask, date_10y]) / df_analysis.loc[mask, date_10y] * 100).round(0).astype(int)
+
+if date_15y:
+    mask = df_analysis[date_15y].notna()
+    df_analysis.loc[mask, 'change_15y'] = ((df_analysis.loc[mask, latest_date] - df_analysis.loc[mask, date_15y]) / df_analysis.loc[mask, date_15y] * 100).round(0).astype(int)
+
 df_analysis['ZCTA5CE20'] = df_analysis['RegionName'].astype(str).str.zfill(5)
-df_analysis = df_analysis[(df_analysis['price_change_pct'] >= -50) & (df_analysis['price_change_pct'] <= 100)]
 
-print(f"📊 Calculated price changes for {len(df_analysis):,} ZIP codes")
+# Filter out extreme outliers (keep reasonable range) - only filter where data exists
+change_columns = [col for col in df_analysis.columns if col.startswith('change_')]
+for col in change_columns:
+    # Only apply filter where values exist (not NaN)
+    mask = df_analysis[col].notna()
+    outliers = mask & ((df_analysis[col] < -50) | (df_analysis[col] > 200))
+    df_analysis = df_analysis[~outliers]
+
+print(f"\n📊 Calculated price changes for {len(df_analysis):,} ZIP codes across all horizons")
 
 # Load population data
 try:
@@ -95,9 +139,9 @@ gdf['lat'] = gdf.centroid.y
 gdf['lon'] = gdf.centroid.x
 
 # Merge all data
-gdf_merged = gdf.merge(df_analysis[['ZCTA5CE20', 'price_change_pct', 'City', 'State', latest_date]],
-                       on='ZCTA5CE20', how='inner')
-gdf_merged = gdf_merged.merge(pop_df[['zcta', 'name', 'population']], 
+merge_cols = ['ZCTA5CE20', 'City', 'State', latest_date] + change_columns
+gdf_merged = gdf.merge(df_analysis[merge_cols], on='ZCTA5CE20', how='inner')
+gdf_merged = gdf_merged.merge(pop_df[['zcta', 'name', 'population']],
                               left_on='ZCTA5CE20', right_on='zcta', how='left')
 
 # Fill missing names
@@ -126,14 +170,39 @@ conditions = [
 choices = [3.0, 4.0, 6.0, 10.0, 16.0, 25.0]
 gdf_merged['radius'] = np.select(conditions, choices, default=1.0)
 
-# Calculate quintiles for Y/Y changes
-price_values = gdf_merged['price_change_pct'].values
-quintiles_yoy = np.percentile(price_values, [20, 40, 60, 80])
-print(f"\n📊 Price change quintiles:")
-print(f"   20th percentile: {quintiles_yoy[0]:.1f}%")
-print(f"   40th percentile: {quintiles_yoy[1]:.1f}%")
-print(f"   60th percentile: {quintiles_yoy[2]:.1f}%")
-print(f"   80th percentile: {quintiles_yoy[3]:.1f}%")
+# Calculate quintiles for all time horizons (embedded: 3m, 6m, 1y)
+print(f"\n📊 Calculating quintiles for all time horizons...")
+quintiles = {}
+
+# Short-term horizons (embedded in HTML)
+if 'change_3m' in gdf_merged.columns:
+    quintiles['3m'] = np.nanpercentile(gdf_merged['change_3m'].values, [20, 40, 60, 80])
+    print(f"   3-month:  {quintiles['3m'][0]:.0f}% | {quintiles['3m'][1]:.0f}% | {quintiles['3m'][2]:.0f}% | {quintiles['3m'][3]:.0f}%")
+
+if 'change_6m' in gdf_merged.columns:
+    quintiles['6m'] = np.nanpercentile(gdf_merged['change_6m'].values, [20, 40, 60, 80])
+    print(f"   6-month:  {quintiles['6m'][0]:.0f}% | {quintiles['6m'][1]:.0f}% | {quintiles['6m'][2]:.0f}% | {quintiles['6m'][3]:.0f}%")
+
+if 'change_1y' in gdf_merged.columns:
+    quintiles['1y'] = np.nanpercentile(gdf_merged['change_1y'].values, [20, 40, 60, 80])
+    print(f"   1-year:   {quintiles['1y'][0]:.0f}% | {quintiles['1y'][1]:.0f}% | {quintiles['1y'][2]:.0f}% | {quintiles['1y'][3]:.0f}%")
+
+# Long-term horizons (lazy-loaded)
+if 'change_3y' in gdf_merged.columns:
+    quintiles['3y'] = np.nanpercentile(gdf_merged['change_3y'].values, [20, 40, 60, 80])
+    print(f"   3-year:   {quintiles['3y'][0]:.0f}% | {quintiles['3y'][1]:.0f}% | {quintiles['3y'][2]:.0f}% | {quintiles['3y'][3]:.0f}%")
+
+if 'change_5y' in gdf_merged.columns:
+    quintiles['5y'] = np.nanpercentile(gdf_merged['change_5y'].values, [20, 40, 60, 80])
+    print(f"   5-year:   {quintiles['5y'][0]:.0f}% | {quintiles['5y'][1]:.0f}% | {quintiles['5y'][2]:.0f}% | {quintiles['5y'][3]:.0f}%")
+
+if 'change_10y' in gdf_merged.columns:
+    quintiles['10y'] = np.nanpercentile(gdf_merged['change_10y'].values, [20, 40, 60, 80])
+    print(f"   10-year:  {quintiles['10y'][0]:.0f}% | {quintiles['10y'][1]:.0f}% | {quintiles['10y'][2]:.0f}% | {quintiles['10y'][3]:.0f}%")
+
+if 'change_15y' in gdf_merged.columns:
+    quintiles['15y'] = np.nanpercentile(gdf_merged['change_15y'].values, [20, 40, 60, 80])
+    print(f"   15-year:  {quintiles['15y'][0]:.0f}% | {quintiles['15y'][1]:.0f}% | {quintiles['15y'][2]:.0f}% | {quintiles['15y'][3]:.0f}%")
 
 # Calculate quintiles for current price levels
 current_prices = gdf_merged[latest_date].values
@@ -144,8 +213,12 @@ print(f"   40th percentile: ${quintiles_price[1]:,.0f}")
 print(f"   60th percentile: ${quintiles_price[2]:,.0f}")
 print(f"   80th percentile: ${quintiles_price[3]:,.0f}")
 
-# Create zip data
+# Create zip data structures
+# Short-term data (embedded in HTML)
 zip_data = []
+# Long-term data (lazy-loaded JSON)
+long_term_data = {}
+
 for _, row in gdf_merged.iterrows():
     # Clean up name
     name = str(row['city_state'])
@@ -153,21 +226,49 @@ for _, row in gdf_merged.iterrows():
         name = name.replace('zip code ', 'ZIP ')
     name = name.replace(', United States', '')
 
-    zip_data.append({
-        'z': row['ZCTA5CE20'],
+    zip_code = row['ZCTA5CE20']
+
+    # Embedded data: location, current price, short-term changes (3M, 6M, 1Y)
+    zip_obj = {
+        'z': zip_code,
         'lat': round(row['lat'], 3),
         'lon': round(row['lon'], 3),
-        'p': round(row['price_change_pct'], 1),
         'price': int(row[latest_date]),
         'r': round(row['radius'], 1),
         'pop': int(row['population']),
         'n': name
-    })
+    }
+
+    # Add short-term changes if available
+    if 'change_3m' in row and pd.notna(row['change_3m']):
+        zip_obj['p3m'] = int(row['change_3m'])
+    if 'change_6m' in row and pd.notna(row['change_6m']):
+        zip_obj['p6m'] = int(row['change_6m'])
+    if 'change_1y' in row and pd.notna(row['change_1y']):
+        zip_obj['p1y'] = int(row['change_1y'])
+
+    zip_data.append(zip_obj)
+
+    # Long-term data (separate file) - include whatever data exists for this ZIP
+    long_term_obj = {}
+    if 'change_3y' in row and pd.notna(row['change_3y']):
+        long_term_obj['p3y'] = int(row['change_3y'])
+    if 'change_5y' in row and pd.notna(row['change_5y']):
+        long_term_obj['p5y'] = int(row['change_5y'])
+    if 'change_10y' in row and pd.notna(row['change_10y']):
+        long_term_obj['p10y'] = int(row['change_10y'])
+    if 'change_15y' in row and pd.notna(row['change_15y']):
+        long_term_obj['p15y'] = int(row['change_15y'])
+
+    if long_term_obj:
+        long_term_data[zip_code] = long_term_obj
 
 # Sort by population (largest first) for better layering
 zip_data = sorted(zip_data, key=lambda x: x['pop'], reverse=True)
 
 print(f"\n📦 Generated data for {len(zip_data):,} ZIP codes")
+print(f"   Embedded data: 3M, 6M, 1Y changes + current price")
+print(f"   Long-term data: {len(long_term_data):,} ZIPs with 3Y, 5Y, 10Y, 15Y changes")
 
 # Create HTML with all features
 html_content = f"""<!DOCTYPE html>
@@ -289,6 +390,10 @@ body {{margin:0; padding:0; font-family:'Oracle',-apple-system,BlinkMacSystemFon
     border-radius:4px;
     padding:2px;
     cursor:pointer;
+}}
+.compact-toggle.disabled {{
+    opacity:0.4;
+    cursor:not-allowed;
 }}
 .toggle-opt {{
     flex:1;
@@ -432,6 +537,18 @@ body {{margin:0; padding:0; font-family:'Oracle',-apple-system,BlinkMacSystemFon
 <body>
 <div id="map"></div>
 <div class="custom-tooltip" id="tooltip"></div>
+<div id="loadingOverlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.3); z-index:10000; align-items:center; justify-content:center;">
+    <div style="background:white; padding:30px; border-radius:10px; box-shadow:0 4px 20px rgba(0,0,0,0.3); text-align:center;">
+        <div style="width:50px; height:50px; border:4px solid #f3f3f3; border-top:4px solid #0bb4ff; border-radius:50%; animation:spin 1s linear infinite; margin:0 auto 15px;"></div>
+        <div style="color:#3D3733; font-size:16px; font-weight:500;">Loading data...</div>
+    </div>
+</div>
+<style>
+@keyframes spin {{
+    0% {{ transform: rotate(0deg); }}
+    100% {{ transform: rotate(360deg); }}
+}}
+</style>
 <div class="control-panel">
 <div class="search-wrapper">
     <input type="text" class="search-box" id="searchBox" placeholder="Search ZIP or place name..." onkeyup="handleSearch(event)">
@@ -449,19 +566,54 @@ body {{margin:0; padding:0; font-family:'Oracle',-apple-system,BlinkMacSystemFon
         <div class="toggle-opt" id="toggleLocal">LOCAL</div>
     </div>
 </div>
+<div class="toggle-row" id="horizonRow" style="opacity:1; pointer-events:auto;">
+    <div class="compact-toggle" onclick="selectHorizon('3m')">
+        <div class="toggle-opt" id="toggle3m">3M</div>
+    </div>
+    <div class="compact-toggle" onclick="selectHorizon('6m')">
+        <div class="toggle-opt" id="toggle6m">6M</div>
+    </div>
+    <div class="compact-toggle" onclick="selectHorizon('1y')">
+        <div class="toggle-opt active" id="toggle1y">1Y</div>
+    </div>
+    <div class="compact-toggle" onclick="selectHorizon('long')">
+        <div class="toggle-opt" id="toggleLong">MORE ▼</div>
+    </div>
+</div>
+<div class="toggle-row" id="longHorizonRow" style="display:none;">
+    <div class="compact-toggle" onclick="selectHorizon('3y')">
+        <div class="toggle-opt" id="toggle3y">3Y</div>
+    </div>
+    <div class="compact-toggle" onclick="selectHorizon('5y')">
+        <div class="toggle-opt" id="toggle5y">5Y</div>
+    </div>
+    <div class="compact-toggle" onclick="selectHorizon('10y')">
+        <div class="toggle-opt" id="toggle10y">10Y</div>
+    </div>
+    <div class="compact-toggle" onclick="selectHorizon('15y')">
+        <div class="toggle-opt" id="toggle15y">15Y</div>
+    </div>
+</div>
+<div class="toggle-row">
+    <div class="compact-toggle disabled" id="visualToggle" onclick="toggleVisualization()">
+        <div class="toggle-opt active" id="toggleBubbles">BUBBLES</div>
+        <div class="toggle-opt" id="toggleBoundaries">BOUNDARIES</div>
+    </div>
+</div>
+<div id="boundaryHint" style="font-size:10px; color:#999; margin-top:2px; margin-bottom:8px; text-align:center;">Zoom in to enable boundary view</div>
 <button class="draw-boundary-button" id="drawBoundaryBtn" onclick="toggleDrawMode()">
     <span id="drawBtnText">DRAW BOUNDARY</span>
 </button>
 <div class="gradient-bar"></div>
 <div class="labels" style="font-size:8px; position:relative; margin-top:-2px;">
-<span style="position:absolute; left:0;" id="q0">{quintiles_yoy[0]:.0f}%</span>
-<span style="position:absolute; left:20%;" id="q1">{quintiles_yoy[1]:.0f}%</span>
-<span style="position:absolute; left:40%;" id="q2">{quintiles_yoy[2]:.0f}%</span>
-<span style="position:absolute; left:60%;" id="q3">{quintiles_yoy[3]:.0f}%</span>
-<span style="position:absolute; right:0;" id="q4">+{int(max(15, quintiles_yoy[3]+5))}%</span>
+<span style="position:absolute; left:0;" id="q0">{quintiles.get('1y', [0,0,0,0])[0]:.0f}%</span>
+<span style="position:absolute; left:20%;" id="q1">{quintiles.get('1y', [0,0,0,0])[1]:.0f}%</span>
+<span style="position:absolute; left:40%;" id="q2">{quintiles.get('1y', [0,0,0,0])[2]:.0f}%</span>
+<span style="position:absolute; left:60%;" id="q3">{quintiles.get('1y', [0,0,0,0])[3]:.0f}%</span>
+<span style="position:absolute; right:0;" id="q4">+{int(max(15, quintiles.get('1y', [0,0,0,0])[3]+5))}%</span>
 </div>
 <div class="info-line" id="priceInfo">Year-over-Year Change</div>
-<div class="info-line">Dates: {year_ago_date} to {latest_date}</div>
+<div class="info-line">Dates: {date_1y} to {latest_date}</div>
 <div class="info-line">{len(zip_data):,} ZIP codes</div>
 <div class="zip-count" id="zipCount"></div>
 <div class="zip-count" id="popRange" style="display:none;"></div>
@@ -478,14 +630,34 @@ Zoom in for details
 // ZIP data
 const zipData = {json.dumps(zip_data, separators=(',', ':'))};
 
-// Global quintiles for both modes
-const globalQuintilesYoY = [{quintiles_yoy[0]:.1f}, {quintiles_yoy[1]:.1f}, {quintiles_yoy[2]:.1f}, {quintiles_yoy[3]:.1f}];
-const globalQuintilesPrice = [{quintiles_price[0]:.0f}, {quintiles_price[1]:.0f}, {quintiles_price[2]:.0f}, {quintiles_price[3]:.0f}];
+// Global quintiles for all time horizons
+const globalQuintiles = {{
+    '3m': {json.dumps([int(q) if not np.isnan(q) else 0 for q in quintiles.get('3m', [0,0,0,0])])},
+    '6m': {json.dumps([int(q) if not np.isnan(q) else 0 for q in quintiles.get('6m', [0,0,0,0])])},
+    '1y': {json.dumps([int(q) if not np.isnan(q) else 0 for q in quintiles.get('1y', [0,0,0,0])])},
+    '3y': {json.dumps([int(q) if not np.isnan(q) else 0 for q in quintiles.get('3y', [0,0,0,0])])},
+    '5y': {json.dumps([int(q) if not np.isnan(q) else 0 for q in quintiles.get('5y', [0,0,0,0])])},
+    '10y': {json.dumps([int(q) if not np.isnan(q) else 0 for q in quintiles.get('10y', [0,0,0,0])])},
+    '15y': {json.dumps([int(q) if not np.isnan(q) else 0 for q in quintiles.get('15y', [0,0,0,0])])},
+    'price': {json.dumps([int(quintiles_price[0]), int(quintiles_price[1]), int(quintiles_price[2]), int(quintiles_price[3])])}
+}};
+
+// Time horizon definitions
+const horizons = {{
+    '3m': {{label: '3 Months', field: 'p3m', embedded: true}},
+    '6m': {{label: '6 Months', field: 'p6m', embedded: true}},
+    '1y': {{label: '1 Year', field: 'p1y', embedded: true}},
+    '3y': {{label: '3 Years', field: 'p3y', embedded: false}},
+    '5y': {{label: '5 Years', field: 'p5y', embedded: false}},
+    '10y': {{label: '10 Years', field: 'p10y', embedded: false}},
+    '15y': {{label: '15 Years', field: 'p15y', embedded: false}}
+}};
 
 // State variables
 let isLocalMode = false;
-let dataMode = 'yoy'; // 'yoy' or 'price'
-let currentQuintiles = globalQuintilesYoY;
+let dataMode = '1y'; // 'price' or a horizon key ('1y', '3y', etc)
+let timeHorizon = '1y'; // Current time horizon when in change mode
+let currentQuintiles = globalQuintiles['1y'];
 let updateTimeout = null;
 let markersLayer = null;
 let selectedSuggestionIndex = -1;
@@ -493,11 +665,24 @@ let currentSuggestions = [];
 let currentMinPop = null;
 let currentMaxPop = null;
 
+// Long-term data loading
+let longTermData = null;
+let longTermLoading = false;
+
 // Drawing functionality
 let drawnBoundary = null;
 let drawControl = null;
 let drawnItems = null;
 let isDrawingMode = false;
+
+// Boundary view functionality
+let isBoundaryView = false;
+let boundaryLayer = null;
+let geometriesUltra = null;
+let geometriesMedium = null;
+let geometriesDetail = null;
+let currentGeometryTier = null;
+let geometriesLoading = false;
 
 // Create search index for fast lookups
 const searchIndex = zipData.map(z => ({{
@@ -506,7 +691,7 @@ const searchIndex = zipData.map(z => ({{
     nameOriginal: z.n,
     lat: z.lat,
     lon: z.lon,
-    price: z.p,
+    zipData: z,  // Store reference to full ZIP data
     pop: z.pop
 }}));
 
@@ -526,8 +711,10 @@ L.tileLayer('https://{{s}}.basemaps.cartocdn.com/light_nolabels/{{z}}/{{x}}/{{y}
 }}).addTo(map);
 
 // Create panes for layering
+map.createPane('zipBoundaries');
+map.getPane('zipBoundaries').style.zIndex = 450;
 map.createPane('stateBoundaries');
-map.getPane('stateBoundaries').style.zIndex = 450;
+map.getPane('stateBoundaries').style.zIndex = 500;
 map.createPane('markerPane');
 map.getPane('markerPane').style.zIndex = 600;
 
@@ -609,15 +796,15 @@ function updateLocalQuintiles() {{
     if (!isLocalMode) return;
 
     const visibleZips = getVisibleZips();
-    const globalQuintiles = dataMode === 'yoy' ? globalQuintilesYoY : globalQuintilesPrice;
+    const globalQ = dataMode === 'price' ? globalQuintiles['price'] : globalQuintiles[timeHorizon];
 
     if (visibleZips.length < 2) {{
-        currentQuintiles = globalQuintiles;
+        currentQuintiles = globalQ;
         currentMinPop = null;
         currentMaxPop = null;
-        updateLegend(globalQuintiles, visibleZips.length, null, null, false);
+        updateLegend(globalQ, visibleZips.length, null, null, false);
     }} else {{
-        const values = visibleZips.map(z => dataMode === 'yoy' ? z.p : z.price);
+        const values = visibleZips.map(z => getZipValue(z)).filter(v => v !== undefined);
         const populations = visibleZips.map(z => z.pop);
         currentQuintiles = calculateQuintiles(values);
         currentMinPop = Math.min(...populations);
@@ -625,19 +812,17 @@ function updateLocalQuintiles() {{
         const isSmallSample = visibleZips.length < 5;
         updateLegend(currentQuintiles, visibleZips.length, currentMinPop, currentMaxPop, isSmallSample);
     }}
-    updateMarkers();
+
+    // Only update markers if not in boundary view mode
+    if (!isBoundaryView) {{
+        updateMarkers();
+    }}
 }}
 
 // Update legend
 function updateLegend(quintiles, zipCount, minPop, maxPop, isSmallSample = false) {{
     // Format labels based on data mode
-    if (dataMode === 'yoy') {{
-        document.getElementById('q0').textContent = quintiles[0].toFixed(0) + '%';
-        document.getElementById('q1').textContent = quintiles[1].toFixed(0) + '%';
-        document.getElementById('q2').textContent = quintiles[2].toFixed(0) + '%';
-        document.getElementById('q3').textContent = quintiles[3].toFixed(0) + '%';
-        document.getElementById('q4').textContent = '+' + Math.max(15, Math.ceil(quintiles[3] + 5)) + '%';
-    }} else {{
+    if (dataMode === 'price') {{
         // Price mode - show dollar amounts
         const fmt = (v) => '$' + (v >= 1000000 ? (v/1000000).toFixed(1) + 'M' : (v/1000).toFixed(0) + 'K');
         document.getElementById('q0').textContent = fmt(quintiles[0]);
@@ -645,6 +830,13 @@ function updateLegend(quintiles, zipCount, minPop, maxPop, isSmallSample = false
         document.getElementById('q2').textContent = fmt(quintiles[2]);
         document.getElementById('q3').textContent = fmt(quintiles[3]);
         document.getElementById('q4').textContent = fmt(Math.max(quintiles[3] * 1.2, quintiles[3] + 100000));
+    }} else {{
+        // Change mode - show percentages
+        document.getElementById('q0').textContent = quintiles[0].toFixed(0) + '%';
+        document.getElementById('q1').textContent = quintiles[1].toFixed(0) + '%';
+        document.getElementById('q2').textContent = quintiles[2].toFixed(0) + '%';
+        document.getElementById('q3').textContent = quintiles[3].toFixed(0) + '%';
+        document.getElementById('q4').textContent = '+' + Math.max(15, Math.ceil(quintiles[3] + 5)) + '%';
     }}
 
     if (isLocalMode) {{
@@ -669,6 +861,11 @@ function updateLegend(quintiles, zipCount, minPop, maxPop, isSmallSample = false
 
 // Toggle between global and local view
 function toggleView() {{
+    // Don't allow switching to GLOBAL if boundary is drawn
+    if (drawnBoundary && isLocalMode) {{
+        return;
+    }}
+
     isLocalMode = !isLocalMode;
 
     const toggleGlobal = document.getElementById('toggleGlobal');
@@ -691,48 +888,191 @@ function toggleView() {{
     }}
 
     if (isLocalMode) {{
-        updateLocalQuintiles();
+        if (isBoundaryView) {{
+            // Refresh boundary view with local quintiles
+            loadAndShowBoundaries();
+        }} else {{
+            updateLocalQuintiles();
+        }}
     }} else {{
-        const globalQuintiles = dataMode === 'yoy' ? globalQuintilesYoY : globalQuintilesPrice;
-        currentQuintiles = globalQuintiles;
+        const globalQ = dataMode === 'price' ? globalQuintiles['price'] : globalQuintiles[timeHorizon];
+        currentQuintiles = globalQ;
         currentMinPop = null;
         currentMaxPop = null;
-        updateLegend(globalQuintiles, zipData.length, null, null);
-        updateMarkers();
+        updateLegend(globalQ, zipData.length, null, null);
+        if (isBoundaryView) {{
+            // Refresh boundary view with global quintiles
+            loadAndShowBoundaries();
+        }} else {{
+            updateMarkers();
+        }}
     }}
 }}
 
-// Toggle between data modes (Y/Y vs Price Levels)
+// Get value for a ZIP at current time horizon
+function getZipValue(zip) {{
+    if (dataMode === 'price') {{
+        return zip.price;
+    }}
+
+    // Get change value for current horizon
+    const field = horizons[timeHorizon].field;
+    let value = zip[field];
+
+    // If not embedded, check long-term data
+    if (value === undefined && longTermData && longTermData[zip.z]) {{
+        value = longTermData[zip.z][field];
+    }}
+
+    return value;
+}}
+
+// Show/hide loading indicator
+function showLoading() {{
+    const overlay = document.getElementById('loadingOverlay');
+    overlay.style.display = 'flex';
+}}
+
+function hideLoading() {{
+    const overlay = document.getElementById('loadingOverlay');
+    overlay.style.display = 'none';
+}}
+
+// Load long-term data if needed
+async function ensureLongTermData() {{
+    if (longTermData || longTermLoading) return;
+
+    longTermLoading = true;
+    try {{
+        const response = await fetch('long_term_changes.json');
+        longTermData = await response.json();
+        console.log(`Loaded long-term data for ${{Object.keys(longTermData).length}} ZIPs`);
+    }} catch (error) {{
+        console.error('Failed to load long-term data:', error);
+        longTermData = {{}};
+    }} finally {{
+        longTermLoading = false;
+    }}
+}}
+
+// Select time horizon
+async function selectHorizon(horizon) {{
+    if (horizon === 'long') {{
+        // Toggle long-term horizons visibility
+        const longRow = document.getElementById('longHorizonRow');
+        const isVisible = longRow.style.display !== 'none';
+        longRow.style.display = isVisible ? 'none' : 'flex';
+        return;
+    }}
+
+    // Show loading indicator
+    showLoading();
+
+    try {{
+        // Load long-term data if needed
+        if (!horizons[horizon].embedded) {{
+            await ensureLongTermData();
+        }}
+
+        timeHorizon = horizon;
+
+        // Update all horizon toggles
+        ['3m', '6m', '1y', '3y', '5y', '10y', '15y'].forEach(h => {{
+            const el = document.getElementById(`toggle${{h}}`);
+            if (el) {{
+                el.classList.toggle('active', h === horizon);
+            }}
+        }});
+
+        // Update currentQuintiles and refresh view
+        if (isLocalMode) {{
+            if (drawnBoundary) {{
+                updateBoundaryQuintiles();
+                if (isBoundaryView) {{
+                    loadAndShowBoundaries();
+                }}
+            }} else {{
+                updateLocalQuintiles();
+                if (isBoundaryView) {{
+                    loadAndShowBoundaries();
+                }}
+            }}
+        }} else {{
+            currentQuintiles = globalQuintiles[horizon];
+            updateLegend(currentQuintiles, zipData.length, null, null);
+            if (isBoundaryView) {{
+                loadAndShowBoundaries();
+            }} else {{
+                updateMarkers();
+            }}
+        }}
+
+        // Update info label
+        const horizonLabel = horizons[horizon].label;
+        document.getElementById('priceInfo').textContent = horizonLabel + ' Change';
+    }} finally {{
+        // Always hide loading indicator
+        hideLoading();
+    }}
+}}
+
+// Toggle between data modes (Price Levels vs Changes)
 function toggleDataMode() {{
-    dataMode = dataMode === 'yoy' ? 'price' : 'yoy';
+    const wasPrice = (dataMode === 'price');
+    dataMode = wasPrice ? timeHorizon : 'price';
 
     const toggleLevels = document.getElementById('toggleLevels');
     const toggleChanges = document.getElementById('toggleChanges');
+    const horizonRow = document.getElementById('horizonRow');
 
     if (dataMode === 'price') {{
         toggleLevels.classList.add('active');
         toggleChanges.classList.remove('active');
+        // Disable horizon selectors (keep visible but grayed out)
+        horizonRow.style.opacity = '0.3';
+        horizonRow.style.pointerEvents = 'none';
+        // Hide the long-term row if it was visible
+        const longRow = document.getElementById('longHorizonRow');
+        if (longRow.style.display !== 'none') {{
+            longRow.style.display = 'none';
+        }}
     }} else {{
         toggleLevels.classList.remove('active');
         toggleChanges.classList.add('active');
+        // Enable horizon selectors
+        horizonRow.style.opacity = '1';
+        horizonRow.style.pointerEvents = 'auto';
     }}
 
     // Update price info label
     const priceInfo = document.getElementById('priceInfo');
-    priceInfo.textContent = dataMode === 'yoy' ? 'Year-over-Year Change' : 'Current Price Level';
+    if (dataMode === 'price') {{
+        priceInfo.textContent = 'Current Price Level';
+    }} else {{
+        priceInfo.textContent = horizons[timeHorizon].label + ' Change';
+    }}
 
     // Recalculate based on current mode
     if (isLocalMode) {{
         if (drawnBoundary) {{
             updateBoundaryQuintiles();
+            if (isBoundaryView) {{
+                loadAndShowBoundaries();
+            }}
         }} else {{
             updateLocalQuintiles();
+            if (isBoundaryView) {{
+                loadAndShowBoundaries();
+            }}
         }}
     }} else {{
-        const globalQuintiles = dataMode === 'yoy' ? globalQuintilesYoY : globalQuintilesPrice;
-        currentQuintiles = globalQuintiles;
-        updateLegend(globalQuintiles, zipData.length, null, null);
-        updateMarkers();
+        currentQuintiles = dataMode === 'price' ? globalQuintiles['price'] : globalQuintiles[timeHorizon];
+        updateLegend(currentQuintiles, zipData.length, null, null);
+        if (isBoundaryView) {{
+            loadAndShowBoundaries();
+        }} else {{
+            updateMarkers();
+        }}
     }}
 }}
 
@@ -781,11 +1121,307 @@ function clearDrawnBoundary() {{
             markerPane.classList.remove('boundary-active');
         }}
 
+        // Re-enable GLOBAL toggle
+        const toggleGlobal = document.getElementById('toggleGlobal');
+        toggleGlobal.style.opacity = '';
+        toggleGlobal.style.pointerEvents = '';
+
         // Return to normal local view if active
         if (isLocalMode) {{
-            updateLocalQuintiles();
+            if (isBoundaryView) {{
+                // If in boundary view, refresh boundaries without drawn boundary filter
+                loadAndShowBoundaries();
+            }} else {{
+                // If in bubble view, update markers
+                updateLocalQuintiles();
+            }}
         }}
     }}
+}}
+
+// Toggle between bubbles and boundaries visualization
+async function toggleVisualization() {{
+    const visualToggle = document.getElementById('visualToggle');
+
+    // Don't allow toggle if disabled (zoom < 6)
+    if (visualToggle.classList.contains('disabled')) {{
+        return;
+    }}
+
+    isBoundaryView = !isBoundaryView;
+
+    const toggleBubbles = document.getElementById('toggleBubbles');
+    const toggleBoundaries = document.getElementById('toggleBoundaries');
+
+    if (isBoundaryView) {{
+        toggleBubbles.classList.remove('active');
+        toggleBoundaries.classList.add('active');
+
+        // Load and show boundaries
+        await loadAndShowBoundaries();
+    }} else {{
+        toggleBubbles.classList.add('active');
+        toggleBoundaries.classList.remove('active');
+
+        // Hide boundaries
+        if (boundaryLayer) {{
+            map.removeLayer(boundaryLayer);
+            boundaryLayer = null;
+        }}
+
+        // Show markers
+        updateMarkers();
+    }}
+}}
+
+// Load boundary geometries if not already loaded
+async function loadGeometries(tier) {{
+    if (geometriesLoading) return;
+
+    if (tier === 'ultra' && !geometriesUltra) {{
+        geometriesLoading = true;
+        try {{
+            const response = await fetch('zip_geometries_ultra.json');
+            geometriesUltra = await response.json();
+            console.log('Loaded ultra-simplified geometries');
+        }} catch (error) {{
+            console.error('Failed to load ultra geometries:', error);
+        }} finally {{
+            geometriesLoading = false;
+        }}
+    }} else if (tier === 'medium' && !geometriesMedium) {{
+        geometriesLoading = true;
+        try {{
+            const response = await fetch('zip_geometries_medium.json');
+            geometriesMedium = await response.json();
+            console.log('Loaded medium-simplified geometries');
+        }} catch (error) {{
+            console.error('Failed to load medium geometries:', error);
+        }} finally {{
+            geometriesLoading = false;
+        }}
+    }} else if (tier === 'detail' && !geometriesDetail) {{
+        geometriesLoading = true;
+        try {{
+            const response = await fetch('zip_geometries_detail.json');
+            geometriesDetail = await response.json();
+            console.log('Loaded high-detail geometries');
+        }} catch (error) {{
+            console.error('Failed to load detail geometries:', error);
+        }} finally {{
+            geometriesLoading = false;
+        }}
+    }}
+}}
+
+// Load and display boundaries at appropriate detail level
+async function loadAndShowBoundaries() {{
+    const zoom = map.getZoom();
+
+    // Determine which tier to use based on zoom level
+    let tier;
+    if (zoom >= 12) {{
+        tier = 'detail';
+    }} else if (zoom >= 9) {{
+        tier = 'medium';
+    }} else {{
+        tier = 'ultra';
+    }}
+
+    // Load geometries if needed
+    await loadGeometries(tier);
+
+    // Get the appropriate geometry data
+    let geometries;
+    if (tier === 'detail') {{
+        geometries = geometriesDetail;
+    }} else if (tier === 'medium') {{
+        geometries = geometriesMedium;
+    }} else {{
+        geometries = geometriesUltra;
+    }}
+
+    if (!geometries) {{
+        console.error('Geometries not loaded');
+        return;
+    }}
+
+    // Remove existing boundary layer if present
+    if (boundaryLayer) {{
+        map.removeLayer(boundaryLayer);
+    }}
+
+    // Create a map of ZIP codes to their data
+    const zipMap = new Map(zipData.map(z => [z.z, z]));
+
+    // Filter geometries based on drawn boundary or viewport
+    const bounds = map.getBounds();
+    let visibleGeometries;
+
+    if (drawnBoundary && isLocalMode) {{
+        // If boundary is drawn, only show ZIPs within the boundary
+        const boundaryZips = getZipsInBoundary();
+        const boundaryZipCodes = new Set(boundaryZips.map(z => z.z));
+
+        visibleGeometries = geometries.features.filter(feature => {{
+            const zipCode = feature.properties.zip;
+            const zipInfo = zipMap.get(zipCode);
+
+            if (!zipInfo) return false;
+
+            // Filter out ZIPs without data for current horizon
+            const value = getZipValue(zipInfo);
+            if (value === undefined || value === null) return false;
+
+            // Check if ZIP is in drawn boundary AND in viewport
+            return boundaryZipCodes.has(zipCode) && bounds.contains([zipInfo.lat, zipInfo.lon]);
+        }});
+    }} else {{
+        // Normal mode: filter by viewport only
+        visibleGeometries = geometries.features.filter(feature => {{
+            const zipCode = feature.properties.zip;
+            const zipInfo = zipMap.get(zipCode);
+
+            if (!zipInfo) return false;
+
+            // Filter out ZIPs without data for current horizon
+            const value = getZipValue(zipInfo);
+            if (value === undefined || value === null) return false;
+
+            // Check if ZIP centroid is in viewport
+            return bounds.contains([zipInfo.lat, zipInfo.lon]);
+        }});
+    }}
+
+    console.log(`Displaying ${{visibleGeometries.length}} boundaries (tier: ${{tier}})`);
+
+    // If in local mode, calculate quintiles for visible ZIPs
+    if (isLocalMode) {{
+        const visibleZips = visibleGeometries.map(f => zipMap.get(f.properties.zip)).filter(z => z);
+        const visibleValues = visibleZips.map(z => getZipValue(z)).filter(v => v !== undefined);
+
+        if (visibleValues.length > 0) {{
+            currentQuintiles = calculateQuintiles(visibleValues);
+
+            // Update legend with local quintiles
+            const minPop = Math.min(...visibleZips.map(z => z.pop));
+            const maxPop = Math.max(...visibleZips.map(z => z.pop));
+            currentMinPop = minPop;
+            currentMaxPop = maxPop;
+
+            updateLegend(currentQuintiles, visibleZips.length, minPop, maxPop);
+        }}
+    }}
+
+    // Create GeoJSON layer with styling
+    boundaryLayer = L.geoJSON({{
+        type: 'FeatureCollection',
+        features: visibleGeometries
+    }}, {{
+        style: function(feature) {{
+            const zipCode = feature.properties.zip;
+            const zipInfo = zipMap.get(zipCode);
+
+            if (!zipInfo) {{
+                return {{
+                    fillColor: '#cccccc',
+                    weight: 0.5,
+                    opacity: 0.5,
+                    color: '#ffffff',
+                    fillOpacity: 0.6
+                }};
+            }}
+
+            // Get value based on current data mode
+            const value = getZipValue(zipInfo);
+            const color = getColor(value);
+
+            // At lower zoom levels, hide the white outlines for cleaner look
+            const zoom = map.getZoom();
+            const showOutline = zoom >= 8;
+
+            return {{
+                fillColor: color,
+                weight: showOutline ? 1 : 0,
+                opacity: showOutline ? 0.7 : 0,
+                color: '#ffffff',
+                fillOpacity: 0.7
+            }};
+        }},
+        onEachFeature: function(feature, layer) {{
+            const zipCode = feature.properties.zip;
+            const zipInfo = zipMap.get(zipCode);
+
+            if (zipInfo) {{
+                layer.on({{
+                    mouseover: function(e) {{
+                        layer.setStyle({{
+                            weight: 2,
+                            opacity: 1,
+                            fillOpacity: 0.9
+                        }});
+
+                        const value = getZipValue(zipInfo);
+                        let valueText;
+                        if (value === undefined || value === null) {{
+                            valueText = 'No data';
+                        }} else if (dataMode === 'price') {{
+                            valueText = `$${{Math.round(value).toLocaleString()}}`;
+                        }} else {{
+                            valueText = value >= 0 ? `+${{value}}%` : `${{value}}%`;
+                        }}
+
+                        const label = dataMode === 'price' ? 'Price' : horizons[timeHorizon].label;
+
+                        const tooltip = document.getElementById('tooltip');
+                        tooltip.innerHTML = `
+                            <strong>${{zipCode}}</strong><br>
+                            ${{zipInfo.n}}<br>
+                            ${{label}}: ${{valueText}}<br>
+                            Pop: ${{zipInfo.pop.toLocaleString()}}
+                        `;
+                        tooltip.style.display = 'block';
+                        tooltip.style.left = (e.originalEvent.pageX + 10) + 'px';
+                        tooltip.style.top = (e.originalEvent.pageY + 10) + 'px';
+                    }},
+                    mouseout: function() {{
+                        layer.setStyle({{
+                            weight: 1,
+                            opacity: 0.7,
+                            fillOpacity: 0.7
+                        }});
+
+                        document.getElementById('tooltip').style.display = 'none';
+                    }},
+                    mousemove: function(e) {{
+                        const tooltip = document.getElementById('tooltip');
+                        tooltip.style.left = (e.originalEvent.pageX + 10) + 'px';
+                        tooltip.style.top = (e.originalEvent.pageY + 10) + 'px';
+                    }}
+                }});
+            }}
+        }},
+        pane: 'zipBoundaries'
+    }});
+
+    boundaryLayer.addTo(map);
+    currentGeometryTier = tier;
+
+    // Hide markers when showing boundaries
+    if (markersLayer) {{
+        map.removeLayer(markersLayer);
+    }}
+}}
+
+// Update boundary view when zoom or data changes
+async function updateBoundaryView() {{
+    if (!isBoundaryView) return;
+
+    const zoom = map.getZoom();
+    const newTier = zoom >= 9 ? 'medium' : 'ultra';
+
+    // Reload boundaries if tier changed, layer missing, or viewport changed (pan)
+    await loadAndShowBoundaries();
 }}
 
 // Get ZIPs within drawn boundary
@@ -836,16 +1472,16 @@ function updateBoundaryQuintiles() {{
     if (!isLocalMode) return;
 
     const boundaryZips = getZipsInBoundary();
-    const globalQuintiles = dataMode === 'yoy' ? globalQuintilesYoY : globalQuintilesPrice;
+    const globalQ = dataMode === 'price' ? globalQuintiles['price'] : globalQuintiles[timeHorizon];
     console.log('updateBoundaryQuintiles called, found', boundaryZips ? boundaryZips.length : 0, 'ZIPs');
 
     if (!boundaryZips || boundaryZips.length < 2) {{
-        currentQuintiles = globalQuintiles;
+        currentQuintiles = globalQ;
         currentMinPop = null;
         currentMaxPop = null;
-        updateLegend(globalQuintiles, boundaryZips ? boundaryZips.length : 0, null, null, false);
+        updateLegend(globalQ, boundaryZips ? boundaryZips.length : 0, null, null, false);
     }} else {{
-        const values = boundaryZips.map(z => dataMode === 'yoy' ? z.p : z.price);
+        const values = boundaryZips.map(z => getZipValue(z)).filter(v => v !== undefined);
         const populations = boundaryZips.map(z => z.pop);
         currentQuintiles = calculateQuintiles(values);
         currentMinPop = Math.min(...populations);
@@ -855,7 +1491,11 @@ function updateBoundaryQuintiles() {{
         console.log('Pop range:', currentMinPop, '-', currentMaxPop);
         updateLegend(currentQuintiles, boundaryZips.length, currentMinPop, currentMaxPop, isSmallSample);
     }}
-    updateMarkers();
+
+    // Only update markers if not in boundary view mode
+    if (!isBoundaryView) {{
+        updateMarkers();
+    }}
 }}
 
 // Custom tooltip
@@ -879,8 +1519,14 @@ function updateMarkers() {{
         visibleZips = zipData.filter(d => bounds.contains([d.lat, d.lon]));
     }}
 
+    // Filter out ZIPs that don't have data for the current mode/horizon
+    visibleZips = visibleZips.filter(zip => {{
+        const value = getZipValue(zip);
+        return value !== undefined && value !== null;
+    }});
+
     const markers = [];
-    
+
     visibleZips.forEach(zip => {{
         let radius = zip.r;
         
@@ -946,9 +1592,11 @@ function updateMarkers() {{
             else if (zip.pop < 30000) fillOpacity = 0.7;
         }}
 
+        const value = getZipValue(zip);
+
         const marker = L.circleMarker([zip.lat, zip.lon], {{
             radius: radius,
-            fillColor: getColor(dataMode === 'yoy' ? zip.p : zip.price),
+            fillColor: getColor(value),
             color: 'transparent',
             weight: 0,
             opacity: 1,
@@ -956,18 +1604,21 @@ function updateMarkers() {{
             interactive: zoom >= 8,
             pane: 'markerPane'
         }});
-        
+
         if (zoom >= 8) {{
             marker.zipData = zip;
-            
+
             marker.on('mouseover', function(e) {{
                 const data = e.target.zipData;
+                const value = getZipValue(data);
                 let dataLine;
-                if (dataMode === 'yoy') {{
-                    const changeText = data.p >= 0 ? `+${{data.p}}%` : `${{data.p}}%`;
-                    dataLine = 'YoY Change: ' + changeText;
+                if (value === undefined || value === null) {{
+                    dataLine = horizons[timeHorizon].label + ': No data';
+                }} else if (dataMode === 'price') {{
+                    dataLine = 'Price: $' + value.toLocaleString();
                 }} else {{
-                    dataLine = 'Price: $' + data.price.toLocaleString();
+                    const changeText = value >= 0 ? `+${{value}}%` : `${{value}}%`;
+                    dataLine = horizons[timeHorizon].label + ': ' + changeText;
                 }}
                 tooltip.innerHTML = '<strong>' + data.z + '</strong><br>' +
                                   data.n + '<br>' +
@@ -1127,15 +1778,28 @@ function goToLocation(zipCode) {{
     // Update markers after flight
     setTimeout(() => {{
         updateMarkers();
-        
+
         // Show popup for the location
-        const changeText = location.price >= 0 ? `+${{location.price}}%` : `${{location.price}}%`;
+        const value = getZipValue(location.zipData);
+        let valueText, label;
+
+        if (value === undefined || value === null) {{
+            valueText = 'No data';
+            label = horizons[timeHorizon].label;
+        }} else if (dataMode === 'price') {{
+            valueText = '$' + value.toLocaleString();
+            label = 'Price';
+        }} else {{
+            valueText = value >= 0 ? `+${{value}}%` : `${{value}}%`;
+            label = horizons[timeHorizon].label;
+        }}
+
         const popup = L.popup()
             .setLatLng([location.lat, location.lon])
             .setContent(`
                 <strong>${{location.zip}}</strong><br>
                 ${{location.nameOriginal}}<br>
-                Year-over-Year Change: ${{changeText}}<br>
+                ${{label}}: ${{valueText}}<br>
                 Population: ${{location.pop.toLocaleString()}}
             `)
             .openOn(map);
@@ -1146,7 +1810,27 @@ function goToLocation(zipCode) {{
 map.on('moveend zoomend', () => {{
     clearTimeout(updateTimeout);
     updateTimeout = setTimeout(() => {{
-        if (isLocalMode) {{
+        // Enable/disable visualization toggle based on zoom
+        const zoom = map.getZoom();
+        const visualToggle = document.getElementById('visualToggle');
+        const boundaryHint = document.getElementById('boundaryHint');
+        if (zoom >= 6) {{
+            visualToggle.classList.remove('disabled');
+            if (boundaryHint) boundaryHint.style.display = 'none';
+        }} else {{
+            visualToggle.classList.add('disabled');
+            if (boundaryHint) boundaryHint.style.display = 'block';
+
+            // If boundary view is active but zoom < 6, switch back to bubbles
+            if (isBoundaryView) {{
+                toggleVisualization();
+            }}
+        }}
+
+        // Update boundary view if active
+        if (isBoundaryView) {{
+            updateBoundaryView();
+        }} else if (isLocalMode) {{
             if (drawnBoundary) {{
                 updateBoundaryQuintiles();
             }} else {{
@@ -1187,11 +1871,23 @@ map.on(L.Draw.Event.CREATED, function(event) {{
     map.removeControl(drawControl);
     isDrawingMode = false;
 
+    // Disable GLOBAL toggle (drawn boundary is inherently local)
+    const toggleGlobal = document.getElementById('toggleGlobal');
+    const toggleLocal = document.getElementById('toggleLocal');
+    toggleGlobal.style.opacity = '0.3';
+    toggleGlobal.style.pointerEvents = 'none';
+
     // Enable local mode if not already
     if (!isLocalMode) {{
         toggleView();
     }} else {{
-        updateBoundaryQuintiles();
+        // If in boundary view, refresh boundaries with new filtering
+        if (isBoundaryView) {{
+            updateBoundaryQuintiles();
+            loadAndShowBoundaries();
+        }} else {{
+            updateBoundaryQuintiles();
+        }}
     }}
 }});
 
@@ -1204,27 +1900,73 @@ map.on(L.Draw.Event.DELETED, function(event) {{
     }});
 }});
 
-// Add state boundaries
-fetch('https://raw.githubusercontent.com/PublicaMundi/MappingAPI/master/data/geojson/us-states.json')
-    .then(response => response.json())
-    .then(data => {{
-        const stateBoundariesLayer = L.geoJSON(data, {{
-            style: {{
-                color: '#ffffff',
-                weight: 1.5,
-                opacity: 0.8,
-                fillOpacity: 0,
-                interactive: false
-            }},
-            pane: 'stateBoundaries'
-        }}).addTo(map);
-        
-        map.on('zoomend', function() {{
-            const zoom = map.getZoom();
-            const newColor = zoom >= 6 ? '#000000' : '#ffffff';
-            stateBoundariesLayer.setStyle({{ color: newColor }});
-        }});
-    }});
+// Multi-resolution state boundaries
+let currentStateBoundaries = null;
+let stateBoundariesLow = null;
+let stateBoundariesMedium = null;
+let stateBoundariesHigh = null;
+
+async function loadStateBoundaries(resolution) {{
+    const files = {{
+        'low': 'state_boundaries_low.json',
+        'medium': 'state_boundaries_medium.json',
+        'high': 'state_boundaries_high.json'
+    }};
+
+    const response = await fetch(files[resolution]);
+    return await response.json();
+}}
+
+async function updateStateBoundaries() {{
+    const zoom = map.getZoom();
+    let targetResolution;
+
+    if (zoom <= 5) {{
+        targetResolution = 'low';
+    }} else if (zoom <= 8) {{
+        targetResolution = 'medium';
+    }} else {{
+        targetResolution = 'high';
+    }}
+
+    // Load the appropriate resolution if not already loaded
+    if (targetResolution === 'low' && !stateBoundariesLow) {{
+        stateBoundariesLow = await loadStateBoundaries('low');
+    }} else if (targetResolution === 'medium' && !stateBoundariesMedium) {{
+        stateBoundariesMedium = await loadStateBoundaries('medium');
+    }} else if (targetResolution === 'high' && !stateBoundariesHigh) {{
+        stateBoundariesHigh = await loadStateBoundaries('high');
+    }}
+
+    // Remove existing layer
+    if (currentStateBoundaries) {{
+        map.removeLayer(currentStateBoundaries);
+    }}
+
+    // Add new layer with appropriate resolution
+    const data = targetResolution === 'low' ? stateBoundariesLow :
+                 targetResolution === 'medium' ? stateBoundariesMedium :
+                 stateBoundariesHigh;
+
+    const color = zoom >= 6 ? '#000000' : '#ffffff';
+
+    currentStateBoundaries = L.geoJSON(data, {{
+        style: {{
+            color: color,
+            weight: 1.5,
+            opacity: 0.8,
+            fillOpacity: 0,
+            interactive: false
+        }},
+        pane: 'stateBoundaries'
+    }}).addTo(map);
+}}
+
+// Initial load
+updateStateBoundaries();
+
+// Update on zoom
+map.on('zoomend', updateStateBoundaries);
 
 // Add labels on top
 L.tileLayer('https://{{s}}.basemaps.cartocdn.com/light_only_labels/{{z}}/{{x}}/{{y}}{{r}}.png', {{
@@ -1243,13 +1985,21 @@ output_file = 'output/ProMap.html'
 with open(output_file, 'w', encoding='utf-8') as f:
     f.write(html_content)
 
+# Write long-term data JSON file
+long_term_file = 'output/long_term_changes.json'
+with open(long_term_file, 'w', encoding='utf-8') as f:
+    json.dump(long_term_data, f, separators=(',', ':'))
+
 print(f"\n✅ Successfully created: {output_file}")
-print(f"📏 File size: {len(html_content)/1024/1024:.1f} MB")
+print(f"📏 HTML file size: {len(html_content)/1024/1024:.1f} MB")
+print(f"📏 Long-term data size: {len(json.dumps(long_term_data, separators=(',', ':')))/1024/1024:.1f} MB")
+print(f"\n✅ Also created: {long_term_file}")
 print("\n🎯 Features implemented:")
+print("   • Multiple time horizons (3M, 6M, 1Y embedded; 3Y, 5Y, 10Y, 15Y lazy-loaded)")
 print("   • Search with autocomplete for ZIP codes and place names")
 print("   • Local view mode with dynamic quintile recalculation")
 print("   • Boundary drawing for custom area analysis")
+print("   • Boundary visualization toggle")
 print("   • Smooth fly-to animations when searching")
 print("   • Population-weighted bubble sizing")
-print("   • Responsive tooltips with year-over-year change data")
 print("   • State boundaries that change color with zoom")
