@@ -1,0 +1,2 @@
+PriceMaps/resources/shapefiles/*.shp filter=lfs diff=lfs merge=lfs -text
+PriceMaps/resources/shapefiles/*.dbf filter=lfs diff=lfs merge=lfs -text

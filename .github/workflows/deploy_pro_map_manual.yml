@@ -26,20 +26,6 @@ jobs:
         cd PriceMaps
         python scripts/download_data.py
 
-    - name: Download reference files
-      run: |
-        cd PriceMaps
-        mkdir -p resources/populations
-        curl -L -o resources/populations/PopulationByZIP.csv \
-          "https://github.com/home-economics/reference-data/raw/main/PopulationByZIP.csv" || true
-
-        mkdir -p resources/shapefiles
-        base_url="https://github.com/home-economics/reference-data/raw/main/shapefiles"
-        for ext in shp shx dbf prj; do
-          curl -L -o "resources/shapefiles/cb_2020_us_zcta520_500k.$ext" \
-            "$base_url/cb_2020_us_zcta520_500k.$ext" || true
-        done
-
     - name: Generate ProMap
       run: |
         cd PriceMaps

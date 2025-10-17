@@ -2,8 +2,8 @@ name: Update ProMap
 
 on:
   schedule:
-    # Run daily at 9 AM EST (2 PM UTC)
-    - cron: '0 14 * * *'
+    # Run daily at 3 AM EST (8 AM UTC)
+    - cron: '0 8 * * *'
   workflow_dispatch:  # Allow manual trigger
 
 jobs:
@@ -52,28 +52,17 @@ jobs:
         cd PriceMaps
         python scripts/download_data.py
 
-    - name: Download reference files
-      if: steps.check.outputs.new_data == 'true'
-      run: |
-        cd PriceMaps
-        # Download population data
-        mkdir -p resources/populations
-        curl -L -o resources/populations/PopulationByZIP.csv \
-          "https://github.com/home-economics/reference-data/raw/main/PopulationByZIP.csv" || true
-
-        # Download shapefile components
-        mkdir -p resources/shapefiles
-        base_url="https://github.com/home-economics/reference-data/raw/main/shapefiles"
-        for ext in shp shx dbf prj; do
-          curl -L -o "resources/shapefiles/cb_2020_us_zcta520_500k.$ext" \
-            "$base_url/cb_2020_us_zcta520_500k.$ext" || true
-        done
-
     - name: Generate ProMap
       if: steps.check.outputs.new_data == 'true'
       run: |
         cd PriceMaps
         python scripts/create_sophisticated_map.py
+
+    - name: Save metadata after successful generation
+      if: steps.check.outputs.new_data == 'true'
+      run: |
+        cd PriceMaps
+        python scripts/save_update_metadata.py
 
     - name: Commit and push changes
       if: steps.check.outputs.new_data == 'true'

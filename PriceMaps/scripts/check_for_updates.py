@@ -67,13 +67,13 @@ def main():
     if stored_date is None:
         print(f"No previous data found. Latest available: {latest_date_str}")
         print("NEW_DATA=true")
-        save_metadata(latest_date_str)
+        # Don't save metadata yet - let the workflow save it after successful generation
         return 0
 
     if latest_date_str != stored_date:
         print(f"New data available! Latest: {latest_date_str}, Previous: {stored_date}")
         print("NEW_DATA=true")
-        save_metadata(latest_date_str)
+        # Don't save metadata yet - let the workflow save it after successful generation
         return 0
     else:
         print(f"No new data. Current version: {latest_date_str}")
