@@ -86,8 +86,8 @@ jobs:
         # Get the date from the data
         DATE=$(python -c "import pandas as pd; df=pd.read_csv('data/ZillowZip.csv'); cols=[c for c in df.columns if '-' in c]; print(cols[-1] if cols else 'unknown')")
 
-        git add output/*.html
-        git add data/last_update.json
+        git add -f output/*.html
+        git add -f data/last_update.json
         git commit -m "Update maps with data from $DATE" || echo "No changes to commit"
         git push
 
