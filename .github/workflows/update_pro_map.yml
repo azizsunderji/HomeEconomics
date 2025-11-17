@@ -60,7 +60,7 @@ jobs:
       if: steps.check.outputs.new_data == 'true'
       run: |
         cd PriceMaps
-        python scripts/create_sophisticated_map.py
+        python scripts/create_sophisticated_map_free_new.py
 
     - name: Save metadata after successful generation
       if: steps.check.outputs.new_data == 'true'
@@ -78,7 +78,7 @@ jobs:
         # Get the date from the data
         DATE=$(python -c "import pandas as pd; df=pd.read_csv('data/ZillowZip.csv'); cols=[c for c in df.columns if '-' in c]; print(cols[-1] if cols else 'unknown')")
 
-        git add -f output/ProMap.html
+        git add -f output/ProMap_free.html
         git add -f data/last_update.json
         git commit -m "Update ProMap with data from $DATE" || echo "No changes to commit"
         git push
@@ -114,7 +114,7 @@ jobs:
           set net:timeout 60;
           open -u $USER,dummy sftp://$HOST;
           mkdir -p ${REMOTE_BASE}/live/PriceMaps;
-          put output/ProMap.html -o ${REMOTE_BASE}/live/PriceMaps/ProMap.html;
+          put output/ProMap_free.html -o ${REMOTE_BASE}/live/PriceMaps/ProMap_free.html;
           put output/long_term_changes.json -o ${REMOTE_BASE}/live/PriceMaps/long_term_changes.json;
           put output/state_boundaries_low.json -o ${REMOTE_BASE}/live/PriceMaps/state_boundaries_low.json;
           put output/state_boundaries_medium.json -o ${REMOTE_BASE}/live/PriceMaps/state_boundaries_medium.json;
