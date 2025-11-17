@@ -8,13 +8,31 @@ import numpy as np
 from pathlib import Path
 from datetime import datetime
 import json
+import requests
+
+def download_national_data():
+    """Download national Zillow data for accurate US stats"""
+    url = "https://files.zillowstatic.com/research/public_csvs/zhvi/Metro_zhvi_uc_sfrcondo_tier_0.33_0.67_sm_sa_month.csv"
+
+    print(f"📥 Downloading national Zillow data...")
+    response = requests.get(url)
+    response.raise_for_status()
+
+    # Save to temp file and read
+    from io import StringIO
+    df = pd.read_csv(StringIO(response.text))
+
+    # Get US national row (RegionID 102001)
+    us_row = df[df['RegionID'] == 102001].iloc[0]
+
+    return us_row
 
 def load_data():
-    """Load Zillow data and population data"""
+    """Load Zillow ZIP data and population data"""
     script_dir = Path(__file__).parent
     data_dir = script_dir.parent / 'data'
 
-    # Load Zillow data
+    # Load Zillow ZIP data
     df = pd.read_csv(data_dir / 'ZillowZip.csv')
 
     # Get date columns (all columns with YYYY-MM-DD format)
@@ -56,37 +74,19 @@ def load_data():
 
     return df, date_cols, latest_date, prev_date, year_ago_date, pop_dict
 
-def calculate_national_stats(df, latest_date, prev_date, year_ago_date):
-    """Calculate national-level statistics"""
-    # Get US national data (RegionID 102001)
-    us_data = df[df['RegionID'] == 102001].iloc[0] if len(df[df['RegionID'] == 102001]) > 0 else None
+def calculate_national_stats(latest_date, prev_date, year_ago_date):
+    """Calculate national-level statistics from Zillow national data"""
+    # Download national data
+    us_data = download_national_data()
 
-    if us_data is not None:
-        median_price = us_data[latest_date]
-        mom_change = ((us_data[latest_date] - us_data[prev_date]) / us_data[prev_date] * 100) if pd.notna(us_data[prev_date]) else None
-        yoy_change = ((us_data[latest_date] - us_data[year_ago_date]) / us_data[year_ago_date] * 100) if year_ago_date and pd.notna(us_data[year_ago_date]) else None
-    else:
-        # Calculate from all ZIPs
-        median_price = df[latest_date].median()
-        mom_change = None
-        yoy_change = None
-
-    # Count ZIPs with increases/decreases
-    if year_ago_date:
-        df_with_yoy = df[(pd.notna(df[latest_date])) & (pd.notna(df[year_ago_date]))].copy()
-        df_with_yoy['yoy_change'] = ((df_with_yoy[latest_date] - df_with_yoy[year_ago_date]) / df_with_yoy[year_ago_date] * 100)
-        pct_increasing = (df_with_yoy['yoy_change'] > 0).sum() / len(df_with_yoy) * 100
-        total_zips = len(df_with_yoy)
-    else:
-        pct_increasing = None
-        total_zips = len(df[pd.notna(df[latest_date])])
+    median_price = us_data[latest_date] if latest_date in us_data else None
+    mom_change = ((us_data[latest_date] - us_data[prev_date]) / us_data[prev_date] * 100) if prev_date in us_data and pd.notna(us_data[prev_date]) else None
+    yoy_change = ((us_data[latest_date] - us_data[year_ago_date]) / us_data[year_ago_date] * 100) if year_ago_date and year_ago_date in us_data and pd.notna(us_data[year_ago_date]) else None
 
     return {
         'median_price': median_price,
         'mom_change': mom_change,
-        'yoy_change': yoy_change,
-        'pct_increasing': pct_increasing,
-        'total_zips': total_zips
+        'yoy_change': yoy_change
     }
 
 def get_rankings(df, latest_date, year_ago_date, pop_dict, min_pop=10000):
@@ -152,56 +152,47 @@ def format_narrative(stats, latest_date):
         narrative += f"the latest data through {month_name} shows"
 
     if stats['yoy_change'] is not None:
-        narrative += f", bringing year-over-year appreciation to {stats['yoy_change']:.1f}%. "
+        narrative += f", bringing year-over-year appreciation to {stats['yoy_change']:.1f}%."
     else:
-        narrative += ". "
-
-    if stats['pct_increasing'] is not None:
-        if stats['pct_increasing'] > 50:
-            fraction = "almost two-thirds" if stats['pct_increasing'] > 65 else "over half"
-            narrative += f"Prices in {fraction} of the ZIP codes across the country are still higher than a year ago.\n\n"
-        else:
-            narrative += f"Just {stats['pct_increasing']:.0f}% of ZIP codes are seeing year-over-year increases.\n\n"
-
-    narrative += f"The median home in the US now costs ${stats['median_price']/1000:.0f}K."
+        narrative += "."
 
     return narrative
 
 def format_rankings_text(rankings, prev_rankings):
-    """Format rankings as plain text"""
+    """Format rankings as numbered lists in markdown"""
     output = []
 
     # Highest Prices
-    output.append("\n\nHighest Prices")
+    output.append("\n## Highest Prices")
     for i, r in enumerate(rankings['highest_prices'], 1):
-        new_marker = " (new)" if prev_rankings and r['ZIP'] not in prev_rankings.get('highest_prices', []) else ""
+        new_marker = " **(new)**" if prev_rankings and r['ZIP'] not in prev_rankings.get('highest_prices', []) else ""
         city_state = f"{r['City']}, {r['State']}" if r['City'] != 'nan' else r['State']
         price = r[list(r.keys())[3]]  # The price column
-        output.append(f"{r['ZIP']} {city_state} (${price/1000000:.2f}M, pop: {int(r['population']):,}){new_marker}")
+        output.append(f"{i}. **{r['ZIP']}** {city_state} (${price/1000000:.2f}M){new_marker}")
 
     # Lowest Prices
-    output.append("\n\nLowest Prices")
+    output.append("\n## Lowest Prices")
     for i, r in enumerate(rankings['lowest_prices'], 1):
-        new_marker = " (new)" if prev_rankings and r['ZIP'] not in prev_rankings.get('lowest_prices', []) else ""
+        new_marker = " **(new)**" if prev_rankings and r['ZIP'] not in prev_rankings.get('lowest_prices', []) else ""
         city_state = f"{r['City']}, {r['State']}" if r['City'] != 'nan' else r['State']
         price = r[list(r.keys())[3]]  # The price column
-        output.append(f"{r['ZIP']} {city_state} (${price/1000:.0f}K, pop: {int(r['population']):,}){new_marker}")
+        output.append(f"{i}. **{r['ZIP']}** {city_state} (${price/1000:.0f}K){new_marker}")
 
     # Accelerating Prices
     if 'accelerating' in rankings:
-        output.append("\n\nAccelerating Prices (Y/Y)")
+        output.append("\n## Accelerating Prices (Y/Y)")
         for i, r in enumerate(rankings['accelerating'], 1):
-            new_marker = " (new)" if prev_rankings and r['ZIP'] not in prev_rankings.get('accelerating', []) else ""
+            new_marker = " **(new)**" if prev_rankings and r['ZIP'] not in prev_rankings.get('accelerating', []) else ""
             city_state = f"{r['City']}, {r['State']}" if r['City'] != 'nan' else r['State']
-            output.append(f"{r['ZIP']} {city_state} ({r['yoy_change']:+.1f}% y/y, pop: {int(r['population']):,}){new_marker}")
+            output.append(f"{i}. **{r['ZIP']}** {city_state} ({r['yoy_change']:+.1f}% y/y){new_marker}")
 
     # Decelerating Prices
     if 'decelerating' in rankings:
-        output.append("\n\nDecelerating Prices (Y/Y)")
+        output.append("\n## Decelerating Prices (Y/Y)")
         for i, r in enumerate(rankings['decelerating'], 1):
-            new_marker = " (new)" if prev_rankings and r['ZIP'] not in prev_rankings.get('decelerating', []) else ""
+            new_marker = " **(new)**" if prev_rankings and r['ZIP'] not in prev_rankings.get('decelerating', []) else ""
             city_state = f"{r['City']}, {r['State']}" if r['City'] != 'nan' else r['State']
-            output.append(f"{r['ZIP']} {city_state} ({r['yoy_change']:+.1f}% y/y, pop: {int(r['population']):,}){new_marker}")
+            output.append(f"{i}. **{r['ZIP']}** {city_state} ({r['yoy_change']:+.1f}% y/y){new_marker}")
 
     return "\n".join(output)
 
@@ -214,8 +205,12 @@ def main():
     print(f"📅 Latest date: {latest_date}")
 
     # Calculate national stats
-    stats = calculate_national_stats(df, latest_date, prev_date, year_ago_date)
+    stats = calculate_national_stats(latest_date, prev_date, year_ago_date)
     print(f"💰 Median price: ${stats['median_price']:,.0f}")
+    if stats['mom_change'] is not None:
+        print(f"📈 M/M change: {stats['mom_change']:+.2f}%")
+    if stats['yoy_change'] is not None:
+        print(f"📊 Y/Y change: {stats['yoy_change']:+.2f}%")
 
     # Get rankings
     rankings = get_rankings(df, latest_date, year_ago_date, pop_dict)
