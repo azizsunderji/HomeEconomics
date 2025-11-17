@@ -31,7 +31,7 @@ jobs:
     - name: Generate ProMap
       run: |
         cd PriceMaps
-        python scripts/create_sophisticated_map.py
+        python scripts/create_sophisticated_map_free_new.py
 
     - name: Install lftp
       run: sudo apt-get update && sudo apt-get install -y lftp
@@ -62,7 +62,7 @@ jobs:
           set net:timeout 60;
           open -u $USER,dummy sftp://$HOST;
           mkdir -p ${REMOTE_BASE}/live/PriceMaps;
-          put output/ProMap.html -o ${REMOTE_BASE}/live/PriceMaps/ProMap.html;
+          put output/ProMap_free.html -o ${REMOTE_BASE}/live/PriceMaps/ProMap_free.html;
           put output/long_term_changes.json -o ${REMOTE_BASE}/live/PriceMaps/long_term_changes.json;
           put output/state_boundaries_low.json -o ${REMOTE_BASE}/live/PriceMaps/state_boundaries_low.json;
           put output/state_boundaries_medium.json -o ${REMOTE_BASE}/live/PriceMaps/state_boundaries_medium.json;
