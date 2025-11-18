@@ -57,10 +57,13 @@ jobs:
         cd PriceMaps
         python scripts/download_data.py
 
-    - name: Generate ProMap
+    - name: Generate ProMap (both versions)
       if: steps.check.outputs.new_data == 'true'
       run: |
         cd PriceMaps
+        echo "Generating premium version (ProMap.html)..."
+        python scripts/create_sophisticated_map.py
+        echo "Generating free version (ProMap_free.html)..."
         python scripts/create_sophisticated_map_free_new.py
 
     - name: Save metadata after successful generation
@@ -83,18 +86,18 @@ jobs:
     - name: Commit and push changes
       if: steps.check.outputs.new_data == 'true'
       run: |
-        cd PriceMaps
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
 
         # Get the date from the data
-        DATE=$(python -c "import pandas as pd; df=pd.read_csv('data/ZillowZip.csv'); cols=[c for c in df.columns if '-' in c]; print(cols[-1] if cols else 'unknown')")
+        DATE=$(cd PriceMaps && python -c "import pandas as pd; df=pd.read_csv('data/ZillowZip.csv'); cols=[c for c in df.columns if '-' in c]; print(cols[-1] if cols else 'unknown')")
 
-        git add -f output/ProMap_free.html
-        git add -f output/housing_stats_*.md
-        git add -f output/previous_rankings.json
-        git add -f data/last_update.json
-        git commit -m "Update ProMap with data from $DATE" || echo "No changes to commit"
+        git add -f PriceMaps/output/ProMap.html
+        git add -f PriceMaps/output/ProMap_free.html
+        git add -f PriceMaps/output/housing_stats_*.md
+        git add -f PriceMaps/output/previous_rankings.json
+        git add -f PriceMaps/data/last_update.json
+        git commit -m "Update ProMap (both versions) with data from $DATE" || echo "No changes to commit"
         git push
 
     - name: Install lftp
@@ -120,7 +123,7 @@ jobs:
         # Generate state boundaries (they're needed but not in git)
         python scripts/prepare_state_geometries.py
 
-        # Upload ProMap and all geometry files
+        # Upload ProMap (both versions) and all geometry files
         lftp -e "
           set sftp:auto-confirm yes;
           set sftp:connect-program 'ssh -i ~/.ssh/id_rsa';
@@ -128,6 +131,7 @@ jobs:
           set net:timeout 60;
           open -u $USER,dummy sftp://$HOST;
           mkdir -p ${REMOTE_BASE}/live/PriceMaps;
+          put output/ProMap.html -o ${REMOTE_BASE}/live/PriceMaps/ProMap.html;
           put output/ProMap_free.html -o ${REMOTE_BASE}/live/PriceMaps/ProMap_free.html;
           put output/long_term_changes.json -o ${REMOTE_BASE}/live/PriceMaps/long_term_changes.json;
           put output/state_boundaries_low.json -o ${REMOTE_BASE}/live/PriceMaps/state_boundaries_low.json;
@@ -136,8 +140,9 @@ jobs:
           bye
         " || echo "Upload finished with warnings"
 
-        echo "✅ ProMap and geometry files deployed"
-        echo "URL: https://home-economics.us/wp-content/uploads/reports/live/PriceMaps/ProMap.html"
+        echo "✅ ProMap (both versions) and geometry files deployed"
+        echo "Premium URL: https://home-economics.us/wp-content/uploads/reports/live/PriceMaps/ProMap.html"
+        echo "Free URL: https://home-economics.us/wp-content/uploads/reports/live/PriceMaps/ProMap_free.html"
 
     - name: Create GitHub Issue with housing stats
       if: steps.check.outputs.new_data == 'true'

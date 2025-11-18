@@ -532,6 +532,191 @@ body {{margin:0; padding:0; font-family:'Oracle',-apple-system,BlinkMacSystemFon
 .leaflet-pane.local-mode.boundary-active {{
     filter: none;
 }}
+
+/* Tutorial panel - clean integrated design */
+.tutorial-overlay {{
+    position:fixed;
+    left:50px;
+    top:60%;
+    transform:translateY(-50%);
+    width:380px;
+    z-index:10000;
+}}
+.tutorial-overlay.minimized .tutorial-popup-container {{
+    display:none;
+}}
+/* Reopen button when minimized - inside control panel */
+.tutorial-reopen {{
+    position:fixed;
+    bottom:30px;
+    left:230px;
+    background:#0BB4FF;
+    color:white;
+    border:none;
+    border-radius:20px;
+    padding:6px 12px;
+    font-family:'Oracle',sans-serif;
+    font-size:9px;
+    font-weight:600;
+    letter-spacing:0.5px;
+    cursor:pointer;
+    box-shadow:0 2px 6px rgba(0,0,0,0.15);
+    transition:all 0.2s;
+    display:none;
+    z-index:1001;
+}}
+.tutorial-reopen:hover {{
+    background:#0099dd;
+    transform:translateY(-2px);
+    box-shadow:0 6px 16px rgba(0,0,0,0.2);
+}}
+.tutorial-reopen.show {{
+    display:block;
+}}
+/* No background dimming */
+.tutorial-overlay-bg {{
+    display:none;
+}}
+/* Tutorial popup container (for structure compatibility) */
+.tutorial-popup-container {{
+    position:relative;
+}}
+.tutorial-popup {{
+    background:white;
+    padding:25px;
+    border-radius:8px;
+    box-shadow:0 10px 40px rgba(0,0,0,0.2);
+    font-family:'Oracle',sans-serif;
+    border:2px solid #0BB4FF;
+    position:relative;
+}}
+.tutorial-close {{
+    position:absolute;
+    top:15px;
+    right:15px;
+    width:24px;
+    height:24px;
+    background:transparent;
+    border:none;
+    color:#999;
+    font-size:24px;
+    line-height:1;
+    cursor:pointer;
+    padding:0;
+    transition:color 0.2s;
+}}
+.tutorial-close:hover {{
+    color:#333;
+}}
+.tutorial-title {{
+    font-size:16px;
+    font-weight:600;
+    color:#3D3733;
+    margin:0 0 12px 0;
+    padding-right:30px;
+}}
+.tutorial-text {{
+    font-size:12px;
+    line-height:1.5;
+    color:#666;
+    margin:0 0 15px 0;
+}}
+.tutorial-text .btn-ref {{
+    background:#f0f0f0;
+    border:1px solid #ddd;
+    border-radius:3px;
+    padding:2px 6px;
+    font-family:'Oracle',sans-serif;
+    font-size:11px;
+    font-weight:600;
+    white-space:nowrap;
+}}
+.tutorial-progress {{
+    display:flex;
+    gap:5px;
+    justify-content:center;
+    margin-bottom:15px;
+}}
+.tutorial-dot {{
+    width:8px;
+    height:8px;
+    border-radius:50%;
+    background:#ddd;
+    transition:background 0.2s;
+}}
+.tutorial-dot.active {{
+    background:#0BB4FF;
+}}
+.tutorial-buttons {{
+    display:flex;
+    gap:10px;
+    justify-content:space-between;
+    align-items:center;
+    flex-shrink:0;
+}}
+.tutorial-btn {{
+    padding:10px 20px;
+    border-radius:4px;
+    font-size:11px;
+    font-weight:600;
+    letter-spacing:0.3px;
+    cursor:pointer;
+    font-family:'Oracle',sans-serif;
+    transition:all 0.2s;
+    border:none;
+}}
+.tutorial-btn-primary {{
+    background:#0BB4FF;
+    color:white;
+}}
+.tutorial-btn-primary:hover {{
+    background:#0099dd;
+}}
+.tutorial-btn-secondary {{
+    background:#f0f0f0;
+    color:#666;
+}}
+.tutorial-btn-secondary:hover {{
+    background:#e0e0e0;
+}}
+.tutorial-btn-skip {{
+    background:transparent;
+    color:#999;
+    text-decoration:underline;
+    padding:10px;
+}}
+.tutorial-btn-skip:hover {{
+    color:#666;
+}}
+.tutorial-spotlight {{
+    position:relative !important;
+    z-index:10000 !important;
+    border-radius:6px !important;
+}}
+.tutorial-spotlight::before {{
+    content:'';
+    position:absolute;
+    top:-10px;
+    left:-10px;
+    right:-10px;
+    bottom:-10px;
+    border:5px solid #0BB4FF;
+    border-radius:10px;
+    animation:pulse-glow 2s ease-in-out infinite;
+    pointer-events:none;
+}}
+@keyframes pulse-glow {{
+    0%, 100% {{
+        opacity:0.6;
+    }}
+    50% {{
+        opacity:1;
+    }}
+}}
+.control-panel.tutorial-spotlight {{
+    z-index:10000 !important;
+    background:rgba(255,255,255,1) !important;
+}}
 </style>
 </head>
 <body>
@@ -622,9 +807,27 @@ Bubble size reflects population<br>
 Zoom in for details
 </div>
 </div>
+<button class="tutorial-reopen" onclick="showTutorial()">? TUTORIAL</button>
 </div>
 <div class="citation">
 <a href="https://www.home-economics.us" target="_blank">www.home-economics.us</a>
+</div>
+<div class="tutorial-overlay" id="tutorialOverlay">
+    <div class="tutorial-popup-container">
+        <div class="tutorial-popup">
+            <button class="tutorial-close" onclick="minimizeTutorial()" title="Close tutorial">×</button>
+            <h2 class="tutorial-title" id="tutorialTitle">Welcome</h2>
+            <p class="tutorial-text" id="tutorialText">Loading...</p>
+            <div class="tutorial-progress" id="tutorialProgress"></div>
+            <div class="tutorial-buttons">
+                <button class="tutorial-btn tutorial-btn-skip" id="tutorialSkip" onclick="minimizeTutorial()">Skip</button>
+                <div style="display:flex; gap:8px;">
+                    <button class="tutorial-btn tutorial-btn-secondary" id="tutorialPrev" onclick="previousTutorialStep()" style="display:none;">Prev</button>
+                    <button class="tutorial-btn tutorial-btn-primary" id="tutorialNext" onclick="nextTutorialStep()">Next</button>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 <script>
 // ZIP data
@@ -1976,6 +2179,182 @@ L.tileLayer('https://{{s}}.basemaps.cartocdn.com/light_only_labels/{{z}}/{{x}}/{
 
 // Initial render
 updateMarkers();
+
+// Tutorial functionality
+const tutorialSteps = [
+    {{
+        title: "Welcome to ProMap",
+        text: "This interactive map shows home price levels and changes across the United States. Let's take a quick tour of the features.",
+        spotlight: null
+    }},
+    {{
+        title: "Levels vs Changes",
+        text: "Toggle between viewing current price levels or price changes over time. <span class='btn-ref'>CHANGES</span> mode is most useful for seeing market trends.",
+        spotlight: "#toggleChanges",
+        action: function() {{
+            console.log('[ProMap Tutorial] Ensuring CHANGES mode is active');
+            // Make sure we're in changes mode
+            if (dataMode === 'price') {{
+                toggleDataMode();
+            }}
+        }}
+    }},
+    {{
+        title: "Time Horizons",
+        text: "Choose different time periods to analyze: <span class='btn-ref'>3M</span>, <span class='btn-ref'>6M</span>, <span class='btn-ref'>1Y</span>, and more long-term horizons under <span class='btn-ref'>MORE ▼</span>. Each horizon shows price changes over that time period.",
+        spotlight: "#toggle1y",
+        action: function() {{
+            console.log('[ProMap Tutorial] Highlighting time horizons');
+            // Make sure we're in changes mode
+            if (dataMode === 'price') {{
+                toggleDataMode();
+            }}
+        }}
+    }},
+    {{
+        title: "Bubbles vs Boundaries",
+        text: "Switch between bubble view (faster, population-weighted) and boundary view (precise ZIP code shapes). We've zoomed into New York City to show you boundaries in action.",
+        spotlight: "#visualToggle",
+        action: function() {{
+            console.log('[ProMap Tutorial] Zooming to NYC and switching to boundary view');
+            // Zoom to NYC and enable boundary view
+            map.flyTo([40.7128, -74.0060], 9, {{
+                duration: 1.5
+            }});
+            // After zoom animation, switch to boundary view
+            setTimeout(() => {{
+                console.log('[ProMap Tutorial] Zoom complete, isBoundaryView:', isBoundaryView);
+                if (!isBoundaryView) {{
+                    console.log('[ProMap Tutorial] Calling toggleVisualization');
+                    const visualToggle = document.getElementById('visualToggle');
+                    if (!visualToggle.classList.contains('disabled')) {{
+                        toggleVisualization();
+                    }} else {{
+                        console.log('[ProMap Tutorial] Toggle is disabled, waiting...');
+                    }}
+                }}
+            }}, 2000);
+        }}
+    }},
+    {{
+        title: "Global vs Local View",
+        text: "Global mode uses fixed quintiles for the entire country. Local mode recalculates quintiles based only on what's visible on screen - perfect for comparing neighborhoods within a city like this!",
+        spotlight: "#toggleLocal",
+        action: function() {{
+            console.log('[ProMap Tutorial] Switching to local mode');
+            if (!isLocalMode) {{
+                toggleView();
+            }}
+        }}
+    }},
+    {{
+        title: "Custom Boundaries",
+        text: "Draw your own boundaries to analyze specific areas! Click <span class='btn-ref'>DRAW BOUNDARY</span> to define a custom region, and the map will recalculate quintiles just for that area.",
+        spotlight: "#drawBoundaryBtn",
+        action: function() {{
+            console.log('[ProMap Tutorial] Highlighting draw boundary button');
+        }}
+    }},
+    {{
+        title: "You're all set!",
+        text: "Use the zoom controls to explore, and hover over ZIP codes for detailed information. The legend shows quintile breakpoints.",
+        spotlight: null
+    }}
+];
+
+let currentTutorialStep = 0;
+let currentSpotlight = null;
+
+function showTutorial() {{
+    currentTutorialStep = 0;
+    const overlay = document.getElementById('tutorialOverlay');
+    overlay.classList.remove('minimized');
+    overlay.style.display = 'block';
+    const reopenBtn = document.querySelector('.tutorial-reopen');
+    if (reopenBtn) reopenBtn.classList.remove('show');
+    renderTutorialStep();
+}}
+
+function minimizeTutorial() {{
+    document.getElementById('tutorialOverlay').classList.add('minimized');
+    const reopenBtn = document.querySelector('.tutorial-reopen');
+    if (reopenBtn) reopenBtn.classList.add('show');
+    if (currentSpotlight) {{
+        currentSpotlight.classList.remove('tutorial-spotlight');
+        currentSpotlight = null;
+    }}
+}}
+
+function toggleTutorial() {{
+    const overlay = document.getElementById('tutorialOverlay');
+    if (overlay.classList.contains('minimized')) {{
+        overlay.classList.remove('minimized');
+        renderTutorialStep();
+    }} else {{
+        minimizeTutorial();
+    }}
+}}
+
+function nextTutorialStep() {{
+    if (currentTutorialStep < tutorialSteps.length - 1) {{
+        currentTutorialStep++;
+        renderTutorialStep();
+    }} else {{
+        minimizeTutorial();
+    }}
+}}
+
+function previousTutorialStep() {{
+    if (currentTutorialStep > 0) {{
+        currentTutorialStep--;
+        renderTutorialStep();
+    }}
+}}
+
+function renderTutorialStep() {{
+    const step = tutorialSteps[currentTutorialStep];
+
+    document.getElementById('tutorialTitle').textContent = step.title;
+    document.getElementById('tutorialText').innerHTML = step.text;
+
+    // Update progress dots
+    const progressContainer = document.getElementById('tutorialProgress');
+    progressContainer.innerHTML = tutorialSteps.map((_, i) =>
+        `<div class="tutorial-dot ${{i === currentTutorialStep ? 'active' : ''}}"></div>`
+    ).join('');
+
+    // Show/hide previous button
+    document.getElementById('tutorialPrev').style.display = currentTutorialStep > 0 ? 'block' : 'none';
+
+    // Update next button text
+    document.getElementById('tutorialNext').textContent = currentTutorialStep === tutorialSteps.length - 1 ? 'Start Exploring' : 'Next';
+
+    // Remove previous spotlight
+    if (currentSpotlight) {{
+        currentSpotlight.classList.remove('tutorial-spotlight');
+    }}
+
+    // Add new spotlight
+    if (step.spotlight) {{
+        currentSpotlight = document.querySelector(step.spotlight);
+        if (currentSpotlight) {{
+            currentSpotlight.classList.add('tutorial-spotlight');
+        }}
+    }} else {{
+        currentSpotlight = null;
+    }}
+
+    // Execute action if present
+    if (step.action) {{
+        step.action();
+    }}
+}}
+
+// Show tutorial on load
+setTimeout(() => {{
+    showTutorial();
+}}, 800);
+
 </script>
 </body>
 </html>"""
