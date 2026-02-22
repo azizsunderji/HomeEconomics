@@ -1,0 +1,11 @@
+# Pulse — Conversation Monitor for Home Economics
+# Core
+anthropic>=0.40.0
+httpx>=0.27.0
+duckdb>=0.10.0
+
+# RSS/Atom parsing
+feedparser>=6.0
+
+# Utilities
+jinja2>=3.1

@@ -63,3 +63,7 @@ htmlcov/
 dist/
 build/
 *.egg-info/
+
+# Pulse runtime data
+pulse/data/
+pulse/*.db
