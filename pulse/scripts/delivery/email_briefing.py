@@ -98,11 +98,30 @@ def _platform_badge(platform: dict) -> str:
     return badge
 
 
+def _spacer(height: int = 24) -> str:
+    """Email-safe vertical spacer using a table row."""
+    return f'<table width="100%" cellpadding="0" cellspacing="0"><tr><td height="{height}" style="line-height:{height}px; font-size:1px;">&nbsp;</td></tr></table>\n'
+
+
+def _section_heading(text: str) -> str:
+    """Render a section heading as a table with top border."""
+    return (
+        f'<table width="100%" cellpadding="0" cellspacing="0"><tr>'
+        f'<td style="border-top: 2px solid #3D3733; padding-top: 12px; font-size: 12px; text-transform: uppercase; letter-spacing: 1.5px; color: #888; font-weight: normal; font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, sans-serif;">'
+        f'{_esc(text)}</td></tr></table>\n'
+    )
+
+
 def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
     """Render a conversation briefing dict as styled HTML email.
 
+    Uses table-based layout for Gmail compatibility (Gmail strips <body>
+    styles and ignores background on plain <div>s).
+
     Returns (html, top_theme_label, theme_count).
     """
+    FONT = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
+
     date = briefing.get("date", datetime.now(timezone.utc).strftime("%Y-%m-%d"))
     stats = briefing.get("stats_summary", {})
     pulse = briefing.get("conversation_pulse", "")
@@ -121,37 +140,50 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
         f"{k}: {v}" for k, v in sorted(source_breakdown.items(), key=lambda x: -x[1])
     ) if source_breakdown else ""
 
-    # Build HTML
+    # Build HTML — table-based centering for Gmail
     html = f"""<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 700px; margin: 0 auto; padding: 20px 24px; color: #3D3733; background: #F6F7F3; line-height: 1.55; font-size: 14px;">
+<body style="margin: 0; padding: 0; background-color: #F6F7F3;">
+<center>
+<table width="100%" cellpadding="0" cellspacing="0" bgcolor="#F6F7F3" style="background-color: #F6F7F3;">
+<tr><td align="center">
+<table width="700" cellpadding="0" cellspacing="0" style="font-family: {FONT}; color: #3D3733; line-height: 1.55; font-size: 14px;">
+<tr><td style="padding: 20px 24px;">
 
-<div style="border-bottom: 3px solid #3D3733; padding-bottom: 12px; margin-bottom: 20px;">
-  <h1 style="font-size: 22px; margin: 0 0 4px 0; color: #3D3733; letter-spacing: -0.5px;">Pulse</h1>
+<!-- HEADER -->
+<table width="100%" cellpadding="0" cellspacing="0"><tr>
+<td style="border-bottom: 3px solid #3D3733; padding-bottom: 12px;">
+  <h1 style="font-size: 22px; margin: 0 0 4px 0; color: #3D3733; letter-spacing: -0.5px; font-family: {FONT};">Pulse</h1>
   <p style="color: #888; font-size: 12px; margin: 0;">{date} &middot; {_format_number(stats.get('total_items_analyzed', 0))} items &middot; {stats.get('conversation_items', 0)} conversations &middot; {stats.get('platforms_active', 0)} platforms</p>
-</div>
+</td></tr></table>
 """
+
+    html += _spacer(20)
 
     # ── CONVERSATION PULSE (mood box) ──
     if pulse:
-        html += f"""<div style="background: #DADFCE; padding: 14px 16px; border-radius: 6px; margin-bottom: 24px; font-size: 14px; line-height: 1.6;">
+        html += f"""<table width="100%" cellpadding="0" cellspacing="0"><tr>
+<td bgcolor="#DADFCE" style="background-color: #DADFCE; padding: 14px 16px; border-radius: 6px; font-size: 14px; line-height: 1.6;">
   <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #67A275; font-weight: 600; margin-bottom: 6px;">Conversation Pulse</div>
   {_esc(pulse)}
-</div>
+</td></tr></table>
 """
+        html += _spacer(24)
 
     # ── SOURCE BREAKDOWN ──
     if source_str:
-        html += f"""<div style="font-size: 11px; color: #999; margin-bottom: 24px; padding: 8px 12px; background: white; border-radius: 4px;">
+        html += f"""<table width="100%" cellpadding="0" cellspacing="0"><tr>
+<td bgcolor="#FFFFFF" style="background-color: #fff; padding: 8px 12px; border-radius: 4px; font-size: 11px; color: #999;">
   <span style="font-weight: 600; color: #888;">Sources:</span> {source_str}
-</div>
+</td></tr></table>
 """
+        html += _spacer(24)
 
     # ── CONVERSATION THEMES (main section ~60% of email) ──
     if themes:
-        html += '<div style="margin-bottom: 28px;">\n'
-        html += '<h2 style="font-size: 12px; text-transform: uppercase; letter-spacing: 1.5px; color: #888; margin: 0 0 14px 0; border-top: 2px solid #3D3733; padding-top: 12px;">Conversation Themes</h2>\n'
+        html += _section_heading("Conversation Themes")
+        html += _spacer(14)
 
         for theme in themes[:6]:
             heat = theme.get("heat_level", "medium")
@@ -179,7 +211,8 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
                 )
                 topics_html = f'<div style="margin-top: 6px;">{pills}</div>'
 
-            html += f"""<div style="margin-bottom: 18px; padding-bottom: 18px; border-bottom: 1px solid #e8e8e8;">
+            html += f"""<table width="100%" cellpadding="0" cellspacing="0"><tr>
+<td style="padding-bottom: 18px; border-bottom: 1px solid #e8e8e8;">
   <div style="margin-bottom: 6px;">
     {_heat_badge(heat)}
     <span style="font-size: 16px; font-weight: 600; margin-left: 6px; line-height: 1.3;">{_esc(theme.get('theme', ''))}</span>
@@ -188,45 +221,54 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
   {platform_html}
   {trigger_html}
   {topics_html}
-</div>
+</td></tr></table>
 """
-        html += '</div>\n'
+            html += _spacer(18)
+
+        html += _spacer(10)
 
     # ── NOTABLE CLAIMS + DATA REALITY CHECK ──
     if claims:
-        html += '<div style="margin-bottom: 28px;">\n'
-        html += '<h2 style="font-size: 12px; text-transform: uppercase; letter-spacing: 1.5px; color: #888; margin: 0 0 14px 0; border-top: 2px solid #3D3733; padding-top: 12px;">Notable Claims vs. Reality</h2>\n'
+        html += _section_heading("Notable Claims vs. Reality")
+        html += _spacer(14)
 
         for claim in claims[:5]:
-            html += f"""<div style="margin-bottom: 14px; padding: 12px; background: white; border-radius: 6px; border-left: 3px solid #0BB4FF;">
+            html += f"""<table width="100%" cellpadding="0" cellspacing="0"><tr>
+<td bgcolor="#FFFFFF" style="background-color: #fff; padding: 12px; border-radius: 6px; border-left: 3px solid #0BB4FF;">
   <div style="font-size: 14px; font-weight: 600; margin-bottom: 4px;">&ldquo;{_esc(claim.get('claim', ''))}&rdquo;</div>
   <div style="font-size: 11px; color: #888; margin-bottom: 6px;">Circulating on: {_esc(claim.get('source', ''))}</div>
   <div style="font-size: 13px; color: #555; line-height: 1.5; border-top: 1px solid #eee; padding-top: 6px;">
     <span style="color: #0BB4FF; font-weight: 600; font-size: 10px; text-transform: uppercase;">Data Check</span><br>
     {_esc(claim.get('data_lake_check', ''))}
   </div>
-</div>
+</td></tr></table>
 """
-        html += '</div>\n'
+            html += _spacer(14)
+
+        html += _spacer(14)
 
     # ── DATA REALITY CHECK (standalone section if present) ──
     if reality and reality.get("summary"):
-        html += f"""<div style="margin-bottom: 28px; padding: 12px 14px; background: white; border-radius: 6px; border: 1px solid #ddd;">
-  <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #0BB4FF; font-weight: 600; margin-bottom: 6px;">Data Reality Check</div>
-  <div style="font-size: 13px; color: #555; line-height: 1.5; margin-bottom: 8px;">{_esc(reality['summary'])}</div>
-"""
+        stats_html = ""
         for stat in reality.get("key_stats", [])[:5]:
-            html += f"""  <div style="font-size: 12px; padding: 4px 0; border-top: 1px solid #f0f0f0;">
+            stats_html += f"""<div style="font-size: 12px; padding: 4px 0; border-top: 1px solid #f0f0f0;">
     <span style="font-weight: 600;">{_esc(stat.get('stat', ''))}</span>
     <span style="color: #888;"> &mdash; {_esc(stat.get('relevance', ''))}</span>
   </div>
 """
-        html += '</div>\n'
+        html += f"""<table width="100%" cellpadding="0" cellspacing="0"><tr>
+<td bgcolor="#FFFFFF" style="background-color: #fff; padding: 12px 14px; border-radius: 6px; border: 1px solid #ddd;">
+  <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #0BB4FF; font-weight: 600; margin-bottom: 6px;">Data Reality Check</div>
+  <div style="font-size: 13px; color: #555; line-height: 1.5; margin-bottom: 8px;">{_esc(reality['summary'])}</div>
+  {stats_html}
+</td></tr></table>
+"""
+        html += _spacer(28)
 
     # ── SUBSTACKER TAKES ──
     if substacker:
-        html += '<div style="margin-bottom: 28px;">\n'
-        html += '<h2 style="font-size: 12px; text-transform: uppercase; letter-spacing: 1.5px; color: #888; margin: 0 0 14px 0; border-top: 2px solid #3D3733; padding-top: 12px;">Substacker Takes</h2>\n'
+        html += _section_heading("Substacker Takes")
+        html += _spacer(14)
 
         for take in substacker[:7]:
             url = take.get("url", "")
@@ -236,20 +278,23 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
             else:
                 title_link = title_text
 
-            html += f"""<div style="margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px solid #e8e8e8;">
+            html += f"""<table width="100%" cellpadding="0" cellspacing="0"><tr>
+<td style="padding-bottom: 14px; border-bottom: 1px solid #e8e8e8;">
   <div style="font-size: 14px;">
     <span style="font-weight: 600;">{_esc(take.get('author', ''))}</span>:
     {title_link}
   </div>
   <div style="font-size: 13px; color: #555; margin-top: 6px; line-height: 1.5;">{_esc(take.get('take', ''))}</div>
-</div>
+</td></tr></table>
 """
-        html += '</div>\n'
+            html += _spacer(14)
+
+        html += _spacer(14)
 
     # ── INSTITUTIONAL SIGNAL (compact 1-line-per-item) ──
     if institutional:
-        html += '<div style="margin-bottom: 28px;">\n'
-        html += '<h2 style="font-size: 12px; text-transform: uppercase; letter-spacing: 1.5px; color: #888; margin: 0 0 10px 0; border-top: 2px solid #3D3733; padding-top: 12px;">Institutional Signal</h2>\n'
+        html += _section_heading("Institutional Signal")
+        html += _spacer(10)
 
         for item in institutional[:5]:
             url = item.get("url", "")
@@ -259,12 +304,13 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
 
             link = f'<a href="{url}" target="_blank" style="color: #0BB4FF; text-decoration: none;">{headline}</a>' if url else headline
 
-            html += f"""<div style="font-size: 13px; padding: 4px 0; border-bottom: 1px solid #f0f0f0;">
+            html += f"""<table width="100%" cellpadding="0" cellspacing="0"><tr>
+<td style="font-size: 13px; padding: 4px 0; border-bottom: 1px solid #f0f0f0;">
   <span style="font-weight: 600; color: #888;">{source_name}</span>: {link}
   {f'<span style="color: #0BB4FF; font-weight: 600; margin-left: 4px;">{_esc(key_num)}</span>' if key_num else ''}
-</div>
+</td></tr></table>
 """
-        html += '</div>\n'
+        html += _spacer(28)
 
     # ── FOOTER ──
     url_audit = briefing.get("_url_audit", {})
@@ -281,7 +327,8 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
             url_audit_str = f'<p style="font-size: 11px; color: #ccc; margin: 4px 0 0 0;">URLs: {" &middot; ".join(parts)}</p>'
 
     html += f"""
-<div style="border-top: 2px solid #3D3733; padding-top: 12px; margin-top: 8px;">
+<table width="100%" cellpadding="0" cellspacing="0"><tr>
+<td style="border-top: 2px solid #3D3733; padding-top: 12px;">
   <p style="font-size: 11px; color: #aaa; margin: 0;">
     {_format_number(stats.get('total_items_analyzed', 0))} items analyzed
     &middot; {stats.get('conversation_items', 0)} conversations
@@ -293,8 +340,13 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
     Pulse &middot; Home Economics &middot;
     <a href="https://github.com/azizsunderji/HomeEconomics/actions" target="_blank" style="color: #0BB4FF;">View logs</a>
   </p>
-</div>
+</td></tr></table>
 
+</td></tr>
+</table>
+</td></tr>
+</table>
+</center>
 </body>
 </html>"""
 
