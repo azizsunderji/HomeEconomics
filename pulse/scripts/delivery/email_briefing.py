@@ -148,7 +148,7 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
 <center>
 <table width="100%" cellpadding="0" cellspacing="0" bgcolor="#F6F7F3" style="background-color: #F6F7F3;">
 <tr><td align="center">
-<table width="700" cellpadding="0" cellspacing="0" style="font-family: {FONT}; color: #3D3733; line-height: 1.55; font-size: 14px;">
+<table cellpadding="0" cellspacing="0" style="max-width: 700px; width: 100%; font-family: {FONT}; color: #3D3733; line-height: 1.55; font-size: 14px;">
 <tr><td style="padding: 20px 24px;">
 
 <!-- HEADER -->
