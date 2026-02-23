@@ -274,6 +274,16 @@ def _validate_briefing_urls(briefing: dict, conn: sqlite3.Connection) -> dict:
     known_urls = _get_known_urls(conn)
     audit = {"verified": 0, "corrected": 0, "stripped": 0, "corrections": []}
 
+    # Trusted publication domains — URLs on these are real even if not in DB
+    # (e.g., LLM reconstructs canonical URL from email/RSS metadata)
+    trusted_domains = {
+        "substack.com", "apricitas.io", "theovershoot.co", "noahpinion.blog",
+        "aei.org", "brookings.edu", "nber.org", "federalreserve.gov",
+        "bls.gov", "census.gov", "freddiemac.com", "fanniemae.com",
+        "goldmansachs.com", "jpmorgan.com", "gs.com", "housingwire.com",
+        "redfin.com", "zillow.com", "nar.realtor", "calculatedriskblog.com",
+    }
+
     def validate_url(url: str, context: str) -> str:
         if not url or not url.startswith("http"):
             return url
@@ -286,6 +296,15 @@ def _validate_briefing_urls(briefing: dict, conn: sqlite3.Connection) -> dict:
             audit["corrections"].append({"context": context, "original": url, "corrected_to": best})
             logger.info(f"URL corrected: {url[:80]} -> {best[:80]} ({context})")
             return best
+        # Allow URLs on trusted publication domains (real public URLs
+        # even if DB only has redirect/gmail versions)
+        try:
+            domain = urlparse(url).netloc.lower().lstrip("www.")
+            if any(domain == d or domain.endswith("." + d) for d in trusted_domains):
+                audit["verified"] += 1
+                return url
+        except Exception:
+            pass
         audit["stripped"] += 1
         logger.warning(f"URL stripped (no match): {url[:100]} ({context})")
         return ""
