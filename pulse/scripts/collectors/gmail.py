@@ -319,8 +319,13 @@ def collect(
                     article_url = _extract_primary_url(html_body, body)
                     gmail_url = f"https://mail.google.com/mail/#all/{msg_ref['id']}"
 
+                    # Skip Pulse's own emails (self-referential)
+                    sender_lower = (sender or "").lower()
+                    if "onboarding@resend.dev" in sender_lower or "pulse@home-economics" in sender_lower:
+                        continue
+
                     # Detect Substack newsletters and re-tag them
-                    is_substack = "substack.com" in (sender or "").lower()
+                    is_substack = "substack.com" in sender_lower
 
                     # For Substack emails, extract clean author name from "Name <email>" format
                     author_name = sender

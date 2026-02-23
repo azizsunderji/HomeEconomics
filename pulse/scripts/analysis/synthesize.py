@@ -282,6 +282,10 @@ def _validate_briefing_urls(briefing: dict, conn: sqlite3.Connection) -> dict:
         "bls.gov", "census.gov", "freddiemac.com", "fanniemae.com",
         "goldmansachs.com", "jpmorgan.com", "gs.com", "housingwire.com",
         "redfin.com", "zillow.com", "nar.realtor", "calculatedriskblog.com",
+        # Newsletter tracking/redirect domains (legitimate email links)
+        "beehiiv.com", "prnewswire.com", "paragraph.com",
+        "mail.google.com", "thesisdriven.com", "thedailyshot.com",
+        "resiclubanalytics.com", "pulsenomics.com",
     }
 
     def validate_url(url: str, context: str) -> str:
@@ -404,7 +408,7 @@ Return a JSON object:
       "source": "Goldman Sachs Research",
       "headline": "Brief description",
       "key_number": "The single most important number from this piece",
-      "url": "..."
+      "url": "URL from the collected item (use the URL provided in the item, even if it's a tracking link)"
     }
   ],
 
@@ -430,7 +434,7 @@ Return a JSON object:
 
 6. SUBSTACKER TAKES ARE CRITICAL. Feature 3-5 substacker takes minimum. Don't say "Kevin Erdmann wrote about housing supply." Say "Erdmann argues that builders are still underbuilding relative to population growth and this will drive prices higher by 2027." These are the editor's PEERS — treat their arguments as primary content, not filler.
 
-7. INSTITUTIONAL SIGNAL MATTERS. Emails from AEI Housing, Global Housing Watch, ResiClub, Goldman Sachs, etc. contain valuable analysis. Feature their key findings prominently.
+7. INSTITUTIONAL SIGNAL MUST COME FROM EMAIL NEWSLETTERS. The institutional_signal section is SPECIFICALLY for email-sourced items (labeled "INSTITUTIONAL SIGNAL" in the tier headings above). Feature analysis from Goldman Sachs Research, ResiClub, Pulsenomics, AEI Housing, Zillow Research, Fannie Mae, Daily Shot, Thesis Driven, and similar email newsletters. Do NOT put Twitter sources in institutional_signal — those belong in conversation_themes. Use the URL provided with each email item, even if it's a tracking/redirect link.
 
 8. CONVERSATION THEMES: 3-6 themes max. Each must have platform evidence. At least 2 themes should involve economist/analyst voices, not just populist Reddit sentiment.
 
