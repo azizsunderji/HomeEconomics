@@ -2,8 +2,7 @@ name: Pulse Daily Briefing
 
 on:
   schedule:
-    - cron: "30 9 * * *"   # 5:30am ET during EDT (UTC-4)
-    - cron: "30 10 * * *"  # 5:30am ET during EST (UTC-5)
+    - cron: "30 10 * * *"  # 5:30am EST / 6:30am EDT
   workflow_dispatch:
 
 jobs:

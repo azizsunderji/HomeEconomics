@@ -455,8 +455,9 @@ def generate_daily_briefing(
     # Get real data lake stats
     data_snapshot = get_full_snapshot(mentioned_metros)
 
-    # Substacker items
+    # Substacker items (from RSS feeds + Gmail-detected Substack newsletters)
     substacker_items = [i for i in all_items if i["source"] == "substack"]
+    logger.info(f"Substacker items: {len(substacker_items)} (RSS + newsletter)")
 
     logger.info(
         f"Synthesis inputs: {len(all_items)} total items ({len(relevant_items)} above threshold, "

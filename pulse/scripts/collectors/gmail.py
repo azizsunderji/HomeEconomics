@@ -319,15 +319,27 @@ def collect(
                     article_url = _extract_primary_url(html_body, body)
                     gmail_url = f"https://mail.google.com/mail/#all/{msg_ref['id']}"
 
+                    # Detect Substack newsletters and re-tag them
+                    is_substack = "substack.com" in (sender or "").lower()
+
+                    # For Substack emails, extract clean author name from "Name <email>" format
+                    author_name = sender
+                    if is_substack and sender:
+                        import re
+                        match = re.match(r'"?([^"<]+)"?\s*<', sender)
+                        if match:
+                            author_name = match.group(1).strip()
+
                     item = PulseItem(
-                        source="gmail",
+                        source="substack" if is_substack else "gmail",
                         source_id=f"gmail_{acct_idx}_{msg_ref['id']}",
                         url=article_url or gmail_url,
                         title=subject,
                         body=body,
-                        author=sender,
+                        author=author_name,
                         published_at=published,
-                        platform_tags=["email", "newsletter"],
+                        platform_tags=["newsletter_substack"] if is_substack else ["email", "newsletter"],
+                        feed_priority="newsletter" if is_substack else "",
                         engagement_raw={"gmail_url": gmail_url},
                     )
                     items.append(item)

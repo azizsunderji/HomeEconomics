@@ -14,15 +14,17 @@ Data source rules:
 from __future__ import annotations
 
 import logging
+import os
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-DATA_LAKE = Path("/Users/azizsunderji/Dropbox/Home Economics/Data")
+DATA_LAKE = Path(os.environ.get("DATA_LAKE_PATH", "/Users/azizsunderji/Dropbox/Home Economics/Data"))
 
-# Fallback if running on GitHub Actions where data lake isn't available
 if not DATA_LAKE.exists():
     DATA_LAKE = None
+else:
+    logger.info(f"Data lake path: {DATA_LAKE}")
 
 ZILLOW_METRO = "Price/Zillow/Metro_zhvi_uc_sfrcondo_tier_0.33_0.67_sm_sa_month.parquet"
 REDFIN_METRO = "Redfin/monthly_metro.parquet"
