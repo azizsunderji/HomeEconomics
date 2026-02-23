@@ -217,6 +217,22 @@ def _format_items_for_conversation(items: list[dict], limit: int = 80) -> str:
     return "\n".join(lines)
 
 
+def _format_substacker_items(items: list[dict]) -> str:
+    """Format Substack newsletter items as a dedicated section for the LLM."""
+    if not items:
+        return "No Substack newsletters collected in this period."
+    lines = []
+    for item in items[:10]:
+        author = item.get("author", "")
+        body_preview = (item.get("body") or "")[:400]
+        lines.append(
+            f"- {author}: {item.get('title', '')[:200]}\n"
+            f"  URL: {item.get('url', '')}\n"
+            f"  Preview: {body_preview}"
+        )
+    return "\n".join(lines)
+
+
 def _format_institutional_emails(items: list[dict]) -> str:
     """Format Gmail institutional items as a dedicated section for the LLM."""
     if not items:
@@ -451,7 +467,7 @@ Return a JSON object:
 
 5. REAL URLS ONLY. Every source must include the actual URL from the collected items. Never fabricate URLs.
 
-6. SUBSTACKER TAKES ARE CRITICAL. Feature 3-5 substacker takes minimum. Don't say "Kevin Erdmann wrote about housing supply." Say "Erdmann argues that builders are still underbuilding relative to population growth and this will drive prices higher by 2027." These are the editor's PEERS — treat their arguments as primary content, not filler.
+6. SUBSTACKER TAKES MUST COME FROM SUBSTACK NEWSLETTERS ONLY. The substacker_takes section is EXCLUSIVELY for items from the "Substack Newsletters" section above. Do NOT include Twitter commentators, Reddit posts, or any other source. Use the URL provided with each Substack item (even if it's a redirect link). For each take, summarize their specific ARGUMENT — not just the topic. "Erdmann argues builders are underbuilding relative to population growth" is good. "Erdmann wrote about housing supply" is not.
 
 7. INSTITUTIONAL SIGNAL MUST COME FROM EMAIL NEWSLETTERS. The institutional_signal section is SPECIFICALLY for email-sourced items (labeled "INSTITUTIONAL SIGNAL" in the tier headings above). Feature analysis from Goldman Sachs Research, ResiClub, Pulsenomics, AEI Housing, Zillow Research, Fannie Mae, Daily Shot, Thesis Driven, and similar email newsletters. Do NOT put Twitter sources in institutional_signal — those belong in conversation_themes. Use the URL provided with each email item, even if it's a tracking/redirect link.
 
@@ -498,8 +514,22 @@ def generate_daily_briefing(
     data_snapshot = get_full_snapshot(mentioned_metros)
 
     # Substacker items (from RSS feeds + Gmail-detected Substack newsletters)
-    substacker_items = [i for i in all_items if i["source"] == "substack"]
-    logger.info(f"Substacker items: {len(substacker_items)} (RSS + newsletter)")
+    # Dedupe by title, exclude user's own posts
+    substacker_items = []
+    seen_titles = set()
+    for i in all_items:
+        if i["source"] != "substack":
+            continue
+        author_lower = (i.get("author") or "").lower()
+        if "aziz" in author_lower or "home-economics" in author_lower:
+            continue
+        title_key = (i.get("title") or "").strip().lower()[:60]
+        if title_key in seen_titles:
+            continue
+        seen_titles.add(title_key)
+        substacker_items.append(i)
+    substacker_items.sort(key=lambda x: -(x.get("relevance_score") or 0))
+    logger.info(f"Substacker items: {len(substacker_items)} (RSS + newsletter, deduped)")
 
     # Institutional email items (Gmail items that aren't Substack)
     institutional_emails = [
@@ -530,6 +560,11 @@ You don't run queries yourself — just describe what the data shows using the p
 For claims about topics NOT covered by the precomputed stats (e.g., migration, population, surveys),
 note what dataset COULD verify it and we will query it in a second pass.
 {DATA_LAKE_SCHEMA}
+
+## Substack Newsletters — SUBSTACKER TAKES (use ONLY these for the substacker_takes section)
+These are actual Substack newsletter articles. Populate substacker_takes ONLY from this list. Use the URL provided with each item.
+
+{_format_substacker_items(substacker_items)}
 
 ## Email Newsletters — INSTITUTIONAL SIGNAL (use these for the institutional_signal section)
 These are email newsletters from research teams and industry analysts. Feature their key findings in institutional_signal.
