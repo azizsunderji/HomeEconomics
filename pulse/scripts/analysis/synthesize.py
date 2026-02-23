@@ -217,6 +217,25 @@ def _format_items_for_conversation(items: list[dict], limit: int = 80) -> str:
     return "\n".join(lines)
 
 
+def _format_institutional_emails(items: list[dict]) -> str:
+    """Format Gmail institutional items as a dedicated section for the LLM."""
+    if not items:
+        return "No institutional email newsletters collected in this period."
+    lines = []
+    for item in items[:15]:
+        author = item.get("author", "")
+        # Clean author display
+        match = re.match(r'"?([^"<]+)"?\s*<', author)
+        display = match.group(1).strip() if match else author.split("<")[0].strip() or author
+        body_preview = (item.get("body") or "")[:400]
+        lines.append(
+            f"- {display}: {item.get('title', '')[:200]}\n"
+            f"  URL: {item.get('url', '')}\n"
+            f"  Preview: {body_preview}"
+        )
+    return "\n".join(lines)
+
+
 def _extract_mentioned_metros(items: list[dict]) -> list[str]:
     """Extract metro/city names from entities in top items."""
     metros = set()
@@ -482,6 +501,14 @@ def generate_daily_briefing(
     substacker_items = [i for i in all_items if i["source"] == "substack"]
     logger.info(f"Substacker items: {len(substacker_items)} (RSS + newsletter)")
 
+    # Institutional email items (Gmail items that aren't Substack)
+    institutional_emails = [
+        i for i in relevant_items
+        if i.get("source") == "gmail" and (i.get("relevance_score") or 0) >= 50
+    ]
+    institutional_emails.sort(key=lambda x: -(x.get("relevance_score") or 0))
+    logger.info(f"Institutional email items: {len(institutional_emails)}")
+
     logger.info(
         f"Synthesis inputs: {len(all_items)} total items ({len(relevant_items)} above threshold, "
         f"{len(conversation_items)} conversation items), "
@@ -503,6 +530,11 @@ You don't run queries yourself — just describe what the data shows using the p
 For claims about topics NOT covered by the precomputed stats (e.g., migration, population, surveys),
 note what dataset COULD verify it and we will query it in a second pass.
 {DATA_LAKE_SCHEMA}
+
+## Email Newsletters — INSTITUTIONAL SIGNAL (use these for the institutional_signal section)
+These are email newsletters from research teams and industry analysts. Feature their key findings in institutional_signal.
+
+{_format_institutional_emails(institutional_emails)}
 
 ## Cross-Platform Convergence (topics appearing on 3+ platforms)
 
