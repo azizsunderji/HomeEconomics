@@ -2,11 +2,8 @@ name: Pulse Collector
 
 on:
   schedule:
-    # 4x daily (EST times; shifts 1hr in summer — acceptable)
-    - cron: "0 12 * * *"   # 7am EST / 8am EDT
-    - cron: "0 17 * * *"   # 12pm EST / 1pm EDT
-    - cron: "0 22 * * *"   # 5pm EST / 6pm EDT
-    - cron: "0 3 * * *"    # 10pm EST / 11pm EDT
+    # 1x daily: collect overnight tweets before the daily synthesis pipeline
+    - cron: "0 9 * * *"    # 4am EST / 5am EDT (daily pipeline runs at 5:30am EST)
   workflow_dispatch:
     inputs:
       sources:

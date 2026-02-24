@@ -201,21 +201,21 @@ def collect(
     items = []
     seen_ids = set()
 
-    # Minimize actor calls to control Apify costs.
-    # 1 discovery call (viral tweets from outside our follows) + 3 account calls.
+    # Account-focused collection: batches of ~10 accounts each.
+    # Small batches ensure quiet economist accounts aren't drowned out
+    # by viral takes from louder voices in the same batch.
     all_batches = []
 
-    # Discovery query: high-engagement viral tweets we wouldn't otherwise see
+    # Discovery queries (if any — currently empty, account tracking is primary)
     if queries:
         all_batches.append((queries, max_per_query))
 
-    # Account tracking: 3 batches for balanced coverage across all voices
+    # Account batches of 10
+    BATCH_SIZE = 10
     if accounts:
-        n = len(accounts)
-        third = n // 3
-        chunks = [accounts[:third], accounts[third:2*third], accounts[2*third:]]
-        for chunk in chunks:
-            account_terms = [f"from:{a}" for a in chunk]
+        for i in range(0, len(accounts), BATCH_SIZE):
+            batch = accounts[i:i + BATCH_SIZE]
+            account_terms = [f"from:{a}" for a in batch]
             all_batches.append((account_terms, max_per_query))
 
     raw_tweets = []

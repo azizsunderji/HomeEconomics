@@ -130,6 +130,7 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
     reality = briefing.get("data_reality_check", {})
     substacker = briefing.get("substacker_takes", [])
     institutional = briefing.get("institutional_signal", [])
+    twitter_roundup = briefing.get("twitter_roundup", [])
 
     top_theme = themes[0]["theme"][:60] if themes else "Daily Conversation"
     theme_count = len(themes)
@@ -226,6 +227,25 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
             html += _spacer(18)
 
         html += _spacer(10)
+
+    # ── TWITTER ROUNDUP ──
+    if twitter_roundup:
+        html += _section_heading("Twitter Roundup")
+        html += _spacer(14)
+
+        for voice in twitter_roundup[:15]:
+            url = voice.get("url", "")
+            author = _esc(voice.get("author", ""))
+            take = _esc(voice.get("take", ""))
+
+            author_html = f'<a href="{url}" target="_blank" style="color: #0BB4FF; text-decoration: none; font-weight: 600;">{author}</a>' if url else f'<span style="font-weight: 600;">{author}</span>'
+
+            html += f"""<table width="100%" cellpadding="0" cellspacing="0"><tr>
+<td style="font-size: 13px; padding: 5px 0; border-bottom: 1px solid #f0f0f0; line-height: 1.45;">
+  {author_html} <span style="color: #555;">{take}</span>
+</td></tr></table>
+"""
+        html += _spacer(24)
 
     # ── NOTABLE CLAIMS + DATA REALITY CHECK ──
     if claims:

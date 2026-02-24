@@ -227,31 +227,60 @@ HN_KEYWORDS = [
 ]
 
 # ── Twitter/Apify configuration ──────────────────────────────────────────────
-TWITTER_SEARCH_QUERIES = [
-    # Single discovery query: find viral housing moments from accounts we don't follow.
-    # High engagement threshold filters out noise. Account tracking handles the rest.
-    '("housing market" OR "home prices" OR "mortgage rates" OR "housing bubble") min_faves:500 lang:en',
-]
+TWITTER_SEARCH_QUERIES = []  # No discovery queries — account tracking provides full coverage
 
 TWITTER_ACCOUNTS = [
-    # Core housing/RE voices (timeline tracking)
-    "calculatedrisk", "NickTimiraos", "LanceRLambert",
-    "LoganMohtashami", "ConorSen", "DiMartinoBooth",
-    "LizAnnSonders", "elerianm", "M_McDonough",
-    "BillMcBride4", "NewsLambert", "jasaborsky",
-    "JustinWolfers",
-    # Added from X.com following list — top housing/RE voices
-    "trdny", "YIMBYLAND", "bobbyfijan", "arpitrage",
-    "BobKnakal", "RickPalaciosJr", "dandolfa", "mateosfo",
-    "commobserver", "loud_socialist", "maxdubler",
-    "jonathanmiller", "TenantBloc", "DavidFBrand",
-    "_brianpotter", "aaronAcarr", "americanhousing",
-    "eric_seufert",
+    # Full follow list — economists, housing analysts, journalists, policy voices
+    "_brianpotter", "aaronAcarr", "aaronsojourner", "abcampbell",
+    "AFineBlogger", "AGampel1", "AlecStapp", "amandafung",
+    "americanhousing", "andrewrsorkin", "annastansbury", "arindube",
+    "arpitrage", "ArthurKolchak", "ashleevance", "BasilHalperin",
+    "bcheungz", "ben_moll", "besttrousers", "biancoresearch",
+    "BillMcBride4", "Birdyword", "bobbyfijan", "BobKnakal",
+    "boes_", "brendanwhitsitt", "Brian_J_Berger", "BruceEHansen",
+    "ByKyleCampbell", "calculatedrisk", "CandaceETaylor",
+    "CarolWalshReal1", "CathieDWood", "cepr_org", "ChrisANeilson",
+    "CJHandmer", "Claudia_Sahm", "ClausVistesen", "commobserver",
+    "ConorSen", "cremieuxrecueil", "dandolfa", "darioperkins",
+    "DavidBeckworth", "DavidFBrand", "DiMartinoBooth", "DKThomp",
+    "dmlevitt", "DominicFrisby", "donweinland", "DrTCJ",
+    "DSORennie", "dwarkesh_sp", "economeager", "Economesteter",
+    "economics", "EconTalker", "EconUCL", "EdwardGLuce",
+    "elerianm", "emollick", "eraborsky", "eric_seufert",
+    "ErnestTedeschi", "fed_speak", "FedericoHuneeus", "florianederer",
+    "FlorinBilbiie", "FullStackEcon", "fwred", "gandhisahil",
+    "Geiger_Capital", "GRechMacro", "HannoLustig", "HAOHONG_CFA",
+    "hiromichimizuno", "hitsamty", "HomeLoanBill", "instrumenthull",
+    "IvanWerning", "jasaborsky", "jasonfurman", "jburnmurdoch",
+    "JedKolko", "jenniferdoleac", "JFischetti", "jfjimenoserrano",
+    "jmwooldridge", "JoeMLyman", "johanknorberg", "JohnHCochrane",
+    "jonathanmiller", "jondr44", "JonSteinsson", "JosephPolitano",
+    "JustinWolfers", "keegan_tweets", "KiraboJackson", "LanceRLambert",
+    "LawrenceLepard", "leadlagreport", "LevyAntoine", "Lingling_Wei",
+    "LizAnnSonders", "LoganMohtashami", "loud_socialist", "LucaFornaro3",
+    "LynAldenContact", "M_McDonough", "MacroAlf", "MarcGoldwein",
+    "mark_dow", "markets", "MarkusEconomist", "mateosfo",
+    "matthewclifford", "mattkahn1966", "mattyglesias", "maxdubler",
+    "MichaelMOTTCM", "ModeledBehavior", "moorehn", "MoreBirths",
+    "MTabarrok", "NateSilver538", "nberpubs", "NewsLambert",
+    "nfergus", "NickTimiraos", "Noahpinion", "ojblanchard1",
+    "p_ferragu", "palladiummag", "pedrohcgs", "PeterSchiff",
+    "Ph_Aghion", "PradyuPrasad", "ProfJAParker", "profstonge",
+    "R2Rsquared", "RaoulGMI", "RayDalio", "RenMacLLC",
+    "RickPalaciosJr", "RickRieder", "rileymeik", "robin_j_brooks",
+    "robinhanson", "rvitoria", "RyanLEllis", "S_Stantcheva",
+    "saumjha", "ShanghaiMacro", "shehzadhqazi", "skorusARK",
+    "slatestarcodex", "stat_sherpa", "stevecuozzo", "SteveRattner",
+    "suani_pilau", "TashaARK", "tashecon", "TaviCosta",
+    "TenantBloc", "TheStalwart", "trdny", "TrungTPhan",
+    "UrbanDigs", "urbanistvc", "vshih2", "waitbutwhy",
+    "wintonARK", "wwwojtekk", "xurbanxcowboyx", "YaleEconomics",
+    "YIMBYLAND", "ZouhairABH",
 ]
 
-TWITTER_MIN_LIKES = 50
-TWITTER_MAX_PER_QUERY = 50
-TWITTER_DAILY_BUDGET_CENTS = 100  # $1/day max Apify spend
+TWITTER_MIN_LIKES = 5    # Low threshold — these are curated voices, not keyword search
+TWITTER_MAX_PER_QUERY = 30  # Per batch; smaller to ensure each account gets coverage
+TWITTER_DAILY_BUDGET_CENTS = 150  # $1.50/day max Apify spend
 
 # ── Gmail configuration ──────────────────────────────────────────────────────
 GMAIL_SENDER_WHITELIST = [

@@ -321,6 +321,8 @@ def _validate_briefing_urls(briefing: dict, conn: sqlite3.Connection) -> dict:
         "beehiiv.com", "prnewswire.com", "paragraph.com",
         "mail.google.com", "thesisdriven.com", "thedailyshot.com",
         "resiclubanalytics.com", "pulsenomics.com",
+        # Social media (Twitter roundup)
+        "twitter.com", "x.com",
     }
 
     def validate_url(url: str, context: str) -> str:
@@ -362,6 +364,9 @@ def _validate_briefing_urls(briefing: dict, conn: sqlite3.Connection) -> dict:
     for i, item in enumerate(briefing.get("institutional_signal", [])):
         if "url" in item:
             item["url"] = validate_url(item["url"], f"institutional_signal[{i}]")
+    for i, item in enumerate(briefing.get("twitter_roundup", [])):
+        if "url" in item:
+            item["url"] = validate_url(item["url"], f"twitter_roundup[{i}]")
 
     briefing["_url_audit"] = audit
     total = audit["verified"] + audit["corrected"] + audit["stripped"]
@@ -429,6 +434,14 @@ Return a JSON object:
     ]
   },
 
+  "twitter_roundup": [
+    {
+      "author": "@handle",
+      "take": "1-2 sentence summary of their specific point or argument",
+      "url": "tweet URL"
+    }
+  ],
+
   "substacker_takes": [
     {
       "author": "Name (Publication)",
@@ -478,6 +491,8 @@ Return a JSON object:
 10. KEEP IT UNDER 20,000 CHARACTERS. Be substantive but not bloated.
 
 11. SKIP IRRELEVANT NOISE. Do not feature: Nigerian/international housing stories, memes about landlords, generic "economy is rigged" venting, partisan political rants with no economic substance.
+
+12. TWITTER ROUNDUP: Feature 10-15 individual economist/analyst voices in the twitter_roundup section. This is a quick-scan section so the reader can see what specific people are saying. Include a DIVERSE range of voices — not just the 3-4 loudest. Each entry should name the author (@handle), summarize their specific take in 1-2 sentences, and include the tweet URL. Prioritize: contrarian views, data-backed claims, novel arguments, and voices that don't appear in the conversation_themes section. This section is about BREADTH — showing the reader what the full landscape of expert opinion looks like today.
 """
 
 
@@ -548,7 +563,7 @@ def generate_daily_briefing(
 
     user_content = f"""## Today's Collected Items — {len(all_items)} total, {len(relevant_items)} above relevance threshold, {len(conversation_items)} with active conversation
 
-{_format_items_for_conversation(relevant_items, limit=80)}
+{_format_items_for_conversation(relevant_items, limit=150)}
 
 ## Data Lake — Precomputed Stats (Zillow prices + Redfin activity)
 
