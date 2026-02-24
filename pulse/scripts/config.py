@@ -228,15 +228,10 @@ HN_KEYWORDS = [
 
 # ── Twitter/Apify configuration ──────────────────────────────────────────────
 TWITTER_SEARCH_QUERIES = [
-    # Conversation-oriented: opinion/debate terms + min_replies filter
-    # All queries scoped to US context to avoid Nigerian/UK/international housing chatter
-    '"housing market" (opinion OR think OR worried OR unpopular) lang:en',
-    '"mortgage rates" (crazy OR insane OR finally OR mistake) lang:en',
-    '"housing market" OR "home prices" min_replies:50 lang:en',
-    '"rent increase" (NYC OR "San Francisco" OR Austin OR Florida OR California OR apartment) lang:en',
-    '"buy vs rent" OR "buying vs renting" lang:en',
-    '"housing bubble" OR "housing crash" lang:en',
-    '"first time buyer" OR "first time homebuyer" lang:en',
+    # Consolidated to minimize Apify actor calls (all sent in one batch)
+    '"housing market" OR "home prices" OR "mortgage rates" min_replies:20 lang:en',
+    '"housing bubble" OR "housing crash" OR "rent increase" lang:en',
+    '"buy vs rent" OR "first time buyer" OR "first time homebuyer" lang:en',
 ]
 
 TWITTER_ACCOUNTS = [

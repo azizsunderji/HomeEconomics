@@ -4,6 +4,8 @@ Uses the Apify Twitter Scraper actor to search for tweets.
 Conversation-oriented: prioritizes tweets with replies and debate.
 Requires APIFY_API_KEY env var.
 Budget-tracked: defaults to $1/day max (TWITTER_DAILY_BUDGET_CENTS).
+Budget persists in pulse.db (synced via rclone) so it works across
+multiple GitHub Actions runs.
 """
 
 from __future__ import annotations
@@ -11,6 +13,7 @@ from __future__ import annotations
 import json
 import os
 import logging
+import sqlite3
 import time
 from datetime import datetime, timezone, date
 from pathlib import Path
@@ -30,30 +33,41 @@ APIFY_BASE = "https://api.apify.com/v2"
 # Pay-per-event pricing, works on Apify Starter plan
 ACTOR_ID = "apidojo/twitter-scraper-lite"
 
-# Budget tracking file
-BUDGET_FILE = Path(__file__).parent.parent.parent / "data" / "twitter_budget.json"
+# DB path for budget tracking (same DB as pulse data, synced via rclone)
+_DB_PATH = Path(__file__).parent.parent.parent / "data" / "pulse.db"
+
+
+def _get_db() -> sqlite3.Connection:
+    """Get a connection to pulse.db for budget tracking."""
+    _DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(str(_DB_PATH))
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS apify_budget (
+            date TEXT PRIMARY KEY,
+            spent_cents INTEGER DEFAULT 0
+        )
+    """)
+    conn.commit()
+    return conn
 
 
 def _check_budget() -> bool:
     """Check if we're within daily Apify budget. Returns True if OK to proceed."""
     today = date.today().isoformat()
-    budget_data = {"date": today, "spent_cents": 0}
+    try:
+        conn = _get_db()
+        row = conn.execute(
+            "SELECT spent_cents FROM apify_budget WHERE date = ?", (today,)
+        ).fetchone()
+        conn.close()
+        spent = row[0] if row else 0
+    except Exception as e:
+        logger.warning(f"Budget check failed: {e}")
+        return True  # fail open
 
-    if BUDGET_FILE.exists():
-        try:
-            with open(BUDGET_FILE) as f:
-                budget_data = json.load(f)
-        except (json.JSONDecodeError, IOError):
-            pass
-
-    # Reset if new day
-    if budget_data.get("date") != today:
-        budget_data = {"date": today, "spent_cents": 0}
-
-    if budget_data["spent_cents"] >= TWITTER_DAILY_BUDGET_CENTS:
+    if spent >= TWITTER_DAILY_BUDGET_CENTS:
         logger.warning(
-            f"Twitter daily budget exhausted: {budget_data['spent_cents']}¢ / "
-            f"{TWITTER_DAILY_BUDGET_CENTS}¢"
+            f"Twitter daily budget exhausted: {spent}¢ / {TWITTER_DAILY_BUDGET_CENTS}¢"
         )
         return False
 
@@ -63,24 +77,21 @@ def _check_budget() -> bool:
 def _record_spend(cents: int) -> None:
     """Record Apify spend for budget tracking."""
     today = date.today().isoformat()
-    budget_data = {"date": today, "spent_cents": 0}
-
-    if BUDGET_FILE.exists():
-        try:
-            with open(BUDGET_FILE) as f:
-                budget_data = json.load(f)
-        except (json.JSONDecodeError, IOError):
-            pass
-
-    if budget_data.get("date") != today:
-        budget_data = {"date": today, "spent_cents": 0}
-
-    budget_data["spent_cents"] += cents
-    BUDGET_FILE.parent.mkdir(parents=True, exist_ok=True)
-    with open(BUDGET_FILE, "w") as f:
-        json.dump(budget_data, f)
-
-    logger.info(f"Twitter budget: {budget_data['spent_cents']}¢ / {TWITTER_DAILY_BUDGET_CENTS}¢ today")
+    try:
+        conn = _get_db()
+        conn.execute("""
+            INSERT INTO apify_budget (date, spent_cents) VALUES (?, ?)
+            ON CONFLICT(date) DO UPDATE SET spent_cents = spent_cents + excluded.spent_cents
+        """, (today, cents))
+        conn.commit()
+        row = conn.execute(
+            "SELECT spent_cents FROM apify_budget WHERE date = ?", (today,)
+        ).fetchone()
+        conn.close()
+        total = row[0] if row else cents
+        logger.info(f"Twitter budget: {total}¢ / {TWITTER_DAILY_BUDGET_CENTS}¢ today")
+    except Exception as e:
+        logger.warning(f"Budget record failed: {e}")
 
 
 def _run_actor(search_terms: list[str], max_tweets: int = 50) -> list[dict]:
@@ -190,24 +201,20 @@ def collect(
     items = []
     seen_ids = set()
 
-    # Run one actor call per search term batch to get proper coverage.
-    # Batch accounts together (they're cheap), but run keyword queries individually
-    # since each needs its own maxItems allocation.
+    # Minimize actor calls to control Apify costs.
+    # Each actor run has fixed overhead, so fewer larger calls > many small calls.
     all_batches = []
 
-    # Keyword queries: run individually for full coverage
-    for q in queries:
-        all_batches.append(([q], max_per_query))
+    # Keyword queries: single call with all terms, larger maxItems
+    if queries:
+        all_batches.append((queries, max_per_query * 2))
 
-    # Account queries: run in small batches of 5 so each account actually gets coverage.
-    # Batching all 30+ into one call with maxItems=50 means only the most viral tweets
-    # from any account are returned, drowning out the economist accounts we actually want.
+    # Account queries: 2 batches (split in half) with larger maxItems
     if accounts:
-        ACCOUNT_BATCH_SIZE = 5
-        for i in range(0, len(accounts), ACCOUNT_BATCH_SIZE):
-            batch = accounts[i:i + ACCOUNT_BATCH_SIZE]
-            account_terms = [f"from:{a}" for a in batch]
-            all_batches.append((account_terms, max_per_query))
+        mid = len(accounts) // 2
+        for batch_accounts in [accounts[:mid], accounts[mid:]]:
+            account_terms = [f"from:{a}" for a in batch_accounts]
+            all_batches.append((account_terms, max_per_query * 2))
 
     raw_tweets = []
     for batch_terms, batch_max in all_batches:
