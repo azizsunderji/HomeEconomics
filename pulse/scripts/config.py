@@ -228,10 +228,9 @@ HN_KEYWORDS = [
 
 # ── Twitter/Apify configuration ──────────────────────────────────────────────
 TWITTER_SEARCH_QUERIES = [
-    # Consolidated to minimize Apify actor calls (all sent in one batch)
-    '"housing market" OR "home prices" OR "mortgage rates" min_replies:20 lang:en',
-    '"housing bubble" OR "housing crash" OR "rent increase" lang:en',
-    '"buy vs rent" OR "first time buyer" OR "first time homebuyer" lang:en',
+    # Single discovery query: find viral housing moments from accounts we don't follow.
+    # High engagement threshold filters out noise. Account tracking handles the rest.
+    '("housing market" OR "home prices" OR "mortgage rates" OR "housing bubble") min_faves:500 lang:en',
 ]
 
 TWITTER_ACCOUNTS = [

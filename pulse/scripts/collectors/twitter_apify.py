@@ -202,19 +202,21 @@ def collect(
     seen_ids = set()
 
     # Minimize actor calls to control Apify costs.
-    # Each actor run has fixed overhead, so fewer larger calls > many small calls.
+    # 1 discovery call (viral tweets from outside our follows) + 3 account calls.
     all_batches = []
 
-    # Keyword queries: single call with all terms, larger maxItems
+    # Discovery query: high-engagement viral tweets we wouldn't otherwise see
     if queries:
-        all_batches.append((queries, max_per_query * 2))
+        all_batches.append((queries, max_per_query))
 
-    # Account queries: 2 batches (split in half) with larger maxItems
+    # Account tracking: 3 batches for balanced coverage across all voices
     if accounts:
-        mid = len(accounts) // 2
-        for batch_accounts in [accounts[:mid], accounts[mid:]]:
-            account_terms = [f"from:{a}" for a in batch_accounts]
-            all_batches.append((account_terms, max_per_query * 2))
+        n = len(accounts)
+        third = n // 3
+        chunks = [accounts[:third], accounts[third:2*third], accounts[2*third:]]
+        for chunk in chunks:
+            account_terms = [f"from:{a}" for a in chunk]
+            all_batches.append((account_terms, max_per_query))
 
     raw_tweets = []
     for batch_terms, batch_max in all_batches:

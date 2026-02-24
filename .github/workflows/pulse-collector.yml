@@ -2,9 +2,11 @@ name: Pulse Collector
 
 on:
   schedule:
-    # 2x daily: morning + evening (EST times; shifts 1hr in summer — acceptable)
+    # 4x daily (EST times; shifts 1hr in summer — acceptable)
     - cron: "0 12 * * *"   # 7am EST / 8am EDT
-    - cron: "0 0 * * *"    # 7pm EST / 8pm EDT
+    - cron: "0 17 * * *"   # 12pm EST / 1pm EDT
+    - cron: "0 22 * * *"   # 5pm EST / 6pm EDT
+    - cron: "0 3 * * *"    # 10pm EST / 11pm EDT
   workflow_dispatch:
     inputs:
       sources:
