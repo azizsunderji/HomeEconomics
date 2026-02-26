@@ -119,16 +119,28 @@ def cmd_daily(args):
     conn = get_db()
     logger.info("=== PULSE DAILY BRIEFING ===")
     start = time.time()
+    pipeline_errors = []
 
     # Collect + classify
     logger.info("Phase 1: Collection")
-    run_collectors(conn, sources=args.sources)
+    collection_results = run_collectors(conn, sources=args.sources)
+    # Check for sources that returned 0 new items (potential silent failures)
+    for source_name, counts in collection_results.items():
+        if counts["new"] == 0 and counts["dupe"] == 0:
+            pipeline_errors.append(f"{source_name}: 0 items collected (possible auth/budget/API issue)")
 
     logger.info("Phase 2: Classification")
-    run_classification()
+    try:
+        classified = run_classification()
+    except Exception as e:
+        pipeline_errors.append(f"Classification failed: {e}")
+        classified = 0
 
     logger.info("Phase 3: Arc tracking")
-    update_arcs(conn)
+    try:
+        update_arcs(conn)
+    except Exception as e:
+        pipeline_errors.append(f"Arc tracking failed: {e}")
 
     # Synthesize
     logger.info("Phase 4: Synthesis")
@@ -138,6 +150,13 @@ def cmd_daily(args):
     if "error" in briefing:
         logger.error(f"Synthesis failed: {briefing['error']}")
         return briefing
+
+    # Inject pipeline-level errors into briefing for email rendering
+    existing_errors = briefing.get("_collection_errors", [])
+    for err_msg in pipeline_errors:
+        existing_errors.append({"source": "pipeline", "error": err_msg, "time": ""})
+    if existing_errors:
+        briefing["_collection_errors"] = existing_errors
 
     # Email
     logger.info("Phase 5: Email delivery")
@@ -154,6 +173,7 @@ def cmd_daily(args):
         pushed = push_all_unpushed()
     except Exception as e:
         logger.warning(f"Notion push skipped: {e}")
+        pipeline_errors.append(f"Notion push failed: {e}")
         pushed = 0
 
     # Convergence alerts
@@ -165,6 +185,7 @@ def cmd_daily(args):
         alerts = check_and_alert(convergence)
     except Exception as e:
         logger.warning(f"Alert check skipped: {e}")
+        pipeline_errors.append(f"Alert check failed: {e}")
         alerts = 0
 
     elapsed = time.time() - start
@@ -172,6 +193,7 @@ def cmd_daily(args):
         f"Daily pipeline complete in {elapsed:.0f}s — "
         f"email={'sent' if email_sent else 'FAILED'}, "
         f"{pushed} stories to Notion, {alerts} alerts"
+        f"{f', {len(pipeline_errors)} errors' if pipeline_errors else ''}"
     )
 
     return {
@@ -179,6 +201,7 @@ def cmd_daily(args):
         "email_sent": email_sent,
         "notion_pushed": pushed,
         "alerts_sent": alerts,
+        "pipeline_errors": pipeline_errors,
         "elapsed_seconds": round(elapsed),
     }
 

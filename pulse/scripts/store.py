@@ -422,6 +422,39 @@ def mark_briefing_emailed(conn: sqlite3.Connection, briefing_id: int) -> None:
 
 # ── Stats ─────────────────────────────────────────────────────────────────────
 
+def get_recent_notable_claims(conn: sqlite3.Connection, days: int = 7) -> list[str]:
+    """Get notable claim texts from recent briefings (for dedup)."""
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+    rows = conn.execute(
+        """SELECT content_json FROM briefings
+        WHERE briefing_type = 'daily' AND created_at >= ?
+        ORDER BY created_at DESC LIMIT 7""",
+        (cutoff,)
+    ).fetchall()
+    claims = []
+    for row in rows:
+        try:
+            briefing = json.loads(row["content_json"])
+            for claim in briefing.get("notable_claims", []):
+                claims.append(claim.get("claim", ""))
+        except (json.JSONDecodeError, TypeError):
+            pass
+    return claims
+
+
+def get_recent_collection_errors(conn: sqlite3.Connection, hours: int = 36) -> list[dict]:
+    """Get collection run errors from recent runs."""
+    cutoff = (datetime.now(timezone.utc) - timedelta(hours=hours)).isoformat()
+    rows = conn.execute(
+        """SELECT source, error, started_at, items_collected, items_new
+        FROM collection_runs
+        WHERE started_at >= ? AND error != ''
+        ORDER BY started_at DESC""",
+        (cutoff,)
+    ).fetchall()
+    return [dict(r) for r in rows]
+
+
 def get_collection_stats(conn: sqlite3.Connection, hours: int = 24) -> dict:
     """Get collection stats for the last N hours."""
     cutoff = (datetime.now(timezone.utc) - timedelta(hours=hours)).isoformat()

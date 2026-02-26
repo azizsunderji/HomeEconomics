@@ -198,6 +198,16 @@ def collect(
     queries = queries or TWITTER_SEARCH_QUERIES
     accounts = accounts or TWITTER_ACCOUNTS
 
+    api_key = os.environ.get("APIFY_API_KEY", "")
+    if not api_key:
+        raise RuntimeError("APIFY_API_KEY not set — Twitter collection skipped entirely")
+
+    if not _check_budget():
+        raise RuntimeError(
+            f"Twitter daily Apify budget exhausted ({TWITTER_DAILY_BUDGET_CENTS}¢ limit). "
+            f"Increase TWITTER_DAILY_BUDGET_CENTS in config.py or wait until tomorrow."
+        )
+
     items = []
     seen_ids = set()
 

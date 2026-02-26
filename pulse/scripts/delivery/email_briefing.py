@@ -131,6 +131,7 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
     substacker = briefing.get("substacker_takes", [])
     institutional = briefing.get("institutional_signal", [])
     twitter_roundup = briefing.get("twitter_roundup", [])
+    collection_errors = briefing.get("_collection_errors", [])
 
     top_theme = themes[0]["theme"][:60] if themes else "Daily Conversation"
     theme_count = len(themes)
@@ -161,6 +162,21 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
 """
 
     html += _spacer(20)
+
+    # ── TECHNICAL ERRORS (if any) ──
+    if collection_errors:
+        error_lines = []
+        for err in collection_errors:
+            source = _esc(err.get("source", "unknown"))
+            error_msg = _esc(err.get("error", ""))[:200]
+            error_lines.append(f"<li style='margin-bottom: 3px;'><strong>{source}:</strong> {error_msg}</li>")
+        html += f"""<table width="100%" cellpadding="0" cellspacing="0"><tr>
+<td bgcolor="#FBCAB5" style="background-color: #FBCAB5; padding: 10px 14px; border-radius: 6px; border-left: 3px solid #F4743B; font-size: 12px; line-height: 1.5;">
+  <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #F4743B; font-weight: 600; margin-bottom: 4px;">Pipeline Issues</div>
+  <ul style="margin: 0; padding-left: 16px; color: #3D3733;">{''.join(error_lines)}</ul>
+</td></tr></table>
+"""
+        html += _spacer(16)
 
     # ── CONVERSATION PULSE (mood box) ──
     if pulse:

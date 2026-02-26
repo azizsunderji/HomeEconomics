@@ -22,7 +22,8 @@ import anthropic
 from config import TOPICS, RELEVANCE_THRESHOLD_HIGHLIGHT, SOURCE_WEIGHTS
 from store import (
     get_db, get_items_since, get_conversation_items, add_story_opportunity,
-    save_briefing, get_collection_stats,
+    save_briefing, get_collection_stats, get_recent_notable_claims,
+    get_recent_collection_errors,
 )
 from analysis.convergence import compute_convergence, detect_organic_conversations
 from analysis.arc_tracker import detect_narrative_shifts
@@ -486,13 +487,21 @@ Return a JSON object:
 
 8. CONVERSATION THEMES: 3-6 themes max. Each must have platform evidence. At least 2 themes should involve economist/analyst voices, not just populist Reddit sentiment.
 
-9. HEAT LEVELS: "viral" = 500+ comments across platforms, "high" = active debate with strong opinions, "medium" = noticeable discussion, "low" = a few mentions.
+9. ONE TOPIC PER THEME. Do NOT group unrelated threads or voices into one theme just to reduce count. If Winton ARK is talking about AI and photography employment, and Arindube is making a separate argument about AI asset valuations, those are TWO separate themes — not one. Only group threads together when they are genuinely part of the SAME conversation (people replying to each other, referencing each other's points). Three separate people talking about three separate things on the same broad topic is NOT one theme.
 
-10. KEEP IT UNDER 20,000 CHARACTERS. Be substantive but not bloated.
+10. HEAT LEVELS: "viral" = 500+ comments across platforms, "high" = active debate with strong opinions, "medium" = noticeable discussion, "low" = a few mentions.
 
-11. SKIP IRRELEVANT NOISE. Do not feature: Nigerian/international housing stories, memes about landlords, generic "economy is rigged" venting, partisan political rants with no economic substance.
+11. KEEP IT UNDER 20,000 CHARACTERS. Be substantive but not bloated.
 
-12. TWITTER ROUNDUP: Feature 10-15 individual economist/analyst voices in the twitter_roundup section. This is a quick-scan section so the reader can see what specific people are saying. Include a DIVERSE range of voices — not just the 3-4 loudest. Each entry should name the author (@handle), summarize their specific take in 1-2 sentences, and include the tweet URL. Prioritize: contrarian views, data-backed claims, novel arguments, and voices that don't appear in the conversation_themes section. This section is about BREADTH — showing the reader what the full landscape of expert opinion looks like today.
+12. SKIP IRRELEVANT NOISE. Do not feature: Nigerian/international housing stories, memes about landlords, generic "economy is rigged" venting, partisan political rants with no economic substance.
+
+13. TWITTER ROUNDUP: Feature 10-15 individual economist/analyst voices in the twitter_roundup section. This is a quick-scan section so the reader can see what specific people are saying. CRITICAL RULES:
+    a. Do NOT include any tweet or voice you already covered in conversation_themes. If @jasonfurman's thread was featured as a conversation theme, do NOT put him in the twitter roundup too. Use the roundup to surface DIFFERENT voices and takes that didn't make it into the themes.
+    b. Include a DIVERSE range of voices — aim for 10+ DIFFERENT handles. Do not over-index on any 2-3 accounts (e.g., do not feature the same person in multiple entries). Spread across different perspectives and expertise areas.
+    c. Each entry should name the author (@handle), summarize their specific take in 1-2 sentences, and include the tweet URL.
+    d. Prioritize: contrarian views, data-backed claims, novel arguments, and lesser-known voices the reader might not follow.
+
+14. NOTABLE CLAIMS: Do NOT repeat claims from previous days. You will be given a list of recent claims. If a claim is substantially similar to one from a previous briefing (e.g., "Austin prices down 25%"), SKIP IT and pick a different circulating claim. The reader wants to see NEW claims being fact-checked, not the same ones every day.
 """
 
 
@@ -527,6 +536,12 @@ def generate_daily_briefing(
 
     # Get real data lake stats
     data_snapshot = get_full_snapshot(mentioned_metros)
+
+    # Get recent claims to avoid repetition
+    recent_claims = get_recent_notable_claims(conn, days=7)
+
+    # Get collection errors for transparency
+    collection_errors = get_recent_collection_errors(conn, hours=36)
 
     # Substacker items (from RSS feeds + Gmail-detected Substack newsletters)
     # Dedupe by title, exclude user's own posts
@@ -597,6 +612,9 @@ These are email newsletters from research teams and industry analysts. Feature t
 ## Organic Conversations (discussions with no news trigger)
 
 {json.dumps([{"title": o["title"][:100], "source": o["source"], "subreddit": o.get("subreddit", ""), "score": o.get("score", 0), "url": o.get("url", "")} for o in organic[:10]], indent=2) if organic else "None detected."}
+
+## Recent Notable Claims (DO NOT REPEAT THESE — pick NEW claims to fact-check)
+{chr(10).join(f'- "{c}"' for c in recent_claims[:15]) if recent_claims else "No recent claims on file."}
 
 Generate the daily briefing JSON. LEAD WITH CONVERSATION — what are people debating, arguing about, reacting to? News is context only."""
 
@@ -692,6 +710,13 @@ Generate the daily briefing JSON. LEAD WITH CONVERSATION — what are people deb
         briefing["stats_summary"]["total_items_analyzed"] = len(all_items)
         briefing["stats_summary"]["conversation_items"] = len(conversation_items)
         briefing["stats_summary"]["platforms_active"] = len(set(i["source"] for i in all_items))
+
+        # Attach collection errors for email transparency
+        if collection_errors:
+            briefing["_collection_errors"] = [
+                {"source": e["source"], "error": e["error"], "time": e["started_at"]}
+                for e in collection_errors
+            ]
 
         # Save the briefing
         briefing_id = save_briefing(conn, "daily", briefing)
