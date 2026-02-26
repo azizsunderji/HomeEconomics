@@ -644,7 +644,55 @@ Generate the daily briefing JSON. LEAD WITH CONVERSATION — what are people deb
                     json_part = json_part[4:]
                 response_text = json_part.strip()
 
-        briefing = json.loads(response_text)
+        try:
+            briefing = json.loads(response_text)
+        except json.JSONDecodeError as e:
+            # Attempt repair: common LLM JSON issues
+            logger.warning(f"Initial JSON parse failed ({e}), attempting repair...")
+            repaired = response_text
+
+            # Fix: truncated response — try to close open structures
+            if repaired.count('{') > repaired.count('}'):
+                # Find the last complete object/array and close remaining braces
+                depth_brace = repaired.count('{') - repaired.count('}')
+                depth_bracket = repaired.count('[') - repaired.count(']')
+                # Trim to last complete string value (find last untruncated quote)
+                last_quote = repaired.rfind('"')
+                if last_quote > 0:
+                    # Check if we're mid-value — look for the pattern ": " before it
+                    before = repaired[:last_quote + 1]
+                    repaired = before + ']' * depth_bracket + '}' * depth_brace
+
+            # Fix: unescaped quotes inside strings — try a lenient approach
+            # by asking Haiku to fix the JSON
+            try:
+                briefing = json.loads(repaired)
+                logger.info("JSON repair succeeded (bracket closing)")
+            except json.JSONDecodeError:
+                logger.warning("Bracket repair failed, asking Haiku to fix JSON...")
+                try:
+                    fix_resp = client.messages.create(
+                        model="claude-haiku-4-5-20251001",
+                        max_tokens=16384,
+                        messages=[{"role": "user", "content": (
+                            "The following JSON has a syntax error. Fix ONLY the JSON syntax "
+                            "(escape quotes, close brackets, fix commas) without changing any content. "
+                            "Return ONLY the fixed JSON, no explanation.\n\n"
+                            + response_text[:14000]
+                        )}],
+                    )
+                    fixed_text = fix_resp.content[0].text.strip()
+                    if fixed_text.startswith("```"):
+                        fixed_text = fixed_text.split("```")[1]
+                        if fixed_text.startswith("json"):
+                            fixed_text = fixed_text[4:]
+                        if "```" in fixed_text:
+                            fixed_text = fixed_text[:fixed_text.index("```")]
+                    briefing = json.loads(fixed_text.strip())
+                    logger.info("JSON repair succeeded (Haiku fix)")
+                except Exception as fix_err:
+                    logger.error(f"JSON repair also failed: {fix_err}")
+                    raise e  # Re-raise the original error
 
         # === PASS 2: Dynamic data lake queries for claim verification ===
         notable_claims = briefing.get("notable_claims", [])
