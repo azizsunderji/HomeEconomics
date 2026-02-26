@@ -422,6 +422,15 @@ def mark_briefing_emailed(conn: sqlite3.Connection, briefing_id: int) -> None:
 
 # ── Stats ─────────────────────────────────────────────────────────────────────
 
+def get_apify_spend_today(conn: sqlite3.Connection) -> int:
+    """Get today's total Apify spend in cents."""
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    row = conn.execute(
+        "SELECT spent_cents FROM apify_budget WHERE date = ?", (today,)
+    ).fetchone()
+    return row["spent_cents"] if row else 0
+
+
 def get_recent_notable_claims(conn: sqlite3.Connection, days: int = 7) -> list[str]:
     """Get notable claim texts from recent briefings (for dedup)."""
     cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()

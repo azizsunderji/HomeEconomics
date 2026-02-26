@@ -24,7 +24,7 @@ from pathlib import Path
 # Add scripts/ to path for imports
 sys.path.insert(0, str(Path(__file__).parent))
 
-from store import get_db, bulk_upsert, log_collection_start, log_collection_end, mark_briefing_emailed
+from store import get_db, bulk_upsert, log_collection_start, log_collection_end, mark_briefing_emailed, get_apify_spend_today
 from analysis.classify import run_classification
 from analysis.arc_tracker import update_arcs
 from analysis.crosswalk import build_index
@@ -149,6 +149,9 @@ def cmd_daily(args):
     if "error" in briefing:
         logger.error(f"Synthesis failed: {briefing['error']}")
         return briefing
+
+    # Inject Apify spend for the email header
+    briefing["_apify_spend_cents"] = get_apify_spend_today(conn)
 
     # Inject pipeline-level errors into briefing for email rendering
     existing_errors = briefing.get("_collection_errors", [])

@@ -132,6 +132,7 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
     institutional = briefing.get("institutional_signal", [])
     twitter_roundup = briefing.get("twitter_roundup", [])
     collection_errors = briefing.get("_collection_errors", [])
+    apify_spend_cents = briefing.get("_apify_spend_cents", 0)
 
     top_theme = themes[0]["theme"][:60] if themes else "Daily Conversation"
     theme_count = len(themes)
@@ -157,7 +158,7 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
 <table width="100%" cellpadding="0" cellspacing="0"><tr>
 <td style="border-bottom: 3px solid #3D3733; padding-bottom: 12px;">
   <h1 style="font-size: 22px; margin: 0 0 4px 0; color: #3D3733; letter-spacing: -0.5px; font-family: {FONT};">Pulse</h1>
-  <p style="color: #888; font-size: 12px; margin: 0;">{date} &middot; {_format_number(stats.get('total_items_analyzed', 0))} items &middot; {stats.get('conversation_items', 0)} conversations &middot; {stats.get('platforms_active', 0)} platforms</p>
+  <p style="color: #888; font-size: 12px; margin: 0;">{date} &middot; {_format_number(stats.get('total_items_analyzed', 0))} items &middot; {stats.get('conversation_items', 0)} conversations &middot; {stats.get('platforms_active', 0)} platforms{f' &middot; Apify: ${apify_spend_cents / 100:.2f}' if apify_spend_cents else ''}</p>
 </td></tr></table>
 """
 
