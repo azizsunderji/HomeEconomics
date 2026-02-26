@@ -56,7 +56,6 @@ def run_collectors(conn, sources: list[str] | None = None) -> dict:
 
     # Define all collectors
     all_collectors = {
-        "reddit": lambda: __import__("collectors.reddit", fromlist=["collect"]).collect(),
         "google_news": lambda: __import__("collectors.rss_news", fromlist=["collect"]).collect(),
         "bluesky": lambda: __import__("collectors.bluesky", fromlist=["collect"]).collect(),
         "hackernews": lambda: __import__("collectors.hackernews", fromlist=["collect"]).collect(),
@@ -260,8 +259,8 @@ def cmd_test(args):
     conn = get_db()
     logger.info("=== PULSE TEST RUN ===")
 
-    # Only run free, no-auth-required sources (reddit now auth-free with .json endpoints)
-    test_sources = ["reddit", "google_news", "hackernews", "bluesky"]
+    # Only run free, no-auth-required sources
+    test_sources = ["google_news", "hackernews", "bluesky"]
     results = run_collectors(conn, sources=test_sources)
 
     logger.info(f"Test collection: {json.dumps(results, indent=2)}")

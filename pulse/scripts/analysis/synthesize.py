@@ -389,7 +389,7 @@ CRITICAL: Quality over volume. A thread from Arpit Gupta, Jason Furman, or Claud
 5. Populist Reddit/Twitter only if it reveals genuine sentiment (NOT just rage-bait)
 
 You receive items from multiple platforms, ranked by INTELLECTUAL value:
-- Tier 1 (PRIMARY): Economist/analyst conversation — Twitter debates among economists, HN discussions, quality Reddit (r/badeconomics, r/AskEconomics)
+- Tier 1 (PRIMARY): Economist/analyst conversation — Twitter debates among economists, HN discussions, Bluesky
 - Tier 2: Substacker analysis — peer newsletters with specific arguments
 - Tier 3: Institutional research — Goldman, AEI, Fed (from email)
 - Tier 4: Quality journalism — opinion pieces with specific arguments
