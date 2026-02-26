@@ -11,5 +11,8 @@ feedparser>=6.0
 pandas>=2.0
 numpy>=1.24
 
+# Reddit collector
+requests>=2.31
+
 # Utilities
 jinja2>=3.1

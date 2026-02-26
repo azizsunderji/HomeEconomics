@@ -19,7 +19,10 @@ from collectors import PulseItem
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_OPML_PATH = "/Users/azizsunderji/Dropbox/Home Economics/RSSFeeds/HomeEconomicsRSS.opml"
+# Look for OPML in repo root (pulse/) first (CI), then Dropbox (local dev)
+_REPO_OPML = Path(__file__).parent.parent.parent / "HomeEconomicsRSS.opml"
+_DROPBOX_OPML = Path("/Users/azizsunderji/Dropbox/Home Economics/RSSFeeds/HomeEconomicsRSS.opml")
+DEFAULT_OPML_PATH = str(_REPO_OPML if _REPO_OPML.exists() else _DROPBOX_OPML)
 
 
 def parse_opml(opml_path: str = DEFAULT_OPML_PATH) -> list[dict]:

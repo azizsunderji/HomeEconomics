@@ -443,14 +443,25 @@ def get_recent_notable_claims(conn: sqlite3.Connection, days: int = 7) -> list[s
 
 
 def get_recent_collection_errors(conn: sqlite3.Connection, hours: int = 36) -> list[dict]:
-    """Get collection run errors from recent runs."""
+    """Get errors from the most recent collection run per source only.
+
+    Only shows errors from the latest run of each source, not accumulated
+    history. This prevents stale errors from previous runs from cluttering
+    the email.
+    """
     cutoff = (datetime.now(timezone.utc) - timedelta(hours=hours)).isoformat()
     rows = conn.execute(
         """SELECT source, error, started_at, items_collected, items_new
         FROM collection_runs
-        WHERE started_at >= ? AND error != ''
+        WHERE started_at >= ?
+        AND id IN (
+            SELECT MAX(id) FROM collection_runs
+            WHERE started_at >= ?
+            GROUP BY source
+        )
+        AND error != ''
         ORDER BY started_at DESC""",
-        (cutoff,)
+        (cutoff, cutoff)
     ).fetchall()
     return [dict(r) for r in rows]
 
