@@ -103,33 +103,14 @@ DATA_LAKE_SCHEMA = """
 ### Crosswalks
 - `Crosswalks/` — various geographic crosswalk files for joining datasets.
 
-### Political Reference: 2024 Presidential Election Results
-Use this CTE for any "red state vs blue state" analysis. Join with state_migration (by state name)
-or ACS (by STATEFIP). Party = 'R' (Trump) or 'D' (Harris).
-
-```sql
-WITH state_party AS (
-  SELECT * FROM (VALUES
-    (1,'Alabama','R'),(2,'Alaska','R'),(4,'Arizona','R'),(5,'Arkansas','R'),
-    (6,'California','D'),(8,'Colorado','D'),(9,'Connecticut','D'),(10,'Delaware','D'),
-    (11,'District of Columbia','D'),(12,'Florida','R'),(13,'Georgia','R'),(15,'Hawaii','D'),
-    (16,'Idaho','R'),(17,'Illinois','D'),(18,'Indiana','R'),(19,'Iowa','R'),
-    (20,'Kansas','R'),(21,'Kentucky','R'),(22,'Louisiana','R'),(23,'Maine','D'),
-    (24,'Maryland','D'),(25,'Massachusetts','D'),(26,'Michigan','R'),(27,'Minnesota','D'),
-    (28,'Mississippi','R'),(29,'Missouri','R'),(30,'Montana','R'),(31,'Nebraska','R'),
-    (32,'Nevada','R'),(33,'New Hampshire','D'),(34,'New Jersey','D'),(35,'New Mexico','D'),
-    (36,'New York','D'),(37,'North Carolina','R'),(38,'North Dakota','R'),(39,'Ohio','R'),
-    (40,'Oklahoma','R'),(41,'Oregon','D'),(42,'Pennsylvania','R'),(44,'Rhode Island','D'),
-    (45,'South Carolina','R'),(46,'South Dakota','R'),(47,'Tennessee','R'),(48,'Texas','R'),
-    (49,'Utah','R'),(50,'Vermont','D'),(51,'Virginia','D'),(53,'Washington','D'),
-    (54,'West Virginia','R'),(55,'Wisconsin','R'),(56,'Wyoming','R')
-  ) AS t(statefip, state_name, party)
-)
-```
-
-Join with ACS: `ON acs.STATEFIP = state_party.statefip`
-Join with state_migration: `ON migration.origin = state_party.state_name` (or destination)
-Join with population estimates: check column names first, may need FIPS or state name join.
+### Political Reference: Presidential Election Results (2020, 2024)
+- `Politics/state_party_2020_2024.parquet`
+  Columns: statefip (int), state_name (full), state_abbr, winner_2020 ('D'/'R'), winner_2024 ('D'/'R').
+  Source: 2020 county-level FEC data aggregated to state. 2024 = 2020 baseline + certified swing flips.
+  51 rows (50 states + DC). 2024: 20 D states, 31 R states.
+  Join with ACS: `ON acs.STATEFIP = sp.statefip`
+  Join with state_migration: `ON migration.origin = sp.state_name` (or destination)
+  Use winner_2024 for "red state / blue state" claims unless the claim specifically references 2020.
 """
 
 
