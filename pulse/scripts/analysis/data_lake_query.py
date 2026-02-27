@@ -57,7 +57,7 @@ DATA_LAKE_SCHEMA = """
   Columns: year, origin (full state name like "California"), destination (full state name), flow (number of people), moe.
   No 2020 data (Census skipped it). Years: 2005-2019, 2021-2024.
   Net migration = SUM(flow WHERE destination=state) - SUM(flow WHERE origin=state AND origin!=destination).
-  For "red state" analysis, you'll need to define a CTE mapping states to party (based on 2024 presidential vote).
+  For red/blue state analysis, use the state_party CTE below.
 
 ### Population
 - `PopulationEstimates/state_v2025.parquet`
@@ -102,6 +102,34 @@ DATA_LAKE_SCHEMA = """
 
 ### Crosswalks
 - `Crosswalks/` — various geographic crosswalk files for joining datasets.
+
+### Political Reference: 2024 Presidential Election Results
+Use this CTE for any "red state vs blue state" analysis. Join with state_migration (by state name)
+or ACS (by STATEFIP). Party = 'R' (Trump) or 'D' (Harris).
+
+```sql
+WITH state_party AS (
+  SELECT * FROM (VALUES
+    (1,'Alabama','R'),(2,'Alaska','R'),(4,'Arizona','R'),(5,'Arkansas','R'),
+    (6,'California','D'),(8,'Colorado','D'),(9,'Connecticut','D'),(10,'Delaware','D'),
+    (11,'District of Columbia','D'),(12,'Florida','R'),(13,'Georgia','R'),(15,'Hawaii','D'),
+    (16,'Idaho','R'),(17,'Illinois','D'),(18,'Indiana','R'),(19,'Iowa','R'),
+    (20,'Kansas','R'),(21,'Kentucky','R'),(22,'Louisiana','R'),(23,'Maine','D'),
+    (24,'Maryland','D'),(25,'Massachusetts','D'),(26,'Michigan','R'),(27,'Minnesota','D'),
+    (28,'Mississippi','R'),(29,'Missouri','R'),(30,'Montana','R'),(31,'Nebraska','R'),
+    (32,'Nevada','R'),(33,'New Hampshire','D'),(34,'New Jersey','D'),(35,'New Mexico','D'),
+    (36,'New York','D'),(37,'North Carolina','R'),(38,'North Dakota','R'),(39,'Ohio','R'),
+    (40,'Oklahoma','R'),(41,'Oregon','D'),(42,'Pennsylvania','R'),(44,'Rhode Island','D'),
+    (45,'South Carolina','R'),(46,'South Dakota','R'),(47,'Tennessee','R'),(48,'Texas','R'),
+    (49,'Utah','R'),(50,'Vermont','D'),(51,'Virginia','D'),(53,'Washington','D'),
+    (54,'West Virginia','R'),(55,'Wisconsin','R'),(56,'Wyoming','R')
+  ) AS t(statefip, state_name, party)
+)
+```
+
+Join with ACS: `ON acs.STATEFIP = state_party.statefip`
+Join with state_migration: `ON migration.origin = state_party.state_name` (or destination)
+Join with population estimates: check column names first, may need FIPS or state name join.
 """
 
 
@@ -186,6 +214,9 @@ def generate_claim_queries(
 - For FRED lookups: {{"claim": "...", "type": "fred", "series_id": "EXHOSLUSM495S"}}
 - PREFER FRED for macro claims (GDP, home sales, mortgage rates, unemployment, housing starts, CPI).
   FRED data is live and always current. Parquet files may be weeks old.
+- IMPORTANT: If a claim has a POLITICAL dimension (e.g., "red states vs blue states", "Republican-led states",
+  "Democratic states"), you MUST use the state_party CTE from the schema to verify BOTH the underlying data
+  AND the political angle. Don't just check the data without the partisan breakdown.
 - Max {MAX_QUERIES} queries total
 - If a claim can't be verified with available data, skip it
 - Use standard single quotes for SQL string literals (e.g., WHERE state = 'Texas')
