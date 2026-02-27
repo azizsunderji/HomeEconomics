@@ -105,12 +105,20 @@ DATA_LAKE_SCHEMA = """
 
 ### Political Reference: Presidential Election Results (2020, 2024)
 - `Politics/state_party_2020_2024.parquet`
-  Columns: statefip (int), state_name (full), state_abbr, winner_2020 ('D'/'R'), winner_2024 ('D'/'R').
-  Source: 2020 county-level FEC data aggregated to state. 2024 = 2020 baseline + certified swing flips.
+  STATE-LEVEL party winners. Columns: statefip (int), state_name (full), state_abbr, winner_2020 ('D'/'R'), winner_2024 ('D'/'R').
   51 rows (50 states + DC). 2024: 20 D states, 31 R states.
   Join with ACS: `ON acs.STATEFIP = sp.statefip`
   Join with state_migration: `ON migration.origin = sp.state_name` (or destination)
   Use winner_2024 for "red state / blue state" claims unless the claim specifically references 2020.
+
+- `Politics/puma_votes_2020.parquet`
+  PUMA-LEVEL 2020 presidential vote counts. 2,462 rows (every PUMA in the US).
+  Columns: statefip (int), pumace20 (str), puma_name, biden (int), trump (int), other (int), total (int), biden_pct (float), trump_pct (float).
+  Source: VEST 2020 precinct shapefiles spatially overlaid onto Census 2020 PUMA boundaries (area-weighted).
+  Use for sub-state political analysis. Join with ACS: `ON acs.STATEFIP = pv.statefip AND CAST(acs.PUMA AS VARCHAR) = pv.pumace20`
+  Classify PUMAs as red/blue: `CASE WHEN trump_pct > 50 THEN 'R' ELSE 'D' END`
+  This is more precise than state-level for claims like "people in red areas have fewer children" since
+  it captures within-state variation (e.g., blue PUMAs in Texas, red PUMAs in California).
 """
 
 
@@ -196,8 +204,12 @@ def generate_claim_queries(
 - PREFER FRED for macro claims (GDP, home sales, mortgage rates, unemployment, housing starts, CPI).
   FRED data is live and always current. Parquet files may be weeks old.
 - IMPORTANT: If a claim has a POLITICAL dimension (e.g., "red states vs blue states", "Republican-led states",
-  "Democratic states"), you MUST use the state_party CTE from the schema to verify BOTH the underlying data
-  AND the political angle. Don't just check the data without the partisan breakdown.
+  "Democratic states"), you MUST verify BOTH the underlying data AND the political angle:
+  * For state-level claims: JOIN with Politics/state_party_2020_2024.parquet on statefip, GROUP BY winner_2024
+  * For sub-state or ACS-based claims: JOIN with Politics/puma_votes_2020.parquet on statefip+PUMA,
+    classify PUMAs as red/blue (trump_pct > 50 = 'R'), and GROUP BY that classification.
+    PUMA-level is more precise since it captures within-state variation.
+  Don't just check the data without the partisan breakdown.
 - Max {MAX_QUERIES} queries total
 - If a claim can't be verified with available data, skip it
 - Use standard single quotes for SQL string literals (e.g., WHERE state = 'Texas')
