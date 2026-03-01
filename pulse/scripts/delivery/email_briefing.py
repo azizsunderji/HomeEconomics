@@ -57,7 +57,7 @@ def _heat_badge(level: str) -> str:
 
 
 def _platform_badge(platform: dict) -> str:
-    """Render a platform badge like [Reddit r/REBubble 234 comments]."""
+    """Render a platform badge like [Twitter 89 replies]."""
     name = platform.get("name", "")
     sub = platform.get("subreddit", "")
     comments = platform.get("comment_count", 0)

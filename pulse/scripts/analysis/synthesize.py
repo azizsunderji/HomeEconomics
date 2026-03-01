@@ -1,7 +1,7 @@
 """Daily synthesis using Claude Sonnet 4.5.
 
 Generates the structured morning briefing focused on CONVERSATION — what people
-are debating, arguing about, and reacting to across Reddit, Twitter, HN, and Substacks.
+are debating, arguing about, and reacting to across Twitter, Bluesky, HN, and Substacks.
 News is demoted to context-only.
 """
 
@@ -28,7 +28,7 @@ from store import (
 from analysis.convergence import compute_convergence, detect_organic_conversations
 from analysis.arc_tracker import detect_narrative_shifts
 from analysis.data_snapshot import get_full_snapshot
-from analysis.data_lake_query import run_claim_verification, DATA_LAKE_SCHEMA
+from analysis.data_lake_query import run_claim_verification
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +39,7 @@ MODEL = "claude-sonnet-4-5-20250929"
 # Tier 5: Commodity news (context only)
 SOURCE_TIERS = {
     # Tier 1: Organic conversation
-    "reddit": 1, "hackernews": 1, "twitter": 1, "bluesky": 1,
+    "hackernews": 1, "twitter": 1, "bluesky": 1,
     # Tier 2: Peer analysis (Substacks)
     "substack": 2,
     # Tier 3: Institutional research (from Gmail)
@@ -62,7 +62,7 @@ def _get_source_tier(item: dict) -> int:
     feed = (item.get("feed_name") or "").lower()
 
     # Conversation sources always Tier 1
-    if source in ("reddit", "hackernews", "twitter", "bluesky"):
+    if source in ("hackernews", "twitter", "bluesky"):
         return 1
 
     # Substacks = Tier 2
@@ -103,9 +103,6 @@ def _get_source_display_name(item: dict) -> str:
     author = item.get("author", "")
     source = item.get("source", "")
 
-    if source == "reddit":
-        sub = item.get("subreddit", "")
-        return f"r/{sub}" if sub else "Reddit"
     if source == "hackernews":
         return "Hacker News"
     if source == "twitter":
@@ -144,7 +141,7 @@ def _format_items_for_conversation(items: list[dict], limit: int = 80) -> str:
     ))
 
     tier_names = {
-        1: "CONVERSATION — Twitter economists, Reddit (r/badeconomics, r/AskEconomics), HN, Bluesky",
+        1: "CONVERSATION — Twitter economists, Bluesky, HN debates",
         2: "SUBSTACKER TAKES — Peer Analysis (FEATURE THESE PROMINENTLY, 3-5 minimum)",
         3: "INSTITUTIONAL SIGNAL — AEI, Goldman, Fed, ResiClub, Global Housing Watch (FEATURE KEY FINDINGS)",
         4: "JOURNALISM — Opinion & Analysis",
@@ -379,14 +376,14 @@ def _validate_briefing_urls(briefing: dict, conn: sqlite3.Connection) -> dict:
 
 SYSTEM_PROMPT = """You are the conversation intelligence system for "Home Economics," a data journalism newsletter about the US housing market and economy by Aziz Sunderji.
 
-Your job: surface what SMART PEOPLE are DEBATING, ARGUING ABOUT, and REACTING TO — not what news headlines say, and not populist doomposting. The editor can scan newspapers himself. What he can't easily see is the intellectual conversation among economists, housing analysts, and policy thinkers on Twitter, in Substacks, on Hacker News, and occasionally Reddit.
+Your job: surface what SMART PEOPLE are DEBATING, ARGUING ABOUT, and REACTING TO — not what news headlines say, and not populist doomposting. The editor can scan newspapers himself. What he can't easily see is the intellectual conversation among economists, housing analysts, and policy thinkers on Twitter, Bluesky, in Substacks, and on Hacker News.
 
-CRITICAL: Quality over volume. A thread from Arpit Gupta, Jason Furman, or Claudia Sahm with 40 thoughtful replies is FAR more valuable than a Reddit thread with 1,000 comments saying "economy is rigged." Prioritize:
-1. Economist/analyst debates on Twitter (even if reply counts are modest)
+CRITICAL: Quality over volume. A thread from Arpit Gupta, Jason Furman, or Claudia Sahm with 40 thoughtful replies is FAR more valuable than anonymous comments saying "economy is rigged." Prioritize:
+1. Economist/analyst debates on Twitter and Bluesky (even if reply counts are modest)
 2. Substacker arguments and newsletter analysis
 3. Institutional research and data releases
-4. Thoughtful Reddit discussions in r/badeconomics, r/AskEconomics, r/urbanplanning
-5. Populist Reddit/Twitter only if it reveals genuine sentiment (NOT just rage-bait)
+4. Thoughtful HN discussions
+5. Populist sentiment only if it reveals genuine trends (NOT just rage-bait)
 
 You receive items from multiple platforms, ranked by INTELLECTUAL value:
 - Tier 1 (PRIMARY): Economist/analyst conversation — Twitter debates among economists, HN discussions, Bluesky
@@ -409,10 +406,10 @@ Return a JSON object:
   "conversation_themes": [
     {
       "theme": "Short label (5-8 words max)",
-      "summary": "What people are saying across platforms. Quote actual thread titles, reference subreddit names, note the tenor of comments. Are people bullish or bearish? Is there genuine disagreement? What specific claims are being made?",
+      "summary": "What people are saying across platforms. Quote actual thread titles, note the tenor of comments. Are people bullish or bearish? Is there genuine disagreement? What specific claims are being made?",
       "platforms": [
-        {"name": "reddit", "subreddit": "REBubble", "comment_count": 234, "sentiment": "bearish", "url": "..."},
-        {"name": "twitter", "reply_count": 89, "sentiment": "mixed", "url": "..."}
+        {"name": "twitter", "reply_count": 89, "sentiment": "mixed", "url": "..."},
+        {"name": "bluesky", "reply_count": 12, "sentiment": "bullish", "url": "..."}
       ],
       "heat_level": "low|medium|high|viral",
       "related_news_trigger": "What news event sparked this conversation, if any. Empty string if organic.",
@@ -423,7 +420,7 @@ Return a JSON object:
   "notable_claims": [
     {
       "claim": "Specific factual assertion circulating in conversations (e.g., 'Austin prices are down 25% from peak')",
-      "source": "Where it's appearing (e.g., 'Multiple Reddit threads in r/economy and Twitter')",
+      "source": "Where it's appearing (e.g., 'Twitter thread from @ConorSen and Bluesky discussion')",
       "data_lake_check": "USE EXACT NUMBERS FROM THE DATA LAKE STATS. Do not hedge or say 'appears exaggerated.' Compute and state the answer. e.g., 'Zillow ZHVI shows Austin at $419,518, peaked at $554,273 in 2022-06, down 24.3% from peak. The 25% claim is roughly correct.' Always include: current value, peak value + date if relevant, and the computed percentage."
     }
   ],
@@ -465,15 +462,15 @@ Return a JSON object:
     "total_items_analyzed": N,
     "conversation_items": N,
     "platforms_active": N,
-    "source_breakdown": {"r/REBubble": N, "r/RealEstate": N, "Hacker News": N, "Twitter": N, ...}
+    "source_breakdown": {"Hacker News": N, "Twitter": N, "Bluesky": N, "Substack": N, ...}
   }
 }
 
 ## Rules
 
-1. INTELLECTUAL CONVERSATION FIRST. What are economists and housing analysts debating? A Twitter exchange between Arpit Gupta and Jason Furman about whether tariffs will push mortgage rates up is MORE IMPORTANT than a Reddit thread with 1,000 doomer comments. Lead with the smart conversation.
+1. INTELLECTUAL CONVERSATION FIRST. What are economists and housing analysts debating? A Twitter exchange between Arpit Gupta and Jason Furman about whether tariffs will push mortgage rates up is the gold standard. Lead with the smart conversation.
 
-2. QUOTE REAL PEOPLE BY NAME. "Claudia Sahm argues the labor market is weakening faster than the Fed acknowledges" is useful. "Reddit users are panicking" is not. When referencing Reddit, focus on substantive threads in quality subreddits (r/badeconomics, r/AskEconomics, r/urbanplanning), not populist venting.
+2. QUOTE REAL PEOPLE BY NAME. "Claudia Sahm argues the labor market is weakening faster than the Fed acknowledges" is useful. "Users are panicking" is not. Focus on substantive discussions, not populist venting.
 
 3. NEWS IS CONTEXT ONLY. Never feature a Google News headline as a standalone item. News only matters as a conversation trigger.
 
@@ -481,11 +478,11 @@ Return a JSON object:
 
 5. REAL URLS ONLY. Every source must include the actual URL from the collected items. Never fabricate URLs.
 
-6. SUBSTACKER TAKES MUST COME FROM SUBSTACK NEWSLETTERS ONLY. The substacker_takes section is EXCLUSIVELY for items from the "Substack Newsletters" section above. Do NOT include Twitter commentators, Reddit posts, or any other source. Use the URL provided with each Substack item (even if it's a redirect link). For each take, summarize their specific ARGUMENT — not just the topic. "Erdmann argues builders are underbuilding relative to population growth" is good. "Erdmann wrote about housing supply" is not.
+6. SUBSTACKER TAKES MUST COME FROM SUBSTACK NEWSLETTERS ONLY. The substacker_takes section is EXCLUSIVELY for items from the "Substack Newsletters" section above. Do NOT include Twitter commentators or any other source. Use the URL provided with each Substack item (even if it's a redirect link). For each take, summarize their specific ARGUMENT — not just the topic. "Erdmann argues builders are underbuilding relative to population growth" is good. "Erdmann wrote about housing supply" is not.
 
 7. INSTITUTIONAL SIGNAL MUST COME FROM EMAIL NEWSLETTERS. The institutional_signal section is SPECIFICALLY for email-sourced items (labeled "INSTITUTIONAL SIGNAL" in the tier headings above). Feature analysis from Goldman Sachs Research, ResiClub, Pulsenomics, AEI Housing, Zillow Research, Fannie Mae, Daily Shot, Thesis Driven, and similar email newsletters. Do NOT put Twitter sources in institutional_signal — those belong in conversation_themes. Use the URL provided with each email item, even if it's a tracking/redirect link.
 
-8. CONVERSATION THEMES: 3-6 themes max. Each must have platform evidence. At least 2 themes should involve economist/analyst voices, not just populist Reddit sentiment.
+8. CONVERSATION THEMES: 3-6 themes max. Each must have platform evidence. At least 2 themes should involve economist/analyst voices.
 
 9. ONE TOPIC PER THEME. Do NOT group unrelated threads or voices into one theme just to reduce count. If Winton ARK is talking about AI and photography employment, and Arindube is making a separate argument about AI asset valuations, those are TWO separate themes — not one. Only group threads together when they are genuinely part of the SAME conversation (people replying to each other, referencing each other's points). Three separate people talking about three separate things on the same broad topic is NOT one theme.
 
@@ -584,13 +581,6 @@ def generate_daily_briefing(
 
 {data_snapshot}
 
-## Data Lake — Available Datasets for Claim Verification
-The following datasets are available. Reference them when writing data_lake_check fields.
-You don't run queries yourself — just describe what the data shows using the precomputed stats above.
-For claims about topics NOT covered by the precomputed stats (e.g., migration, population, surveys),
-note what dataset COULD verify it and we will query it in a second pass.
-{DATA_LAKE_SCHEMA}
-
 ## Substack Newsletters — SUBSTACKER TAKES (use ONLY these for the substacker_takes section)
 These are actual Substack newsletter articles. Populate substacker_takes ONLY from this list. Use the URL provided with each item.
 
@@ -611,7 +601,7 @@ These are email newsletters from research teams and industry analysts. Feature t
 
 ## Organic Conversations (discussions with no news trigger)
 
-{json.dumps([{"title": o["title"][:100], "source": o["source"], "subreddit": o.get("subreddit", ""), "score": o.get("score", 0), "url": o.get("url", "")} for o in organic[:10]], indent=2) if organic else "None detected."}
+{json.dumps([{"title": o["title"][:100], "source": o["source"], "score": o.get("score", 0), "url": o.get("url", "")} for o in organic[:10]], indent=2) if organic else "None detected."}
 
 ## Recent Notable Claims (DO NOT REPEAT THESE — pick NEW claims to fact-check)
 {chr(10).join(f'- "{c}"' for c in recent_claims[:15]) if recent_claims else "No recent claims on file."}

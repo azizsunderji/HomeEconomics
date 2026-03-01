@@ -120,32 +120,6 @@ TOPICS = {
     },
 }
 
-# ── Reddit configuration ──────────────────────────────────────────────────────
-REDDIT_SUBREDDITS = [
-    # Economics & macro (core)
-    "Economics",
-    "economy",
-    "finance",
-    "FluentInFinance",
-    "AskEconomics",       # Moderated by actual economists, high-quality Q&A
-    "badeconomics",       # Economists debunking bad takes — very intellectual
-    "EconMonitor",        # Economic analysis and data monitoring
-    # Housing & urban (intellectual, not gripe)
-    "urbanplanning",
-    "YIMBY",
-    "realestateinvesting",
-    # Labor & cost of living
-    "personalfinance",
-    # Intellectual / rationalist (economics-adjacent)
-    "slatestarcodex",     # Rationalist community, frequent economics/policy threads
-]
-
-REDDIT_MIN_SCORE = 10  # Minimum upvotes to collect
-REDDIT_MAX_PER_SUB = 25  # Max posts per subreddit per collection run
-REDDIT_TIME_FILTER = "day"  # "hour", "day", "week"
-REDDIT_MIN_COMMENTS = 10  # Posts below this are link shares, not conversations
-REDDIT_REQUEST_DELAY = 6.5  # Seconds between requests (~10 req/min)
-
 # ── Google News search queries ────────────────────────────────────────────────
 GOOGLE_NEWS_QUERIES = [
     "housing market",
@@ -192,16 +166,29 @@ COMPETITOR_SUBSTACKS = [
 # Primary strategy: follow specific housing/econ accounts (no auth needed)
 # Only accounts verified as active on Bluesky with recent posts
 BLUESKY_ACCOUNTS = [
-    # Housing/real estate — actively posting
+    # Also tracked on Twitter (cross-platform convergence)
     "calculatedrisk.bsky.social",       # Bill McBride — housing data
     "loganmohtashami.bsky.social",      # Logan Mohtashami — housing wire
     "conorsen.bsky.social",             # Conor Sen — housing/macro
     "nicktimiraos.bsky.social",         # Nick Timiraos — WSJ Fed/rates
-    # Macro/econ — actively posting
     "mattyglesias.bsky.social",         # Matt Yglesias — housing policy
     "jasonfurman.bsky.social",          # Jason Furman — macro/policy
-    # Data journalism / policy
     "apricitas.bsky.social",            # Joseph Politano — econ data
+    # Bluesky-primary voices (NOT on Twitter list — unique signal)
+    "jennyschuetz.bsky.social",         # Jenny Schuetz — Arnold Ventures VP of Housing
+    "markzandi.bsky.social",            # Mark Zandi — Moody's chief economist
+    "hatethegamebook.com",              # Daryl Fairweather — Redfin chief economist
+    "deanbaker13.bsky.social",          # Dean Baker — CEPR, called the housing bubble
+    "jerusalem.bsky.social",            # Jerusalem Demsas — The Atlantic, housing/urbanism
+    "mikesimonsen.bsky.social",         # Mike Simonsen — Altos Research/Compass
+    "mnolangray.bsky.social",           # M. Nolan Gray — California YIMBY
+    "econcunningham.bsky.social",       # Chris Cunningham — former Fed, housing/urban econ
+    "econberger.bsky.social",           # Guy Berger — labor markets, ex-LinkedIn economist
+    "dismalscientist86.bsky.social",    # Dani Sandler — Census Bureau, housing/eviction
+    "resi-analyst.bsky.social",         # Neal Hudson — UK housing market analyst
+    "cwhitzman.bsky.social",            # Carolyn Whitzman — U of Toronto housing researcher
+    "claesbackman.bsky.social",         # Claes Bäckman — housing/mortgage economist
+    "ternerhousing.bsky.social",        # Terner Center — UC Berkeley housing research
 ]
 
 # Secondary: search terms (only works with auth)
@@ -234,22 +221,22 @@ TWITTER_ACCOUNTS = [
     "_brianpotter", "aaronAcarr", "aaronsojourner", "abcampbell",
     "AFineBlogger", "AGampel1", "AlecStapp", "amandafung",
     "americanhousing", "andrewrsorkin", "annastansbury", "arindube",
-    "arpitrage", "ArthurKolchak", "ashleevance", "BasilHalperin",
+    "arpitrage", "ArthurKolchak", "BasilHalperin",
     "bcheungz", "ben_moll", "besttrousers", "biancoresearch",
     "BillMcBride4", "Birdyword", "bobbyfijan", "BobKnakal",
     "boes_", "brendanwhitsitt", "Brian_J_Berger", "BruceEHansen",
     "ByKyleCampbell", "calculatedrisk", "CandaceETaylor",
     "CarolWalshReal1", "CathieDWood", "cepr_org", "ChrisANeilson",
-    "CJHandmer", "Claudia_Sahm", "ClausVistesen", "commobserver",
+    "Claudia_Sahm", "ClausVistesen", "commobserver",
     "ConorSen", "cremieuxrecueil", "dandolfa", "darioperkins",
     "DavidBeckworth", "DavidFBrand", "DiMartinoBooth", "DKThomp",
     "dmlevitt", "DominicFrisby", "donweinland", "DrTCJ",
-    "DSORennie", "dwarkesh_sp", "economeager", "Economesteter",
+    "DSORennie", "economeager", "Economesteter",
     "economics", "EconTalker", "EconUCL", "EdwardGLuce",
-    "elerianm", "emollick", "eraborsky", "eric_seufert",
+    "elerianm", "eraborsky",
     "ErnestTedeschi", "fed_speak", "FedericoHuneeus", "florianederer",
     "FlorinBilbiie", "FullStackEcon", "fwred", "gandhisahil",
-    "Geiger_Capital", "GRechMacro", "HannoLustig", "HAOHONG_CFA",
+    "Geiger_Capital", "GRechMacro", "HannoLustig",
     "hiromichimizuno", "hitsamty", "HomeLoanBill", "instrumenthull",
     "IvanWerning", "jasaborsky", "jasonfurman", "jburnmurdoch",
     "JedKolko", "jenniferdoleac", "JFischetti", "jfjimenoserrano",
@@ -269,11 +256,11 @@ TWITTER_ACCOUNTS = [
     "R2Rsquared", "RaoulGMI", "RayDalio", "RenMacLLC",
     "RickPalaciosJr", "RickRieder", "rileymeik", "robin_j_brooks",
     "robinhanson", "rvitoria", "RyanLEllis", "S_Stantcheva",
-    "saumjha", "ShanghaiMacro", "shehzadhqazi", "skorusARK",
+    "saumjha", "shehzadhqazi", "skorusARK",
     "slatestarcodex", "stat_sherpa", "stevecuozzo", "SteveRattner",
     "suani_pilau", "TashaARK", "tashecon", "TaviCosta",
-    "TenantBloc", "TheStalwart", "trdny", "TrungTPhan",
-    "UrbanDigs", "urbanistvc", "vshih2", "waitbutwhy",
+    "TenantBloc", "TheStalwart", "trdny",
+    "UrbanDigs", "urbanistvc",
     "wintonARK", "wwwojtekk", "xurbanxcowboyx", "YaleEconomics",
     "YIMBYLAND", "ZouhairABH",
 ]
@@ -313,7 +300,6 @@ EMAIL_FROM = "Pulse <onboarding@resend.dev>"
 # ── Source weights (conversation pivot) ───────────────────────────────────────
 # Higher weight = more prominent in briefing. Conversation sources dominate.
 SOURCE_WEIGHTS = {
-    "reddit": 5,
     "twitter": 4,
     "hackernews": 4,
     "bluesky": 3,

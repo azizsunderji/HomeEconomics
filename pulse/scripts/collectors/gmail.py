@@ -280,7 +280,9 @@ def collect(
     if not access_tokens:
         return []
 
-    # Build Gmail search query — pull everything, let the classifier decide relevance
+    whitelist = sender_whitelist or GMAIL_SENDER_WHITELIST
+
+    # Build Gmail search query — pull everything, filter by whitelist after fetching headers
     after_date = (datetime.now(timezone.utc) - timedelta(hours=hours_back)).strftime("%Y/%m/%d")
     query = f"after:{after_date} in:anywhere -category:social -category:promotions -category:forums"
 
@@ -291,6 +293,7 @@ def collect(
             messages = _list_messages(access_token, query, max_results=max_results)
             logger.info(f"Gmail account {acct_idx + 1}: found {len(messages)} messages")
 
+            skipped_whitelist = 0
             for msg_ref in messages:
                 try:
                     msg = _get_message(access_token, msg_ref["id"])
@@ -300,6 +303,13 @@ def collect(
                     subject = _extract_header(headers, "Subject")
                     sender = _extract_header(headers, "From")
                     date_str = _extract_header(headers, "Date")
+
+                    # Filter by sender whitelist — skip emails not from whitelisted senders
+                    # This avoids wasting Haiku classification tokens on personal emails
+                    sender_lower = (sender or "").lower()
+                    if whitelist and not any(w.lower() in sender_lower for w in whitelist):
+                        skipped_whitelist += 1
+                        continue
 
                     # Parse date
                     published = None
@@ -352,6 +362,9 @@ def collect(
                 except Exception as e:
                     logger.warning(f"Error processing Gmail message {msg_ref['id']}: {e}")
                     continue
+
+            if skipped_whitelist:
+                logger.info(f"Gmail account {acct_idx + 1}: skipped {skipped_whitelist} non-whitelisted senders")
 
         except Exception as e:
             logger.error(f"Error listing Gmail messages (account {acct_idx + 1}): {e}")

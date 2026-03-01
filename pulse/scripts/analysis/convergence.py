@@ -73,7 +73,7 @@ def compute_convergence(
         # Convergence score: platforms * normalized relevance
         # Large bonus for organic sources — conversation is the primary signal
         organic_bonus = 1.0
-        organic_platforms = {"reddit", "bluesky", "hackernews", "twitter"}
+        organic_platforms = {"bluesky", "hackernews", "twitter"}
         if organic_platforms & set(platform_names):
             organic_bonus = 3.0
 
@@ -115,7 +115,7 @@ def detect_organic_conversations(
     hours: int = 24,
     min_relevance: int = 50,
 ) -> list[dict]:
-    """Find Reddit/Bluesky discussions with no corresponding news article.
+    """Find Bluesky/HN discussions with no corresponding news article.
 
     These are conversations with "a life of their own" — organic discussion
     not triggered by a specific news event.
@@ -123,7 +123,7 @@ def detect_organic_conversations(
     items = get_items_since(conn, hours=hours, min_relevance=min_relevance)
 
     # Separate by type
-    organic_sources = {"reddit", "bluesky", "hackernews"}
+    organic_sources = {"bluesky", "hackernews"}
     news_sources = {"google_news", "rss", "twitter"}
 
     organic_items = [i for i in items if i["source"] in organic_sources]
@@ -175,7 +175,7 @@ def detect_active_debates(
     items = get_items_since(conn, hours=hours, min_relevance=min_relevance)
 
     # Only look at conversation sources
-    conversation_sources = {"reddit", "hackernews", "twitter", "bluesky"}
+    conversation_sources = {"hackernews", "twitter", "bluesky"}
     conv_items = [i for i in items if i["source"] in conversation_sources]
 
     # Group by topic
