@@ -162,9 +162,14 @@ def _run_actor(search_terms: list[str], max_tweets: int = 50) -> list[dict]:
     else:
         final_run_data = run_data
 
-    # Record spend
-    usage = final_run_data.get("usage", {})
-    cost_usd = usage.get("totalCostUsd", 0.03)
+    # Record spend — Apify returns cost at top level as "usageTotalUsd"
+    cost_usd = final_run_data.get("usageTotalUsd", 0) or 0
+    if cost_usd == 0:
+        # Fallback: check nested usage dict (older API versions)
+        usage = final_run_data.get("usage") or {}
+        cost_usd = usage.get("totalCostUsd", 0) or 0
+    if cost_usd == 0:
+        cost_usd = 0.16  # Conservative fallback based on observed per-run cost
     _record_spend(int(cost_usd * 100))
 
     # Fetch results
@@ -220,8 +225,9 @@ def collect(
     if queries:
         all_batches.append((queries, max_per_query))
 
-    # Account batches of 10
-    BATCH_SIZE = 10
+    # Account batches of 30 — larger batches = fewer Apify runs = lower cost
+    # Each run has a fixed overhead (~$0.16), so fewer runs saves money
+    BATCH_SIZE = 30
     if accounts:
         for i in range(0, len(accounts), BATCH_SIZE):
             batch = accounts[i:i + BATCH_SIZE]
