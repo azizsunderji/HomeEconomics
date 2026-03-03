@@ -23,6 +23,7 @@ jobs:
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
         persist-credentials: true
+        lfs: true
 
     - name: Set up Python
       uses: actions/setup-python@v4
