@@ -195,20 +195,13 @@ def run_classification(
     unclassified = get_unclassified(conn, limit=max_items)
     logger.info(f"Found {len(unclassified)} unclassified items")
 
-    # Process in batches
-    for i in range(0, len(unclassified), batch_size):
-        batch = unclassified[i:i + batch_size]
-        logger.info(f"Classifying batch {i // batch_size + 1} ({len(batch)} items)")
-
-        classifications = classify_batch(batch, client=client)
-
-        # Apply classifications to database
-        classified_ids = set()
+    def _apply_classifications(classifications: list[dict]) -> set[int]:
+        """Apply classification results to DB. Returns set of classified item IDs."""
+        classified = set()
         for cls in classifications:
             item_id = cls.get("id")
             if item_id is None:
                 continue
-
             try:
                 update_classification(
                     conn,
@@ -226,16 +219,46 @@ def run_classification(
                     conversation_signal=cls.get("conversation_signal", 0),
                     verifiable_claims=cls.get("verifiable_claims", []),
                 )
-                classified_ids.add(item_id)
-                total_classified += 1
+                classified.add(item_id)
             except Exception as e:
                 logger.warning(f"Error updating classification for item {item_id}: {e}")
+        return classified
 
-        # Log items that weren't classified (API might have skipped some)
+    # Build lookup for retry
+    items_by_id = {item["id"]: item for item in unclassified}
+    all_missed = []
+
+    # Process in batches
+    for i in range(0, len(unclassified), batch_size):
+        batch = unclassified[i:i + batch_size]
+        logger.info(f"Classifying batch {i // batch_size + 1} ({len(batch)} items)")
+
+        classifications = classify_batch(batch, client=client)
+        classified_ids = _apply_classifications(classifications)
+        total_classified += len(classified_ids)
+
         batch_ids = {item["id"] for item in batch}
         missed = batch_ids - classified_ids
         if missed:
             logger.warning(f"Batch missed {len(missed)} items: {missed}")
+            all_missed.extend(missed)
+
+    # Retry missed items in smaller batches of 5
+    if all_missed:
+        logger.info(f"Retrying {len(all_missed)} missed items in smaller batches")
+        retry_batch_size = 5
+        for i in range(0, len(all_missed), retry_batch_size):
+            retry_ids = all_missed[i:i + retry_batch_size]
+            retry_items = [items_by_id[rid] for rid in retry_ids if rid in items_by_id]
+            if not retry_items:
+                continue
+            logger.info(f"Retry batch ({len(retry_items)} items)")
+            classifications = classify_batch(retry_items, client=client)
+            classified_ids = _apply_classifications(classifications)
+            total_classified += len(classified_ids)
+            still_missed = set(retry_ids) - classified_ids
+            if still_missed:
+                logger.warning(f"Retry still missed {len(still_missed)} items: {still_missed}")
 
     logger.info(f"Classification complete: {total_classified} items classified")
     return total_classified

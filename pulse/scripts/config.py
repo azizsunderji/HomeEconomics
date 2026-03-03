@@ -270,20 +270,7 @@ TWITTER_MAX_PER_QUERY = 30  # Per batch; smaller to ensure each account gets cov
 TWITTER_DAILY_BUDGET_CENTS = 300  # $3/day max Apify spend (6 batches × $0.16 × 2 runs/day ≈ $1.92)
 
 # ── Gmail configuration ──────────────────────────────────────────────────────
-GMAIL_SENDER_WHITELIST = [
-    # Newsletters
-    "noreply@substack.com",
-    "newsletter@",
-    # Data providers
-    "redfin.com",
-    "zillow.com",
-    # Research
-    "newyorkfed.org",
-    "bls.gov",
-    "census.gov",
-    "freddiemac.com",
-    "fanniemae.com",
-]
+GMAIL_SENDER_WHITELIST = []  # No whitelist — let Haiku classify everything in the inbox
 
 GMAIL_LABELS = ["INBOX"]
 GMAIL_MAX_RESULTS = 50
