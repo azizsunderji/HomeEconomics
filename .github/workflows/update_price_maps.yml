@@ -79,6 +79,7 @@ jobs:
 
     - name: Commit and push changes
       if: steps.check.outputs.new_data == 'true'
+      working-directory: .
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
@@ -98,6 +99,7 @@ jobs:
 
     - name: Deploy to Server via SFTP
       if: steps.check.outputs.new_data == 'true'
+      working-directory: .
       env:
         HOST: ${{ secrets.SFTP_HOST }}
         USER: ${{ secrets.SFTP_USER }}
@@ -130,6 +132,7 @@ jobs:
 
     - name: Create GitHub Issue for new data
       if: steps.check.outputs.new_data == 'true'
+      working-directory: .
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
