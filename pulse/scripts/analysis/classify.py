@@ -202,6 +202,11 @@ def run_classification(
             item_id = cls.get("id")
             if item_id is None:
                 continue
+            # Normalize to int — Haiku sometimes returns string IDs
+            try:
+                item_id = int(item_id)
+            except (ValueError, TypeError):
+                continue
             try:
                 update_classification(
                     conn,
