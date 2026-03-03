@@ -566,6 +566,13 @@ def generate_daily_briefing(
     institutional_emails.sort(key=lambda x: -(x.get("relevance_score") or 0))
     logger.info(f"Institutional email items: {len(institutional_emails)}")
 
+    # Log source breakdown for relevant items
+    relevant_source_counts = Counter(i.get("source", "?") for i in relevant_items)
+    logger.info(f"Relevant items by source: {dict(relevant_source_counts.most_common())}")
+    # Log Twitter author diversity
+    twitter_authors = set(i.get("author", "") for i in relevant_items if i.get("source") == "twitter")
+    logger.info(f"Unique Twitter authors in relevant items: {len(twitter_authors)}")
+
     logger.info(
         f"Synthesis inputs: {len(all_items)} total items ({len(relevant_items)} above threshold, "
         f"{len(conversation_items)} conversation items), "
