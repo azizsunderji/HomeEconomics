@@ -2605,6 +2605,20 @@ function updateSpotlight(el) {{
     tRing.classList.add('active');
 }}
 
+// Re-sync spotlight after map animations (flyTo etc) finish
+function refreshSpotlight() {{
+    if (tCard.style.display === 'none') return;
+    var step = tutorialSteps[currentStep];
+    if (!step) return;
+    var el = step.getEl();
+    if (el) {{
+        updateSpotlight(el);
+        positionTutorialCard(step, el);
+    }}
+}}
+map.on('moveend', refreshSpotlight);
+map.on('zoomend', refreshSpotlight);
+
 function renderTutorialStep(index) {{
     if (tAnimating) return;
     tAnimating = true;
@@ -2703,6 +2717,7 @@ document.addEventListener('keydown', function(e) {{
 
 // Show tutorial on load
 setTimeout(function() {{
+    window.focus();
     tDim.classList.add('active');
     renderTutorialStep(0);
 }}, 800);
