@@ -787,40 +787,97 @@ html,body {{margin:0; padding:0; overflow:hidden; font-family:'Oracle',-apple-sy
     border-top-color:white;
 }}
 
-/* Tip jar floating icon */
+/* Tip jar floating button */
 .tip-icon {{
     position:fixed;
     bottom:24px;
     right:24px;
-    width:44px;
-    height:44px;
-    border-radius:50%;
+    height:36px;
+    border-radius:18px;
     background:#F6F7F3;
     border:1.5px solid #ddd;
     box-shadow:0 2px 8px rgba(0,0,0,0.12);
     cursor:pointer;
     display:flex;
     align-items:center;
-    justify-content:center;
+    gap:6px;
+    padding:0 14px;
     z-index:10000;
     opacity:0;
     pointer-events:none;
     transition:opacity 0.6s ease, transform 0.2s ease;
+    font-family:'Oracle',sans-serif;
+    font-size:11px;
+    font-weight:600;
+    color:#3D3733;
+    letter-spacing:0.3px;
 }}
 .tip-icon.visible {{
     opacity:1;
     pointer-events:auto;
 }}
 .tip-icon:hover {{
-    transform:scale(1.1);
-    border-color:#0BB4FF;
+    transform:scale(1.05);
+    border-color:#F4743B;
 }}
 .tip-icon.pulse {{
     animation:tipPulse 2s ease-in-out infinite;
 }}
 @keyframes tipPulse {{
     0%,100% {{ box-shadow:0 2px 8px rgba(0,0,0,0.12); }}
-    50% {{ box-shadow:0 2px 16px rgba(11,180,255,0.4); }}
+    50% {{ box-shadow:0 2px 14px rgba(244,116,59,0.35); }}
+}}
+
+/* Tip bubble speech popup */
+.tip-bubble {{
+    position:fixed;
+    bottom:68px;
+    right:20px;
+    background:white;
+    border-radius:10px;
+    padding:12px 14px;
+    max-width:220px;
+    font-family:'Oracle',sans-serif;
+    font-size:12px;
+    line-height:1.45;
+    color:#3D3733;
+    box-shadow:0 2px 12px rgba(0,0,0,0.15);
+    z-index:10000;
+    opacity:0;
+    transform:translateY(8px);
+    pointer-events:none;
+    transition:opacity 0.4s ease, transform 0.4s ease;
+}}
+.tip-bubble.visible {{
+    opacity:1;
+    transform:translateY(0);
+    pointer-events:auto;
+}}
+.tip-bubble::after {{
+    content:'';
+    position:absolute;
+    bottom:-7px;
+    right:24px;
+    width:14px;
+    height:14px;
+    background:white;
+    transform:rotate(45deg);
+    box-shadow:2px 2px 4px rgba(0,0,0,0.06);
+}}
+.tip-bubble-close {{
+    position:absolute;
+    top:4px;
+    right:6px;
+    background:none;
+    border:none;
+    font-size:14px;
+    color:#aaa;
+    cursor:pointer;
+    padding:2px 4px;
+    line-height:1;
+}}
+.tip-bubble-close:hover {{
+    color:#666;
 }}
 
 /* Tip modal */
@@ -1032,9 +1089,14 @@ Zoom in for details
 
 <!-- Tip jar -->
 <div class="tip-icon" id="tipIcon" onclick="openTipModal()">
-  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F4743B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="#F4743B" stroke="none">
     <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
   </svg>
+  TIP JAR
+</div>
+<div class="tip-bubble" id="tipBubble">
+  <button class="tip-bubble-close" onclick="closeTipBubble()">&times;</button>
+  Hey! This map is free, but if you find it useful, would you consider supporting my work with a small tip?
 </div>
 <div class="tip-modal-overlay" id="tipOverlay" onclick="closeTipModal(event)">
   <div class="tip-modal" onclick="event.stopPropagation()">
@@ -2684,14 +2746,20 @@ try {{ _tipDismissed = localStorage.getItem('promap_tip_dismissed') === '1'; }} 
 if (!_tipDismissed) {{
     // Show icon immediately
     document.getElementById('tipIcon').classList.add('visible');
-    // Add pulse after 3 minutes
+    var _tipBubbleShown = false;
     setInterval(function() {{
         var elapsed = (Date.now() - _tipStartTime) / 1000;
         var icon = document.getElementById('tipIcon');
+        // Show speech bubble after 1 minute
+        if (elapsed >= 60 && !_tipBubbleShown) {{
+            _tipBubbleShown = true;
+            document.getElementById('tipBubble').classList.add('visible');
+        }}
+        // Add pulse after 3 minutes
         if (elapsed >= 180 && !icon.classList.contains('pulse')) {{
             icon.classList.add('pulse');
         }}
-    }}, 5000);
+    }}, 3000);
 }}
 
 function _formatTipTime() {{
@@ -2701,7 +2769,12 @@ function _formatTipTime() {{
     return "You've been exploring for " + mins + " minutes";
 }}
 
+function closeTipBubble() {{
+    document.getElementById('tipBubble').classList.remove('visible');
+}}
+
 function openTipModal() {{
+    closeTipBubble();
     document.getElementById('tipTime').textContent = _formatTipTime();
     document.getElementById('tipOverlay').classList.add('active');
     var icon = document.getElementById('tipIcon');
