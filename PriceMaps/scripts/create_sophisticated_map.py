@@ -2478,6 +2478,7 @@ var tRing = document.getElementById('spotlightRing');
 var tCutout = document.getElementById('cutout');
 var tProgress = document.getElementById('progressFill');
 var tAnimating = false;
+var tClosed = false;
 
 function getSpotlightRect(el) {{
     if (!el) return null;
@@ -2534,7 +2535,7 @@ function updateSpotlight(el) {{
 
 // Re-sync spotlight after map animations (flyTo etc) finish
 function refreshSpotlight() {{
-    if (tCard.style.display === 'none') return;
+    if (tClosed || tCard.style.display === 'none') return;
     var step = tutorialSteps[currentStep];
     if (!step) return;
     var el = step.getEl();
@@ -2628,6 +2629,7 @@ function previousTutorialStep() {{
 }}
 
 function closeTutorial() {{
+    tClosed = true;
     tCard.classList.remove('visible');
     tCard.classList.add('exiting');
     tDim.classList.remove('active');
@@ -2640,6 +2642,7 @@ function closeTutorial() {{
 }}
 
 function showTutorial() {{
+    tClosed = false;
     currentStep = 0;
     tCard.style.display = '';
     var reopenBtn = document.querySelector('.tutorial-reopen');
