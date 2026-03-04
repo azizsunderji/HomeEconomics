@@ -20,31 +20,31 @@ According to Zillow data compiled by Home Economics, home prices rose 0.21% in J
 6. **71108** Shreveport, LA ($41K)
 7. **38703** Greenville, MS ($42K)
 8. **38614** Clarksdale, MS ($44K)
-9. **48504** Flint, MI ($45K) **(new)**
+9. **48504** Flint, MI ($45K)
 10. **39209** Jackson, MS ($47K)
 
 ## Accelerating Prices (Y/Y)
 1. **92008** Carlsbad, CA (+38.4% y/y)
 2. **18447** Olyphant, PA (+15.5% y/y)
-3. **53581** nan, WI (+14.8% y/y) **(new)**
+3. **53581** nan, WI (+14.8% y/y)
 4. **17103** Harrisburg, PA (+14.1% y/y)
-5. **70002** Metairie, LA (+14.0% y/y) **(new)**
-6. **49829** Escanaba, MI (+13.8% y/y) **(new)**
-7. **83333** Hailey, ID (+12.7% y/y) **(new)**
-8. **61104** Rockford, IL (+12.5% y/y) **(new)**
-9. **85253** Paradise Valley, AZ (+12.4% y/y) **(new)**
-10. **10803** Pelham, NY (+12.3% y/y) **(new)**
+5. **70002** Metairie, LA (+14.0% y/y)
+6. **49829** Escanaba, MI (+13.8% y/y)
+7. **83333** Hailey, ID (+12.7% y/y)
+8. **61104** Rockford, IL (+12.5% y/y)
+9. **85253** Paradise Valley, AZ (+12.4% y/y)
+10. **10803** Pelham, NY (+12.3% y/y)
 
 ## Decelerating Prices (Y/Y)
 1. **38701** Greenville, MS (-28.3% y/y)
 2. **15902** Johnstown, PA (-25.6% y/y)
 3. **38703** Greenville, MS (-20.8% y/y)
 4. **63113** Saint Louis, MO (-20.0% y/y)
-5. **31415** Savannah, GA (-17.5% y/y) **(new)**
+5. **31415** Savannah, GA (-17.5% y/y)
 6. **33716** Saint Petersburg, FL (-17.4% y/y)
-7. **48214** Detroit, MI (-17.2% y/y) **(new)**
+7. **48214** Detroit, MI (-17.2% y/y)
 8. **33950** Punta Gorda, FL (-17.1% y/y)
-9. **70805** Baton Rouge, LA (-17.0% y/y) **(new)**
-10. **33066** Coconut Creek, FL (-16.5% y/y) **(new)**
+9. **70805** Baton Rouge, LA (-17.0% y/y)
+10. **33066** Coconut Creek, FL (-16.5% y/y)
 
 Data source: Zillow Home Value Index (ZHVI) as of 2026-01-31

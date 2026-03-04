@@ -260,19 +260,216 @@ body {margin:0; padding:0; font-family:'Oracle',-apple-system,BlinkMacSystemFont
     filter: none;
 }
 
-/* Tutorial panel - clean integrated design */
-.tutorial-overlay {
+/* Tutorial Overlay System */
+.tutorial-dim {
     position:fixed;
-    left:50px;
-    top:60%;
-    transform:translateY(-50%);
-    width:380px;
+    inset:0;
+    z-index:9000;
+    pointer-events:none;
+    opacity:0;
+    transition:opacity 0.4s ease;
+}
+.tutorial-dim.active {
+    opacity:1;
+    pointer-events:auto;
+}
+.tutorial-dim svg {
+    width:100%;
+    height:100%;
+}
+.spotlight-ring {
+    position:fixed;
+    border-radius:10px;
+    box-shadow:0 0 0 4px rgba(11,180,255,0.25), 0 0 20px rgba(11,180,255,0.15);
+    z-index:9500;
+    pointer-events:none;
+    opacity:0;
+    transition:all 0.5s cubic-bezier(0.16,1,0.3,1);
+}
+.spotlight-ring.active {
+    opacity:1;
+    animation:ring-breathe 2.5s ease-in-out infinite;
+}
+@keyframes ring-breathe {
+    0%,100% { box-shadow:0 0 0 4px rgba(11,180,255,0.25), 0 0 20px rgba(11,180,255,0.12); }
+    50% { box-shadow:0 0 0 6px rgba(11,180,255,0.35), 0 0 30px rgba(11,180,255,0.2); }
+}
+.tutorial-card {
+    position:fixed;
     z-index:10000;
+    width:340px;
+    background:#F6F7F3;
+    border-radius:14px;
+    box-shadow:0 1px 2px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.06), 0 16px 40px rgba(0,0,0,0.08);
+    overflow:hidden;
+    opacity:0;
+    transform:translateY(8px);
+    transition:opacity 0.35s ease, transform 0.4s cubic-bezier(0.16,1,0.3,1);
+    pointer-events:none;
 }
-.tutorial-overlay.minimized .tutorial-popup-container {
-    display:none;
+.tutorial-card.visible {
+    opacity:1;
+    transform:translateY(0);
+    pointer-events:auto;
 }
-/* Reopen button when minimized - inside control panel */
+.tutorial-card.exiting {
+    opacity:0;
+    transform:translateY(-6px);
+    pointer-events:none;
+}
+.tc-progress {
+    height:3px;
+    background:rgba(0,0,0,0.04);
+    position:relative;
+}
+.tc-progress-fill {
+    height:100%;
+    background:#0BB4FF;
+    border-radius:0 2px 2px 0;
+    transition:width 0.5s cubic-bezier(0.16,1,0.3,1);
+}
+.tc-body {
+    padding:24px 24px 20px;
+}
+.tc-step-label {
+    font-size:10px;
+    font-weight:600;
+    letter-spacing:1.5px;
+    text-transform:uppercase;
+    color:#0BB4FF;
+    margin-bottom:10px;
+}
+.tc-title {
+    font-size:18px;
+    font-weight:700;
+    color:#3D3733;
+    line-height:1.25;
+    margin-bottom:8px;
+    letter-spacing:-0.2px;
+}
+.tc-text {
+    font-size:13px;
+    line-height:1.55;
+    color:#78756f;
+    letter-spacing:0.01em;
+}
+.tc-text .ref {
+    display:inline-block;
+    background:rgba(11,180,255,0.1);
+    color:#0BB4FF;
+    padding:1px 7px;
+    border-radius:4px;
+    font-size:11px;
+    font-weight:600;
+    letter-spacing:0.3px;
+    vertical-align:baseline;
+}
+.tc-footer {
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:0 24px 20px;
+}
+.tc-btn {
+    padding:9px 18px;
+    border-radius:8px;
+    font-size:12px;
+    font-weight:600;
+    font-family:'Oracle',sans-serif;
+    cursor:pointer;
+    border:none;
+    transition:all 0.15s ease;
+    letter-spacing:0.2px;
+}
+.tc-btn-skip {
+    background:transparent;
+    color:#b0ada8;
+    padding:9px 12px;
+}
+.tc-btn-skip:hover {
+    color:#3D3733;
+    background:rgba(0,0,0,0.04);
+}
+.tc-btn-secondary {
+    background:rgba(0,0,0,0.05);
+    color:#78756f;
+}
+.tc-btn-secondary:hover {
+    background:rgba(0,0,0,0.08);
+}
+.tc-btn-primary {
+    background:#0BB4FF;
+    color:white;
+}
+.tc-btn-primary:hover {
+    background:#0aa3eb;
+    box-shadow:0 2px 8px rgba(11,180,255,0.3);
+}
+.tc-nav-group {
+    display:flex;
+    gap:6px;
+}
+.tutorial-card.centered .tc-body {
+    text-align:center;
+    padding:32px 28px 20px;
+}
+.tutorial-card.centered .tc-step-label {
+    margin-bottom:14px;
+}
+.tutorial-card.centered .tc-title {
+    font-size:22px;
+    letter-spacing:-0.3px;
+}
+.tutorial-card.centered .tc-footer {
+    justify-content:center;
+    gap:8px;
+}
+.tc-icon {
+    width:48px;
+    height:48px;
+    margin:0 auto 16px;
+    background:rgba(11,180,255,0.12);
+    border-radius:14px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+}
+.tc-icon svg {
+    width:24px;
+    height:24px;
+    color:#0BB4FF;
+}
+.tc-checkmark {
+    width:52px;
+    height:52px;
+    margin:0 auto 16px;
+    background:rgba(103,162,117,0.12);
+    border-radius:50%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+}
+.tc-checkmark svg {
+    width:26px;
+    height:26px;
+    color:#67A275;
+}
+.tc-kbd-hint {
+    text-align:center;
+    padding:0 24px 16px;
+    font-size:10px;
+    color:#c0bdb8;
+    letter-spacing:0.2px;
+}
+.tc-kbd-hint kbd {
+    display:inline-block;
+    background:rgba(0,0,0,0.06);
+    border-radius:3px;
+    padding:1px 5px;
+    font-family:'Oracle',sans-serif;
+    font-size:10px;
+    color:#999;
+}
 .tutorial-reopen {
     position:fixed;
     bottom:30px;
@@ -299,150 +496,6 @@ body {margin:0; padding:0; font-family:'Oracle',-apple-system,BlinkMacSystemFont
 }
 .tutorial-reopen.show {
     display:block;
-}
-/* No background dimming */
-.tutorial-overlay-bg {
-    display:none;
-}
-/* Tutorial popup container (for structure compatibility) */
-.tutorial-popup-container {
-    position:relative;
-}
-.tutorial-popup {
-    background:white;
-    padding:25px;
-    border-radius:8px;
-    box-shadow:0 10px 40px rgba(0,0,0,0.2);
-    font-family:'Oracle',sans-serif;
-    border:2px solid #0BB4FF;
-    position:relative;
-}
-.tutorial-close {
-    position:absolute;
-    top:15px;
-    right:15px;
-    width:24px;
-    height:24px;
-    background:transparent;
-    border:none;
-    color:#999;
-    font-size:24px;
-    line-height:1;
-    cursor:pointer;
-    padding:0;
-    transition:color 0.2s;
-}
-.tutorial-close:hover {
-    color:#333;
-}
-.tutorial-title {
-    font-size:16px;
-    font-weight:600;
-    color:#3D3733;
-    margin:0 0 12px 0;
-    padding-right:30px;
-}
-.tutorial-text {
-    font-size:12px;
-    line-height:1.5;
-    color:#666;
-    margin:0 0 15px 0;
-}
-.tutorial-text .btn-ref {
-    background:#f0f0f0;
-    border:1px solid #ddd;
-    border-radius:3px;
-    padding:2px 6px;
-    font-family:'Oracle',sans-serif;
-    font-size:11px;
-    font-weight:600;
-    white-space:nowrap;
-}
-.tutorial-progress {
-    display:flex;
-    gap:5px;
-    justify-content:center;
-    margin-bottom:15px;
-}
-.tutorial-dot {
-    width:8px;
-    height:8px;
-    border-radius:50%;
-    background:#ddd;
-    transition:background 0.2s;
-}
-.tutorial-dot.active {
-    background:#0BB4FF;
-}
-.tutorial-buttons {
-    display:flex;
-    gap:10px;
-    justify-content:space-between;
-    align-items:center;
-    flex-shrink:0;
-}
-.tutorial-btn {
-    padding:10px 20px;
-    border-radius:4px;
-    font-size:11px;
-    font-weight:600;
-    letter-spacing:0.3px;
-    cursor:pointer;
-    font-family:'Oracle',sans-serif;
-    transition:all 0.2s;
-    border:none;
-}
-.tutorial-btn-primary {
-    background:#0BB4FF;
-    color:white;
-}
-.tutorial-btn-primary:hover {
-    background:#0099dd;
-}
-.tutorial-btn-secondary {
-    background:#f0f0f0;
-    color:#666;
-}
-.tutorial-btn-secondary:hover {
-    background:#e0e0e0;
-}
-.tutorial-btn-skip {
-    background:transparent;
-    color:#999;
-    text-decoration:underline;
-    padding:10px;
-}
-.tutorial-btn-skip:hover {
-    color:#666;
-}
-.tutorial-spotlight {
-    position:relative !important;
-    z-index:10000 !important;
-    border-radius:6px !important;
-}
-.tutorial-spotlight::before {
-    content:'';
-    position:absolute;
-    top:-10px;
-    left:-10px;
-    right:-10px;
-    bottom:-10px;
-    border:5px solid #0BB4FF;
-    border-radius:10px;
-    animation:pulse-glow 2s ease-in-out infinite;
-    pointer-events:none;
-}
-@keyframes pulse-glow {
-    0%, 100% {
-        opacity:0.6;
-    }
-    50% {
-        opacity:1;
-    }
-}
-.control-panel.tutorial-spotlight {
-    z-index:10000 !important;
-    background:rgba(255,255,255,1) !important;
 }
 </style>
 </head>
@@ -539,22 +592,27 @@ Zoom in for details
 <div class="citation">
 <a href="https://www.home-economics.us" target="_blank">www.home-economics.us</a>
 </div>
-<div class="tutorial-overlay" id="tutorialOverlay">
-    <div class="tutorial-popup-container">
-        <div class="tutorial-popup">
-            <button class="tutorial-close" onclick="minimizeTutorial()" title="Close tutorial">×</button>
-            <h2 class="tutorial-title" id="tutorialTitle">Welcome</h2>
-            <p class="tutorial-text" id="tutorialText">Loading...</p>
-            <div class="tutorial-progress" id="tutorialProgress"></div>
-            <div class="tutorial-buttons">
-                <button class="tutorial-btn tutorial-btn-skip" id="tutorialSkip" onclick="minimizeTutorial()">Skip</button>
-                <div style="display:flex; gap:8px;">
-                    <button class="tutorial-btn tutorial-btn-secondary" id="tutorialPrev" onclick="previousTutorialStep()" style="display:none;">Prev</button>
-                    <button class="tutorial-btn tutorial-btn-primary" id="tutorialNext" onclick="nextTutorialStep()">Next</button>
-                </div>
-            </div>
-        </div>
-    </div>
+<div class="tutorial-dim" id="tutorialDim">
+  <svg>
+    <defs>
+      <mask id="spotlightMask">
+        <rect width="100%" height="100%" fill="white"/>
+        <rect id="cutout" x="0" y="0" width="0" height="0" rx="10" fill="black"/>
+      </mask>
+    </defs>
+    <rect width="100%" height="100%" fill="rgba(61,55,51,0.32)" mask="url(#spotlightMask)"/>
+  </svg>
+</div>
+<div class="spotlight-ring" id="spotlightRing"></div>
+<div class="tutorial-card" id="tutorialCard">
+  <div class="tc-progress">
+    <div class="tc-progress-fill" id="progressFill"></div>
+  </div>
+  <div class="tc-body" id="tcBody"></div>
+  <div class="tc-footer" id="tcFooter"></div>
+  <div class="tc-kbd-hint" id="tcKbdHint">
+    Press <kbd>→</kbd> for next · <kbd>Esc</kbd> to skip
+  </div>
 </div>
 <script>
 // ZIP data
@@ -1907,179 +1965,230 @@ L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.
 // Initial render
 updateMarkers();
 
-// Tutorial functionality
+// Tutorial Overlay System
 const tutorialSteps = [
     {
         title: "Welcome to ProMap",
-        text: "This interactive map shows home price levels and changes across the United States. Let's take a quick tour of the features.",
-        spotlight: null
+        text: "An interactive map of home prices and changes across 25,000 ZIP codes. Here's a quick tour of what you can do.",
+        getEl: function() { return null; },
+        centered: true,
+        icon: 'map'
     },
     {
         title: "Levels vs Changes",
-        text: "Toggle between viewing current price levels or price changes over time. <span class='btn-ref'>CHANGES</span> mode is most useful for seeing market trends.",
-        spotlight: "#toggleChanges",
+        text: "Toggle between current home price <span class='ref'>Levels</span> or year-over-year <span class='ref'>Changes</span>. Changes mode is the default — it reveals where markets are heating up or cooling down.",
+        getEl: function() { var e = document.getElementById('toggleChanges'); return e ? e.parentElement : null; },
         action: function() {
-            console.log('[ProMap Tutorial] Ensuring CHANGES mode is active');
-            // Make sure we're in changes mode
-            if (dataMode === 'price') {
-                toggleDataMode();
-            }
+            if (typeof dataMode !== 'undefined' && dataMode === 'price') { toggleDataMode(); }
         }
     },
     {
         title: "Time Horizons",
-        text: "Choose different time periods to analyze: <span class='btn-ref'>3M</span>, <span class='btn-ref'>6M</span>, <span class='btn-ref'>1Y</span>, and more long-term horizons under <span class='btn-ref'>MORE ▼</span>. Each horizon shows price changes over that time period.",
-        spotlight: "#toggle1y",
+        text: "Analyze over <span class='ref'>3M</span>, <span class='ref'>6M</span>, <span class='ref'>1Y</span>, or longer periods under <span class='ref'>More ▼</span>. Each horizon recalculates price changes for that window.",
+        getEl: function() { return document.getElementById('horizonRow'); },
         action: function() {
-            console.log('[ProMap Tutorial] Highlighting time horizons');
-            // Make sure we're in changes mode
-            if (dataMode === 'price') {
-                toggleDataMode();
-            }
+            if (typeof dataMode !== 'undefined' && dataMode === 'price') { toggleDataMode(); }
         }
     },
     {
-        title: "Bubbles vs Boundaries",
-        text: "Switch between bubble view (faster, population-weighted) and boundary view (precise ZIP code shapes). We've zoomed into New York City to show you boundaries in action.",
-        spotlight: "#visualToggle",
+        title: "Bubbles & Boundaries",
+        text: "<span class='ref'>Bubbles</span> show population-weighted circles — fast and scannable. <span class='ref'>Boundaries</span> renders precise ZIP code shapes when you zoom in.",
+        getEl: function() { return document.getElementById('visualToggle'); },
         action: function() {
-            console.log('[ProMap Tutorial] Zooming to NYC and switching to boundary view');
-            // Zoom to NYC and enable boundary view
-            map.flyTo([40.7128, -74.0060], 9, {
-                duration: 1.5
-            });
-            // After zoom animation, switch to boundary view
-            setTimeout(() => {
-                console.log('[ProMap Tutorial] Zoom complete, isBoundaryView:', isBoundaryView);
-                if (!isBoundaryView) {
-                    console.log('[ProMap Tutorial] Calling toggleVisualization');
-                    const visualToggle = document.getElementById('visualToggle');
-                    if (!visualToggle.classList.contains('disabled')) {
-                        toggleVisualization();
-                    } else {
-                        console.log('[ProMap Tutorial] Toggle is disabled, waiting...');
+            if (typeof map !== 'undefined') {
+                map.flyTo([40.7128, -74.0060], 9, { duration: 1.5 });
+                setTimeout(function() {
+                    if (typeof isBoundaryView !== 'undefined' && !isBoundaryView) {
+                        var vt = document.getElementById('visualToggle');
+                        if (vt && !vt.classList.contains('disabled')) { toggleVisualization(); }
                     }
-                }
-            }, 2000);
+                }, 2000);
+            }
         }
     },
     {
-        title: "Global vs Local View",
-        text: "Global mode uses fixed quintiles for the entire country. Local mode recalculates quintiles based only on what's visible on screen - perfect for comparing neighborhoods within a city like this!",
-        spotlight: "#toggleLocal",
+        title: "Global vs Local",
+        text: "<span class='ref'>Global</span> uses fixed national breakpoints. Switch to <span class='ref'>Local</span> to recalculate quintiles based only on what's visible — perfect for comparing neighborhoods within a city.",
+        getEl: function() { var e = document.getElementById('toggleGlobal'); return e ? e.parentElement : null; },
         action: function() {
-            console.log('[ProMap Tutorial] Switching to local mode');
-            if (!isLocalMode) {
-                toggleView();
-            }
+            if (typeof isLocalMode !== 'undefined' && !isLocalMode) { toggleView(); }
         }
     },
     {
         title: "Custom Boundaries",
-        text: "Draw your own boundaries to analyze specific areas! Click <span class='btn-ref'>DRAW BOUNDARY</span> to define a custom region, and the map will recalculate quintiles just for that area.",
-        spotlight: "#drawBoundaryBtn",
-        action: function() {
-            console.log('[ProMap Tutorial] Highlighting draw boundary button');
-        }
+        text: "Draw your own region on the map. The quintiles will recalculate just for the area you've selected — useful for isolating specific markets.",
+        getEl: function() { return document.getElementById('drawBoundaryBtn'); }
     },
     {
-        title: "You're all set!",
-        text: "Use the zoom controls to explore, and hover over ZIP codes for detailed information. The legend shows quintile breakpoints.",
-        spotlight: null
+        title: "You're all set",
+        text: "Zoom in to explore, hover over ZIP codes for details, and use the search bar to jump to any location.",
+        getEl: function() { return null; },
+        centered: true,
+        icon: 'check'
     }
 ];
 
-let currentTutorialStep = 0;
-let currentSpotlight = null;
+var currentStep = 0;
+var tCard = document.getElementById('tutorialCard');
+var tDim = document.getElementById('tutorialDim');
+var tRing = document.getElementById('spotlightRing');
+var tCutout = document.getElementById('cutout');
+var tProgress = document.getElementById('progressFill');
+var tAnimating = false;
 
-function showTutorial() {
-    currentTutorialStep = 0;
-    const overlay = document.getElementById('tutorialOverlay');
-    overlay.classList.remove('minimized');
-    overlay.style.display = 'block';
-    const reopenBtn = document.querySelector('.tutorial-reopen');
-    if (reopenBtn) reopenBtn.classList.remove('show');
-    renderTutorialStep();
+function getSpotlightRect(el) {
+    if (!el) return null;
+    var r = el.getBoundingClientRect();
+    var pad = 8;
+    return { x: r.left - pad, y: r.top - pad, w: r.width + pad * 2, h: r.height + pad * 2 };
 }
 
-function minimizeTutorial() {
-    document.getElementById('tutorialOverlay').classList.add('minimized');
-    const reopenBtn = document.querySelector('.tutorial-reopen');
-    if (reopenBtn) reopenBtn.classList.add('show');
-    if (currentSpotlight) {
-        currentSpotlight.classList.remove('tutorial-spotlight');
-        currentSpotlight = null;
+function positionTutorialCard(step, el) {
+    tCard.classList.remove('centered');
+    if (step.centered) {
+        tCard.classList.add('centered');
+        tCard.style.left = '50%';
+        tCard.style.top = '50%';
+        tCard.style.transform = 'translate(-50%, -50%)';
+        return;
     }
-}
-
-function toggleTutorial() {
-    const overlay = document.getElementById('tutorialOverlay');
-    if (overlay.classList.contains('minimized')) {
-        overlay.classList.remove('minimized');
-        renderTutorialStep();
+    var rect = getSpotlightRect(el);
+    if (!rect) return;
+    var cardW = 340;
+    var gap = 20;
+    var left = rect.x + rect.w + gap;
+    var top = rect.y + rect.h / 2;
+    if (left + cardW > window.innerWidth - 20) {
+        left = rect.x + rect.w / 2 - cardW / 2;
+        top = rect.y - 20;
+        tCard.style.transform = 'translateY(-100%)';
     } else {
-        minimizeTutorial();
+        tCard.style.transform = 'translateY(-50%)';
     }
+    tCard.style.left = left + 'px';
+    tCard.style.top = top + 'px';
+}
+
+function updateSpotlight(el) {
+    if (!el) {
+        tCutout.setAttribute('width', 0);
+        tCutout.setAttribute('height', 0);
+        tRing.classList.remove('active');
+        return;
+    }
+    var rect = getSpotlightRect(el);
+    if (!rect) return;
+    tCutout.setAttribute('x', rect.x);
+    tCutout.setAttribute('y', rect.y);
+    tCutout.setAttribute('width', rect.w);
+    tCutout.setAttribute('height', rect.h);
+    tRing.style.left = rect.x + 'px';
+    tRing.style.top = rect.y + 'px';
+    tRing.style.width = rect.w + 'px';
+    tRing.style.height = rect.h + 'px';
+    tRing.classList.add('active');
+}
+
+function renderTutorialStep(index) {
+    if (tAnimating) return;
+    tAnimating = true;
+    var step = tutorialSteps[index];
+    tCard.classList.remove('visible');
+    tCard.classList.add('exiting');
+    setTimeout(function() {
+        tCard.classList.remove('exiting');
+        var body = document.getElementById('tcBody');
+        var iconHTML = '';
+        if (step.icon === 'map') {
+            iconHTML = '<div class="tc-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg></div>';
+        } else if (step.icon === 'check') {
+            iconHTML = '<div class="tc-checkmark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>';
+        }
+        var stepLabel = step.centered && index === 0
+            ? 'GETTING STARTED'
+            : step.centered && index === tutorialSteps.length - 1
+                ? 'READY'
+                : 'STEP ' + index + ' OF ' + (tutorialSteps.length - 2);
+        body.innerHTML = iconHTML +
+            '<div class="tc-step-label">' + stepLabel + '</div>' +
+            '<div class="tc-title">' + step.title + '</div>' +
+            '<div class="tc-text">' + step.text + '</div>';
+        var footer = document.getElementById('tcFooter');
+        var isFirst = index === 0;
+        var isLast = index === tutorialSteps.length - 1;
+        var footerHTML = '';
+        if (isFirst) {
+            footerHTML = '<button class="tc-btn tc-btn-skip" onclick="closeTutorial()">Skip tour</button>' +
+                '<button class="tc-btn tc-btn-primary" onclick="nextTutorialStep()">Start tour →</button>';
+        } else if (isLast) {
+            footerHTML = '<button class="tc-btn tc-btn-primary" onclick="closeTutorial()" style="padding:11px 28px;font-size:13px;">Start Exploring</button>';
+        } else {
+            footerHTML = '<button class="tc-btn tc-btn-skip" onclick="closeTutorial()">Skip</button>' +
+                '<div class="tc-nav-group">' +
+                '<button class="tc-btn tc-btn-secondary" onclick="previousTutorialStep()">← Back</button>' +
+                '<button class="tc-btn tc-btn-primary" onclick="nextTutorialStep()">Next →</button>' +
+                '</div>';
+        }
+        footer.innerHTML = footerHTML;
+        document.getElementById('tcKbdHint').style.display = isLast ? 'none' : 'block';
+        tProgress.style.width = ((index + 1) / tutorialSteps.length * 100) + '%';
+        var el = step.getEl();
+        positionTutorialCard(step, el);
+        updateSpotlight(el);
+        tDim.classList.add('active');
+        if (step.action) { step.action(); }
+        requestAnimationFrame(function() {
+            tCard.classList.add('visible');
+            tAnimating = false;
+        });
+    }, 280);
 }
 
 function nextTutorialStep() {
-    if (currentTutorialStep < tutorialSteps.length - 1) {
-        currentTutorialStep++;
-        renderTutorialStep();
-    } else {
-        minimizeTutorial();
+    if (currentStep < tutorialSteps.length - 1) {
+        currentStep++;
+        renderTutorialStep(currentStep);
     }
 }
 
 function previousTutorialStep() {
-    if (currentTutorialStep > 0) {
-        currentTutorialStep--;
-        renderTutorialStep();
+    if (currentStep > 0) {
+        currentStep--;
+        renderTutorialStep(currentStep);
     }
 }
 
-function renderTutorialStep() {
-    const step = tutorialSteps[currentTutorialStep];
-
-    document.getElementById('tutorialTitle').textContent = step.title;
-    document.getElementById('tutorialText').innerHTML = step.text;
-
-    // Update progress dots
-    const progressContainer = document.getElementById('tutorialProgress');
-    progressContainer.innerHTML = tutorialSteps.map((_, i) =>
-        `<div class="tutorial-dot ${i === currentTutorialStep ? 'active' : ''}"></div>`
-    ).join('');
-
-    // Show/hide previous button
-    document.getElementById('tutorialPrev').style.display = currentTutorialStep > 0 ? 'block' : 'none';
-
-    // Update next button text
-    document.getElementById('tutorialNext').textContent = currentTutorialStep === tutorialSteps.length - 1 ? 'Start Exploring' : 'Next';
-
-    // Remove previous spotlight
-    if (currentSpotlight) {
-        currentSpotlight.classList.remove('tutorial-spotlight');
-    }
-
-    // Add new spotlight
-    if (step.spotlight) {
-        currentSpotlight = document.querySelector(step.spotlight);
-        if (currentSpotlight) {
-            currentSpotlight.classList.add('tutorial-spotlight');
-        }
-    } else {
-        currentSpotlight = null;
-    }
-
-    // Execute action if present
-    if (step.action) {
-        step.action();
-    }
+function closeTutorial() {
+    tCard.classList.remove('visible');
+    tCard.classList.add('exiting');
+    tDim.classList.remove('active');
+    tRing.classList.remove('active');
+    var reopenBtn = document.querySelector('.tutorial-reopen');
+    if (reopenBtn) reopenBtn.classList.add('show');
+    setTimeout(function() {
+        tCard.style.display = 'none';
+    }, 400);
 }
+
+function showTutorial() {
+    currentStep = 0;
+    tCard.style.display = '';
+    var reopenBtn = document.querySelector('.tutorial-reopen');
+    if (reopenBtn) reopenBtn.classList.remove('show');
+    renderTutorialStep(0);
+}
+
+document.addEventListener('keydown', function(e) {
+    if (tCard.style.display === 'none') return;
+    if (e.key === 'ArrowRight' || e.key === 'Enter') nextTutorialStep();
+    if (e.key === 'ArrowLeft') previousTutorialStep();
+    if (e.key === 'Escape') closeTutorial();
+});
 
 // Show tutorial on load
-setTimeout(() => {
-    showTutorial();
+setTimeout(function() {
+    tDim.classList.add('active');
+    renderTutorialStep(0);
 }, 800);
 
 </script>
