@@ -1733,11 +1733,16 @@ function updateBoundaryQuintiles() {
 
 // Custom tooltip
 const tooltip = document.getElementById('tooltip');
+// Hide tooltip on any map interaction (pan/zoom removes markers without mouseout)
+map.on('movestart zoomstart', function() { tooltip.style.display = 'none'; });
 
 // Update markers
 function updateMarkers() {
     const zoom = map.getZoom();
     const bounds = map.getBounds();
+
+    // Hide tooltip when markers are rebuilt (mouseout won't fire on removed elements)
+    tooltip.style.display = 'none';
 
     if (markersLayer) {
         map.removeLayer(markersLayer);
