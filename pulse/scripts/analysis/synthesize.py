@@ -499,6 +499,10 @@ Return a JSON object:
     d. Prioritize: contrarian views, data-backed claims, novel arguments, and lesser-known voices the reader might not follow.
 
 14. NOTABLE CLAIMS: Do NOT repeat claims from previous days. You will be given a list of recent claims. If a claim is substantially similar to one from a previous briefing (e.g., "Austin prices down 25%"), SKIP IT and pick a different circulating claim. The reader wants to see NEW claims being fact-checked, not the same ones every day.
+
+15. ALL SECTIONS ARE MANDATORY. Your JSON output MUST include ALL of these keys with populated arrays: conversation_themes, notable_claims, twitter_roundup, substacker_takes, institutional_signal. If you omit any section, the briefing is broken. substacker_takes should have 3-5 entries from the Substack newsletters provided. institutional_signal should have 2-4 entries from the email newsletters provided.
+
+16. TWITTER ROUNDUP: STRICTLY ONE ENTRY PER PERSON. Never include the same @handle twice. If you have 9 slots, that means 9 different people.
 """
 
 
@@ -744,6 +748,64 @@ Generate the daily briefing JSON. LEAD WITH CONVERSATION — what are people deb
                     logger.info(f"Updated {len(updated_claims)} claims with data lake query results")
                 except Exception as e:
                     logger.warning(f"Failed to rewrite claims with query results: {e}")
+
+        # === POST-PROCESSING: Fix common Sonnet omissions ===
+
+        # 1. Deduplicate twitter_roundup — one entry per author
+        roundup = briefing.get("twitter_roundup", [])
+        if roundup:
+            seen_authors = set()
+            deduped = []
+            for entry in roundup:
+                author = (entry.get("author") or "").lower().strip()
+                if author and author not in seen_authors:
+                    seen_authors.add(author)
+                    deduped.append(entry)
+            if len(deduped) < len(roundup):
+                logger.info(f"Twitter roundup deduped: {len(roundup)} → {len(deduped)} entries")
+            briefing["twitter_roundup"] = deduped
+
+        # 2. Backfill substacker_takes if Sonnet omitted or under-populated them
+        if len(briefing.get("substacker_takes", [])) < 3 and substacker_items:
+            logger.warning(f"Sonnet returned only {len(briefing.get('substacker_takes', []))} substacker_takes — backfilling from {len(substacker_items)} collected items")
+            existing_urls = {t.get("url", "") for t in briefing.get("substacker_takes", [])}
+            for item in substacker_items[:8]:
+                if item.get("url", "") in existing_urls:
+                    continue
+                author = item.get("author", "")
+                # Clean author display
+                match = re.match(r'"?([^"<]+)"?\s*<', author)
+                display = match.group(1).strip() if match else author.split("<")[0].strip() or author
+                body = (item.get("body") or "")[:300]
+                briefing.setdefault("substacker_takes", []).append({
+                    "author": display,
+                    "title": item.get("title", ""),
+                    "take": body if body else "See full article.",
+                    "url": item.get("url", ""),
+                })
+                existing_urls.add(item.get("url", ""))
+                if len(briefing["substacker_takes"]) >= 5:
+                    break
+
+        # 3. Backfill institutional_signal if Sonnet omitted or under-populated it
+        if len(briefing.get("institutional_signal", [])) < 2 and institutional_emails:
+            logger.warning(f"Sonnet returned only {len(briefing.get('institutional_signal', []))} institutional_signal — backfilling from {len(institutional_emails)} collected emails")
+            existing_urls = {s.get("url", "") for s in briefing.get("institutional_signal", [])}
+            for item in institutional_emails[:8]:
+                if item.get("url", "") in existing_urls:
+                    continue
+                author = item.get("author", "")
+                match = re.match(r'"?([^"<]+)"?\s*<', author)
+                display = match.group(1).strip() if match else author.split("<")[0].strip() or author
+                briefing.setdefault("institutional_signal", []).append({
+                    "source": display,
+                    "headline": item.get("title", ""),
+                    "key_number": "",
+                    "url": item.get("url", ""),
+                })
+                existing_urls.add(item.get("url", ""))
+                if len(briefing["institutional_signal"]) >= 4:
+                    break
 
         # Validate all URLs against the database
         briefing = _validate_briefing_urls(briefing, conn)
