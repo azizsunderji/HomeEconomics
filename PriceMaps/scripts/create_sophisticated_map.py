@@ -283,7 +283,7 @@ html_content = f"""<!DOCTYPE html>
 <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Oracle:wght@400;500;600&display=swap');
-body {{margin:0; padding:0; font-family:'Oracle',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}}
+html,body {{margin:0; padding:0; overflow:hidden; font-family:'Oracle',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}}
 #map {{position:absolute; top:0; bottom:0; width:100%;}}
 
 /* Control panel - integrated with legend */
@@ -1517,21 +1517,19 @@ function toggleDrawMode() {{
 
     if (isDrawingMode) {{
         // Show loading spinner immediately
-        drawBtnText.innerHTML = '<span class="btn-spinner"></span>Loading...';
+        drawBtnText.innerHTML = '<span class="btn-spinner"></span>LOADING\u2026';
         drawBtn.classList.add('active');
 
-        // Defer heavy init to next frame so spinner renders first
-        requestAnimationFrame(function() {{
-            setTimeout(function() {{
-                map.addControl(drawControl);
-                new L.Draw.Polygon(map, drawControl.options.draw.polygon).enable();
-                drawBtnText.textContent = 'Cancel Drawing';
-            }}, 0);
-        }});
+        // Defer heavy init — use 50ms delay so the spinner actually renders
+        setTimeout(function() {{
+            map.addControl(drawControl);
+            new L.Draw.Polygon(map, drawControl.options.draw.polygon).enable();
+            drawBtnText.textContent = 'CANCEL DRAWING';
+        }}, 50);
     }} else {{
         map.removeControl(drawControl);
         drawBtn.classList.remove('active');
-        drawBtnText.textContent = 'Draw Boundary';
+        drawBtnText.textContent = 'DRAW BOUNDARY';
     }}
 }}
 
@@ -1544,7 +1542,7 @@ function clearDrawnBoundary() {{
         const drawBtn = document.getElementById('drawBoundaryBtn');
         const drawBtnText = document.getElementById('drawBtnText');
         drawBtn.classList.remove('drawing');
-        drawBtnText.textContent = 'Draw Boundary';
+        drawBtnText.textContent = 'DRAW BOUNDARY';
 
         // Restore drop-shadow effect when boundary is cleared
         const markerPane = map.getPane('markerPane');
@@ -2670,13 +2668,13 @@ var _tipDismissed = false;
 try {{ _tipDismissed = localStorage.getItem('promap_tip_dismissed') === '1'; }} catch(e) {{}}
 
 if (!_tipDismissed) {{
+    // Show icon immediately
+    document.getElementById('tipIcon').classList.add('visible');
+    // Add pulse after 3 minutes
     setInterval(function() {{
         var elapsed = (Date.now() - _tipStartTime) / 1000;
         var icon = document.getElementById('tipIcon');
-        if (elapsed >= 180 && !icon.classList.contains('visible')) {{
-            icon.classList.add('visible');
-        }}
-        if (elapsed >= 420 && !icon.classList.contains('pulse')) {{
+        if (elapsed >= 180 && !icon.classList.contains('pulse')) {{
             icon.classList.add('pulse');
         }}
     }}, 5000);
