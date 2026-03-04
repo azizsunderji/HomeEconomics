@@ -104,13 +104,12 @@ if date_15y:
 
 df_analysis['ZCTA5CE20'] = df_analysis['RegionName'].astype(str).str.zfill(5)
 
-# Filter out extreme outliers (keep reasonable range) - only filter where data exists
+# Null out extreme outlier values per-horizon (don't delete entire rows)
 change_columns = [col for col in df_analysis.columns if col.startswith('change_')]
 for col in change_columns:
-    # Only apply filter where values exist (not NaN)
     mask = df_analysis[col].notna()
     outliers = mask & ((df_analysis[col] < -50) | (df_analysis[col] > 200))
-    df_analysis = df_analysis[~outliers]
+    df_analysis.loc[outliers, col] = np.nan
 
 print(f"\n📊 Calculated price changes for {len(df_analysis):,} ZIP codes across all horizons")
 
@@ -1657,8 +1656,23 @@ async function loadAndShowBoundaries() {{
         tier = 'ultra';
     }}
 
+    // Show loading overlay if we need to fetch geometries
+    var needsFetch = (tier === 'ultra' && !geometriesUltra) ||
+                     (tier === 'medium' && !geometriesMedium) ||
+                     (tier === 'detail' && !geometriesDetail);
+    var _lo = document.getElementById('loadingOverlay');
+    if (needsFetch) {{
+        _lo.style.display = 'flex';
+        // Yield so overlay renders before fetch
+        await new Promise(function(r) {{ requestAnimationFrame(function() {{ setTimeout(r, 0); }}); }});
+    }}
+
     // Load geometries if needed
     await loadGeometries(tier);
+
+    if (needsFetch) {{
+        _lo.style.display = 'none';
+    }}
 
     // Get the appropriate geometry data
     let geometries;
