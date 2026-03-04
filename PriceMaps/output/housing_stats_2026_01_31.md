@@ -1,0 +1,50 @@
+According to Zillow data compiled by Home Economics, home prices rose 0.21% in January, bringing year-over-year appreciation to 0.2%.
+## Highest Prices
+1. **92657** Newport Beach, CA ($5.42M)
+2. **90210** Beverly Hills, CA ($5.08M)
+3. **94022** Los Altos, CA ($4.90M)
+4. **93108** Montecito, CA ($4.79M)
+5. **90402** Santa Monica, CA ($4.51M)
+6. **94024** Los Altos, CA ($4.48M)
+7. **94301** Palo Alto, CA ($4.19M)
+8. **92625** Newport Beach, CA ($4.04M)
+9. **95070** Saratoga, CA ($3.98M)
+10. **10013** New York, NY ($3.49M)
+
+## Lowest Prices
+1. **48505** Flint, MI ($33K)
+2. **71109** Shreveport, LA ($34K)
+3. **61605** Peoria, IL ($37K)
+4. **63115** Saint Louis, MO ($38K)
+5. **71601** Pine Bluff, AR ($40K)
+6. **71108** Shreveport, LA ($41K)
+7. **38703** Greenville, MS ($42K)
+8. **38614** Clarksdale, MS ($44K)
+9. **48504** Flint, MI ($45K) **(new)**
+10. **39209** Jackson, MS ($47K)
+
+## Accelerating Prices (Y/Y)
+1. **92008** Carlsbad, CA (+38.4% y/y)
+2. **18447** Olyphant, PA (+15.5% y/y)
+3. **53581** nan, WI (+14.8% y/y) **(new)**
+4. **17103** Harrisburg, PA (+14.1% y/y)
+5. **70002** Metairie, LA (+14.0% y/y) **(new)**
+6. **49829** Escanaba, MI (+13.8% y/y) **(new)**
+7. **83333** Hailey, ID (+12.7% y/y) **(new)**
+8. **61104** Rockford, IL (+12.5% y/y) **(new)**
+9. **85253** Paradise Valley, AZ (+12.4% y/y) **(new)**
+10. **10803** Pelham, NY (+12.3% y/y) **(new)**
+
+## Decelerating Prices (Y/Y)
+1. **38701** Greenville, MS (-28.3% y/y)
+2. **15902** Johnstown, PA (-25.6% y/y)
+3. **38703** Greenville, MS (-20.8% y/y)
+4. **63113** Saint Louis, MO (-20.0% y/y)
+5. **31415** Savannah, GA (-17.5% y/y) **(new)**
+6. **33716** Saint Petersburg, FL (-17.4% y/y)
+7. **48214** Detroit, MI (-17.2% y/y) **(new)**
+8. **33950** Punta Gorda, FL (-17.1% y/y)
+9. **70805** Baton Rouge, LA (-17.0% y/y) **(new)**
+10. **33066** Coconut Creek, FL (-16.5% y/y) **(new)**
+
+Data source: Zillow Home Value Index (ZHVI) as of 2026-01-31
