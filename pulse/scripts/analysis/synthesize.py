@@ -518,7 +518,14 @@ def generate_daily_briefing(
 
     # Gather all inputs
     all_items = get_items_since(conn, hours=36, min_relevance=0)
-    relevant_items = [i for i in all_items if (i.get("relevance_score") or 0) >= 30]
+    # Curated sources (Twitter, Bluesky) get a lower threshold since they come
+    # from hand-picked accounts — even off-topic tweets from economists are worth seeing.
+    # Other sources (RSS, Google News) use the standard threshold.
+    curated_sources = {"twitter", "bluesky"}
+    relevant_items = [
+        i for i in all_items
+        if (i.get("relevance_score") or 0) >= (10 if i.get("source") in curated_sources else 30)
+    ]
     convergence = compute_convergence(conn, hours=36)
     shifts = detect_narrative_shifts(conn)
     organic = detect_organic_conversations(conn, hours=36)
