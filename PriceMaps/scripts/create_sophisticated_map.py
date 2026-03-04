@@ -2376,6 +2376,13 @@ function refreshSpotlight() {{
 map.on('moveend', refreshSpotlight);
 map.on('zoomend', refreshSpotlight);
 
+// Observe control panel resizes (font loading, legend changes cause
+// the fixed-bottom panel to reflow, shifting element positions)
+var _cpEl = document.querySelector('.control-panel');
+if (_cpEl && typeof ResizeObserver !== 'undefined') {{
+    new ResizeObserver(refreshSpotlight).observe(_cpEl);
+}}
+
 function renderTutorialStep(index) {{
     if (tAnimating) return;
     tAnimating = true;
@@ -2424,6 +2431,11 @@ function renderTutorialStep(index) {{
         updateSpotlight(el);
         tDim.classList.add('active');
         if (step.action) {{ step.action(); }}
+        // Schedule extra refreshes to catch delayed layout reflows
+        // (flyTo animations, tile loading, font rendering)
+        [200, 500, 1000, 2000, 3000].forEach(function(d) {{
+            setTimeout(refreshSpotlight, d);
+        }});
         requestAnimationFrame(function() {{
             tCard.classList.add('visible');
             tAnimating = false;
