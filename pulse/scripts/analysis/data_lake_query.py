@@ -83,22 +83,50 @@ DATA_LAKE_SCHEMA = """
 
 ### Macro / FRED (LIVE API — preferred for macro claims)
   Use FRED API for any macro/economic series. Common series IDs:
+  Housing:
   - EXHOSLUSM495S: Existing Home Sales (SAAR, monthly) — from NAR
-  - EXHOSLUSM495N: Existing Home Sales (not seasonally adjusted, monthly)
   - MORTGAGE30US: 30-Year Fixed Mortgage Rate (weekly)
-  - UNRATE: Unemployment Rate (monthly)
-  - GDP: Gross Domestic Product (quarterly, billions)
-  - GDPC1: Real GDP (quarterly, billions chained 2017$)
-  - CPIAUCSL: Consumer Price Index (monthly)
-  - HOUST: Housing Starts (SAAR, monthly)
-  - PERMIT: Building Permits (SAAR, monthly)
   - CSUSHPINSA: Case-Shiller National Home Price Index (monthly)
   - MSPUS: Median Sales Price of Houses Sold (quarterly)
   - MSACSR: Monthly Supply of New Houses (monthly)
   - NHSDPTS: New Home Sales (SAAR, monthly)
+  - HOUST: Housing Starts (SAAR, monthly)
+  - PERMIT: Building Permits (SAAR, monthly)
   - RRVRUSQ156N: Rental Vacancy Rate (quarterly)
   - RHORUSQ156N: Homeownership Rate (quarterly)
+  Labor/Macro:
+  - UNRATE: Unemployment Rate (monthly)
+  - PAYEMS: Total Nonfarm Payrolls (monthly, thousands)
+  - ICSA: Initial Jobless Claims (weekly)
+  - GDP: Gross Domestic Product (quarterly, billions)
+  - GDPC1: Real GDP (quarterly, billions chained 2017$)
+  Inflation/Prices:
+  - CPIAUCSL: Consumer Price Index for All Urban Consumers (monthly)
+  - CPILFESL: Core CPI (Less Food and Energy, monthly)
+  - PCEPI: PCE Price Index (monthly)
+  - PCEPILFE: Core PCE (Less Food and Energy, monthly)
+  Manufacturing/Business:
+  - MANEMP: Manufacturing Employment (monthly, thousands)
+  - NAPM: ISM Manufacturing PMI (monthly)
+  - NAPMNOI: ISM Manufacturing New Orders (monthly)
+  - NAPMPI: ISM Manufacturing Prices Paid (monthly)
+  - NAPMSDI: ISM Manufacturing Supplier Deliveries (monthly)
+  - NAPMII: ISM Manufacturing Inventories (monthly)
+  - NMFCI: ISM Non-Manufacturing/Services PMI (monthly)
+  Financial:
+  - DGS10: 10-Year Treasury Yield (daily)
+  - DGS2: 2-Year Treasury Yield (daily)
+  - T10Y2Y: 10Y-2Y Treasury Spread (daily)
+  - DEXUSEU: USD/EUR Exchange Rate (daily)
+  - SP500: S&P 500 Index (daily)
+  Consumer:
+  - UMCSENT: University of Michigan Consumer Sentiment (monthly)
+  - RSXFS: Retail Sales ex Food Services (monthly, millions)
+  - TOTALSA: Total Vehicle Sales (SAAR, monthly)
+
   To query: use type "fred" with series_id. Returns last 24 months.
+  You can use ANY valid FRED series ID, not just the ones listed above.
+  If you know the series ID for a dataset, use it. FRED has 800,000+ series.
 
 ### Crosswalks
 - `Crosswalks/` — various geographic crosswalk files for joining datasets.
