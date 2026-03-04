@@ -4,7 +4,12 @@ on:
   schedule:
     # Run daily at 3 AM EST (8 AM UTC)
     - cron: '0 8 * * *'
-  workflow_dispatch:  # Allow manual trigger
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Force regeneration even without new data'
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -43,12 +48,18 @@ jobs:
       id: check
       run: |
         cd PriceMaps
-        python scripts/check_for_updates.py
-        # Capture the output to determine if there's new data
-        if grep -q "NEW_DATA=true" <<< "$(python scripts/check_for_updates.py)"; then
+        # If force flag is set, skip the check
+        if [ "${{ inputs.force }}" = "true" ]; then
+          echo "Force regeneration requested"
           echo "new_data=true" >> $GITHUB_OUTPUT
         else
-          echo "new_data=false" >> $GITHUB_OUTPUT
+          python scripts/check_for_updates.py
+          # Capture the output to determine if there's new data
+          if grep -q "NEW_DATA=true" <<< "$(python scripts/check_for_updates.py)"; then
+            echo "new_data=true" >> $GITHUB_OUTPUT
+          else
+            echo "new_data=false" >> $GITHUB_OUTPUT
+          fi
         fi
 
     - name: Download new data
