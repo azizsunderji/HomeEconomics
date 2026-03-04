@@ -770,6 +770,149 @@ body {{margin:0; padding:0; font-family:'Oracle',-apple-system,BlinkMacSystemFon
 .tutorial-reopen.show {{
     display:block;
 }}
+
+/* Draw button loading spinner */
+.draw-boundary-button .btn-spinner {{
+    display:inline-block;
+    width:10px;
+    height:10px;
+    border:2px solid rgba(0,0,0,0.2);
+    border-top-color:#3D3733;
+    border-radius:50%;
+    animation:spin 0.6s linear infinite;
+    vertical-align:middle;
+    margin-right:4px;
+}}
+.draw-boundary-button.active .btn-spinner {{
+    border-color:rgba(255,255,255,0.3);
+    border-top-color:white;
+}}
+
+/* Tip jar floating icon */
+.tip-icon {{
+    position:fixed;
+    bottom:24px;
+    right:24px;
+    width:44px;
+    height:44px;
+    border-radius:50%;
+    background:#F6F7F3;
+    border:1.5px solid #ddd;
+    box-shadow:0 2px 8px rgba(0,0,0,0.12);
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    z-index:10000;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity 0.6s ease, transform 0.2s ease;
+}}
+.tip-icon.visible {{
+    opacity:1;
+    pointer-events:auto;
+}}
+.tip-icon:hover {{
+    transform:scale(1.1);
+    border-color:#0BB4FF;
+}}
+.tip-icon.pulse {{
+    animation:tipPulse 2s ease-in-out infinite;
+}}
+@keyframes tipPulse {{
+    0%,100% {{ box-shadow:0 2px 8px rgba(0,0,0,0.12); }}
+    50% {{ box-shadow:0 2px 16px rgba(11,180,255,0.4); }}
+}}
+
+/* Tip modal */
+.tip-modal-overlay {{
+    position:fixed;
+    inset:0;
+    background:rgba(61,55,51,0.45);
+    z-index:10001;
+    display:none;
+    align-items:center;
+    justify-content:center;
+}}
+.tip-modal-overlay.active {{
+    display:flex;
+}}
+.tip-modal {{
+    background:#F6F7F3;
+    border-radius:12px;
+    padding:32px 28px 24px;
+    max-width:360px;
+    width:90%;
+    text-align:center;
+    font-family:'Oracle',sans-serif;
+    box-shadow:0 12px 40px rgba(0,0,0,0.2);
+    position:relative;
+}}
+.tip-modal h3 {{
+    margin:0 0 6px;
+    font-size:17px;
+    color:#3D3733;
+    font-weight:600;
+}}
+.tip-modal .tip-time {{
+    font-size:12px;
+    color:#999;
+    margin-bottom:14px;
+}}
+.tip-modal .tip-desc {{
+    font-size:13px;
+    color:#666;
+    line-height:1.5;
+    margin-bottom:20px;
+}}
+.tip-amounts {{
+    display:flex;
+    gap:10px;
+    justify-content:center;
+    margin-bottom:18px;
+}}
+.tip-amount-btn {{
+    flex:1;
+    padding:10px 0;
+    border-radius:8px;
+    border:1.5px solid #ddd;
+    background:white;
+    font-family:'Oracle',sans-serif;
+    font-size:15px;
+    font-weight:600;
+    color:#3D3733;
+    cursor:pointer;
+    transition:all 0.15s;
+    text-decoration:none;
+    display:block;
+    text-align:center;
+}}
+.tip-amount-btn:hover {{
+    border-color:#0BB4FF;
+    color:#0BB4FF;
+}}
+.tip-amount-btn.primary {{
+    background:#0BB4FF;
+    color:white;
+    border-color:#0BB4FF;
+}}
+.tip-amount-btn.primary:hover {{
+    background:#0099dd;
+    border-color:#0099dd;
+    color:white;
+}}
+.tip-dismiss {{
+    background:none;
+    border:none;
+    font-family:'Oracle',sans-serif;
+    font-size:12px;
+    color:#aaa;
+    cursor:pointer;
+    padding:4px 12px;
+}}
+.tip-dismiss:hover {{
+    color:#666;
+}}
 </style>
 </head>
 <body>
@@ -887,6 +1030,27 @@ Zoom in for details
     Press <kbd>→</kbd> for next · <kbd>Esc</kbd> to skip
   </div>
 </div>
+
+<!-- Tip jar -->
+<div class="tip-icon" id="tipIcon" onclick="openTipModal()">
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F4743B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+  </svg>
+</div>
+<div class="tip-modal-overlay" id="tipOverlay" onclick="closeTipModal(event)">
+  <div class="tip-modal" onclick="event.stopPropagation()">
+    <h3>Enjoying ProMap?</h3>
+    <div class="tip-time" id="tipTime"></div>
+    <div class="tip-desc">ProMap is free for everyone. If it's been useful, consider leaving a tip to support the project.</div>
+    <div class="tip-amounts">
+      <a class="tip-amount-btn" href="https://donate.stripe.com/3cI3cv32h19N2AccRReIw00" target="_blank" rel="noopener">$5</a>
+      <a class="tip-amount-btn primary" href="https://donate.stripe.com/3cI3cv32h19N2AccRReIw00" target="_blank" rel="noopener">$15</a>
+      <a class="tip-amount-btn" href="https://donate.stripe.com/3cI3cv32h19N2AccRReIw00" target="_blank" rel="noopener">$25</a>
+    </div>
+    <button class="tip-dismiss" onclick="closeTipModal(event, true)">No thanks</button>
+  </div>
+</div>
+
 <script>
 // ZIP data
 const zipData = {json.dumps(zip_data, separators=(',', ':'))};
@@ -1352,12 +1516,18 @@ function toggleDrawMode() {{
     isDrawingMode = !isDrawingMode;
 
     if (isDrawingMode) {{
-        map.addControl(drawControl);
+        // Show loading spinner immediately
+        drawBtnText.innerHTML = '<span class="btn-spinner"></span>Loading...';
         drawBtn.classList.add('active');
-        drawBtnText.textContent = 'Cancel Drawing';
 
-        // Automatically start polygon drawing mode
-        new L.Draw.Polygon(map, drawControl.options.draw.polygon).enable();
+        // Defer heavy init to next frame so spinner renders first
+        requestAnimationFrame(function() {{
+            setTimeout(function() {{
+                map.addControl(drawControl);
+                new L.Draw.Polygon(map, drawControl.options.draw.polygon).enable();
+                drawBtnText.textContent = 'Cancel Drawing';
+            }}, 0);
+        }});
     }} else {{
         map.removeControl(drawControl);
         drawBtn.classList.remove('active');
@@ -2490,6 +2660,45 @@ setTimeout(function() {{
     tDim.classList.add('active');
     renderTutorialStep(0);
 }}, 800);
+
+// --- Tip jar ---
+var _tipStartTime = Date.now();
+var _tipDismissed = false;
+try {{ _tipDismissed = localStorage.getItem('promap_tip_dismissed') === '1'; }} catch(e) {{}}
+
+if (!_tipDismissed) {{
+    setInterval(function() {{
+        var elapsed = (Date.now() - _tipStartTime) / 1000;
+        var icon = document.getElementById('tipIcon');
+        if (elapsed >= 180 && !icon.classList.contains('visible')) {{
+            icon.classList.add('visible');
+        }}
+        if (elapsed >= 420 && !icon.classList.contains('pulse')) {{
+            icon.classList.add('pulse');
+        }}
+    }}, 5000);
+}}
+
+function _formatTipTime() {{
+    var mins = Math.floor((Date.now() - _tipStartTime) / 60000);
+    if (mins < 1) return 'You just started exploring';
+    if (mins === 1) return "You've been exploring for 1 minute";
+    return "You've been exploring for " + mins + " minutes";
+}}
+
+function openTipModal() {{
+    document.getElementById('tipTime').textContent = _formatTipTime();
+    document.getElementById('tipOverlay').classList.add('active');
+    var icon = document.getElementById('tipIcon');
+    icon.classList.remove('pulse');
+}}
+
+function closeTipModal(e, dismiss) {{
+    document.getElementById('tipOverlay').classList.remove('active');
+    if (dismiss) {{
+        try {{ localStorage.setItem('promap_tip_dismissed', '1'); }} catch(ex) {{}}
+    }}
+}}
 
 </script>
 </body>
