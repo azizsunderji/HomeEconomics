@@ -551,17 +551,18 @@ html,body {{margin:0; padding:0; overflow:hidden; font-family:'Oracle',-apple-sy
     bottom:10px;
     right:10px;
     background:rgba(255,255,255,0.9);
-    padding:4px 8px;
+    padding:4px 10px;
     font-size:9px;
-    font-variant:small-caps;
-    letter-spacing:0.5px;
+    letter-spacing:0.3px;
     z-index:999;
     border:1px solid #e0e0e0;
     border-radius:2px;
+    color:#999;
 }}
 .citation a {{
-    color:#666;
+    color:#3D3733;
     text-decoration:none;
+    font-weight:600;
     transition: color 0.2s ease;
 }}
 .citation a:hover {{
@@ -1113,7 +1114,7 @@ Zoom in for details
 <button class="tutorial-reopen" onclick="showTutorial()">? TUTORIAL</button>
 </div>
 <div class="citation">
-<a href="https://www.home-economics.us" target="_blank">www.home-economics.us</a>
+Created by <a href="https://x.com/AzizSunderji" target="_blank">Aziz Sunderji</a> · <a href="https://homeeconomics.substack.com/subscribe" target="_blank">Home Economics</a>
 </div>
 <div class="tutorial-dim" id="tutorialDim">
   <svg>
@@ -1214,6 +1215,7 @@ let drawnBoundary = null;
 let drawControl = null;
 let drawnItems = null;
 let isDrawingMode = false;
+let _activeDrawHandler = null;
 
 // Boundary view functionality
 let isBoundaryView = false;
@@ -1638,10 +1640,15 @@ function toggleDrawMode() {{
         // Defer heavy init — use 50ms delay so the spinner actually renders
         setTimeout(function() {{
             map.addControl(drawControl);
-            new L.Draw.Polygon(map, drawControl.options.draw.polygon).enable();
+            _activeDrawHandler = new L.Draw.Polygon(map, drawControl.options.draw.polygon);
+            _activeDrawHandler.enable();
             drawBtnText.textContent = 'CANCEL DRAWING';
         }}, 50);
     }} else {{
+        if (_activeDrawHandler) {{
+            _activeDrawHandler.disable();
+            _activeDrawHandler = null;
+        }}
         map.removeControl(drawControl);
         drawBtn.classList.remove('active');
         drawBtnText.textContent = 'DRAW BOUNDARY';
@@ -2654,7 +2661,11 @@ map.on(L.Draw.Event.CREATED, function(event) {{
         markerPane.classList.add('boundary-active');
     }}
 
-    // Remove draw control
+    // Disable active draw handler and remove control
+    if (_activeDrawHandler) {{
+        _activeDrawHandler.disable();
+        _activeDrawHandler = null;
+    }}
     map.removeControl(drawControl);
     isDrawingMode = false;
 
