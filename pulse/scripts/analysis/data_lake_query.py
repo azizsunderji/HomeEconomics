@@ -34,15 +34,35 @@ FRED_API_KEY = os.environ.get("FRED_API_KEY", "936c7e9922072dbab8e2632a67e93ac9"
 DATA_LAKE_SCHEMA = """
 ## Key Datasets (DuckDB parquet, root = $DATA)
 
-### Prices
+### Prices (Zillow ZHVI — multiple geographic levels and property types)
 - `Price/Zillow/Metro_zhvi_uc_sfrcondo_tier_0.33_0.67_sm_sa_month.parquet`
-  Wide format: RegionName (metro, format "Austin, TX" or "United States"), SizeRank, ~300 date columns
-  from "2000-01-31" through "2026-01-31" (monthly ZHVI values). Use ILIKE for metro search.
-  To find peak: use GREATEST() across all date columns, or query all columns and find max.
-  Tip: For simple peak comparison, it's easier to use the precomputed stats in the snapshot above.
+  METRO-level ZHVI (SFR+Condo combined, mid-tier). Wide format: RegionName (metro, format "Austin, TX" or "United States"),
+  SizeRank, ~300 date columns from "2000-01-31" through "2026-01-31" (monthly). Use ILIKE for metro search.
+- `Price/Zillow/State_zhvi_uc_sfrcondo_tier_0.33_0.67_sm_sa_month.parquet`
+  STATE-level ZHVI (SFR+Condo combined, mid-tier). Wide format: RegionName (state name like "Florida", "Texas").
+  Same date columns as metro. Use for state-level price claims.
+- `Price/Zillow/State_zhvi_uc_condo_sm_sa_month.parquet`
+  STATE-level ZHVI (CONDO ONLY). Wide format: RegionName (state name). Use for condo-specific state claims
+  like "Florida condo owners lost $X" — compare date columns for YoY or peak-to-current.
+- `Price/Zillow/Metro_zhvi_uc_condo_sm_sa_month.csv`
+  METRO-level ZHVI (CONDO ONLY). CSV wide format. For metro condo claims.
 
 - `Price/FHFA/hpi_metro_quarterly.parquet`
   Columns: cbsa_code, cbsa_name, year, quarter, hpi (index, base=100). Quarterly house price index.
+
+### Mortgage Distribution (FHFA National Mortgage Database)
+- `FHFA_NMDB/nmdb_outstanding_quarterly.parquet`
+  Outstanding mortgage statistics from FHFA/CFPB National Mortgage Database, quarterly 2013Q1-2025Q3.
+  Columns: SOURCE, FREQUENCY, GEOLEVEL, GEOID, GEONAME, MARKET, PERIOD, YEAR, QUARTER, SERIESID, VALUE1.
+  Filter: GEOLEVEL='National' (or 'State'), MARKET='All Mortgages'.
+  Key series for mortgage rate distribution:
+  - PCT_INTRATE_LT_3: % of mortgages with rate below 3%
+  - PCT_INTRATE_3_4: % with rate 3-4%
+  - PCT_INTRATE_4_5: % with rate 4-5%
+  - PCT_INTRATE_5_6: % with rate 5-6%
+  - PCT_INTRATE_GE_6: % with rate 6%+
+  Also has: AVE_INTRATE, AVE_MTMLTV, PCT_TERM_FRM_30, PCT_TENURE_* (loan age), PCT_VS_* (credit score buckets).
+  Use for claims like "X% of homeowners have a rate above 6%" or "lock-in effect" analysis.
 
 ### Activity (Redfin) — non-price metrics only
 - `Redfin/monthly_metro.parquet`

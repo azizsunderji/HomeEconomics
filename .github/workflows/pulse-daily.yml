@@ -76,6 +76,8 @@ jobs:
             --include "*.parquet" --verbose --stats-one-line
           rclone copy "dropbox:Home Economics/Data/Politics/" /tmp/data-lake/Politics/ \
             --include "*.parquet" --verbose --stats-one-line
+          rclone copy "dropbox:Home Economics/Data/FHFA_NMDB/" /tmp/data-lake/FHFA_NMDB/ \
+            --include "*.parquet" --verbose --stats-one-line
           rclone copy "dropbox:Home Economics/Reference/data_lake_catalog.md" /tmp/reference/ \
             --verbose --stats-one-line || true
           echo "=== Data lake size ===" && du -sh /tmp/data-lake/
