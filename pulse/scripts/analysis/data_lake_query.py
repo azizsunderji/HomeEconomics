@@ -232,25 +232,41 @@ def generate_claim_queries(
     """
     client = client or anthropic.Anthropic()
 
-    prompt = f"""You are a data analyst. Given these claims circulating in online conversations, write DuckDB SQL queries to verify each one using the data lake.
+    prompt = f"""You are a data analyst. Given these claims, verify each one using FRED API lookups and/or DuckDB queries against the data lake.
 
-## Data Lake Schema
+## IMPORTANT: USE FRED FIRST
+FRED has 800,000+ time series and is live/current. For ANY claim about:
+- Mortgage rates → FRED: MORTGAGE30US
+- Home sales → FRED: EXHOSLUSM495S, NHSDPTS
+- Housing starts/permits → FRED: HOUST, PERMIT
+- GDP/recession → FRED: GDP, GDPC1
+- Unemployment/jobs → FRED: UNRATE, PAYEMS, ICSA
+- Inflation/CPI → FRED: CPIAUCSL, CPILFESL, PCEPI, PCEPILFE
+- ISM/manufacturing → FRED: NAPM, NAPMPI, NAPMNOI, MANEMP
+- Consumer sentiment → FRED: UMCSENT
+- Treasury yields → FRED: DGS10, DGS2, T10Y2Y
+- Any other macro/economic series → try FRED first (you can use ANY valid FRED series ID)
+FRED data is live and always current. NEVER say "data not available" for macro claims without trying FRED.
+
+## Data Lake Schema (for DuckDB parquet queries)
 {DATA_LAKE_SCHEMA}
 
 ## Claims to Verify
 {claims_text}
 
 ## Instructions
-- Write 1-2 DuckDB queries per claim that would verify or refute it
+- For each claim, choose the BEST data source:
+  * FRED API for macro/economic claims (rates, sales, GDP, inflation, employment, etc.)
+  * DuckDB parquet for geographic/demographic claims (metro prices, migration, ACS, condo prices, mortgage distribution)
+  * Use BOTH if the claim spans macro + geographic (e.g., "Austin prices fell while rates rose")
+- Write 1-2 queries per claim
+- Return ONLY a JSON array, no explanation.
+- For FRED lookups: {{"claim": "...", "type": "fred", "series_id": "MORTGAGE30US"}}
+- For DuckDB queries: {{"claim": "...", "type": "duckdb", "query": "SELECT ..."}}
 - Use $DATA as the root path prefix for all parquet files
-- Always include LIMIT clauses
+- Always include LIMIT clauses in SQL
 - For Zillow wide-format data, the latest date column is approximately "2026-01-31"
 - For migration net flows: SUM inflows - SUM outflows
-- Return ONLY a JSON array, no explanation.
-- For DuckDB queries: {{"claim": "...", "type": "duckdb", "query": "SELECT ..."}}
-- For FRED lookups: {{"claim": "...", "type": "fred", "series_id": "EXHOSLUSM495S"}}
-- PREFER FRED for macro claims (GDP, home sales, mortgage rates, unemployment, housing starts, CPI).
-  FRED data is live and always current. Parquet files may be weeks old.
 - IMPORTANT: If a claim has a POLITICAL dimension (e.g., "red states vs blue states", "Republican-led states",
   "Democratic states"), you MUST verify BOTH the underlying data AND the political angle:
   * For state-level claims: JOIN with Politics/state_party_2020_2024.parquet on statefip, GROUP BY winner_2024

@@ -723,19 +723,18 @@ Generate the daily briefing JSON. LEAD WITH CONVERSATION — what are people deb
 ## Precomputed Stats (Zillow + Redfin)
 {data_snapshot}
 
-## Dynamic Query Results
+## Query Results (FRED API + DuckDB data lake)
 {query_results}
 
 ## Instructions
 - Return a JSON array with the same structure as the original claims
-- Replace each data_lake_check with a precise statement using the actual numbers
-- Prefer precomputed stats for price/activity claims (they're verified correct)
-- Use dynamic query results for migration, demographics, survey claims
-- If BOTH sources have data on a claim, cross-check and use the more precise number
-- If a query returned an error or no results AND precomputed stats don't cover it, say "Data not available in current data lake"
+- Replace each data_lake_check with a precise statement using the actual numbers from the query results
+- Query results include FRED API data (mortgage rates, GDP, employment, etc.) AND DuckDB data lake results (prices, migration, etc.)
+- If BOTH query results and precomputed stats cover a claim, cross-check and use the more precise number
 - Use exact numbers: dollar values, percentages, dates
 - State whether the claim is confirmed, roughly correct, or contradicted by the data
 - Keep it concise — 1-2 sentences max per check
+- NEVER say "data not available" if query results returned relevant numbers for that claim
 """
                 try:
                     rewrite_resp = client.messages.create(
