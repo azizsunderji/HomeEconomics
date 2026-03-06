@@ -69,7 +69,7 @@ required_dates = [latest_date, date_3m, date_6m, date_1y, date_3y, date_5y, date
 required_dates = [d for d in required_dates if d is not None]
 
 # Calculate price appreciation for all horizons
-df_analysis = df[['RegionName', 'State', 'City'] + required_dates].copy()
+df_analysis = df[['RegionName', 'State', 'City', 'Metro'] + required_dates].copy()
 # Only require latest_date and at least 1y data (we'll handle missing data per-horizon)
 df_analysis = df_analysis.dropna(subset=[latest_date, date_1y])
 
@@ -138,7 +138,7 @@ gdf['lat'] = gdf.centroid.y
 gdf['lon'] = gdf.centroid.x
 
 # Merge all data
-merge_cols = ['ZCTA5CE20', 'City', 'State', latest_date] + change_columns
+merge_cols = ['ZCTA5CE20', 'City', 'State', 'Metro', latest_date] + change_columns
 gdf_merged = gdf.merge(df_analysis[merge_cols], on='ZCTA5CE20', how='inner')
 gdf_merged = gdf_merged.merge(pop_df[['zcta', 'name', 'population']],
                               left_on='ZCTA5CE20', right_on='zcta', how='left')
@@ -235,7 +235,8 @@ for _, row in gdf_merged.iterrows():
         'price': int(row[latest_date]),
         'r': round(row['radius'], 1),
         'pop': int(row['population']),
-        'n': name
+        'n': name,
+        'm': str(row.get('Metro', '')) if pd.notna(row.get('Metro', '')) else ''
     }
 
     # Add short-term changes if available
@@ -268,6 +269,35 @@ zip_data = sorted(zip_data, key=lambda x: x['pop'], reverse=True)
 print(f"\n📦 Generated data for {len(zip_data):,} ZIP codes")
 print(f"   Embedded data: 3M, 6M, 1Y changes + current price")
 print(f"   Long-term data: {len(long_term_data):,} ZIPs with 3Y, 5Y, 10Y, 15Y changes")
+
+# Pre-compute MSA pop-weighted averages for boundary comparison
+print("\n📊 Computing MSA weighted averages...")
+msa_averages = {}
+metro_col = 'Metro'
+horizon_map = {'p3m': 'change_3m', 'p6m': 'change_6m', 'p1y': 'change_1y',
+               'p3y': 'change_3y', 'p5y': 'change_5y', 'p10y': 'change_10y', 'p15y': 'change_15y'}
+
+for metro_name, metro_group in gdf_merged.groupby(metro_col):
+    if pd.isna(metro_name) or str(metro_name).strip() == '':
+        continue
+    metro_name_str = str(metro_name)
+    avgs = {}
+    for js_key, col_name in horizon_map.items():
+        if col_name in metro_group.columns:
+            valid = metro_group[[col_name, 'population']].dropna(subset=[col_name])
+            if len(valid) >= 3:
+                w_avg = (valid[col_name] * valid['population']).sum() / valid['population'].sum()
+                avgs[js_key] = round(float(w_avg), 1)
+    # Weighted avg price
+    price_valid = metro_group[[latest_date, 'population']].dropna()
+    if len(price_valid) >= 3:
+        avgs['price'] = round(float((price_valid[latest_date] * price_valid['population']).sum() / price_valid['population'].sum()), 0)
+    if avgs:
+        msa_averages[metro_name_str] = avgs
+
+print(f"   Computed averages for {len(msa_averages):,} MSAs")
+
+msa_averages_json = json.dumps(msa_averages)
 
 # Create HTML with all features
 html_content = f"""<!DOCTYPE html>
@@ -500,6 +530,20 @@ html,body {{margin:0; padding:0; overflow:hidden; font-family:'Oracle',-apple-sy
     line-height:1.3;
     border-radius:3px;
 }}
+
+/* Bar pulse animation */
+@keyframes barPulse {{
+    0%, 100% {{ fill-opacity: 1; }}
+    50% {{ fill-opacity: 0.3; }}
+}}
+.bar-pulse {{ animation: barPulse 0.6s ease-in-out infinite; }}
+
+/* Map pulse ring */
+@keyframes mapPulseRing {{
+    0% {{ stroke-width: 2; stroke-opacity: 0.9; }}
+    100% {{ stroke-width: 8; stroke-opacity: 0; }}
+}}
+.map-pulse-ring {{ animation: mapPulseRing 0.8s ease-out infinite; }}
 
 /* Citation */
 .citation {{
@@ -790,7 +834,7 @@ html,body {{margin:0; padding:0; overflow:hidden; font-family:'Oracle',-apple-sy
 /* Tip jar floating button */
 .tip-icon {{
     position:fixed;
-    bottom:24px;
+    bottom:46px;
     right:24px;
     height:36px;
     border-radius:18px;
@@ -1054,6 +1098,13 @@ html,body {{margin:0; padding:0; overflow:hidden; font-family:'Oracle',-apple-sy
 <div class="info-line">{len(zip_data):,} ZIP codes</div>
 <div class="zip-count" id="zipCount"></div>
 <div class="zip-count" id="popRange" style="display:none;"></div>
+<div id="boundaryStats" style="display:none;">
+    <div style="border-top:1px solid #ddd; margin:8px 10px 6px 10px; padding-top:6px;">
+        <div id="bStatSelection" style="font-size:9px; color:#0BB4FF; border:1px solid #0BB4FF; border-radius:10px; padding:2px 0; width:260px; text-align:center; margin-bottom:-1px; position:relative; z-index:1; box-sizing:border-box;"></div>
+        <div id="bStatBar" style="margin:0; line-height:0;"></div>
+        <div id="bStatMSA" style="font-size:9px; color:#666; border:1px solid #999; border-radius:10px; padding:2px 0; width:260px; text-align:center; margin-top:-1px; position:relative; z-index:1; box-sizing:border-box;"></div>
+    </div>
+</div>
 <div class="note" id="sizeNote">
 Bubble size reflects population<br>
 Zoom in for details
@@ -1115,6 +1166,9 @@ Zoom in for details
 <script>
 // ZIP data
 const zipData = {json.dumps(zip_data, separators=(',', ':'))};
+
+// Pre-computed MSA pop-weighted averages
+const msaAverages = {msa_averages_json};
 
 // Global quintiles for all time horizons
 const globalQuintiles = {{
@@ -1616,6 +1670,9 @@ function clearDrawnBoundary() {{
         toggleGlobal.style.opacity = '';
         toggleGlobal.style.pointerEvents = '';
 
+        // Hide boundary stats panel
+        document.getElementById('boundaryStats').style.display = 'none';
+
         // Return to normal local view if active
         if (isLocalMode) {{
             if (isBoundaryView) {{
@@ -1888,6 +1945,7 @@ async function loadAndShowBoundaries() {{
                         tooltip.style.display = 'block';
                         tooltip.style.left = (e.originalEvent.pageX + 10) + 'px';
                         tooltip.style.top = (e.originalEvent.pageY + 10) + 'px';
+                        pulseBarRect(zipCode);
                     }},
                     mouseout: function() {{
                         layer.setStyle({{
@@ -1897,6 +1955,7 @@ async function loadAndShowBoundaries() {{
                         }});
 
                         document.getElementById('tooltip').style.display = 'none';
+                        clearBarPulse();
                     }},
                     mousemove: function(e) {{
                         const tooltip = document.getElementById('tooltip');
@@ -1972,6 +2031,131 @@ function isPointInPolygon(point, polygon) {{
     return inside;
 }}
 
+// Build MSA distribution bar: pop-weighted blocks sorted by value, selected ZIPs highlighted
+// Global state for map->bar hover indicator
+let _barZipPositions = {{}}; // zip -> {{ cx: x-center of block }}
+let _barSvg = null;
+let _barDot = null; // the hover dot element
+let _barBarY = 0;
+
+function buildMsaBar(dominantMsa, boundaryZipSet, selectionAvg, msaAvg) {{
+    const container = document.getElementById('bStatBar');
+    container.innerHTML = '';
+    _barZipPositions = {{}};
+    _barSvg = null;
+    _barDot = null;
+
+    if (!dominantMsa) return;
+
+    // Get all MSA ZIPs with valid values
+    const msaZipsWithValues = zipData
+        .filter(z => z.m === dominantMsa)
+        .map(z => ({{ z: z.z, pop: z.pop, value: getZipValue(z), selected: boundaryZipSet.has(z.z) }}))
+        .filter(d => d.value !== undefined);
+
+    if (msaZipsWithValues.length < 3) return;
+
+    msaZipsWithValues.sort((a, b) => a.value - b.value);
+
+    const totalPop = msaZipsWithValues.reduce((s, d) => s + d.pop, 0);
+    const barW = 260, barH = 16;
+    const protrude = 14;
+    const dotSpace = 8; // room above for hover dot
+    const barY = protrude + dotSpace;
+    _barBarY = barY;
+
+    const ns = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(ns, 'svg');
+    svg.setAttribute('width', barW);
+    svg.setAttribute('height', barY + barH + protrude);
+    svg.style.display = 'block';
+    _barSvg = svg;
+
+    // Draw ZIP blocks
+    let x = 0;
+    msaZipsWithValues.forEach(d => {{
+        const w = (d.pop / totalPop) * barW;
+        const rect = document.createElementNS(ns, 'rect');
+        rect.setAttribute('x', x);
+        rect.setAttribute('y', barY);
+        rect.setAttribute('width', Math.max(w, 0.3));
+        rect.setAttribute('height', barH);
+        rect.setAttribute('fill', d.selected ? '#0BB4FF' : '#DADFCE');
+        svg.appendChild(rect);
+
+        // Store center-x for hover dot
+        _barZipPositions[d.z] = {{ cx: x + w / 2 }};
+
+        x += w;
+    }});
+
+    // Thin border
+    const border = document.createElementNS(ns, 'rect');
+    border.setAttribute('x', 0);
+    border.setAttribute('y', barY);
+    border.setAttribute('width', barW);
+    border.setAttribute('height', barH);
+    border.setAttribute('fill', 'none');
+    border.setAttribute('stroke', '#ccc');
+    border.setAttribute('stroke-width', '0.5');
+    svg.appendChild(border);
+
+    // Map a value to x position in sorted pop-weighted bar
+    function valToX(v) {{
+        let cum = 0;
+        for (const d of msaZipsWithValues) {{
+            if (d.value > v) break;
+            cum += d.pop;
+        }}
+        return Math.min(Math.max((cum / totalPop) * barW, 2), barW - 2);
+    }}
+
+    // Blue selection avg line: protrudes ABOVE the bar
+    const selX = valToX(selectionAvg);
+    const selLine = document.createElementNS(ns, 'line');
+    selLine.setAttribute('x1', selX);
+    selLine.setAttribute('y1', 0);
+    selLine.setAttribute('x2', selX);
+    selLine.setAttribute('y2', barY + barH);
+    selLine.setAttribute('stroke', '#0BB4FF');
+    selLine.setAttribute('stroke-width', '1.5');
+    svg.appendChild(selLine);
+
+    // Black MSA avg line: protrudes BELOW the bar
+    const msaX = valToX(msaAvg);
+    const msaLine = document.createElementNS(ns, 'line');
+    msaLine.setAttribute('x1', msaX);
+    msaLine.setAttribute('y1', barY);
+    msaLine.setAttribute('x2', msaX);
+    msaLine.setAttribute('y2', barY + barH + protrude);
+    msaLine.setAttribute('stroke', '#3D3733');
+    msaLine.setAttribute('stroke-width', '1.5');
+    svg.appendChild(msaLine);
+
+    container.appendChild(svg);
+}}
+
+// Show a dot above the bar at a ZIP's position (called from map hover)
+function pulseBarRect(zipCode) {{
+    if (!_barSvg || !_barZipPositions[zipCode]) return;
+    clearBarPulse();
+    const pos = _barZipPositions[zipCode];
+    const ns = 'http://www.w3.org/2000/svg';
+    const dot = document.createElementNS(ns, 'circle');
+    dot.setAttribute('cx', pos.cx);
+    dot.setAttribute('cy', _barBarY - 4);
+    dot.setAttribute('r', '3');
+    dot.setAttribute('fill', '#F4743B');
+    _barDot = dot;
+    _barSvg.appendChild(dot);
+}}
+function clearBarPulse() {{
+    if (_barDot && _barDot.parentNode) {{
+        _barDot.parentNode.removeChild(_barDot);
+        _barDot = null;
+    }}
+}}
+
 // Update quintiles for drawn boundary
 function updateBoundaryQuintiles() {{
     if (!isLocalMode) return;
@@ -1980,11 +2164,16 @@ function updateBoundaryQuintiles() {{
     const globalQ = dataMode === 'price' ? globalQuintiles['price'] : globalQuintiles[timeHorizon];
     console.log('updateBoundaryQuintiles called, found', boundaryZips ? boundaryZips.length : 0, 'ZIPs');
 
+    const statsEl = document.getElementById('boundaryStats');
+    const selEl = document.getElementById('bStatSelection');
+    const msaEl = document.getElementById('bStatMSA');
+
     if (!boundaryZips || boundaryZips.length < 2) {{
         currentQuintiles = globalQ;
         currentMinPop = null;
         currentMaxPop = null;
         updateLegend(globalQ, boundaryZips ? boundaryZips.length : 0, null, null, false);
+        statsEl.style.display = 'none';
     }} else {{
         const values = boundaryZips.map(z => getZipValue(z)).filter(v => v !== undefined);
         const populations = boundaryZips.map(z => z.pop);
@@ -1995,6 +2184,92 @@ function updateBoundaryQuintiles() {{
         console.log('New quintiles:', currentQuintiles);
         console.log('Pop range:', currentMinPop, '-', currentMaxPop);
         updateLegend(currentQuintiles, boundaryZips.length, currentMinPop, currentMaxPop, isSmallSample);
+
+        // Compute pop-weighted average for boundary ZIPs
+        let weightedSum = 0, totalPop = 0;
+        boundaryZips.forEach(z => {{
+            const v = getZipValue(z);
+            if (v !== undefined) {{
+                weightedSum += v * z.pop;
+                totalPop += z.pop;
+            }}
+        }});
+
+        if (totalPop > 0) {{
+            const weightedAvg = weightedSum / totalPop;
+            const zipCount = boundaryZips.length;
+
+            // Format based on mode
+            let avgText;
+            if (dataMode === 'price') {{
+                const fmtPrice = weightedAvg >= 1000000
+                    ? '$' + (weightedAvg / 1000000).toFixed(1) + 'M'
+                    : '$' + Math.round(weightedAvg / 1000) + 'K';
+                avgText = `Avg: ${{fmtPrice}} (pop-weighted, ${{zipCount}} ZIPs)`;
+            }} else {{
+                const sign = weightedAvg >= 0 ? '+' : '';
+                avgText = `Avg: ${{sign}}${{weightedAvg.toFixed(1)}}% (pop-weighted, ${{zipCount}} ZIPs)`;
+            }}
+            selEl.textContent = avgText;
+
+            // Find dominant MSA by population weight
+            const msaPop = {{}};
+            boundaryZips.forEach(z => {{
+                if (z.m && z.m !== '') {{
+                    msaPop[z.m] = (msaPop[z.m] || 0) + z.pop;
+                }}
+            }});
+            let dominantMsa = '';
+            let maxMsaPop = 0;
+            for (const [msa, pop] of Object.entries(msaPop)) {{
+                if (pop > maxMsaPop) {{
+                    maxMsaPop = pop;
+                    dominantMsa = msa;
+                }}
+            }}
+
+            // Show MSA comparison if enough ZIPs and MSA found
+            let msaVal;
+            if (dominantMsa && !isSmallSample && msaAverages[dominantMsa]) {{
+                const msaData = msaAverages[dominantMsa];
+                if (dataMode === 'price') {{
+                    msaVal = msaData.price;
+                }} else {{
+                    const field = horizons[timeHorizon].field;
+                    msaVal = msaData[field];
+                }}
+                if (msaVal !== undefined) {{
+                    let msaText;
+                    if (dataMode === 'price') {{
+                        const fmtMsa = msaVal >= 1000000
+                            ? '$' + (msaVal / 1000000).toFixed(1) + 'M'
+                            : '$' + Math.round(msaVal / 1000) + 'K';
+                        msaText = `${{dominantMsa}} avg: ${{fmtMsa}}`;
+                    }} else {{
+                        const sign = msaVal >= 0 ? '+' : '';
+                        msaText = `${{dominantMsa}} avg: ${{sign}}${{msaVal.toFixed(1)}}%`;
+                    }}
+                    msaEl.textContent = msaText;
+                    msaEl.style.display = 'block';
+                }} else {{
+                    msaEl.style.display = 'none';
+                }}
+            }} else {{
+                msaEl.style.display = 'none';
+            }}
+
+            // Build MSA distribution bar
+            if (dominantMsa && msaVal !== undefined) {{
+                const boundaryZipSet = new Set(boundaryZips.map(z => z.z));
+                buildMsaBar(dominantMsa, boundaryZipSet, weightedAvg, msaVal);
+            }} else {{
+                document.getElementById('bStatBar').innerHTML = '';
+            }}
+
+            statsEl.style.display = 'block';
+        }} else {{
+            statsEl.style.display = 'none';
+        }}
     }}
 
     // Only update markers if not in boundary view mode
@@ -2135,15 +2410,17 @@ function updateMarkers() {{
                                   dataLine + '<br>' +
                                   data.pop.toLocaleString() + ' pop';
                 tooltip.style.display = 'block';
+                pulseBarRect(data.z);
             }});
-            
+
             marker.on('mousemove', function(e) {{
                 tooltip.style.left = (e.originalEvent.pageX + 10) + 'px';
                 tooltip.style.top = (e.originalEvent.pageY - 28) + 'px';
             }});
-            
+
             marker.on('mouseout', function() {{
                 tooltip.style.display = 'none';
+                clearBarPulse();
             }});
         }}
         
@@ -2393,12 +2670,11 @@ map.on(L.Draw.Event.CREATED, function(event) {{
     }} else {{
         // If in boundary view, refresh boundaries with new filtering
         if (isBoundaryView) {{
-            updateBoundaryQuintiles();
             loadAndShowBoundaries();
-        }} else {{
-            updateBoundaryQuintiles();
         }}
     }}
+    // Always compute boundary stats after draw
+    updateBoundaryQuintiles();
 }});
 
 map.on(L.Draw.Event.DELETED, function(event) {{
