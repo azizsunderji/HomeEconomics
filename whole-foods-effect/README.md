@@ -9,7 +9,7 @@ An event-study diff-in-diff analysis using Zillow ZHVI ZIP-level data and store 
 | Source | What it provides | Opening dates? |
 |--------|-----------------|----------------|
 | **USDA SNAP Historical Retailer Data** | Every SNAP-authorized retailer since 2004: name, address, ZIP, lat/lon, authorization dates | Yes — authorization date ≈ opening date |
-| **Wikipedia** | Store location tables for Whole Foods, Trader Joe's, Wegmans | Partial (varies by chain) |
+| **Wikipedia / EverybodyWiki** | Store location tables for Whole Foods, Trader Joe's, Wegmans | Partial — Wegmans has actual dates on EverybodyWiki |
 | **OpenStreetMap (Overpass API)** | Current store locations with lat/lon and address tags | Rare (`start_date` tag exists but seldom populated) |
 | **Starbucks GitHub** (chrismeller) | Daily-updated CSV of all worldwide Starbucks | No (use SNAP or git history) |
 | **Hand-curated seed data** | Wegmans confirmed opening dates from press releases | Yes (37 stores with month-level dates) |
@@ -58,10 +58,11 @@ python -m src.run_pipeline
 - **URL**: https://github.com/chrismeller/StarbucksLocations
 - **Format**: CSV with daily git commits (can diff for opening/closing dates)
 
-### Wikipedia
-- Whole Foods: `List_of_Whole_Foods_Market_locations`
-- Trader Joe's: `List_of_Trader_Joe's_locations`
-- Wegmans: `List_of_Wegmans_locations`
+### Wikipedia / EverybodyWiki
+- Whole Foods: `en.wikipedia.org/wiki/List_of_Whole_Foods_Market_locations`
+- Trader Joe's: `en.wikipedia.org/wiki/List_of_Trader_Joe's_locations`
+- Wegmans: `en.everybodywiki.com/List_of_Wegmans_locations` (has actual opening dates for all ~114 stores)
+- Note: Aldi and Starbucks have no individual store lists on Wikipedia (too many stores)
 
 ### OpenStreetMap
 - Overpass API queries for `shop=supermarket` and `amenity=cafe` with chain name filters

@@ -32,7 +32,7 @@ CHAINS = ["Whole Foods", "Trader Joe's", "Wegmans", "Starbucks", "Aldi"]
 WIKI_PAGES = {
     "Whole Foods": "https://en.wikipedia.org/wiki/List_of_Whole_Foods_Market_locations",
     "Trader Joe's": "https://en.wikipedia.org/wiki/List_of_Trader_Joe%27s_locations",
-    "Wegmans": "https://en.wikipedia.org/wiki/List_of_Wegmans_locations",
+    "Wegmans": "https://en.everybodywiki.com/List_of_Wegmans_locations",
     "Starbucks": None,  # Too many; use SNAP + GitHub
     "Aldi": "https://en.wikipedia.org/wiki/Aldi",
 }
