@@ -999,13 +999,16 @@ function requestChartSummary() {
   const fiveYearAgoVal = latest.length > 60 ? latest[latest.length - 61] : null;
 
   let natInfo = "";
-  if (showNational && nationalData) {
+  if (nationalData) {
     const natPt = nationalData.property_types?.[ptKey] || {};
     const natUseZ = isPrice && ptKey === "all" && nationalData.price_dates;
     const natVals = natUseZ ? nationalData.price_values : (natPt[m.key] || []);
     const natLatest = natVals.filter(v => v != null);
     const natCurrent = natLatest.length ? natLatest[natLatest.length - 1] : null;
-    if (natCurrent != null) natInfo = ` The U.S. median metro value is ${m.fmt(natCurrent)}.`;
+    if (natCurrent != null) {
+      const cityAboveBelow = currentVal > natCurrent ? "ABOVE" : currentVal < natCurrent ? "BELOW" : "AT";
+      natInfo = ` The U.S. median metro value is ${m.fmt(natCurrent)} (raw: ${natCurrent.toLocaleString()}). This city is ${cityAboveBelow} the national median.`;
+    }
   }
 
   let yoyInfo = "";
@@ -1024,7 +1027,7 @@ function requestChartSummary() {
 
 City: ${cityData.name}
 Metric: ${m.label}
-Current value: ${currentVal != null ? m.fmt(currentVal) : "N/A"}${yoyInfo}${fiveYrInfo}${natInfo}
+Current value: ${currentVal != null ? m.fmt(currentVal) : "N/A"} (raw: ${currentVal != null ? currentVal.toLocaleString() : "N/A"})${yoyInfo}${fiveYrInfo}${natInfo}
 Property type: ${selectedPropTypes.map(p => p.label).join(", ")}
 
 Write exactly one sentence (max 30 words). Do not start with the city name.`;
@@ -1051,15 +1054,20 @@ function requestHistSummary() {
   const rank = allVals.filter(v => v <= cityVal).length;
   const percentile = Math.round((rank / allVals.length) * 100);
   const medianVal = allVals[Math.floor(allVals.length / 2)];
+  const ratio = medianVal !== 0 ? (cityVal / medianVal) : null;
+  const aboveBelow = cityVal > medianVal ? "ABOVE" : cityVal < medianVal ? "BELOW" : "AT";
+  const ratioText = ratio != null ? (ratio >= 2 ? `${ratio.toFixed(0)}x the median` : ratio >= 1 ? `${((ratio - 1) * 100).toFixed(0)}% above the median` : `${((1 - ratio) * 100).toFixed(0)}% below the median`) : "";
 
   const prompt = `You are a housing market data analyst writing one pithy, insightful sentence about how this city compares to other U.S. metros. Be specific with numbers. No hedging. Conversational but precise.
 
 City: ${cityData.name}
 Metric: ${m.histLabel || m.label}
-City value: ${hFmt(cityVal)}
-Percentile: ${percentile}th
-Median across metros: ${hFmt(medianVal)}
-Total metros: ${allVals.length}
+City value: ${hFmt(cityVal)} (raw: ${cityVal.toLocaleString()})
+Percentile: ${percentile}th out of ${allVals.length} metros
+Median across metros: ${hFmt(medianVal)} (raw: ${medianVal.toLocaleString()})
+Comparison: This city is ${aboveBelow} the median — ${ratioText}
+
+IMPORTANT: The city value of ${cityVal.toLocaleString()} is ${aboveBelow} the median of ${medianVal.toLocaleString()}. Get the direction right.
 
 Write exactly one sentence (max 30 words). Do not start with the city name.`;
 
