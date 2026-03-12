@@ -1059,6 +1059,8 @@ let selectedCity = null;
 let selectedMetric = null;
 let cityData = null;
 let _socialRenderMode = false;
+let _socialPlatform = "";
+let _socialBlob = null;
 let ddIndex = -1;
 let timeRangeYears = 0; // 0 = all data
 let measurementType = "level"; // "level" or "yoy"
@@ -2321,8 +2323,8 @@ function setupShareButtons() {
   }
 
   // Social posting: show confirmation modal, then POST server-side
-  let _socialPlatform = "";
-  let _socialBlob = null;
+  // _socialPlatform and _socialBlob are module-level (declared near top) so they
+  // survive setupShareButtons() being re-called during social image capture.
 
   async function stageSocial(platform, svgSelector) {
     // Use AI summary as post text; fall back to tweet preview
