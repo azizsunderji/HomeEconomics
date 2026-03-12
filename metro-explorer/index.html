@@ -1568,9 +1568,9 @@ function renderChart() {
   const multiLine = selectedPropTypes.length > 1;
   const rect = container.getBoundingClientRect();
   const W = Math.max(rect.width, 800);
-  const H = W;
+  const H = W * 9 / 16;
 
-  const margin = { top: 90, right: 32, bottom: 60, left: 64 };
+  const margin = { top: 90, right: 32, bottom: 50, left: 64 };
   const innerW = W - margin.left - margin.right;
   const innerH = H - margin.top - margin.bottom;
 
@@ -1961,25 +1961,10 @@ function renderChart() {
 
   // ── Source ──────────────────────
   svg.append("text")
-    .attr("x", 16).attr("y", H - 8)
+    .attr("x", 16).attr("y", H - 6)
     .attr("font-family", "'ABC Oracle Edu', sans-serif")
     .attr("font-size", 10).attr("fill", COLORS.gray)
     .text("Source: Redfin monthly data | Zillow ZHVI for sale price");
-
-  // ── Logo + Substack URL ──────────────────────
-  const logoW = 100, logoH = logoW * (220/655);
-  const logoX = W - logoW - 12, logoY = H - logoH - 4;
-  svg.append("image")
-    .attr("href", "he-logo.svg")
-    .attr("x", logoX).attr("y", logoY)
-    .attr("width", logoW).attr("height", logoH)
-    .attr("opacity", 0.4);
-  svg.append("text")
-    .attr("x", W - 14).attr("y", H - 8)
-    .attr("text-anchor", "end")
-    .attr("font-family", "'ABC Oracle Edu', sans-serif")
-    .attr("font-size", 9).attr("fill", COLORS.gray)
-    .text("homeeconomics.substack.com");
 
   // Update tweet preview
   updateTweet();
@@ -2043,8 +2028,8 @@ function renderHistogram() {
   if (filteredValues.length < 5) return;
 
   const W = Math.max(container.getBoundingClientRect().width, 800);
-  const H = W;
-  const margin = { top: 90, right: 32, bottom: 60, left: 64 };
+  const H = W * 9 / 16;
+  const margin = { top: 90, right: 32, bottom: 50, left: 64 };
   const innerW = W - margin.left - margin.right;
   const innerH = H - margin.top - margin.bottom;
 
@@ -2183,23 +2168,9 @@ function renderHistogram() {
 
   // Source — left-aligned
   svg.append("text")
-    .attr("x", 16).attr("y", H - 8)
+    .attr("x", 16).attr("y", H - 6)
     .attr("font-family", font).attr("font-size", 10).attr("fill", COLORS.gray)
     .text("Source: Redfin monthly data | Zillow ZHVI for sale price");
-
-  // Logo + Substack URL
-  const hLogoW = 100, hLogoH = hLogoW * (220/655);
-  const hLogoX = W - hLogoW - 12, hLogoY = H - hLogoH - 4;
-  svg.append("image")
-    .attr("href", "he-logo.svg")
-    .attr("x", hLogoX).attr("y", hLogoY)
-    .attr("width", hLogoW).attr("height", hLogoH)
-    .attr("opacity", 0.4);
-  svg.append("text")
-    .attr("x", W - 14).attr("y", H - 8)
-    .attr("text-anchor", "end")
-    .attr("font-family", font).attr("font-size", 9).attr("fill", COLORS.gray)
-    .text("homeeconomics.substack.com");
 
   // AI summary for histogram
   requestHistSummary();
@@ -2261,16 +2232,24 @@ function updateTweet() {
 }
 
 function setupShareButtons() {
-  async function svgToBlob(svgEl) {
+  // Preload the logo for social images
+  const _logoImg = new Image();
+  _logoImg.src = "he-logo.svg";
+
+  async function svgToBlob(svgEl, { social = false } = {}) {
     if (!svgEl) throw new Error("No SVG found");
 
-    // Clone SVG and inline all computed styles so the rasterized image looks correct
+    // Use viewBox for true logical dimensions (not CSS layout box)
+    const vb = (svgEl.getAttribute("viewBox") || "").split(" ").map(Number);
+    const vbW = vb[2] || svgEl.getBoundingClientRect().width;
+    const vbH = vb[3] || svgEl.getBoundingClientRect().height;
+    const scale = 2;
+
+    // Clone SVG and set explicit pixel dimensions from viewBox
     const clone = svgEl.cloneNode(true);
-    // Ensure explicit dimensions
-    const box = svgEl.getBoundingClientRect();
-    clone.setAttribute("width", box.width * 2);
-    clone.setAttribute("height", box.height * 2);
-    clone.setAttribute("viewBox", svgEl.getAttribute("viewBox") || `0 0 ${box.width} ${box.height}`);
+    clone.setAttribute("width", vbW * scale);
+    clone.setAttribute("height", vbH * scale);
+    clone.setAttribute("viewBox", `${vb[0]||0} ${vb[1]||0} ${vbW} ${vbH}`);
 
     // Inline font-face declarations so text renders in the PNG
     const styleEl = document.createElementNS("http://www.w3.org/2000/svg", "style");
@@ -2289,13 +2268,53 @@ function setupShareButtons() {
     return new Promise((resolve, reject) => {
       const img = new Image();
       img.onload = () => {
+        const chartW = img.width;   // vbW * 2
+        const chartH = img.height;  // vbH * 2
+
+        if (!social) {
+          // Regular copy/download: exact chart dimensions
+          const canvas = document.createElement("canvas");
+          canvas.width = chartW;
+          canvas.height = chartH;
+          const ctx = canvas.getContext("2d");
+          ctx.fillStyle = "#FFFFFF";
+          ctx.fillRect(0, 0, chartW, chartH);
+          ctx.drawImage(img, 0, 0);
+          URL.revokeObjectURL(url);
+          canvas.toBlob(blob => resolve(blob), "image/png");
+          return;
+        }
+
+        // Social: square canvas, chart fills width, extra space below for logo
+        const side = chartW; // square = chart width
         const canvas = document.createElement("canvas");
-        canvas.width = img.width;
-        canvas.height = img.height;
+        canvas.width = side;
+        canvas.height = side;
         const ctx = canvas.getContext("2d");
         ctx.fillStyle = "#FFFFFF";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(img, 0, 0);
+        ctx.fillRect(0, 0, side, side);
+
+        // Draw chart at top, filling full width
+        ctx.drawImage(img, 0, 0, chartW, chartH);
+
+        // Draw logo in bottom-right of the extra space
+        const logoDrawW = side * 0.12;
+        const logoDrawH = logoDrawW * (220 / 655);
+        const logoX = side - logoDrawW - side * 0.03;
+        const logoY = side - logoDrawH - side * 0.04;
+        ctx.globalAlpha = 0.35;
+        if (_logoImg.complete && _logoImg.naturalWidth > 0) {
+          ctx.drawImage(_logoImg, logoX, logoY, logoDrawW, logoDrawH);
+        }
+        ctx.globalAlpha = 1.0;
+
+        // Draw Substack URL at bottom-right
+        const fontSize = Math.round(side * 0.016);
+        ctx.font = `${fontSize}px 'ABC Oracle Edu', Georgia, serif`;
+        ctx.fillStyle = "rgba(61,55,51,0.3)";
+        ctx.textAlign = "right";
+        ctx.fillText("homeeconomics.substack.com", side - side * 0.03, side - side * 0.015);
+
         URL.revokeObjectURL(url);
         canvas.toBlob(blob => resolve(blob), "image/png");
       };
@@ -2345,7 +2364,7 @@ function setupShareButtons() {
     // All platforms: show confirmation modal
     try {
       _socialPlatform = platform;
-      _socialBlob = svgEl ? await svgToBlob(svgEl) : null;
+      _socialBlob = svgEl ? await svgToBlob(svgEl, { social: true }) : null;
 
       const modal = document.getElementById("social-modal");
       const platformName = platform === "twitter" ? "X / Twitter" : platform === "bluesky" ? "Bluesky" : "LinkedIn";
