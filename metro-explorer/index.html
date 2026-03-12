@@ -2285,8 +2285,8 @@ function setupShareButtons() {
           return;
         }
 
-        // Social: square canvas, chart fills width, extra space below for logo
-        const side = chartW; // square = chart width
+        // Social: square canvas with chart + branding below
+        const side = chartW;
         const canvas = document.createElement("canvas");
         canvas.width = side;
         canvas.height = side;
@@ -2297,23 +2297,29 @@ function setupShareButtons() {
         // Draw chart at top, filling full width
         ctx.drawImage(img, 0, 0, chartW, chartH);
 
-        // Draw logo in bottom-right of the extra space
-        const logoDrawW = side * 0.12;
+        // Branding in the space below the chart
+        // chartH ≈ 56% of side, so ~44% remains
+        const brandingTop = chartH;
+        const brandingH = side - chartH;
+        const brandingCenter = brandingTop + brandingH * 0.42;
+
+        // Logo: large, right-aligned
+        const logoDrawW = side * 0.22;
         const logoDrawH = logoDrawW * (220 / 655);
-        const logoX = side - logoDrawW - side * 0.03;
-        const logoY = side - logoDrawH - side * 0.04;
-        ctx.globalAlpha = 0.35;
+        const logoX = side - logoDrawW - side * 0.04;
+        const logoY = brandingCenter - logoDrawH - 4;
+        ctx.globalAlpha = 0.5;
         if (_logoImg.complete && _logoImg.naturalWidth > 0) {
           ctx.drawImage(_logoImg, logoX, logoY, logoDrawW, logoDrawH);
         }
         ctx.globalAlpha = 1.0;
 
-        // Draw Substack URL at bottom-right
-        const fontSize = Math.round(side * 0.016);
+        // Substack URL right below logo
+        const fontSize = Math.round(side * 0.02);
         ctx.font = `${fontSize}px 'ABC Oracle Edu', Georgia, serif`;
-        ctx.fillStyle = "rgba(61,55,51,0.3)";
+        ctx.fillStyle = "rgba(61,55,51,0.35)";
         ctx.textAlign = "right";
-        ctx.fillText("homeeconomics.substack.com", side - side * 0.03, side - side * 0.015);
+        ctx.fillText("homeeconomics.substack.com", side - side * 0.04, brandingCenter + fontSize + 4);
 
         URL.revokeObjectURL(url);
         canvas.toBlob(blob => resolve(blob), "image/png");
