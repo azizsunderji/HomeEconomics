@@ -630,6 +630,16 @@ body {
 .social-modal-status.error { display: block; color: var(--red); }
 .social-modal-status a { color: var(--blue); text-decoration: underline; }
 
+.social-modal-note {
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: rgba(11,180,255,0.06);
+  border-radius: 8px;
+  font-size: 0.75rem;
+  color: var(--black-50);
+  line-height: 1.4;
+}
+
 /* ── Placeholder ────────────────────────────────────── */
 
 .placeholder-msg {
@@ -2293,26 +2303,13 @@ function setupShareButtons() {
     const text = document.getElementById("tweet-preview").textContent;
     const svgEl = document.querySelector(svgSelector);
 
-    // LinkedIn: no API, use intent URL with clipboard copy
-    if (platform === "linkedin") {
-      try {
-        if (svgEl) {
-          const blob = await svgToBlob(svgEl);
-          await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
-        }
-        window.open(`https://www.linkedin.com/feed/?shareActive=true&text=${encodeURIComponent(text)}`, "_blank");
-        showToast("Image copied to clipboard — paste it in the compose screen.");
-      } catch(e) { console.error("LinkedIn error:", e); showToast("Failed. Try copying manually."); }
-      return;
-    }
-
-    // Twitter / Bluesky: show confirmation modal
+    // All platforms: show confirmation modal
     try {
       _socialPlatform = platform;
       _socialBlob = svgEl ? await svgToBlob(svgEl) : null;
 
       const modal = document.getElementById("social-modal");
-      const platformName = platform === "twitter" ? "X / Twitter" : "Bluesky";
+      const platformName = platform === "twitter" ? "X / Twitter" : platform === "bluesky" ? "Bluesky" : "LinkedIn";
       document.getElementById("social-modal-title").textContent = `Post to ${platformName}`;
       document.getElementById("social-modal-text").value = text;
       updateCharCount();
@@ -2329,13 +2326,22 @@ function setupShareButtons() {
       status.textContent = "";
       document.getElementById("social-modal-post-btn").disabled = false;
 
+      // LinkedIn note
+      const note = document.getElementById("social-modal-note");
+      if (platform === "linkedin") {
+        note.textContent = "LinkedIn will open in a new tab with the text pre-filled. The chart image will be copied to your clipboard — paste it with Cmd+V.";
+        note.style.display = "block";
+      } else {
+        note.style.display = "none";
+      }
+
       modal.classList.add("visible");
     } catch(e) { console.error("Social error:", e); showToast("Failed to prepare post."); }
   }
 
   function updateCharCount() {
     const text = document.getElementById("social-modal-text").value;
-    const limit = _socialPlatform === "twitter" ? 280 : 300;
+    const limit = _socialPlatform === "twitter" ? 280 : _socialPlatform === "bluesky" ? 300 : 3000;
     const el = document.getElementById("social-modal-charcount");
     el.textContent = `${text.length} / ${limit}`;
     el.classList.toggle("over", text.length > limit);
@@ -2360,6 +2366,26 @@ function setupShareButtons() {
     const status = document.getElementById("social-modal-status");
     const postBtn = document.getElementById("social-modal-post-btn");
     postBtn.disabled = true;
+
+    // LinkedIn: copy image to clipboard + open compose
+    if (_socialPlatform === "linkedin") {
+      try {
+        if (_socialBlob) {
+          await navigator.clipboard.write([new ClipboardItem({ "image/png": _socialBlob })]);
+        }
+        window.open(`https://www.linkedin.com/feed/?shareActive=true&text=${encodeURIComponent(text)}`, "_blank");
+        status.className = "social-modal-status success";
+        status.textContent = "LinkedIn opened — paste the chart image with Cmd+V.";
+      } catch(e) {
+        console.error("LinkedIn error:", e);
+        status.className = "social-modal-status error";
+        status.textContent = "Failed to copy image. Try the Copy Image button instead.";
+        postBtn.disabled = false;
+      }
+      return;
+    }
+
+    // Twitter / Bluesky: server-side posting
     status.className = "social-modal-status posting";
     status.textContent = "Posting...";
 
@@ -2517,6 +2543,7 @@ init();
         <img id="social-modal-img" src="" alt="Chart preview">
       </div>
       <textarea class="social-modal-text" id="social-modal-text"></textarea>
+      <div class="social-modal-note" id="social-modal-note" style="display:none;"></div>
     </div>
     <div class="social-modal-status" id="social-modal-status"></div>
     <div class="social-modal-footer">
