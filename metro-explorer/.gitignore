@@ -1,0 +1,8 @@
+# Override parent .gitignore — we need these files
+!data/
+!*.json
+!*.png
+!*.otf
+
+# But exclude secrets
+api/config.json

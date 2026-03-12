@@ -1,0 +1,2238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Home Economics — Metro Charts</title>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<style>
+@font-face { font-family: 'ABC Oracle Edu'; src: url('fonts/ABCOracle-Light.otf') format('opentype'); font-weight: 300; font-style: normal; }
+@font-face { font-family: 'ABC Oracle Edu'; src: url('fonts/ABCOracle-Regular.otf') format('opentype'); font-weight: 400; font-style: normal; }
+@font-face { font-family: 'ABC Oracle Edu'; src: url('fonts/ABCOracle-Medium.otf') format('opentype'); font-weight: 500; font-style: normal; }
+@font-face { font-family: 'ABC Oracle Edu'; src: url('fonts/ABCOracle-Bold.otf') format('opentype'); font-weight: 700; font-style: normal; }
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg: #F6F7F3;
+  --bg-warm: #EFEFE8;
+  --surface: #FFFFFF;
+  --black: #3D3733;
+  --black-50: rgba(61,55,51,0.5);
+  --black-20: rgba(61,55,51,0.2);
+  --black-08: rgba(61,55,51,0.08);
+  --blue: #0BB4FF;
+  --blue-light: rgba(11,180,255,0.12);
+  --yellow: #FEC439;
+  --red: #F4743B;
+  --green: #67A275;
+  --serif: 'ABC Oracle Edu', Georgia, serif;
+  --sans: 'ABC Oracle Edu', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+html { font-size: 16px; }
+
+body {
+  font-family: var(--sans);
+  background: var(--bg);
+  color: var(--black);
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+
+/* ── Header ──────────────────────────────────────────── */
+
+.site-header {
+  padding: 32px 0 0;
+}
+
+.header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+.header-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.header-brand svg { width: 30px; height: auto; }
+
+.header-brand-text {
+  font-family: var(--sans);
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--black);
+  letter-spacing: -0.01em;
+}
+
+.header-url {
+  font-size: 0.72rem;
+  color: var(--black-50);
+}
+
+.header-url a {
+  color: var(--black-50);
+  text-decoration: none;
+}
+
+.header-url a:hover { color: var(--blue); }
+
+/* ── Layout ─────────────────────────────────────────── */
+
+.container {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+/* ── Search ─────────────────────────────────────────── */
+
+.search-section {
+  padding: 0 0 8px;
+}
+
+.search-wrap {
+  position: relative;
+  max-width: 520px;
+  margin: 0;
+}
+
+.search-input {
+  width: 100%;
+  padding: 16px 44px 16px 48px;
+  font-family: var(--sans);
+  font-size: 1.05rem;
+  border: 1.5px solid var(--black-20);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--black);
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.search-input:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px var(--blue-light);
+}
+
+.search-input::placeholder { color: var(--black-20); }
+
+.search-icon {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 18px;
+  color: var(--black-20);
+  pointer-events: none;
+}
+
+.search-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  background: var(--surface);
+  border: 1px solid var(--black-08);
+  border-radius: 12px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.1);
+  z-index: 100;
+  max-height: 280px;
+  overflow-y: auto;
+  display: none;
+}
+
+.search-dropdown.open { display: block; }
+
+.dd-item {
+  padding: 12px 20px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  border-bottom: 1px solid var(--black-08);
+  transition: background 0.1s;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.dd-item:last-child { border-bottom: none; }
+.dd-item:hover, .dd-item.active { background: var(--blue-light); }
+.dd-item .state { color: var(--black-50); font-size: 0.85rem; }
+
+/* ── Selected city pill ─────────────────────────────── */
+
+.city-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--blue);
+  color: #fff;
+  padding: 10px 18px;
+  border-radius: 100px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  margin: 0 auto;
+  cursor: default;
+}
+
+.city-pill .x {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.city-pill .x:hover { background: rgba(255,255,255,0.4); }
+
+.city-header {
+  text-align: left;
+  display: none;
+}
+
+.city-header.visible { display: block; }
+
+/* ── Metric selector ────────────────────────────────── */
+
+.metrics-section {
+  padding: 28px 0 24px;
+  display: none;
+}
+
+.metrics-section.visible { display: block; }
+
+.metrics-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--black-50);
+  margin-bottom: 10px;
+  text-align: left;
+}
+
+.metrics-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-start;
+}
+
+.m-btn {
+  padding: 7px 14px;
+  font-family: var(--sans);
+  font-size: 0.8rem;
+  font-weight: 400;
+  border: 1.5px solid var(--black-08);
+  border-radius: 100px;
+  background: transparent;
+  color: var(--black-50);
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.m-btn:hover {
+  border-color: var(--black-20);
+  color: var(--black);
+}
+
+.m-btn.active {
+  background: var(--blue);
+  border-color: var(--blue);
+  color: #fff;
+}
+
+/* ── Chart card ─────────────────────────────────────── */
+
+.chart-section {
+  padding-bottom: 40px;
+  display: none;
+}
+
+.chart-section.visible { display: block; }
+
+.chart-card {
+  background: var(--surface);
+  border-radius: 16px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 8px 32px rgba(0,0,0,0.06);
+  overflow: hidden;
+  position: relative;
+  padding: 16px 16px 0;
+}
+
+.chart-canvas {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  position: relative;
+  overflow: hidden;
+}
+
+/* ── D3 chart styles ────────────────────────────────── */
+
+.chart-canvas svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.chart-canvas .axis-x line,
+.chart-canvas .axis-x path { stroke: var(--black-08); }
+
+.chart-canvas .axis-y line { stroke: var(--black-08); }
+.chart-canvas .axis-y path { display: none; }
+
+.chart-canvas .axis-x text,
+.chart-canvas .axis-y text {
+  fill: var(--black-50);
+  font-family: var(--sans);
+  font-size: 11px;
+}
+
+.chart-canvas .grid-line {
+  stroke: var(--black-08);
+  stroke-dasharray: none;
+}
+
+.chart-canvas .area-fill {
+  fill: var(--blue-light);
+}
+
+.chart-canvas .line-main {
+  fill: none;
+  stroke: var(--blue);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.chart-canvas .dot-current {
+  fill: var(--blue);
+}
+
+.chart-canvas .bar-yoy { fill: var(--blue); }
+.chart-canvas .bar-yoy.negative { fill: var(--black-20); }
+
+/* ── Toggle switch ─────────────────────────────────── */
+
+.toggle-switch { position: relative; display: inline-block; width: 36px; height: 20px; }
+.toggle-switch input { opacity: 0; width: 0; height: 0; }
+.toggle-track {
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  background: var(--black-20); border-radius: 20px; cursor: pointer;
+  transition: background 0.2s;
+}
+.toggle-track::before {
+  content: ""; position: absolute; left: 2px; top: 2px;
+  width: 16px; height: 16px; background: #fff;
+  border-radius: 50%; transition: transform 0.2s;
+}
+.toggle-switch input:checked + .toggle-track { background: var(--blue); }
+.toggle-switch input:checked + .toggle-track::before { transform: translateX(16px); }
+
+/* ── Time range steps ──────────────────────────────── */
+
+.time-slider-wrap {
+  padding: 12px 20px 8px;
+  border-top: 1px solid var(--black-08);
+}
+
+.time-steps {
+  display: flex;
+  gap: 0;
+}
+
+.time-step {
+  flex: 1;
+  text-align: center;
+  padding: 6px 0;
+  font-family: var(--sans);
+  font-size: 0.72rem;
+  color: var(--black-50);
+  cursor: pointer;
+  border-top: 3px solid var(--black-08);
+  transition: all 0.15s;
+  position: relative;
+}
+
+.time-step:hover {
+  color: var(--black);
+  border-top-color: var(--black-20);
+}
+
+.time-step.active {
+  color: var(--blue);
+  border-top-color: var(--blue);
+  font-weight: 500;
+}
+
+/* ── Share bar ──────────────────────────────────────── */
+
+.share-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-top: 1px solid var(--black-08);
+  margin-top: 0;
+  gap: 8px;
+}
+
+.share-left {
+  display: flex;
+  gap: 6px;
+}
+
+.share-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  font-family: var(--sans);
+  font-size: 0.8rem;
+  font-weight: 500;
+  border: 1.5px solid var(--black-08);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--black);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.share-btn:hover {
+  border-color: var(--blue);
+  color: var(--blue);
+}
+
+.share-btn.primary {
+  background: var(--black);
+  border-color: var(--black);
+  color: var(--bg);
+}
+
+.share-btn.primary:hover {
+  background: var(--blue);
+  border-color: var(--blue);
+}
+
+.share-btn svg { width: 14px; height: 14px; }
+
+.share-btn.copied {
+  border-color: var(--green);
+  color: var(--green);
+}
+
+.share-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.share-social {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.share-label {
+  font-size: 0.72rem;
+  color: var(--black-50);
+  font-weight: 500;
+}
+
+.social-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1.5px solid var(--black-08);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--black);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.social-btn svg { width: 15px; height: 15px; }
+
+.social-btn.twitter:hover { border-color: #1DA1F2; color: #1DA1F2; background: rgba(29,161,242,0.06); }
+.social-btn.bluesky:hover { border-color: #0085FF; color: #0085FF; background: rgba(0,133,255,0.06); }
+.social-btn.copy-text:hover { border-color: var(--blue); color: var(--blue); }
+.social-btn.copied { border-color: var(--green); color: var(--green); }
+
+.tweet-preview {
+  font-size: 0.72rem;
+  color: var(--black-50);
+  max-width: 340px;
+  line-height: 1.4;
+  text-align: right;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  padding: 4px 6px;
+  transition: border-color 0.2s;
+  outline: none;
+  cursor: text;
+}
+.tweet-preview:hover { border-color: var(--black-20); }
+.tweet-preview:focus { border-color: var(--blue); }
+.social-btn.confirm {
+  background: var(--blue) !important;
+  color: #fff !important;
+  font-size: 0.65rem;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+/* ── Placeholder ────────────────────────────────────── */
+
+.placeholder-msg {
+  text-align: left;
+  padding: 40px 0;
+  color: var(--black-20);
+}
+
+.placeholder-msg p {
+  font-family: var(--sans);
+  font-size: 1rem;
+}
+
+/* ── Loading ────────────────────────────────────────── */
+
+.loading-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(255,255,255,0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+.spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--black-08);
+  border-top-color: var(--blue);
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Histogram ──────────────────────────────────────── */
+
+.histogram-section {
+  display: none;
+  margin-top: 16px;
+}
+
+.histogram-section.visible { display: block; }
+
+.histogram-card {
+  background: var(--surface);
+  border-radius: 16px;
+  box-shadow: 0 1px 3px var(--black-08);
+  overflow: hidden;
+  padding: 16px;
+}
+
+.histogram-canvas {
+  width: 100%;
+}
+
+.data-note {
+  text-align: center;
+  font-size: 0.7rem;
+  color: var(--black-20);
+  margin-top: 12px;
+}
+
+/* ── Toast ──────────────────────────────────────────── */
+
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--black);
+  color: white;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-family: var(--sans);
+  font-size: 0.82rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.3s ease;
+  z-index: 1000;
+  white-space: nowrap;
+}
+
+.toast.visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ── Footer ─────────────────────────────────────────── */
+
+.site-footer {
+  text-align: center;
+  padding: 24px 0 40px;
+  font-size: 0.75rem;
+  color: var(--black-20);
+}
+
+.site-footer a {
+  color: var(--black-50);
+  text-decoration: none;
+}
+
+.site-footer a:hover { color: var(--blue); }
+
+/* ── Responsive ─────────────────────────────────────── */
+
+@media (max-width: 640px) {
+  .site-title { font-size: 1.6rem; }
+  .share-bar { flex-direction: column; align-items: stretch; }
+  .share-left { justify-content: center; }
+  .tweet-preview { text-align: center; max-width: none; }
+  .chart-canvas { aspect-ratio: 4 / 3; }
+}
+
+/* ── Animations ─────────────────────────────────────── */
+
+.fade-in {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.hidden { display: none !important; }
+
+/* ── AI Summary ─────────────────────────────────────── */
+
+.ai-summary {
+  margin: 0;
+  padding: 2px 20px 22px;
+  border-top: 1px solid var(--black-08);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 14px;
+}
+
+.ai-robot {
+  flex-shrink: 0;
+  width: 140px;
+  height: 140px;
+}
+
+.ai-robot img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.ai-bubble {
+  position: relative;
+  background: transparent;
+  border: 1px solid rgba(11,180,255,0.35);
+  border-radius: 24px;
+  padding: 14px 18px;
+  font-family: var(--serif);
+  font-size: 1.1rem;
+  line-height: 1.25;
+  color: rgba(61,55,51,0.7);
+  max-width: 480px;
+}
+
+.ai-bubble::before {
+  content: "";
+  position: absolute;
+  left: -8px;
+  top: 18px;
+  width: 0;
+  height: 0;
+  border-top: 6px solid transparent;
+  border-bottom: 6px solid transparent;
+  border-right: 8px solid rgba(11,180,255,0.35);
+}
+
+.ai-bubble::after {
+  content: "";
+  position: absolute;
+  left: -5px;
+  top: 19px;
+  width: 0;
+  height: 0;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-right: 6px solid var(--surface);
+}
+
+.ai-bubble .ai-text {
+  display: inline;
+}
+
+.ai-bubble .ai-text::before {
+  content: "\201C";
+  color: var(--blue);
+  font-weight: 700;
+  font-size: 1.1em;
+}
+
+.ai-bubble .ai-text::after {
+  content: "\201D";
+  color: var(--blue);
+  font-weight: 700;
+  font-size: 1.1em;
+}
+
+.ai-badge {
+  display: block;
+  margin-top: 6px;
+  font-size: 0.62rem;
+  font-family: var(--sans);
+  font-weight: 500;
+  color: var(--black-20);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.ai-summary.loading .ai-text {
+  color: var(--black-20);
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- Header -->
+  <header class="site-header">
+    <div class="header-row">
+    <div class="header-brand">
+      <span class="header-brand-text" style="font-size:2.2rem;font-weight:700;letter-spacing:-0.03em;line-height:1.1;">Metro Housing Data Explorer</span>
+    </div>
+    <a href="https://homeeconomics.substack.com" target="_blank" style="text-decoration:none;">
+      <img src="he-logo.svg" alt="Home Economics" style="height:56px;width:auto;opacity:0.45;">
+    </a>
+    </div>
+  </header>
+
+  <!-- Search -->
+  <section class="search-section">
+    <div class="search-wrap" id="search-wrap">
+      <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+      </svg>
+      <input class="search-input" id="search" type="text" placeholder="Search or browse 933 metro areas..." autocomplete="off" spellcheck="false">
+      <svg class="search-chevron" id="search-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="position:absolute;right:14px;top:50%;transform:translateY(-50%);width:16px;height:16px;color:var(--black-20);cursor:pointer;">
+        <polyline points="6 9 12 15 18 9"/>
+      </svg>
+      <div class="search-dropdown" id="dropdown"></div>
+    </div>
+    <div class="city-header" id="city-header"></div>
+  </section>
+
+  <!-- Metrics -->
+  <section class="metrics-section visible" id="metrics-section">
+    <div class="metrics-label">Metric</div>
+    <div class="metrics-row" id="metrics-row"></div>
+    <div class="metrics-label" style="margin-top:24px;">Property type</div>
+    <div class="metrics-row" id="prop-type-row"></div>
+    <div style="display:flex; align-items:center; gap:32px; margin-top:24px; flex-wrap:wrap;">
+      <div>
+        <div class="metrics-label">Measurement</div>
+        <div class="metrics-row" id="measurement-row"></div>
+      </div>
+      <div>
+        <div class="metrics-label">Horizon</div>
+        <div class="metrics-row" id="horizon-row"></div>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px; padding-top:18px;">
+        <label class="toggle-wrap" style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:0.8rem;color:var(--black-50);">
+          <span class="toggle-switch" id="us-toggle">
+            <input type="checkbox" id="us-toggle-check">
+            <span class="toggle-track"></span>
+          </span>
+          Show U.S. median
+        </label>
+      </div>
+    </div>
+  </section>
+
+  <!-- Chart -->
+  <section class="chart-section visible" id="chart-section">
+    <div class="chart-card" id="chart-card">
+      <div class="chart-canvas" id="chart-canvas"></div>
+      <div class="ai-summary" id="chart-ai-summary" style="display:none;">
+        <div class="ai-robot"><img src="robot_icon.png" alt="AI"></div>
+        <div class="ai-bubble">
+          <span class="ai-text" id="chart-ai-text">Generating summary...</span>
+          <div class="ai-badge">AI-generated summary</div>
+        </div>
+      </div>
+      <div class="share-bar" id="chart-share-bar">
+        <div class="share-left">
+          <button class="share-btn primary" id="btn-copy">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+            Copy Image
+          </button>
+          <button class="share-btn" id="btn-download">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Download Image
+          </button>
+          <button class="share-btn" id="btn-download-csv">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            Download Data
+          </button>
+        </div>
+        <div class="share-right">
+          <div class="share-social">
+            <span class="share-label">Post to:</span>
+            <button class="social-btn twitter" id="btn-twitter" title="Post to X/Twitter">
+              <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+            </button>
+            <button class="social-btn bluesky" id="btn-bluesky" title="Post to Bluesky">
+              <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M12 10.8c-1.087-2.114-4.046-6.053-6.798-7.995C2.566.944 1.561 1.266.902 1.565.139 1.908 0 3.08 0 3.768c0 .69.378 5.65.624 6.479.785 2.627 3.584 3.493 6.158 3.07-.39.57-1.516 1.73-1.083 3.523C6.418 19.88 11.197 19.24 12 15.01c.803 4.23 5.582 4.87 6.301 1.83.433-1.793-.693-2.953-1.083-3.523 2.574.423 5.373-.443 6.158-3.07.246-.828.624-5.79.624-6.479 0-.688-.139-1.86-.902-2.203-.659-.3-1.664-.62-4.3 1.24C16.046 4.748 13.087 8.687 12 10.8z"/></svg>
+            </button>
+            <button class="social-btn linkedin" id="btn-linkedin" title="Post to LinkedIn">
+              <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="tweet-preview" id="tweet-preview" style="display:none;"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Histogram comparison -->
+  <section class="histogram-section visible" id="histogram-section">
+    <div class="histogram-card" id="histogram-card">
+      <div class="histogram-canvas" id="histogram-canvas"></div>
+      <div class="ai-summary" id="hist-ai-summary" style="display:none;">
+        <div class="ai-robot"><img src="robot_icon.png" alt="AI"></div>
+        <div class="ai-bubble">
+          <span class="ai-text" id="hist-ai-text">Generating summary...</span>
+          <div class="ai-badge">AI-generated summary</div>
+        </div>
+      </div>
+      <div class="share-bar" id="hist-share-bar">
+        <div class="share-left">
+          <button class="share-btn primary" id="hist-btn-copy">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+            Copy Image
+          </button>
+          <button class="share-btn" id="hist-btn-download">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Download Image
+          </button>
+          <button class="share-btn" id="hist-btn-data">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+            Download Data
+          </button>
+        </div>
+        <div class="share-right">
+          <div class="share-social">
+            <span class="share-label">Post to:</span>
+            <button class="social-btn twitter" id="hist-btn-twitter" title="Post to X/Twitter">
+              <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+            </button>
+            <button class="social-btn bluesky" id="hist-btn-bluesky" title="Post to Bluesky">
+              <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M12 10.8c-1.087-2.114-4.046-6.053-6.798-7.995C2.566.944 1.561 1.266.902 1.565.139 1.908 0 3.08 0 3.768c0 .69.378 5.65.624 6.479.785 2.627 3.584 3.493 6.158 3.07-.39.57-1.516 1.73-1.083 3.523C6.418 19.88 11.197 19.24 12 15.01c.803 4.23 5.582 4.87 6.301 1.83.433-1.793-.693-2.953-1.083-3.523 2.574.423 5.373-.443 6.158-3.07.246-.828.624-5.79.624-6.479 0-.688-.139-1.86-.902-2.203-.659-.3-1.664-.62-4.3 1.24C16.046 4.748 13.087 8.687 12 10.8z"/></svg>
+            </button>
+            <button class="social-btn linkedin" id="hist-btn-linkedin" title="Post to LinkedIn">
+              <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="data-note">Based on monthly Redfin housing data across 933 metro areas. Sale Price uses Zillow Home Value Index (ZHVI).</p>
+  </section>
+
+  <!-- Placeholder (empty state) -->
+  <section id="placeholder-section">
+    <div class="placeholder-msg">
+    </div>
+  </section>
+
+</div>
+
+
+<script>
+// ─── Config ──────────────────────────────────────────────────────
+const METRICS = [
+  { key: "median_sale_price", label: "Sale Price", unit: "$", fmt: v => v >= 1e6 ? `$${(v/1e6).toFixed(2)}M` : v >= 1000 ? `$${(v/1000).toFixed(0)}K` : `$${v.toFixed(0)}`, fmtAxis: v => v >= 1e6 ? `$${(v/1e6).toFixed(1)}M` : v >= 1000 ? `$${(v/1000).toFixed(0)}K` : `$${v.toFixed(0)}`, histLabel: "Median Sale Price", histFmt: v => v >= 1e6 ? `$${(v/1e6).toFixed(1)}M` : v >= 1000 ? `$${(v/1000).toFixed(0)}K` : `$${v.toFixed(0)}` },
+  { key: "inventory", label: "Inventory", unit: "", fmt: v => v >= 1000 ? `${(v/1000).toFixed(1)}K` : v.toFixed(0), fmtAxis: v => v >= 1000 ? `${(v/1000).toFixed(0)}K` : v.toFixed(0), histLabel: "Inventory", histFmt: v => v >= 1000 ? `${(v/1000).toFixed(0)}K` : v.toFixed(0) },
+  { key: "new_listings", label: "New Listings", unit: "", fmt: v => v >= 1000 ? `${(v/1000).toFixed(1)}K` : v.toFixed(0), fmtAxis: v => v >= 1000 ? `${(v/1000).toFixed(0)}K` : v.toFixed(0), histLabel: "New Listings % of Inventory", histFmt: v => `${v.toFixed(1)}%` },
+  { key: "homes_sold", label: "Homes Sold", unit: "", fmt: v => v >= 1000 ? `${(v/1000).toFixed(1)}K` : v.toFixed(0), fmtAxis: v => v >= 1000 ? `${(v/1000).toFixed(0)}K` : v.toFixed(0), histLabel: "Homes Sold % of Inventory", histFmt: v => `${v.toFixed(1)}%` },
+  { key: "pending_sales", label: "Pending Sales", unit: "", fmt: v => v >= 1000 ? `${(v/1000).toFixed(1)}K` : v.toFixed(0), fmtAxis: v => v >= 1000 ? `${(v/1000).toFixed(0)}K` : v.toFixed(0), histLabel: "Pending Sales % of Inventory", histFmt: v => `${v.toFixed(1)}%` },
+  { key: "months_supply", label: "Months of Supply", unit: "mo", fmt: v => v.toFixed(1), fmtAxis: v => v.toFixed(1), histLabel: "Months of Supply", histFmt: v => v.toFixed(1) },
+  { key: "median_dom", label: "Days on Market", unit: "days", fmt: v => v.toFixed(0), fmtAxis: v => v.toFixed(0), histLabel: "Days on Market", histFmt: v => v.toFixed(0) },
+  { key: "sale_to_list_ratio", label: "Sale-to-List", unit: "%", fmt: v => `${(v * 100).toFixed(1)}%`, fmtAxis: v => `${(v * 100).toFixed(1)}%`, histLabel: "Sale-to-List Ratio", histFmt: v => `${(v * 100).toFixed(1)}%` },
+  { key: "pct_price_drops", label: "Price Drops", unit: "%", fmt: v => `${(v * 100).toFixed(1)}%`, fmtAxis: v => `${(v * 100).toFixed(0)}%`, histLabel: "% Listings with Price Drops", histFmt: v => `${(v * 100).toFixed(0)}%` },
+  { key: "off_market_in_2_weeks", label: "Off Market <2 Wks", unit: "", fmt: v => v >= 1000 ? `${(v/1000).toFixed(1)}K` : v.toFixed(0), fmtAxis: v => v >= 1000 ? `${(v/1000).toFixed(0)}K` : v.toFixed(0), histLabel: "Off Market <2 Wks % of Inventory", histFmt: v => `${v.toFixed(1)}%` },
+  { key: "median_list_price", label: "List Price", unit: "$", fmt: v => v >= 1e6 ? `$${(v/1e6).toFixed(2)}M` : v >= 1000 ? `$${(v/1000).toFixed(0)}K` : `$${v.toFixed(0)}`, fmtAxis: v => v >= 1e6 ? `$${(v/1e6).toFixed(1)}M` : v >= 1000 ? `$${(v/1000).toFixed(0)}K` : `$${v.toFixed(0)}`, histLabel: "Median List Price", histFmt: v => v >= 1e6 ? `$${(v/1e6).toFixed(1)}M` : v >= 1000 ? `$${(v/1000).toFixed(0)}K` : `$${v.toFixed(0)}` },
+  { key: "median_ppsf", label: "Price/SqFt", unit: "$", fmt: v => `$${v.toFixed(0)}`, fmtAxis: v => `$${v.toFixed(0)}`, histLabel: "Median Price per Sq Ft", histFmt: v => `$${v.toFixed(0)}` },
+  { key: "sold_above_list", label: "Sold Above List", unit: "%", fmt: v => `${(v * 100).toFixed(1)}%`, fmtAxis: v => `${(v * 100).toFixed(0)}%`, histLabel: "% Sold Above List", histFmt: v => `${(v * 100).toFixed(0)}%` },
+];
+
+// Property type config
+const PROP_TYPES = [
+  { key: "all", label: "All", color: "#0BB4FF" },
+  { key: "sfh", label: "Single Family", color: "#67A275" },
+  { key: "condo", label: "Condo", color: "#F4743B" },
+];
+let selectedPropTypes = [PROP_TYPES[0]];
+
+const COLORS = {
+  blue: "#0BB4FF", black: "#3D3733", bg: "#F6F7F3", surface: "#FFFFFF",
+  gray: "rgba(61,55,51,0.3)", gridline: "rgba(61,55,51,0.06)",
+  areaFill: "rgba(11,180,255,0.08)", red: "#F4743B", green: "#67A275",
+};
+
+let metroIndex = {};
+let summaryData = {};
+let histogramData = {};
+let selectedCity = null;
+let selectedMetric = null;
+let cityData = null;
+let ddIndex = -1;
+let timeRangeYears = 0; // 0 = all data
+let measurementType = "level"; // "level" or "yoy"
+let showNational = false;
+let nationalData = null;
+
+// ─── AI Summary ──────────────────────────────────────────────────
+
+// API key loaded from config file (not committed to repo)
+let ANTHROPIC_API_KEY = "";
+try {
+  const _xhr = new XMLHttpRequest();
+  _xhr.open("GET", "api/config.json", false);
+  _xhr.send();
+  if (_xhr.status === 200) { ANTHROPIC_API_KEY = JSON.parse(_xhr.responseText).anthropic_api_key || ""; }
+} catch(e) {}
+
+let aiSummaryCache = {};
+
+async function generateAISummary(targetId, prompt) {
+  const el = document.getElementById(targetId);
+  const textEl = document.getElementById(targetId.replace("summary", "text"));
+  if (!el || !textEl) return;
+
+  // Check cache — use a hash of the full prompt
+  const cacheKey = targetId + "|" + prompt.replace(/\s+/g, " ").trim();
+  if (aiSummaryCache[cacheKey]) {
+    textEl.textContent = aiSummaryCache[cacheKey];
+    el.style.display = "";
+    el.classList.remove("loading");
+    return;
+  }
+
+  el.style.display = "";
+  el.classList.add("loading");
+  textEl.textContent = "Generating summary...";
+
+  if (ANTHROPIC_API_KEY === "sk-ant-api03-PLACEHOLDER") {
+    textEl.textContent = "Set your Anthropic API key to enable AI summaries.";
+    el.classList.remove("loading");
+    return;
+  }
+
+  try {
+    const resp = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
+        "anthropic-dangerous-direct-browser-access": "true",
+      },
+      body: JSON.stringify({
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 150,
+        messages: [{ role: "user", content: prompt }],
+      }),
+    });
+    const data = await resp.json();
+    const text = data.content?.[0]?.text || "Unable to generate summary.";
+    textEl.textContent = text;
+    aiSummaryCache[cacheKey] = text;
+    el.classList.remove("loading");
+  } catch (err) {
+    console.error("AI summary error:", err);
+    textEl.textContent = "Unable to generate summary.";
+    el.classList.remove("loading");
+  }
+}
+
+function requestChartSummary() {
+  if (!cityData || !selectedMetric) return;
+  const m = selectedMetric;
+  const ptKey = selectedPropTypes[0]?.key || "all";
+  const ptData = cityData.property_types?.[ptKey] || {};
+  const isPrice = m.key === "median_sale_price";
+  const useZ = isPrice && ptKey === "all" && cityData.price_dates;
+  const vals = useZ ? cityData.price_values : (ptData[m.key] || []);
+  const latest = vals.filter(v => v != null);
+  const currentVal = latest.length ? latest[latest.length - 1] : null;
+  const yearAgoVal = latest.length > 12 ? latest[latest.length - 13] : null;
+  const fiveYearAgoVal = latest.length > 60 ? latest[latest.length - 61] : null;
+
+  let natInfo = "";
+  if (showNational && nationalData) {
+    const natPt = nationalData.property_types?.[ptKey] || {};
+    const natUseZ = isPrice && ptKey === "all" && nationalData.price_dates;
+    const natVals = natUseZ ? nationalData.price_values : (natPt[m.key] || []);
+    const natLatest = natVals.filter(v => v != null);
+    const natCurrent = natLatest.length ? natLatest[natLatest.length - 1] : null;
+    if (natCurrent != null) natInfo = ` The U.S. median metro value is ${m.fmt(natCurrent)}.`;
+  }
+
+  let yoyInfo = "";
+  if (currentVal != null && yearAgoVal != null && yearAgoVal !== 0) {
+    const pctChange = ((currentVal - yearAgoVal) / yearAgoVal * 100).toFixed(1);
+    yoyInfo = ` Year-over-year change: ${pctChange}%.`;
+  }
+
+  let fiveYrInfo = "";
+  if (currentVal != null && fiveYearAgoVal != null && fiveYearAgoVal !== 0) {
+    const pctChange = ((currentVal - fiveYearAgoVal) / fiveYearAgoVal * 100).toFixed(1);
+    fiveYrInfo = ` 5-year change: ${pctChange}%.`;
+  }
+
+  const prompt = `You are a housing market data analyst writing one pithy, insightful sentence about this metro area's data. Be specific with numbers. No hedging or caveats. Conversational but precise.
+
+City: ${cityData.name}
+Metric: ${m.label}
+Current value: ${currentVal != null ? m.fmt(currentVal) : "N/A"}${yoyInfo}${fiveYrInfo}${natInfo}
+Property type: ${selectedPropTypes.map(p => p.label).join(", ")}
+
+Write exactly one sentence (max 30 words). Do not start with the city name.`;
+
+  generateAISummary("chart-ai-summary", prompt);
+}
+
+function requestHistSummary() {
+  if (!cityData || !selectedMetric || !Object.keys(histogramData).length) return;
+  const m = selectedMetric;
+  const hFmt = m.histFmt || m.fmt;
+  const ptKey = selectedPropTypes[0]?.key || "all";
+  const pctMetrics = ["new_listings", "homes_sold", "pending_sales", "off_market_in_2_weeks"];
+  const histKey = pctMetrics.includes(m.key) ? `${m.key}_pct_inventory` : m.key;
+  const cityVal = histogramData[selectedCity?.slug]?.[ptKey]?.[histKey];
+  if (cityVal == null) return;
+
+  const allVals = Object.entries(histogramData)
+    .filter(([slug]) => slug !== "united_states")
+    .map(([, ptData]) => ptData[ptKey]?.[histKey])
+    .filter(v => v != null && isFinite(v))
+    .sort((a, b) => a - b);
+
+  const rank = allVals.filter(v => v <= cityVal).length;
+  const percentile = Math.round((rank / allVals.length) * 100);
+  const medianVal = allVals[Math.floor(allVals.length / 2)];
+
+  const prompt = `You are a housing market data analyst writing one pithy, insightful sentence about how this city compares to other U.S. metros. Be specific with numbers. No hedging. Conversational but precise.
+
+City: ${cityData.name}
+Metric: ${m.histLabel || m.label}
+City value: ${hFmt(cityVal)}
+Percentile: ${percentile}th
+Median across metros: ${hFmt(medianVal)}
+Total metros: ${allVals.length}
+
+Write exactly one sentence (max 30 words). Do not start with the city name.`;
+
+  generateAISummary("hist-ai-summary", prompt);
+}
+
+// ─── Init ────────────────────────────────────────────────────────
+
+async function init() {
+  const cb = `?v=${Date.now()}`;
+  const [indexResp, summaryResp, histResp] = await Promise.all([
+    fetch(`data/index.json${cb}`),
+    fetch(`data/summary.json${cb}`),
+    fetch(`data/histogram_summary.json${cb}`),
+  ]);
+  metroIndex = await indexResp.json();
+  summaryData = await summaryResp.json();
+  histogramData = await histResp.json();
+  buildMetricButtons();
+  buildPropTypeButtons();
+  buildMeasurementButtons();
+  buildHorizonButtons();
+  setupNationalToggle();
+  setupSearch();
+
+  // Load US median metro data (median across all metros for each metric/date)
+  try {
+    const natResp = await fetch(`data/us_median.json?v=${Date.now()}`);
+    nationalData = await natResp.json();
+  } catch(e) { console.error("Failed to load US median data:", e); }
+
+  // Default to Louisville, KY — large city closest to US median ($269K vs $268K median)
+  selectedMetric = METRICS[0]; // Sale Price
+  document.querySelector("#metrics-row .m-btn").classList.add("active");
+  pickCity("louisville_ky", "Louisville, KY");
+}
+
+function buildMetricButtons() {
+  const row = document.getElementById("metrics-row");
+  METRICS.forEach(m => {
+    const btn = document.createElement("button");
+    btn.className = "m-btn";
+    btn.textContent = m.label;
+    btn.onclick = () => {
+      row.querySelectorAll(".m-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      selectedMetric = m;
+      renderChart();
+    };
+    row.appendChild(btn);
+  });
+}
+
+function buildPropTypeButtons() {
+  const row = document.getElementById("prop-type-row");
+  PROP_TYPES.forEach(pt => {
+    const btn = document.createElement("button");
+    btn.className = "m-btn" + (pt.key === "all" ? " active" : "");
+    btn.textContent = pt.label;
+    btn.dataset.ptKey = pt.key;
+    btn.onclick = () => {
+      const isActive = btn.classList.contains("active");
+      if (isActive && selectedPropTypes.length <= 1) return; // Must have at least one
+      if (isActive) {
+        btn.classList.remove("active");
+        selectedPropTypes = selectedPropTypes.filter(p => p.key !== pt.key);
+      } else {
+        btn.classList.add("active");
+        selectedPropTypes.push(pt);
+      }
+      if (selectedMetric && cityData) renderChart();
+    };
+    row.appendChild(btn);
+  });
+}
+
+function buildMeasurementButtons() {
+  const row = document.getElementById("measurement-row");
+  const types = [
+    { key: "level", label: "Level" },
+    { key: "yoy", label: "Year-over-Year" },
+    { key: "rebase", label: "Rebase" },
+  ];
+  types.forEach(t => {
+    const btn = document.createElement("button");
+    btn.className = "m-btn" + (t.key === measurementType ? " active" : "");
+    btn.textContent = t.label;
+    btn.onclick = () => {
+      if (t.key === "rebase") {
+        // Prompt for rebase date via a click on the chart
+        measurementType = "rebase";
+        row.querySelectorAll(".m-btn").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        pickRebaseDate();
+        return;
+      }
+      row.querySelectorAll(".m-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      measurementType = t.key;
+      rebaseDate = null;
+      renderChart();
+    };
+    row.appendChild(btn);
+  });
+}
+
+function buildHorizonButtons() {
+  const row = document.getElementById("horizon-row");
+  const steps = [
+    { years: 1, label: "1Y" },
+    { years: 2, label: "2Y" },
+    { years: 3, label: "3Y" },
+    { years: 5, label: "5Y" },
+    { years: 10, label: "10Y" },
+    { years: 0, label: "All" },
+  ];
+  steps.forEach(step => {
+    const btn = document.createElement("button");
+    btn.className = "m-btn" + (step.years === timeRangeYears ? " active" : "");
+    btn.textContent = step.label;
+    btn.onclick = () => {
+      timeRangeYears = step.years;
+      row.querySelectorAll(".m-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      renderChart();
+    };
+    row.appendChild(btn);
+  });
+}
+
+function setupNationalToggle() {
+  const checkbox = document.getElementById("us-toggle-check");
+  checkbox.addEventListener("change", () => {
+    showNational = checkbox.checked;
+    if (selectedMetric && cityData) renderChart();
+  });
+}
+
+let rebaseDate = null;
+
+function pickRebaseDate() {
+  // Render chart in rebase mode — user clicks to pick the base date
+  // For now, default to the earliest date in the current view
+  if (!cityData || !selectedMetric) return;
+  const ptData = cityData.property_types[selectedPropTypes[0].key] || {};
+  const isPrice = selectedMetric.key === "median_sale_price";
+  const useZillow = isPrice && selectedPropTypes[0].key === "all" && cityData.price_dates;
+  const rawDates = useZillow ? cityData.price_dates : cityData.dates;
+  let dates = rawDates.map(d => new Date(d));
+  if (timeRangeYears > 0 && dates.length) {
+    const cutoff = new Date(dates[dates.length - 1]);
+    cutoff.setFullYear(cutoff.getFullYear() - timeRangeYears);
+    dates = dates.filter(d => d >= cutoff);
+  }
+  rebaseDate = dates[0] || null;
+  renderChart();
+  // Add click listener on chart to pick rebase date
+  const canvas = document.getElementById("chart-canvas");
+  canvas.style.cursor = "crosshair";
+  canvas.onclick = function rebaseClick(e) {
+    const svgEl = canvas.querySelector("svg");
+    if (!svgEl) return;
+    const rect = svgEl.getBoundingClientRect();
+    const xPx = e.clientX - rect.left;
+    // Convert px to SVG coordinates
+    const viewBox = svgEl.getAttribute("viewBox").split(" ").map(Number);
+    const svgX = (xPx / rect.width) * viewBox[2];
+    // Invert from SVG x to date using margin
+    const margin = { left: 64 };
+    const innerW = viewBox[2] - margin.left - 32;
+    const frac = (svgX - margin.left) / innerW;
+    if (frac < 0 || frac > 1) return;
+    // Find nearest date
+    const allDates = rawDates.map(d => new Date(d));
+    let filteredDates = allDates;
+    if (timeRangeYears > 0) {
+      const cutoff = new Date(allDates[allDates.length - 1]);
+      cutoff.setFullYear(cutoff.getFullYear() - timeRangeYears);
+      filteredDates = allDates.filter(d => d >= cutoff);
+    }
+    const minD = filteredDates[0].getTime();
+    const maxD = filteredDates[filteredDates.length - 1].getTime();
+    const targetTime = minD + frac * (maxD - minD);
+    // Find closest date
+    let closest = filteredDates[0];
+    let closestDist = Math.abs(closest.getTime() - targetTime);
+    for (const d of filteredDates) {
+      const dist = Math.abs(d.getTime() - targetTime);
+      if (dist < closestDist) { closest = d; closestDist = dist; }
+    }
+    rebaseDate = closest;
+    canvas.style.cursor = "";
+    canvas.onclick = null;
+    renderChart();
+  };
+}
+
+// ─── Search ──────────────────────────────────────────────────────
+
+function setupSearch() {
+  const input = document.getElementById("search");
+  const dd = document.getElementById("dropdown");
+  const chevron = document.getElementById("search-chevron");
+
+  function showDropdown() {
+    const q = input.value.trim().toLowerCase();
+    ddIndex = -1;
+
+    let matches;
+    if (!q) {
+      // Browse mode: show first 15 alphabetically
+      matches = Object.entries(metroIndex).slice(0, 15);
+    } else {
+      matches = Object.entries(metroIndex)
+        .filter(([slug, name]) => name.toLowerCase().includes(q) || slug.includes(q.replace(/\s/g, "_")))
+        .slice(0, 15);
+    }
+
+    if (!matches.length) { dd.classList.remove("open"); return; }
+
+    dd.innerHTML = "";
+    matches.forEach(([slug, name]) => {
+      const div = document.createElement("div");
+      div.className = "dd-item";
+      const parts = name.split(", ");
+      div.innerHTML = `<span>${parts[0]}</span><span class="state">${parts.slice(1).join(", ")}</span>`;
+      div.addEventListener("click", () => pickCity(slug, name));
+      dd.appendChild(div);
+    });
+    dd.classList.add("open");
+  }
+
+  input.addEventListener("input", showDropdown);
+
+  input.addEventListener("keydown", e => {
+    const items = dd.querySelectorAll(".dd-item");
+    if (e.key === "ArrowDown") { e.preventDefault(); ddIndex = Math.min(ddIndex + 1, items.length - 1); highlightDD(items); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); ddIndex = Math.max(ddIndex - 1, 0); highlightDD(items); }
+    else if (e.key === "Enter" && ddIndex >= 0 && items[ddIndex]) { e.preventDefault(); items[ddIndex].click(); }
+    else if (e.key === "Escape") { dd.classList.remove("open"); }
+  });
+
+  input.addEventListener("blur", () => setTimeout(() => dd.classList.remove("open"), 150));
+  input.addEventListener("focus", showDropdown);
+
+  // Chevron click toggles dropdown
+  chevron.addEventListener("mousedown", e => {
+    e.preventDefault();
+    if (dd.classList.contains("open")) {
+      dd.classList.remove("open");
+    } else {
+      input.focus();
+      showDropdown();
+    }
+  });
+}
+
+function highlightDD(items) {
+  items.forEach((el, i) => el.classList.toggle("active", i === ddIndex));
+}
+
+async function pickCity(slug, name) {
+  selectedCity = { slug, name };
+  document.getElementById("dropdown").classList.remove("open");
+
+  // Replace search with pill
+  const wrap = document.getElementById("search-wrap");
+  const header = document.getElementById("city-header");
+  wrap.classList.add("hidden");
+
+  header.innerHTML = "";
+  const pill = document.createElement("div");
+  pill.className = "city-pill fade-in";
+  pill.innerHTML = `${name} <span class="x" id="clear-city">&times;</span>`;
+  header.appendChild(pill);
+  header.classList.add("visible");
+
+  document.getElementById("clear-city").onclick = () => {
+    header.classList.remove("visible");
+    wrap.classList.remove("hidden");
+    const input = document.getElementById("search");
+    input.value = "";
+    selectedCity = null;
+    cityData = null;
+    input.focus();
+  };
+
+  // Show metrics
+  document.getElementById("metrics-section").classList.add("visible");
+
+
+  // Load data
+  try {
+    const resp = await fetch(`data/${slug}.json?v=${Date.now()}`);
+    cityData = await resp.json();
+    if (selectedMetric) renderChart();
+  } catch (err) {
+    console.error("Failed to load data:", err);
+  }
+}
+
+// ─── Chart Rendering ─────────────────────────────────────────────
+
+function renderChart() {
+  if (!cityData || !selectedMetric) return;
+
+
+  const container = document.getElementById("chart-canvas");
+  container.innerHTML = "";
+
+  const m = selectedMetric;
+  const isPrice = m.key === "median_sale_price";
+  const multiLine = selectedPropTypes.length > 1;
+  const rect = container.getBoundingClientRect();
+  const W = Math.max(rect.width, 800);
+  const H = W * 9 / 16;
+
+  const margin = { top: 90, right: 32, bottom: 50, left: 64 };
+  const innerW = W - margin.left - margin.right;
+  const innerH = H - margin.top - margin.bottom;
+
+  const svg = d3.select(container)
+    .append("svg")
+    .attr("viewBox", `0 0 ${W} ${H}`)
+    .attr("preserveAspectRatio", "xMidYMid meet");
+
+  svg.append("rect").attr("width", W).attr("height", H).attr("fill", COLORS.surface);
+
+  // Helper to build pairs from data
+  function buildPairs(data, ptKey, metricKey) {
+    const ptData = data.property_types?.[ptKey] || {};
+    const useZillow = metricKey === "median_sale_price" && ptKey === "all" && data.price_dates;
+    const rawDates = useZillow ? data.price_dates : data.dates;
+    if (!rawDates) return [];
+    const dates = rawDates.map(d => new Date(d));
+    const values = useZillow ? data.price_values : (ptData[metricKey] || []);
+    let pairs = dates.map((d, i) => ({ date: d, value: values[i] })).filter(d => d.value != null);
+    // Apply time range filter
+    if (timeRangeYears > 0 && pairs.length) {
+      const cutoff = new Date(pairs[pairs.length - 1].date);
+      cutoff.setFullYear(cutoff.getFullYear() - timeRangeYears);
+      pairs = pairs.filter(d => d.date >= cutoff);
+    }
+    return pairs;
+  }
+
+  // Transform pairs for YoY or rebase mode
+  function transformPairs(pairs) {
+    if (measurementType === "yoy") {
+      const result = [];
+      for (let i = 0; i < pairs.length; i++) {
+        // Find value ~12 months ago
+        const targetDate = new Date(pairs[i].date);
+        targetDate.setFullYear(targetDate.getFullYear() - 1);
+        let best = null, bestDist = Infinity;
+        for (let j = 0; j < i; j++) {
+          const dist = Math.abs(pairs[j].date - targetDate);
+          if (dist < bestDist) { bestDist = dist; best = pairs[j]; }
+        }
+        // Only accept if within ~2 months of target
+        if (best && bestDist < 75 * 24 * 60 * 60 * 1000 && best.value !== 0) {
+          result.push({ date: pairs[i].date, value: ((pairs[i].value - best.value) / best.value) * 100 });
+        }
+      }
+      return result;
+    }
+    if (measurementType === "rebase" && rebaseDate) {
+      // Find the value at the rebase date (closest match)
+      let baseVal = null, bestDist = Infinity;
+      for (const p of pairs) {
+        const dist = Math.abs(p.date - rebaseDate);
+        if (dist < bestDist) { bestDist = dist; baseVal = p.value; }
+      }
+      if (!baseVal || baseVal === 0) return pairs;
+      return pairs.map(p => ({ date: p.date, value: (p.value / baseVal) * 100 }));
+    }
+    return pairs;
+  }
+
+  // Build series for each selected property type
+  const allSeries = [];
+  selectedPropTypes.forEach(pt => {
+    let pairs = buildPairs(cityData, pt.key, m.key);
+    pairs = transformPairs(pairs);
+    if (pairs.length) allSeries.push({ pt, pairs, color: pt.color, isNational: false });
+  });
+
+  // National overlay series
+  if (showNational && nationalData && selectedCity?.slug !== "united_states") {
+    selectedPropTypes.forEach(pt => {
+      let pairs = buildPairs(nationalData, pt.key, m.key);
+      pairs = transformPairs(pairs);
+      if (pairs.length) {
+        const natColor = selectedPropTypes.length > 1 ? pt.color : COLORS.black;
+        allSeries.push({ pt: { ...pt, label: `U.S. Median ${pt.label}` }, pairs, color: natColor, isNational: true });
+      }
+    });
+  }
+
+  if (!allSeries.length) return;
+
+  // Use first city series for header values (not national)
+  const citySeries = allSeries.filter(s => !s.isNational);
+  const primarySeries = citySeries[0] || allSeries[0];
+  const lastVal = primarySeries.pairs[primarySeries.pairs.length - 1].value;
+  const lastDate = primarySeries.pairs[primarySeries.pairs.length - 1].date;
+  const dateStr = lastDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+
+  // ── Header ──────────────────────
+  // City name — top left, aligned with y-axis label left edge
+  const hx = 16;
+  svg.append("text")
+    .attr("x", hx).attr("y", 24)
+    .attr("font-family", "'ABC Oracle Edu', Georgia, serif")
+    .attr("font-size", 20).attr("font-weight", 600).attr("fill", COLORS.black)
+    .text(cityData.name);
+
+  // Metric label — below city name, same left alignment
+  const measureLabel = measurementType === "yoy" ? `${m.label} — Year-over-Year Change` :
+    measurementType === "rebase" && rebaseDate ? `${m.label} — Rebased to ${rebaseDate.toLocaleDateString("en-US", { month: "short", year: "numeric" })}` :
+    m.label;
+  svg.append("text")
+    .attr("x", hx).attr("y", 42)
+    .attr("font-family", "'ABC Oracle Edu', sans-serif")
+    .attr("font-size", 12).attr("fill", COLORS.gray)
+    .text(measureLabel);
+
+  // Latest value — large, top right
+  const displayVal = measurementType === "yoy" ? `${lastVal >= 0 ? "+" : ""}${lastVal.toFixed(1)}%` :
+    measurementType === "rebase" ? lastVal.toFixed(1) :
+    m.fmt(lastVal);
+  svg.append("text")
+    .attr("x", W - margin.right).attr("y", 28)
+    .attr("text-anchor", "end")
+    .attr("font-family", "'ABC Oracle Edu', sans-serif")
+    .attr("font-size", 18).attr("font-weight", 700).attr("fill", "#0BB4FF")
+    .text(displayVal);
+
+  // "as of" date — below the value, right-aligned
+  svg.append("text")
+    .attr("x", W - margin.right).attr("y", 44)
+    .attr("text-anchor", "end")
+    .attr("font-family", "'ABC Oracle Edu', sans-serif")
+    .attr("font-size", 9).attr("fill", COLORS.gray)
+    .text(`as of ${dateStr}`);
+
+  // Property type subtitle (if not "all" or multi-select)
+  if (multiLine) {
+    svg.append("text")
+      .attr("x", hx).attr("y", 56)
+      .attr("font-family", "'ABC Oracle Edu', sans-serif")
+      .attr("font-size", 11).attr("fill", COLORS.gray)
+      .text(selectedPropTypes.map(pt => pt.label).join(" vs "));
+  } else if (selectedPropTypes[0].key !== "all") {
+    svg.append("text")
+      .attr("x", hx).attr("y", 56)
+      .attr("font-family", "'ABC Oracle Edu', sans-serif")
+      .attr("font-size", 11).attr("fill", COLORS.gray)
+      .text(selectedPropTypes[0].label);
+  }
+
+  // ── Scales ──────────────────
+  const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+
+  // Compute global extent across all series
+  let allPairs = allSeries.flatMap(s => s.pairs);
+  const xScale = d3.scaleTime()
+    .domain(d3.extent(allPairs, d => d.date))
+    .range([0, innerW]);
+
+  const yExtent = d3.extent(allPairs, d => d.value);
+  const yPad = (yExtent[1] - yExtent[0]) * 0.1 || yExtent[1] * 0.1;
+  const yScale = d3.scaleLinear()
+    .domain([yExtent[0] - yPad, yExtent[1] + yPad])
+    .range([innerH, 0])
+    .nice();
+
+  // Gridlines
+  const yTicks = yScale.ticks(6);
+  yTicks.forEach(t => {
+    g.append("line")
+      .attr("x1", 0).attr("x2", innerW)
+      .attr("y1", yScale(t)).attr("y2", yScale(t))
+      .attr("stroke", COLORS.gridline);
+  });
+
+  // Y axis labels
+  const yFmt = measurementType === "yoy" ? (t => `${t >= 0 ? "+" : ""}${t.toFixed(1)}%`) :
+    measurementType === "rebase" ? (t => t.toFixed(0)) :
+    m.fmtAxis;
+  yTicks.forEach(t => {
+    g.append("text")
+      .attr("x", -10).attr("y", yScale(t))
+      .attr("text-anchor", "end").attr("dominant-baseline", "middle")
+      .attr("font-family", "'ABC Oracle Edu', sans-serif")
+      .attr("font-size", 13).attr("fill", COLORS.gray)
+      .text(yFmt(t));
+  });
+
+  // X axis labels — every other year, starting from most recent
+  const allYearTicks = xScale.ticks(d3.timeYear.every(1));
+  const maxYear = d3.max(allYearTicks, d => d.getFullYear());
+  const xTicks = allYearTicks.filter(t => (maxYear - t.getFullYear()) % 2 === 0);
+  xTicks.forEach(t => {
+    g.append("text")
+      .attr("x", xScale(t)).attr("y", innerH + 18)
+      .attr("text-anchor", "middle")
+      .attr("font-family", "'ABC Oracle Edu', sans-serif")
+      .attr("font-size", 12).attr("fill", COLORS.gray)
+      .text(d3.timeFormat("%Y")(t));
+  });
+
+  const defs = svg.append("defs");
+
+  // Zero line for YoY mode
+  if (measurementType === "yoy") {
+    const zeroY = yScale(0);
+    if (zeroY >= 0 && zeroY <= innerH) {
+      g.append("line")
+        .attr("x1", 0).attr("x2", innerW)
+        .attr("y1", zeroY).attr("y2", zeroY)
+        .attr("stroke", COLORS.black).attr("stroke-width", 1).attr("stroke-opacity", 0.3);
+    }
+  }
+
+  // Rebase reference line at 100
+  if (measurementType === "rebase") {
+    const refY = yScale(100);
+    if (refY >= 0 && refY <= innerH) {
+      g.append("line")
+        .attr("x1", 0).attr("x2", innerW)
+        .attr("y1", refY).attr("y2", refY)
+        .attr("stroke", COLORS.black).attr("stroke-width", 1).attr("stroke-opacity", 0.3);
+    }
+  }
+
+  const hasMultipleCitySeries = allSeries.filter(s => !s.isNational).length > 1;
+
+  // ── Draw each series ──────────────────
+  allSeries.forEach((series, si) => {
+    const seriesColor = series.color;
+    const pairs = series.pairs;
+    const isDashed = series.isNational;
+
+    // Gradient fill (only for single non-national series in level mode)
+    if (!hasMultipleCitySeries && !isDashed && measurementType === "level") {
+      const gradId = "area-grad-" + si + "-" + Date.now();
+      const grad = defs.append("linearGradient").attr("id", gradId).attr("x1", 0).attr("y1", 0).attr("x2", 0).attr("y2", 1);
+      grad.append("stop").attr("offset", "0%").attr("stop-color", seriesColor).attr("stop-opacity", 0.15);
+      grad.append("stop").attr("offset", "100%").attr("stop-color", seriesColor).attr("stop-opacity", 0.02);
+      const area = d3.area()
+        .x(d => xScale(d.date)).y0(innerH).y1(d => yScale(d.value))
+        .curve(d3.curveMonotoneX);
+      g.append("path").datum(pairs).attr("d", area).attr("fill", `url(#${gradId})`);
+    }
+
+    // Line
+    const line = d3.line()
+      .x(d => xScale(d.date)).y(d => yScale(d.value))
+      .curve(d3.curveMonotoneX);
+    g.append("path").datum(pairs).attr("d", line)
+      .attr("fill", "none").attr("stroke", seriesColor)
+      .attr("stroke-width", isDashed ? 1.5 : 2)
+      .attr("stroke-dasharray", isDashed ? "6,4" : "none")
+      .attr("stroke-opacity", isDashed ? 0.6 : 1)
+      .attr("stroke-linejoin", "round").attr("stroke-linecap", "round");
+
+    // Same-month markers (dots on all non-national series)
+    if (!isDashed) {
+      const pairsLastDate = pairs[pairs.length - 1].date;
+      const currentMonth = pairsLastDate.getMonth();
+      const allYears = d3.range(d3.min(pairs, d => d.date.getFullYear()), pairsLastDate.getFullYear() + 1);
+      allYears.forEach(yr => {
+        const match = pairs.find(p => p.date.getFullYear() === yr && p.date.getMonth() === currentMonth);
+        if (!match) return;
+        const cx = xScale(match.date), cy = yScale(match.value);
+        if (!hasMultipleCitySeries) {
+          g.append("line").attr("x1", cx).attr("x2", cx).attr("y1", cy).attr("y2", innerH)
+            .attr("stroke", seriesColor).attr("stroke-width", 1.5).attr("stroke-opacity", 0.6);
+        }
+        g.append("circle").attr("cx", cx).attr("cy", cy).attr("r", hasMultipleCitySeries ? 3.5 : 5).attr("fill", seriesColor);
+        g.append("circle").attr("cx", cx).attr("cy", cy).attr("r", hasMultipleCitySeries ? 3.5 : 5)
+          .attr("fill", "none").attr("stroke", COLORS.surface).attr("stroke-width", 1.5);
+      });
+    }
+
+  });
+
+  // ── Hover tooltip on dots ──────────
+  // Create a tooltip group (hidden by default)
+  const tooltip = svg.append("g").attr("class", "chart-tooltip").style("display", "none");
+  const tooltipBg = tooltip.append("rect")
+    .attr("rx", 4).attr("ry", 4)
+    .attr("fill", COLORS.black).attr("fill-opacity", 0.88);
+  const tooltipText = tooltip.append("text")
+    .attr("font-family", "'ABC Oracle Edu', sans-serif")
+    .attr("font-size", 11).attr("fill", "#fff").attr("font-weight", 500);
+  const tooltipDate = tooltip.append("text")
+    .attr("font-family", "'ABC Oracle Edu', sans-serif")
+    .attr("font-size", 9).attr("fill", "rgba(255,255,255,0.7)");
+
+  // Add invisible larger hit-area circles over each dot for easier hovering
+  allSeries.forEach(series => {
+    if (series.isNational) return; // skip national dots (they have no visible dots)
+    const pairs = series.pairs;
+    const pairsLastDate = pairs[pairs.length - 1].date;
+    const currentMonth = pairsLastDate.getMonth();
+    const years = d3.range(d3.min(pairs, d => d.date.getFullYear()), pairsLastDate.getFullYear() + 1);
+    years.forEach(yr => {
+      const match = pairs.find(p => p.date.getFullYear() === yr && p.date.getMonth() === currentMonth);
+      if (!match) return;
+      const cx = xScale(match.date), cy = yScale(match.value);
+      const valFmt = measurementType === "yoy" ? `${match.value >= 0 ? "+" : ""}${match.value.toFixed(1)}%` :
+        measurementType === "rebase" ? match.value.toFixed(1) : m.fmt(match.value);
+      const dateFmt = match.date.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+      const seriesLabel = hasMultipleCitySeries ? series.pt.label : "";
+
+      g.append("circle")
+        .attr("cx", cx).attr("cy", cy).attr("r", 12)
+        .attr("fill", "transparent").attr("cursor", "pointer")
+        .on("mouseenter", function() {
+          const line1 = seriesLabel ? `${seriesLabel}: ${valFmt}` : valFmt;
+          tooltipText.text(line1);
+          tooltipDate.text(dateFmt);
+
+          const textW = Math.max(line1.length * 6.5, dateFmt.length * 5.5);
+          const padX = 10, padY = 6;
+          const boxW = textW + padX * 2;
+          const boxH = 36;
+
+          // Position above the dot
+          let tx = margin.left + cx - boxW / 2;
+          let ty = margin.top + cy - boxH - 8;
+          // Keep within SVG bounds
+          if (tx < 4) tx = 4;
+          if (tx + boxW > W - 4) tx = W - 4 - boxW;
+          if (ty < 4) ty = margin.top + cy + 12; // flip below if too high
+
+          tooltip.attr("transform", `translate(${tx},${ty})`);
+          tooltipBg.attr("width", boxW).attr("height", boxH);
+          tooltipText.attr("x", padX).attr("y", 16);
+          tooltipDate.attr("x", padX).attr("y", 30);
+          tooltip.style("display", null);
+        })
+        .on("mouseleave", function() {
+          tooltip.style("display", "none");
+        });
+    });
+  });
+
+  // ── Legend (top center, between header and chart area) ──────────
+  const needsLegend = hasMultipleCitySeries || allSeries.some(s => s.isNational);
+  if (needsLegend) {
+    const legendY = 68;
+    let lgX = W / 2;
+    const font = "'ABC Oracle Edu', sans-serif";
+
+    // Build legend items
+    const cityName = cityData.name.split(",")[0];
+    const legendItems = allSeries.map(s => {
+      const last = s.pairs[s.pairs.length - 1];
+      const valFmt = measurementType === "yoy" ? `${last.value >= 0 ? "+" : ""}${last.value.toFixed(1)}%` :
+        measurementType === "rebase" ? last.value.toFixed(0) : m.fmt(last.value);
+      let label;
+      if (s.isNational) {
+        // s.pt.label is already "U.S. Median All", "U.S. Median Single Family", etc.
+        label = hasMultipleCitySeries ? s.pt.label : "U.S. Median";
+      } else {
+        label = hasMultipleCitySeries ? `${s.pt.label} — ${cityName}` : cityName;
+      }
+      return { label: `${label}: ${valFmt}`, color: s.color, dashed: s.isNational };
+    });
+
+    // Measure total width to center
+    const itemGap = 20;
+    const swatchW = 16;
+    const swatchGap = 5;
+    const charW = 6.5; // approx px per char at font-size 12
+    const totalW = legendItems.reduce((acc, item, i) => {
+      return acc + swatchW + swatchGap + item.label.length * charW + (i < legendItems.length - 1 ? itemGap : 0);
+    }, 0);
+
+    let curX = (W - totalW) / 2;
+    legendItems.forEach(item => {
+      if (item.dashed) {
+        svg.append("line")
+          .attr("x1", curX).attr("x2", curX + swatchW)
+          .attr("y1", legendY + 4).attr("y2", legendY + 4)
+          .attr("stroke", item.color).attr("stroke-width", 1.5)
+          .attr("stroke-dasharray", "4,3").attr("stroke-opacity", 0.6);
+      } else {
+        svg.append("line")
+          .attr("x1", curX).attr("x2", curX + swatchW)
+          .attr("y1", legendY + 4).attr("y2", legendY + 4)
+          .attr("stroke", item.color).attr("stroke-width", 2);
+      }
+      curX += swatchW + swatchGap;
+      svg.append("text")
+        .attr("x", curX).attr("y", legendY + 8)
+        .attr("font-family", font).attr("font-size", 12)
+        .attr("fill", item.color).attr("font-weight", 500)
+        .text(item.label);
+      curX += item.label.length * charW + itemGap;
+    });
+  }
+
+  // ── Source ──────────────────────
+  svg.append("text")
+    .attr("x", margin.left).attr("y", H - 6)
+    .attr("font-family", "'ABC Oracle Edu', sans-serif")
+    .attr("font-size", 10).attr("fill", COLORS.gray)
+    .attr("font-style", "italic")
+    .text("Source: Redfin monthly data | Zillow ZHVI for sale price");
+
+  // Update tweet preview
+  updateTweet();
+  setupShareButtons();
+
+  // AI summary for time series
+  requestChartSummary();
+
+  // Render histogram
+  renderHistogram();
+}
+
+// ─── Histogram ────────────────────────────────────────────────────
+
+function renderHistogram() {
+  if (!selectedCity || !selectedMetric || !Object.keys(histogramData).length) return;
+
+  const container = document.getElementById("histogram-canvas");
+  container.innerHTML = "";
+
+  const m = selectedMetric;
+  const hFmt = m.histFmt || m.fmt;
+  const hLabel = m.histLabel || m.label;
+
+  // Use histogramData for transformed values (e.g. new_listings as % of inventory)
+  const pctMetrics = ["new_listings", "homes_sold", "pending_sales", "off_market_in_2_weeks"];
+  const histKey = pctMetrics.includes(m.key) ? `${m.key}_pct_inventory` : m.key;
+  const ptKey = selectedPropTypes[0]?.key || "all";
+  const cityVal = histogramData[selectedCity.slug]?.[ptKey]?.[histKey];
+  if (cityVal == null) return;
+
+  // Collect all metro values (exclude national aggregate)
+  const allVals = Object.entries(histogramData)
+    .filter(([slug]) => slug !== "united_states")
+    .map(([slug, ptData]) => ({ slug, value: ptData[ptKey]?.[histKey] }))
+    .filter(d => d.value != null && isFinite(d.value));
+
+  if (allVals.length < 10) return;
+
+  const values = allVals.map(d => d.value).sort((a, b) => a - b);
+  const medianVal = values[Math.floor(values.length / 2)];
+  const rank = values.filter(v => v <= cityVal).length;
+  const percentile = Math.round((rank / values.length) * 100);
+
+  // IQR-based outlier filtering (matches reference: 5th/95th percentile, then IQR-constrained)
+  const p05 = values[Math.floor(values.length * 0.05)];
+  const p95 = values[Math.floor(values.length * 0.95)];
+  const q1 = values[Math.floor(values.length * 0.25)];
+  const q3 = values[Math.floor(values.length * 0.75)];
+  const iqr = q3 - q1;
+
+  let lowerBound = Math.max(p05, medianVal - 3 * iqr);
+  let upperBound = Math.min(p95, medianVal + 3 * iqr);
+
+  // Expand slightly if city value is just outside but close
+  if (cityVal < lowerBound && cityVal > p05 * 0.5) lowerBound = cityVal * 0.95;
+  if (cityVal > upperBound && cityVal < p95 * 1.5) upperBound = cityVal * 1.05;
+  // If city is way outside, keep bounds as-is (city won't appear on chart)
+
+  const filteredValues = values.filter(v => v >= lowerBound && v <= upperBound);
+  if (filteredValues.length < 5) return;
+
+  const W = Math.max(container.getBoundingClientRect().width, 800);
+  const H = W * 9 / 16;
+  const margin = { top: 90, right: 32, bottom: 50, left: 64 };
+  const innerW = W - margin.left - margin.right;
+  const innerH = H - margin.top - margin.bottom;
+
+  const svg = d3.select(container)
+    .append("svg")
+    .attr("viewBox", `0 0 ${W} ${H}`)
+    .attr("preserveAspectRatio", "xMidYMid meet");
+
+  svg.append("rect").attr("width", W).attr("height", H).attr("fill", COLORS.surface);
+
+  // Header — same layout as time series chart
+  // City name — top left
+  const hx = 16;
+  svg.append("text")
+    .attr("x", hx).attr("y", 24)
+    .attr("font-family", "'ABC Oracle Edu', Georgia, serif")
+    .attr("font-size", 20).attr("font-weight", 600).attr("fill", COLORS.black)
+    .text(cityData.name);
+
+  // Metric label — below city name
+  svg.append("text")
+    .attr("x", hx).attr("y", 42)
+    .attr("font-family", "'ABC Oracle Edu', sans-serif")
+    .attr("font-size", 12).attr("fill", COLORS.gray)
+    .text(`${hLabel} — vs. U.S. Metros${ptKey !== "all" ? ` (${selectedPropTypes[0]?.label || ""})` : ""}`);
+
+  // Percentile — top right, same style as value in time series
+  svg.append("text")
+    .attr("x", W - margin.right).attr("y", 28)
+    .attr("text-anchor", "end")
+    .attr("font-family", "'ABC Oracle Edu', sans-serif")
+    .attr("font-size", 18).attr("font-weight", 700).attr("fill", "#0BB4FF")
+    .text(`${percentile}${ordinalSuffix(percentile)} percentile`);
+
+  const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+
+  // Build bins — max 50, bars touching
+  const nBins = Math.min(50, new Set(filteredValues.map(v => v.toFixed(4))).size);
+  const extent = [d3.min(filteredValues), d3.max(filteredValues)];
+  const binGen = d3.bin().domain(extent).thresholds(nBins);
+  const bins = binGen(filteredValues);
+
+  const xScale = d3.scaleLinear().domain(extent).range([0, innerW]);
+  const maxCount = d3.max(bins, d => d.length);
+  const yScale = d3.scaleLinear().domain([0, maxCount]).range([innerH, 0]).nice();
+
+  // Horizontal gridlines
+  const yTicks = yScale.ticks(5);
+  yTicks.forEach(t => {
+    g.append("line")
+      .attr("x1", 0).attr("x2", innerW)
+      .attr("y1", yScale(t)).attr("y2", yScale(t))
+      .attr("stroke", COLORS.gridline).attr("stroke-width", 1);
+  });
+
+  // Bars — touching (no gap), min height 1px
+  // City bin = black, other bins = blue gradient (top to bottom fade)
+  const defs = svg.append("defs");
+  const barGradId = "hist-bar-grad-" + Date.now();
+  const barGrad = defs.append("linearGradient").attr("id", barGradId).attr("x1", 0).attr("y1", 0).attr("x2", 0).attr("y2", 1);
+  barGrad.append("stop").attr("offset", "0%").attr("stop-color", COLORS.blue).attr("stop-opacity", 0.35);
+  barGrad.append("stop").attr("offset", "100%").attr("stop-color", COLORS.blue).attr("stop-opacity", 0.06);
+
+  const cityInRange = cityVal >= extent[0] && cityVal <= extent[1];
+  bins.forEach(bin => {
+    if (bin.length === 0) return;
+    const contains = cityInRange && cityVal >= bin.x0 && (cityVal < bin.x1 || (bin.x1 === extent[1] && cityVal <= bin.x1));
+    const barH = Math.max(1, innerH - yScale(bin.length));
+    g.append("rect")
+      .attr("x", xScale(bin.x0))
+      .attr("y", innerH - barH)
+      .attr("width", Math.max(1, xScale(bin.x1) - xScale(bin.x0)))
+      .attr("height", barH)
+      .attr("fill", contains ? COLORS.blue : `url(#${barGradId})`)
+      .attr("fill-opacity", 1);
+  });
+
+  // Median dashed line
+  if (medianVal >= extent[0] && medianVal <= extent[1]) {
+    g.append("line")
+      .attr("x1", xScale(medianVal)).attr("x2", xScale(medianVal))
+      .attr("y1", 0).attr("y2", innerH)
+      .attr("stroke", COLORS.black).attr("stroke-width", 1)
+      .attr("stroke-dasharray", "4,3").attr("stroke-opacity", 0.4);
+  }
+
+  // Y-axis labels — matching time series style
+  yTicks.forEach(t => {
+    g.append("text")
+      .attr("x", -10).attr("y", yScale(t))
+      .attr("text-anchor", "end").attr("dominant-baseline", "middle")
+      .attr("font-family", "'ABC Oracle Edu', sans-serif")
+      .attr("font-size", 13).attr("fill", COLORS.gray)
+      .text(t);
+  });
+
+  // X-axis ticks — matching time series style
+  const xTicks = xScale.ticks(6);
+  xTicks.forEach(t => {
+    g.append("text")
+      .attr("x", xScale(t)).attr("y", innerH + 18)
+      .attr("text-anchor", "middle")
+      .attr("font-family", "'ABC Oracle Edu', sans-serif")
+      .attr("font-size", 12).attr("fill", COLORS.gray)
+      .text(hFmt(t));
+  });
+
+  // Centered legend — matching time series style
+  const font = "'ABC Oracle Edu', sans-serif";
+  const legendY = 56;
+  const legendItems = [
+    { label: `${cityData.name}: ${hFmt(cityVal)}`, color: COLORS.blue, dashed: false },
+    { label: `Other metros`, color: COLORS.blue, dashed: false, opacity: 0.65 },
+    { label: `Median: ${hFmt(medianVal)}`, color: COLORS.black, dashed: true },
+  ];
+  const itemGap = 20, swatchW = 16, swatchGap = 5, charW = 6.5;
+  const totalLgW = legendItems.reduce((acc, item, i) => {
+    return acc + swatchW + swatchGap + item.label.length * charW + (i < legendItems.length - 1 ? itemGap : 0);
+  }, 0);
+  let lgX = (W - totalLgW) / 2;
+  legendItems.forEach(item => {
+    if (item.dashed) {
+      svg.append("line").attr("x1", lgX).attr("x2", lgX + swatchW)
+        .attr("y1", legendY + 4).attr("y2", legendY + 4)
+        .attr("stroke", item.color).attr("stroke-width", 1).attr("stroke-dasharray", "4,3").attr("stroke-opacity", 0.4);
+    } else {
+      svg.append("rect").attr("x", lgX).attr("y", legendY - 1).attr("width", swatchW).attr("height", 10)
+        .attr("fill", item.color).attr("fill-opacity", item.opacity || 1);
+    }
+    lgX += swatchW + swatchGap;
+    svg.append("text").attr("x", lgX).attr("y", legendY + 8)
+      .attr("font-family", font).attr("font-size", 12).attr("fill", item.color).attr("font-weight", 500)
+      .text(item.label);
+    lgX += item.label.length * charW + itemGap;
+  });
+
+  // Source — left-aligned, matching time series
+  svg.append("text")
+    .attr("x", margin.left).attr("y", H - 6)
+    .attr("font-family", font).attr("font-size", 10).attr("fill", COLORS.gray).attr("font-style", "italic")
+    .text("Source: Redfin monthly data | Zillow ZHVI for sale price");
+
+  // AI summary for histogram
+  requestHistSummary();
+}
+
+function ordinalSuffix(n) {
+  const s = ["th", "st", "nd", "rd"];
+  const v = n % 100;
+  return s[(v - 20) % 10] || s[v] || s[0];
+}
+
+function measureText(text, size) {
+  // Rough character width estimation
+  return text.length * size * 0.55;
+}
+
+// ─── Sharing ─────────────────────────────────────────────────────
+
+function updateTweet() {
+  if (!cityData || !selectedMetric) return;
+  const m = selectedMetric;
+  const activePt = selectedPropTypes[0] || PROP_TYPES[0];
+  const ptData = cityData.property_types[activePt.key] || cityData.property_types["all"] || {};
+  const isPrice = m.key === "median_sale_price";
+  const useZillow = isPrice && activePt.key === "all" && cityData.price_dates;
+  const vals = useZillow ? cityData.price_values : (ptData[m.key] || []);
+  const lastVal = vals.filter(v => v != null).pop();
+  const name = cityData.name;
+
+  // Calculate YoY change
+  const rawDates = useZillow ? cityData.price_dates : cityData.dates;
+  const dates = rawDates.map(d => new Date(d));
+  const lastDate = dates[dates.length - 1];
+  const lastIdx = vals.length - 1;
+  // Find ~1 year ago: ~12 months for both Zillow and Redfin monthly
+  const lookback = 12;
+  const minOff = Math.floor(lookback * 0.88);
+  const maxOff = Math.ceil(lookback * 1.12);
+  let yoyIdx = -1;
+  for (let i = lastIdx - lookback; i >= Math.max(0, lastIdx - maxOff) && i <= lastIdx - minOff; i--) {
+    if (vals[i] != null) { yoyIdx = i; break; }
+  }
+  if (yoyIdx < 0) {
+    for (let i = Math.max(0, lastIdx - maxOff); i <= lastIdx - minOff; i++) {
+      if (vals[i] != null) { yoyIdx = i; break; }
+    }
+  }
+
+  let yoyText = "";
+  if (yoyIdx >= 0 && vals[yoyIdx]) {
+    const pctChange = ((lastVal - vals[yoyIdx]) / vals[yoyIdx] * 100);
+    const dir = pctChange >= 0 ? "up" : "down";
+    yoyText = `, ${dir} ${Math.abs(pctChange).toFixed(1)}% year over year`;
+  }
+
+  const tweet = `${m.label} in ${name}: ${m.fmt(lastVal)}${yoyText}.\n\nvia @AzizSunderji`;
+
+  document.getElementById("tweet-preview").textContent = tweet;
+}
+
+function setupShareButtons() {
+  async function svgToBlob(svgEl) {
+    if (!svgEl) throw new Error("No SVG found");
+
+    // Clone SVG and inline all computed styles so the rasterized image looks correct
+    const clone = svgEl.cloneNode(true);
+    // Ensure explicit dimensions
+    const box = svgEl.getBoundingClientRect();
+    clone.setAttribute("width", box.width * 2);
+    clone.setAttribute("height", box.height * 2);
+    clone.setAttribute("viewBox", svgEl.getAttribute("viewBox") || `0 0 ${box.width} ${box.height}`);
+
+    // Inline font-face declarations so text renders in the PNG
+    const styleEl = document.createElementNS("http://www.w3.org/2000/svg", "style");
+    const fontFaces = Array.from(document.styleSheets)
+      .flatMap(sheet => { try { return Array.from(sheet.cssRules); } catch { return []; } })
+      .filter(r => r instanceof CSSFontFaceRule)
+      .map(r => r.cssText)
+      .join("\n");
+    styleEl.textContent = fontFaces;
+    clone.insertBefore(styleEl, clone.firstChild);
+
+    const svgData = new XMLSerializer().serializeToString(clone);
+    const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
+    const url = URL.createObjectURL(svgBlob);
+
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#FFFFFF";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0);
+        URL.revokeObjectURL(url);
+        canvas.toBlob(blob => resolve(blob), "image/png");
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("SVG render failed")); };
+      img.src = url;
+    });
+  }
+
+  // Helper: download blob as file and return the object URL
+  function downloadBlob(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    return url;
+  }
+
+  function copyFeedback(btn) {
+    const orig = btn.innerHTML;
+    btn.classList.add("copied");
+    btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Copied!`;
+    setTimeout(() => { btn.classList.remove("copied"); btn.innerHTML = orig; }, 2000);
+  }
+
+  async function stageSocial(platform) {
+    const text = document.getElementById("tweet-preview").textContent;
+    try {
+      const svgEl = document.querySelector("#chart-canvas svg");
+      if (svgEl) {
+        const blob = await svgToBlob(svgEl);
+        await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+      }
+      let intentUrl;
+      if (platform === "twitter") intentUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
+      else if (platform === "bluesky") intentUrl = `https://bsky.app/intent/compose?text=${encodeURIComponent(text)}`;
+      else if (platform === "linkedin") intentUrl = `https://www.linkedin.com/feed/?shareActive=true&text=${encodeURIComponent(text)}`;
+      window.open(intentUrl, "_blank");
+      showToast("Image copied to clipboard — paste it (Cmd+V) in the compose screen.");
+    } catch(e) { console.error("Social error:", e); showToast("Failed. Try copying manually."); }
+  }
+
+  // ── Chart buttons ──
+  document.getElementById("btn-copy").onclick = async () => {
+    try {
+      const blob = await svgToBlob(document.querySelector("#chart-canvas svg"));
+      await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+      copyFeedback(document.getElementById("btn-copy"));
+    } catch(e) { console.error("Copy failed:", e); }
+  };
+  document.getElementById("btn-download").onclick = async () => {
+    try {
+      const blob = await svgToBlob(document.querySelector("#chart-canvas svg"));
+      const citySlug = selectedCity.slug.replace(/_/g, "-");
+      downloadBlob(blob, `home-economics-${citySlug}-${selectedMetric.key}.png`);
+    } catch(e) { console.error("Download failed:", e); }
+  };
+
+  // Copy tweet text to clipboard
+  // CSV download
+  document.getElementById("btn-download-csv").onclick = () => {
+    if (!cityData || !selectedMetric) return;
+    const m = selectedMetric;
+    const rows = [["date"]];
+    selectedPropTypes.forEach(pt => rows[0].push(`${pt.label} (${cityData.name})`));
+    if (showNational && nationalData) {
+      selectedPropTypes.forEach(pt => rows[0].push(`${pt.label} (U.S.)`));
+    }
+    const isPrice = m.key === "median_sale_price";
+    const firstPt = selectedPropTypes[0];
+    const useZillow = isPrice && firstPt.key === "all" && cityData.price_dates;
+    const rawDates = useZillow ? cityData.price_dates : cityData.dates;
+    if (!rawDates) return;
+    rawDates.forEach((dateStr, i) => {
+      const row = [dateStr];
+      selectedPropTypes.forEach(pt => {
+        const ptData = cityData.property_types[pt.key] || {};
+        const useZ = isPrice && pt.key === "all" && cityData.price_dates;
+        const vals = useZ ? cityData.price_values : (ptData[m.key] || []);
+        row.push(vals[i] != null ? vals[i] : "");
+      });
+      if (showNational && nationalData) {
+        selectedPropTypes.forEach(pt => {
+          const ptData = nationalData.property_types?.[pt.key] || {};
+          const useZ = isPrice && pt.key === "all" && nationalData.price_dates;
+          const natDates = useZ ? nationalData.price_dates : nationalData.dates;
+          const natVals = useZ ? nationalData.price_values : (ptData[m.key] || []);
+          const natIdx = natDates ? natDates.indexOf(dateStr) : -1;
+          row.push(natIdx >= 0 && natVals[natIdx] != null ? natVals[natIdx] : "");
+        });
+      }
+      rows.push(row);
+    });
+    const csv = rows.map(r => r.join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const citySlug = selectedCity.slug.replace(/_/g, "-");
+    downloadBlob(blob, `home-economics-${citySlug}-${m.key}.csv`);
+  };
+
+  document.getElementById("btn-twitter").onclick = () => stageSocial("twitter");
+  document.getElementById("btn-bluesky").onclick = () => stageSocial("bluesky");
+  document.getElementById("btn-linkedin").onclick = () => stageSocial("linkedin");
+
+  // ── Histogram share buttons ──
+  document.getElementById("hist-btn-copy").onclick = async () => {
+    try {
+      const svgEl = document.querySelector("#histogram-canvas svg");
+      const blob = await svgToBlob(svgEl);
+      await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+      const btn = document.getElementById("hist-btn-copy");
+      copyFeedback(btn, btn.innerHTML);
+    } catch(e) { console.error("Hist copy failed:", e); }
+  };
+  document.getElementById("hist-btn-download").onclick = async () => {
+    try {
+      const svgEl = document.querySelector("#histogram-canvas svg");
+      const blob = await svgToBlob(svgEl);
+      const citySlug = selectedCity.slug.replace(/_/g, "-");
+      downloadBlob(blob, `home-economics-${citySlug}-${selectedMetric.key}-histogram.png`);
+    } catch(e) { console.error("Hist download failed:", e); }
+  };
+  document.getElementById("hist-btn-data").onclick = () => {
+    if (!histogramSummary || !selectedMetric || !selectedCity) return;
+    const m = selectedMetric;
+    const ptKey = selectedPropTypes[0]?.key || "all";
+    const rows = [["metro", m.key]];
+    Object.entries(histogramSummary).forEach(([slug, ptData]) => {
+      const val = ptData[ptKey]?.[m.key];
+      if (val != null) rows.push([slug, val]);
+    });
+    const csv = rows.map(r => r.join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const citySlug = selectedCity.slug.replace(/_/g, "-");
+    downloadBlob(blob, `home-economics-${citySlug}-${m.key}-histogram.csv`);
+  };
+  document.getElementById("hist-btn-twitter").onclick = () => stageSocial("twitter");
+  document.getElementById("hist-btn-bluesky").onclick = () => stageSocial("bluesky");
+  document.getElementById("hist-btn-linkedin").onclick = () => stageSocial("linkedin");
+}
+
+function showToast(msg) {
+  let toast = document.getElementById("toast");
+  if (!toast) {
+    toast = document.createElement("div");
+    toast.id = "toast";
+    toast.className = "toast";
+    document.body.appendChild(toast);
+  }
+  toast.textContent = msg;
+  toast.classList.add("visible");
+  setTimeout(() => toast.classList.remove("visible"), 4000);
+}
+
+// ─── Boot ────────────────────────────────────────────────────────
+init();
+</script>
+
+</body>
+</html>

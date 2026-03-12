@@ -1,0 +1,43 @@
+name: Deploy Metro Explorer
+
+on:
+  push:
+    paths:
+      - 'metro-explorer/**'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Install lftp
+      run: sudo apt-get update && sudo apt-get install -y lftp
+
+    - name: Deploy to Server via SFTP
+      env:
+        HOST: ${{ secrets.SFTP_HOST }}
+        USER: ${{ secrets.SFTP_USER }}
+        KEY: ${{ secrets.SFTP_KEY }}
+        REMOTE_BASE: ${{ secrets.REMOTE_BASE }}
+      run: |
+        mkdir -p ~/.ssh
+        echo "$KEY" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        ssh-keyscan -H $HOST >> ~/.ssh/known_hosts 2>/dev/null || true
+
+        # Mirror metro-explorer to server — only uploads changed files
+        lftp -e "
+          set sftp:auto-confirm yes;
+          set sftp:connect-program 'ssh -i ~/.ssh/id_rsa';
+          set net:max-retries 3;
+          set net:timeout 60;
+          open -u $USER,dummy sftp://$HOST;
+          mkdir -p ${REMOTE_BASE}/live/metro-explorer;
+          mirror -R --only-newer --verbose metro-explorer/ ${REMOTE_BASE}/live/metro-explorer/;
+          bye
+        " || echo "Upload finished with warnings"
+
+        echo "Deployed to https://home-economics.us/wp-content/uploads/reports/live/metro-explorer/"
