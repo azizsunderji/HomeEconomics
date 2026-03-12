@@ -2527,7 +2527,7 @@ function setupShareButtons() {
       }
       rows.push(row);
     });
-    const csv = rows.map(r => r.join(",")).join("\n");
+    const csv = rows.map(r => r.map(v => String(v).includes(",") ? `"${v}"` : v).join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
     const citySlug = selectedCity.slug.replace(/_/g, "-");
     downloadBlob(blob, `home-economics-${citySlug}-${m.key}.csv`);
@@ -2564,7 +2564,7 @@ function setupShareButtons() {
       const val = ptData[ptKey]?.[m.key];
       if (val != null) rows.push([slug, val]);
     });
-    const csv = rows.map(r => r.join(",")).join("\n");
+    const csv = rows.map(r => r.map(v => String(v).includes(",") ? `"${v}"` : v).join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
     const citySlug = selectedCity.slug.replace(/_/g, "-");
     downloadBlob(blob, `home-economics-${citySlug}-${m.key}-histogram.csv`);
