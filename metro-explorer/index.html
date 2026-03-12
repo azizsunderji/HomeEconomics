@@ -2261,11 +2261,10 @@ function setupShareButtons() {
   const _logoImg = new Image();
   _logoImg.src = "he-logo.svg";
 
-  async function captureSvg(svgEl) {
+  async function captureSvg(svgEl, { scale = 2, padding = 0 } = {}) {
     const vb = (svgEl.getAttribute("viewBox") || "").split(" ").map(Number);
     const vbW = vb[2] || svgEl.getBoundingClientRect().width;
     const vbH = vb[3] || svgEl.getBoundingClientRect().height;
-    const scale = 2;
 
     const clone = svgEl.cloneNode(true);
     clone.setAttribute("width", vbW * scale);
@@ -2288,13 +2287,14 @@ function setupShareButtons() {
     return new Promise((resolve, reject) => {
       const img = new Image();
       img.onload = () => {
+        const pad = Math.round(padding * scale);
         const canvas = document.createElement("canvas");
-        canvas.width = img.width;
-        canvas.height = img.height;
+        canvas.width = img.width + pad * 2;
+        canvas.height = img.height + pad * 2;
         const ctx = canvas.getContext("2d");
         ctx.fillStyle = "#FFFFFF";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(img, 0, 0);
+        ctx.drawImage(img, pad, pad);
         URL.revokeObjectURL(url);
         canvas.toBlob(blob => resolve(blob), "image/png");
       };
@@ -2316,7 +2316,7 @@ function setupShareButtons() {
     if (isChart) renderChart(); else renderHistogram();
 
     const squareSvg = document.querySelector(`#${containerId} svg`);
-    const blob = await captureSvg(squareSvg);
+    const blob = await captureSvg(squareSvg, { scale: 3, padding: 20 });
 
     // Restore normal 16:9 view
     _socialRenderMode = false;
