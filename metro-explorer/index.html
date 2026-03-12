@@ -1058,6 +1058,7 @@ let histogramData = {};
 let selectedCity = null;
 let selectedMetric = null;
 let cityData = null;
+let _socialRenderMode = false;
 let ddIndex = -1;
 let timeRangeYears = 0; // 0 = all data
 let measurementType = "level"; // "level" or "yoy"
@@ -1568,7 +1569,7 @@ function renderChart() {
   const multiLine = selectedPropTypes.length > 1;
   const rect = container.getBoundingClientRect();
   const W = Math.max(rect.width, 800);
-  const H = W * 9 / 16;
+  const H = _socialRenderMode ? W : W * 9 / 16;
 
   const margin = { top: 90, right: 32, bottom: 50, left: 64 };
   const innerW = W - margin.left - margin.right;
@@ -2028,7 +2029,7 @@ function renderHistogram() {
   if (filteredValues.length < 5) return;
 
   const W = Math.max(container.getBoundingClientRect().width, 800);
-  const H = W * 9 / 16;
+  const H = _socialRenderMode ? W : W * 9 / 16;
   const margin = { top: 90, right: 32, bottom: 50, left: 64 };
   const innerW = W - margin.left - margin.right;
   const innerH = H - margin.top - margin.bottom;
@@ -2236,22 +2237,17 @@ function setupShareButtons() {
   const _logoImg = new Image();
   _logoImg.src = "he-logo.svg";
 
-  async function svgToBlob(svgEl, { social = false } = {}) {
-    if (!svgEl) throw new Error("No SVG found");
-
-    // Use viewBox for true logical dimensions (not CSS layout box)
+  async function captureSvg(svgEl) {
     const vb = (svgEl.getAttribute("viewBox") || "").split(" ").map(Number);
     const vbW = vb[2] || svgEl.getBoundingClientRect().width;
     const vbH = vb[3] || svgEl.getBoundingClientRect().height;
     const scale = 2;
 
-    // Clone SVG and set explicit pixel dimensions from viewBox
     const clone = svgEl.cloneNode(true);
     clone.setAttribute("width", vbW * scale);
     clone.setAttribute("height", vbH * scale);
     clone.setAttribute("viewBox", `${vb[0]||0} ${vb[1]||0} ${vbW} ${vbH}`);
 
-    // Inline font-face declarations so text renders in the PNG
     const styleEl = document.createElementNS("http://www.w3.org/2000/svg", "style");
     const fontFaces = Array.from(document.styleSheets)
       .flatMap(sheet => { try { return Array.from(sheet.cssRules); } catch { return []; } })
@@ -2268,69 +2264,41 @@ function setupShareButtons() {
     return new Promise((resolve, reject) => {
       const img = new Image();
       img.onload = () => {
-        const chartW = img.width;   // vbW * 2
-        const chartH = img.height;  // vbH * 2
-
-        if (!social) {
-          // Regular copy/download: exact chart dimensions
-          const canvas = document.createElement("canvas");
-          canvas.width = chartW;
-          canvas.height = chartH;
-          const ctx = canvas.getContext("2d");
-          ctx.fillStyle = "#FFFFFF";
-          ctx.fillRect(0, 0, chartW, chartH);
-          ctx.drawImage(img, 0, 0);
-          URL.revokeObjectURL(url);
-          canvas.toBlob(blob => resolve(blob), "image/png");
-          return;
-        }
-
-        // Social: square canvas with chart as a branded card
-        const side = chartW;
         const canvas = document.createElement("canvas");
-        canvas.width = side;
-        canvas.height = side;
+        canvas.width = img.width;
+        canvas.height = img.height;
         const ctx = canvas.getContext("2d");
-
-        // Cream card background
-        ctx.fillStyle = "#F6F7F3";
-        ctx.fillRect(0, 0, side, side);
-
-        // Draw chart at top with small cream border on sides/top
-        const pad = Math.round(side * 0.03);
-        const scaledChartW = side - pad * 2;
-        const scaledChartH = chartH * (scaledChartW / chartW);
-        ctx.drawImage(img, pad, pad, scaledChartW, scaledChartH);
-
-        // Branding centered in remaining space below chart
-        const brandingTop = pad + scaledChartH;
-        const brandingH = side - brandingTop;
-        const brandingMidY = brandingTop + brandingH * 0.42;
-
-        // Logo: centered, substantial size
-        const logoDrawW = side * 0.28;
-        const logoDrawH = logoDrawW * (220 / 655);
-        const logoX = (side - logoDrawW) / 2;
-        const logoY = brandingMidY - logoDrawH / 2;
-        ctx.globalAlpha = 0.40;
-        if (_logoImg.complete && _logoImg.naturalWidth > 0) {
-          ctx.drawImage(_logoImg, logoX, logoY, logoDrawW, logoDrawH);
-        }
-        ctx.globalAlpha = 1.0;
-
-        // URL centered below logo
-        const fontSize = Math.round(side * 0.022);
-        ctx.font = `${fontSize}px 'ABC Oracle Edu', Georgia, serif`;
-        ctx.fillStyle = "rgba(61,55,51,0.30)";
-        ctx.textAlign = "center";
-        ctx.fillText("homeeconomics.substack.com", side / 2, logoY + logoDrawH + fontSize * 2.2);
-
+        ctx.fillStyle = "#FFFFFF";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0);
         URL.revokeObjectURL(url);
         canvas.toBlob(blob => resolve(blob), "image/png");
       };
       img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("SVG render failed")); };
       img.src = url;
     });
+  }
+
+  async function svgToBlob(svgEl, { social = false } = {}) {
+    if (!svgEl) throw new Error("No SVG found");
+
+    if (!social) return captureSvg(svgEl);
+
+    // Social: re-render chart at square (1:1) aspect ratio, capture, restore
+    const isChart = !!svgEl.closest('#chart-canvas');
+    const containerId = isChart ? 'chart-canvas' : 'histogram-canvas';
+
+    _socialRenderMode = true;
+    if (isChart) renderChart(); else renderHistogram();
+
+    const squareSvg = document.querySelector(`#${containerId} svg`);
+    const blob = await captureSvg(squareSvg);
+
+    // Restore normal 16:9 view
+    _socialRenderMode = false;
+    if (isChart) renderChart(); else renderHistogram();
+
+    return blob;
   }
 
   // Helper: download blob as file and return the object URL
