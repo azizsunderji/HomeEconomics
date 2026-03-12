@@ -1680,7 +1680,7 @@ function renderChart() {
   svg.append("text")
     .attr("x", hx).attr("y", 42)
     .attr("font-family", "'ABC Oracle Edu', sans-serif")
-    .attr("font-size", 12).attr("fill", COLORS.gray)
+    .attr("font-size", 12).attr("fill", COLORS.blue)
     .text(measureLabel);
 
   // Latest value — large, top right
@@ -2067,7 +2067,7 @@ function renderHistogram() {
   svg.append("text")
     .attr("x", hx).attr("y", 42)
     .attr("font-family", "'ABC Oracle Edu', sans-serif")
-    .attr("font-size", 12).attr("fill", COLORS.gray)
+    .attr("font-size", 12).attr("fill", COLORS.blue)
     .text(`${hLabel} — vs. U.S. Metros${ptKey !== "all" ? ` (${selectedPropTypes[0]?.label || ""})` : ""}`);
 
   // Percentile — top right, same style as value in time series
