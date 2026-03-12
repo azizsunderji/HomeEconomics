@@ -2285,41 +2285,45 @@ function setupShareButtons() {
           return;
         }
 
-        // Social: square canvas with chart + branding below
+        // Social: square canvas with chart as a branded card
         const side = chartW;
         const canvas = document.createElement("canvas");
         canvas.width = side;
         canvas.height = side;
         const ctx = canvas.getContext("2d");
-        ctx.fillStyle = "#FFFFFF";
+
+        // Cream card background
+        ctx.fillStyle = "#F6F7F3";
         ctx.fillRect(0, 0, side, side);
 
-        // Draw chart at top, filling full width
-        ctx.drawImage(img, 0, 0, chartW, chartH);
+        // Draw chart at top with small cream border on sides/top
+        const pad = Math.round(side * 0.03);
+        const scaledChartW = side - pad * 2;
+        const scaledChartH = chartH * (scaledChartW / chartW);
+        ctx.drawImage(img, pad, pad, scaledChartW, scaledChartH);
 
-        // Branding in the space below the chart
-        // chartH ≈ 56% of side, so ~44% remains
-        const brandingTop = chartH;
-        const brandingH = side - chartH;
-        const brandingCenter = brandingTop + brandingH * 0.42;
+        // Branding centered in remaining space below chart
+        const brandingTop = pad + scaledChartH;
+        const brandingH = side - brandingTop;
+        const brandingMidY = brandingTop + brandingH * 0.42;
 
-        // Logo: large, right-aligned
-        const logoDrawW = side * 0.22;
+        // Logo: centered, substantial size
+        const logoDrawW = side * 0.28;
         const logoDrawH = logoDrawW * (220 / 655);
-        const logoX = side - logoDrawW - side * 0.04;
-        const logoY = brandingCenter - logoDrawH - 4;
-        ctx.globalAlpha = 0.5;
+        const logoX = (side - logoDrawW) / 2;
+        const logoY = brandingMidY - logoDrawH / 2;
+        ctx.globalAlpha = 0.40;
         if (_logoImg.complete && _logoImg.naturalWidth > 0) {
           ctx.drawImage(_logoImg, logoX, logoY, logoDrawW, logoDrawH);
         }
         ctx.globalAlpha = 1.0;
 
-        // Substack URL right below logo
-        const fontSize = Math.round(side * 0.02);
+        // URL centered below logo
+        const fontSize = Math.round(side * 0.022);
         ctx.font = `${fontSize}px 'ABC Oracle Edu', Georgia, serif`;
-        ctx.fillStyle = "rgba(61,55,51,0.35)";
-        ctx.textAlign = "right";
-        ctx.fillText("homeeconomics.substack.com", side - side * 0.04, brandingCenter + fontSize + 4);
+        ctx.fillStyle = "rgba(61,55,51,0.30)";
+        ctx.textAlign = "center";
+        ctx.fillText("homeeconomics.substack.com", side / 2, logoY + logoDrawH + fontSize * 2.2);
 
         URL.revokeObjectURL(url);
         canvas.toBlob(blob => resolve(blob), "image/png");
