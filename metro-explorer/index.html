@@ -2316,7 +2316,7 @@ function setupShareButtons() {
     if (isChart) renderChart(); else renderHistogram();
 
     const squareSvg = document.querySelector(`#${containerId} svg`);
-    const blob = await captureSvg(squareSvg, { scale: 3, padding: 20 });
+    const blob = await captureSvg(squareSvg, { scale: 3, padding: 40 });
 
     // Restore normal 16:9 view
     _socialRenderMode = false;
