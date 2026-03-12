@@ -1604,8 +1604,8 @@ function renderChart() {
     const pairs = series.pairs;
     const isDashed = series.isNational;
 
-    // Gradient fill (only for single non-national series in level mode)
-    if (!hasMultipleCitySeries && !isDashed && measurementType === "level") {
+    // Gradient fill for city series (not national median)
+    if (!isDashed) {
       const gradId = "area-grad-" + si + "-" + Date.now();
       const grad = defs.append("linearGradient").attr("id", gradId).attr("x1", 0).attr("y1", 0).attr("x2", 0).attr("y2", 1);
       grad.append("stop").attr("offset", "0%").attr("stop-color", seriesColor).attr("stop-opacity", 0.15);
