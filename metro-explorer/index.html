@@ -1964,10 +1964,21 @@ function renderChart() {
 
   // ── Source ──────────────────────
   svg.append("text")
-    .attr("x", 16).attr("y", H - 6)
+    .attr("x", 16).attr("y", H - 18)
     .attr("font-family", "'ABC Oracle Edu', sans-serif")
     .attr("font-size", 10).attr("fill", COLORS.gray)
     .text("Source: Redfin monthly data | Zillow ZHVI for sale price");
+
+  // HE emblem (bar chart icon) bottom-right
+  const emblemSize = 22;
+  const emblemX = W - margin.right - emblemSize;
+  const emblemY = H - 18 - emblemSize + 4;
+  svg.append("g")
+    .attr("transform", `translate(${emblemX},${emblemY}) scale(${emblemSize / 127})`)
+    .attr("opacity", 0.25)
+    .append("path")
+    .attr("fill", COLORS.text)
+    .attr("d", "M113.4,0h-27.4l-1.8.5L56.8,17.7l-1.5,2.8v13.9h-24.1l-1.8.5L2.1,52.1l-1.5,2.8v68.7l3.3,3.3h109.6l3.3-3.3V3.3L113.4,0ZM7.4,85.4l19.5-12.2c.5-.3,1,0,1,.6v20.2l-19.8,12.4c-.5.3-1,0-1-.6v-19.8c0-.2.1-.5.3-.6ZM35.7,41.1h18.4c.6,0,1.2.5,1.2,1.2v76.9c0,.6-.5,1.2-1.2,1.2h-18.4c-.6,0-1.2-.5-1.2-1.2v-76.9c0-.6.5-1.2,1.2-1.2ZM82.4,88.9l-19.6,12.3c-.4.3-1,0-1-.5v-19.9c0-.2.1-.4.3-.5l19.6-12.3c.4-.3,1,0,1,.5v19.9c0,.2-.1.4-.3.5ZM82.4,59.6l-19.6,12.3c-.4.3-1,0-1-.5v-19.9c0-.2.1-.4.3-.5l19.6-12.3c.4-.3,1,0,1,.5v19.9c0,.2-.1.4-.3.5ZM62.1,109.4l19.6-12.3c.4-.3,1,0,1,.5v21.6c0,.6-.5,1.1-1.1,1.1h-18.6c-.6,0-1.1-.5-1.1-1.1v-9.3c0-.2.1-.4.3-.5ZM62.1,22.2l19.6-12.3c.4-.3,1,0,1,.5v19.5c0,.2-.1.4-.3.5l-19.6,12.3c-.4.3-1,0-1-.5v-19.5c0-.2.1-.4.3-.5ZM27.9,44.9v19.4c0,.2-.1.5-.3.6l-19.5,12.2c-.5.3-1,0-1-.6v-19.4c0-.2.1-.5.3-.6l19.5-12.2c.5-.3,1,0,1,.6ZM7.4,114.6l19.5-12.2c.5-.3,1,0,1,.6v16.2c0,.7-.6,1.2-1.2,1.2h-18.4c-.7,0-1.2-.6-1.2-1.2v-3.9c0-.2.1-.5.3-.6h0ZM109,120.3h-18.6c-.6,0-1.1-.5-1.1-1.1V7.7c0-.6.5-1.1,1.1-1.1h18.6c.6,0,1.1.5,1.1,1.1v111.5c0,.6-.5,1.1-1.1,1.1Z");
 
   // Update tweet preview
   updateTweet();
@@ -2171,9 +2182,20 @@ function renderHistogram() {
 
   // Source — left-aligned
   svg.append("text")
-    .attr("x", 16).attr("y", H - 6)
+    .attr("x", 16).attr("y", H - 18)
     .attr("font-family", font).attr("font-size", 10).attr("fill", COLORS.gray)
     .text("Source: Redfin monthly data | Zillow ZHVI for sale price");
+
+  // HE emblem bottom-right
+  const hEmblemSize = 22;
+  const hEmblemX = W - margin.right - hEmblemSize;
+  const hEmblemY = H - 18 - hEmblemSize + 4;
+  svg.append("g")
+    .attr("transform", `translate(${hEmblemX},${hEmblemY}) scale(${hEmblemSize / 127})`)
+    .attr("opacity", 0.25)
+    .append("path")
+    .attr("fill", COLORS.text)
+    .attr("d", "M113.4,0h-27.4l-1.8.5L56.8,17.7l-1.5,2.8v13.9h-24.1l-1.8.5L2.1,52.1l-1.5,2.8v68.7l3.3,3.3h109.6l3.3-3.3V3.3L113.4,0ZM7.4,85.4l19.5-12.2c.5-.3,1,0,1,.6v20.2l-19.8,12.4c-.5.3-1,0-1-.6v-19.8c0-.2.1-.5.3-.6ZM35.7,41.1h18.4c.6,0,1.2.5,1.2,1.2v76.9c0,.6-.5,1.2-1.2,1.2h-18.4c-.6,0-1.2-.5-1.2-1.2v-76.9c0-.6.5-1.2,1.2-1.2ZM82.4,88.9l-19.6,12.3c-.4.3-1,0-1-.5v-19.9c0-.2.1-.4.3-.5l19.6-12.3c.4-.3,1,0,1,.5v19.9c0,.2-.1.4-.3.5ZM82.4,59.6l-19.6,12.3c-.4.3-1,0-1-.5v-19.9c0-.2.1-.4.3-.5l19.6-12.3c.4-.3,1,0,1,.5v19.9c0,.2-.1.4-.3.5ZM62.1,109.4l19.6-12.3c.4-.3,1,0,1,.5v21.6c0,.6-.5,1.1-1.1,1.1h-18.6c-.6,0-1.1-.5-1.1-1.1v-9.3c0-.2.1-.4.3-.5ZM62.1,22.2l19.6-12.3c.4-.3,1,0,1,.5v19.5c0,.2-.1.4-.3.5l-19.6,12.3c-.4.3-1,0-1-.5v-19.5c0-.2.1-.4.3-.5ZM27.9,44.9v19.4c0,.2-.1.5-.3.6l-19.5,12.2c-.5.3-1,0-1-.6v-19.4c0-.2.1-.5.3-.6l19.5-12.2c.5-.3,1,0,1,.6ZM7.4,114.6l19.5-12.2c.5-.3,1,0,1,.6v16.2c0,.7-.6,1.2-1.2,1.2h-18.4c-.7,0-1.2-.6-1.2-1.2v-3.9c0-.2.1-.5.3-.6h0ZM109,120.3h-18.6c-.6,0-1.1-.5-1.1-1.1V7.7c0-.6.5-1.1,1.1-1.1h18.6c.6,0,1.1.5,1.1,1.1v111.5c0,.6-.5,1.1-1.1,1.1Z");
 
   // AI summary for histogram
   requestHistSummary();
@@ -2337,7 +2359,7 @@ function setupShareButtons() {
     const skipPhrases = ["Generating summary...", "Set your Anthropic API key", "Unable to generate"];
     const aiUsable = aiText && !skipPhrases.some(p => aiText.startsWith(p));
     const text = aiUsable
-      ? `${aiText}\n\n${metricLabel} in ${cityName}\nvia @AzizSunderji | homeeconomics.substack.com`
+      ? `${metricLabel} in ${cityName}:\n${aiText}\n\nvia @AzizSunderji | homeeconomics.substack.com`
       : `${metricLabel} in ${cityName}\n\nvia @AzizSunderji | homeeconomics.substack.com`;
     const svgEl = document.querySelector(svgSelector);
 
