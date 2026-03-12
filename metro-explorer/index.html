@@ -2261,7 +2261,7 @@ function setupShareButtons() {
   const _logoImg = new Image();
   _logoImg.src = "he-logo.svg";
 
-  async function captureSvg(svgEl, { scale = 2, padding = 0 } = {}) {
+  async function captureSvg(svgEl, { scale = 2, padding = 0, format = "image/png", quality = 1 } = {}) {
     const vb = (svgEl.getAttribute("viewBox") || "").split(" ").map(Number);
     const vbW = vb[2] || svgEl.getBoundingClientRect().width;
     const vbH = vb[3] || svgEl.getBoundingClientRect().height;
@@ -2296,7 +2296,7 @@ function setupShareButtons() {
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.drawImage(img, pad, pad);
         URL.revokeObjectURL(url);
-        canvas.toBlob(blob => resolve(blob), "image/png");
+        canvas.toBlob(blob => resolve(blob), format, quality);
       };
       img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("SVG render failed")); };
       img.src = url;
@@ -2316,7 +2316,7 @@ function setupShareButtons() {
     if (isChart) renderChart(); else renderHistogram();
 
     const squareSvg = document.querySelector(`#${containerId} svg`);
-    const blob = await captureSvg(squareSvg, { scale: 3, padding: 40 });
+    const blob = await captureSvg(squareSvg, { scale: 4, padding: 40, format: "image/jpeg", quality: 0.95 });
 
     // Restore normal 16:9 view
     _socialRenderMode = false;
@@ -2454,7 +2454,7 @@ function setupShareButtons() {
       formData.append("platform", _socialPlatform);
       formData.append("text", text);
       if (_socialBlob) {
-        formData.append("image", _socialBlob, "chart.png");
+        formData.append("image", _socialBlob, "chart.jpg");
       }
 
       const resp = await fetch("api/post-social.php", { method: "POST", body: formData });
