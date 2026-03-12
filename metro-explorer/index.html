@@ -2330,15 +2330,16 @@ function setupShareButtons() {
   async function stageSocial(platform, svgSelector) {
     // Use AI summary as post text; fall back to tweet preview
     const isChart = svgSelector.includes("chart-canvas");
+    const aiSummaryEl = document.getElementById(isChart ? "chart-ai-summary" : "hist-ai-summary");
     const aiTextEl = document.getElementById(isChart ? "chart-ai-text" : "hist-ai-text");
-    const aiText = aiTextEl ? aiTextEl.textContent : "";
-    const fallback = document.getElementById("tweet-preview").textContent;
+    const aiText = (aiTextEl && aiSummaryEl && !aiSummaryEl.classList.contains("loading")) ? aiTextEl.textContent.trim() : "";
     const cityName = cityData ? cityData.name : "";
     const metricLabel = selectedMetric ? selectedMetric.label : "";
-    // Build post: AI summary + metric context + attribution
-    const text = (aiText && aiText !== "Generating summary...")
+    const skipPhrases = ["Generating summary...", "Set your Anthropic API key", "Unable to generate"];
+    const aiUsable = aiText && !skipPhrases.some(p => aiText.startsWith(p));
+    const text = aiUsable
       ? `${aiText}\n\n${metricLabel} in ${cityName}\nvia @AzizSunderji | homeeconomics.substack.com`
-      : fallback;
+      : `${metricLabel} in ${cityName}\n\nvia @AzizSunderji | homeeconomics.substack.com`;
     const svgEl = document.querySelector(svgSelector);
 
     // All platforms: show confirmation modal
