@@ -497,6 +497,139 @@ body {
   letter-spacing: 0.02em;
 }
 
+/* ── Social post modal ─────────────────────────────── */
+
+.social-modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 10000;
+  align-items: center;
+  justify-content: center;
+}
+.social-modal-overlay.visible { display: flex; }
+
+.social-modal {
+  background: #fff;
+  border-radius: 16px;
+  width: 480px;
+  max-width: 92vw;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  font-family: var(--sans);
+}
+
+.social-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--black-08);
+}
+.social-modal-header h3 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--black);
+}
+.social-modal-close {
+  background: none;
+  border: none;
+  font-size: 1.3rem;
+  color: var(--black-50);
+  cursor: pointer;
+  padding: 4px 8px;
+  line-height: 1;
+}
+.social-modal-close:hover { color: var(--black); }
+
+.social-modal-body { padding: 20px; }
+
+.social-modal-preview {
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 16px;
+  border: 1px solid var(--black-08);
+}
+.social-modal-preview img {
+  width: 100%;
+  display: block;
+}
+
+.social-modal-text {
+  width: 100%;
+  border: 1px solid var(--black-15);
+  border-radius: 8px;
+  padding: 12px;
+  font-family: var(--sans);
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--black);
+  resize: vertical;
+  min-height: 80px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.social-modal-text:focus { border-color: var(--blue); }
+
+.social-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-top: 1px solid var(--black-08);
+}
+.social-modal-charcount {
+  font-size: 0.75rem;
+  color: var(--black-30);
+}
+.social-modal-charcount.over { color: var(--red); font-weight: 600; }
+
+.social-modal-actions {
+  display: flex;
+  gap: 10px;
+}
+.social-modal-cancel {
+  background: none;
+  border: 1px solid var(--black-15);
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 0.8rem;
+  color: var(--black-50);
+  cursor: pointer;
+}
+.social-modal-cancel:hover { border-color: var(--black-30); color: var(--black); }
+
+.social-modal-post {
+  background: var(--blue);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.social-modal-post:hover { filter: brightness(1.1); }
+.social-modal-post:disabled { opacity: 0.5; cursor: not-allowed; }
+.social-modal-post svg { width: 14px; height: 14px; }
+
+.social-modal-status {
+  padding: 12px 20px;
+  font-size: 0.8rem;
+  text-align: center;
+  display: none;
+}
+.social-modal-status.posting { display: block; color: var(--black-50); }
+.social-modal-status.success { display: block; color: var(--green); }
+.social-modal-status.error { display: block; color: var(--red); }
+.social-modal-status a { color: var(--blue); text-decoration: underline; }
+
 /* ── Placeholder ────────────────────────────────────── */
 
 .placeholder-msg {
@@ -2152,22 +2285,110 @@ function setupShareButtons() {
     setTimeout(() => { btn.classList.remove("copied"); btn.innerHTML = orig; }, 2000);
   }
 
-  async function stageSocial(platform) {
+  // Social posting: show confirmation modal, then POST server-side
+  let _socialPlatform = "";
+  let _socialBlob = null;
+
+  async function stageSocial(platform, svgSelector) {
     const text = document.getElementById("tweet-preview").textContent;
+    const svgEl = document.querySelector(svgSelector);
+
+    // LinkedIn: no API, use intent URL with clipboard copy
+    if (platform === "linkedin") {
+      try {
+        if (svgEl) {
+          const blob = await svgToBlob(svgEl);
+          await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+        }
+        window.open(`https://www.linkedin.com/feed/?shareActive=true&text=${encodeURIComponent(text)}`, "_blank");
+        showToast("Image copied to clipboard — paste it in the compose screen.");
+      } catch(e) { console.error("LinkedIn error:", e); showToast("Failed. Try copying manually."); }
+      return;
+    }
+
+    // Twitter / Bluesky: show confirmation modal
     try {
-      const svgEl = document.querySelector("#chart-canvas svg");
-      if (svgEl) {
-        const blob = await svgToBlob(svgEl);
-        await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+      _socialPlatform = platform;
+      _socialBlob = svgEl ? await svgToBlob(svgEl) : null;
+
+      const modal = document.getElementById("social-modal");
+      const platformName = platform === "twitter" ? "X / Twitter" : "Bluesky";
+      document.getElementById("social-modal-title").textContent = `Post to ${platformName}`;
+      document.getElementById("social-modal-text").value = text;
+      updateCharCount();
+
+      // Show image preview
+      if (_socialBlob) {
+        const imgUrl = URL.createObjectURL(_socialBlob);
+        document.getElementById("social-modal-img").src = imgUrl;
       }
-      let intentUrl;
-      if (platform === "twitter") intentUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
-      else if (platform === "bluesky") intentUrl = `https://bsky.app/intent/compose?text=${encodeURIComponent(text)}`;
-      else if (platform === "linkedin") intentUrl = `https://www.linkedin.com/feed/?shareActive=true&text=${encodeURIComponent(text)}`;
-      window.open(intentUrl, "_blank");
-      showToast("Image copied to clipboard — paste it (Cmd+V) in the compose screen.");
-    } catch(e) { console.error("Social error:", e); showToast("Failed. Try copying manually."); }
+
+      // Reset status
+      const status = document.getElementById("social-modal-status");
+      status.className = "social-modal-status";
+      status.textContent = "";
+      document.getElementById("social-modal-post-btn").disabled = false;
+
+      modal.classList.add("visible");
+    } catch(e) { console.error("Social error:", e); showToast("Failed to prepare post."); }
   }
+
+  function updateCharCount() {
+    const text = document.getElementById("social-modal-text").value;
+    const limit = _socialPlatform === "twitter" ? 280 : 300;
+    const el = document.getElementById("social-modal-charcount");
+    el.textContent = `${text.length} / ${limit}`;
+    el.classList.toggle("over", text.length > limit);
+  }
+
+  document.getElementById("social-modal-text").addEventListener("input", updateCharCount);
+
+  document.getElementById("social-modal-close").onclick = () => {
+    document.getElementById("social-modal").classList.remove("visible");
+  };
+  document.getElementById("social-modal-cancel-btn").onclick = () => {
+    document.getElementById("social-modal").classList.remove("visible");
+  };
+  document.getElementById("social-modal").onclick = (e) => {
+    if (e.target === e.currentTarget) e.currentTarget.classList.remove("visible");
+  };
+
+  document.getElementById("social-modal-post-btn").onclick = async () => {
+    const text = document.getElementById("social-modal-text").value.trim();
+    if (!text) return;
+
+    const status = document.getElementById("social-modal-status");
+    const postBtn = document.getElementById("social-modal-post-btn");
+    postBtn.disabled = true;
+    status.className = "social-modal-status posting";
+    status.textContent = "Posting...";
+
+    try {
+      const formData = new FormData();
+      formData.append("platform", _socialPlatform);
+      formData.append("text", text);
+      if (_socialBlob) {
+        formData.append("image", _socialBlob, "chart.png");
+      }
+
+      const resp = await fetch("api/post-social.php", { method: "POST", body: formData });
+      const data = await resp.json();
+
+      if (data.success) {
+        status.className = "social-modal-status success";
+        status.innerHTML = `Posted! <a href="${data.url}" target="_blank">View post</a>`;
+      } else {
+        status.className = "social-modal-status error";
+        status.textContent = data.error || "Post failed.";
+        postBtn.disabled = false;
+      }
+    } catch(e) {
+      console.error("Post error:", e);
+      status.className = "social-modal-status error";
+      status.textContent = "Network error — check your connection.";
+      postBtn.disabled = false;
+    }
+  };
 
   // ── Chart buttons ──
   document.getElementById("btn-copy").onclick = async () => {
@@ -2226,9 +2447,9 @@ function setupShareButtons() {
     downloadBlob(blob, `home-economics-${citySlug}-${m.key}.csv`);
   };
 
-  document.getElementById("btn-twitter").onclick = () => stageSocial("twitter");
-  document.getElementById("btn-bluesky").onclick = () => stageSocial("bluesky");
-  document.getElementById("btn-linkedin").onclick = () => stageSocial("linkedin");
+  document.getElementById("btn-twitter").onclick = () => stageSocial("twitter", "#chart-canvas svg");
+  document.getElementById("btn-bluesky").onclick = () => stageSocial("bluesky", "#chart-canvas svg");
+  document.getElementById("btn-linkedin").onclick = () => stageSocial("linkedin", "#chart-canvas svg");
 
   // ── Histogram share buttons ──
   document.getElementById("hist-btn-copy").onclick = async () => {
@@ -2262,9 +2483,9 @@ function setupShareButtons() {
     const citySlug = selectedCity.slug.replace(/_/g, "-");
     downloadBlob(blob, `home-economics-${citySlug}-${m.key}-histogram.csv`);
   };
-  document.getElementById("hist-btn-twitter").onclick = () => stageSocial("twitter");
-  document.getElementById("hist-btn-bluesky").onclick = () => stageSocial("bluesky");
-  document.getElementById("hist-btn-linkedin").onclick = () => stageSocial("linkedin");
+  document.getElementById("hist-btn-twitter").onclick = () => stageSocial("twitter", "#histogram-canvas svg");
+  document.getElementById("hist-btn-bluesky").onclick = () => stageSocial("bluesky", "#histogram-canvas svg");
+  document.getElementById("hist-btn-linkedin").onclick = () => stageSocial("linkedin", "#histogram-canvas svg");
 }
 
 function showToast(msg) {
@@ -2283,6 +2504,32 @@ function showToast(msg) {
 // ─── Boot ────────────────────────────────────────────────────────
 init();
 </script>
+
+<!-- Social post confirmation modal -->
+<div class="social-modal-overlay" id="social-modal">
+  <div class="social-modal">
+    <div class="social-modal-header">
+      <h3 id="social-modal-title">Post to Twitter</h3>
+      <button class="social-modal-close" id="social-modal-close">&times;</button>
+    </div>
+    <div class="social-modal-body">
+      <div class="social-modal-preview">
+        <img id="social-modal-img" src="" alt="Chart preview">
+      </div>
+      <textarea class="social-modal-text" id="social-modal-text"></textarea>
+    </div>
+    <div class="social-modal-status" id="social-modal-status"></div>
+    <div class="social-modal-footer">
+      <span class="social-modal-charcount" id="social-modal-charcount"></span>
+      <div class="social-modal-actions">
+        <button class="social-modal-cancel" id="social-modal-cancel-btn">Cancel</button>
+        <button class="social-modal-post" id="social-modal-post-btn">
+          Post
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
 
 </body>
 </html>
