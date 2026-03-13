@@ -1209,7 +1209,7 @@ function requestChartSummary() {
     fiveYrInfo = ` 5-year change: ${pctChange}%.`;
   }
 
-  const countGuidance = (isCount || isHomesSold) ? `\nIMPORTANT: Focus on the ratio to homes sold and changes over time, NOT the absolute count. Absolute counts vary wildly by city size and are not meaningful on their own.` : "";
+  const countGuidance = (isCount || isHomesSold) ? `\nIMPORTANT: Focus on the ratio to homes sold and changes over time, NOT the absolute count. Absolute counts vary wildly by city size and are not meaningful on their own. When citing a ratio, ALWAYS clarify what it's relative to, e.g. "1.3x homes sold" or "turnover rate of 8.5%". Never write just "1.3x" without specifying "homes sold" or the denominator.` : "";
 
   const prompt = `You are a housing market data analyst writing one pithy, insightful sentence about this metro area's data. Be specific with numbers. No hedging or caveats. Conversational but precise.
 
