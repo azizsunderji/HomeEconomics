@@ -2370,9 +2370,10 @@ function setupShareButtons() {
     const metricLabel = selectedMetric ? selectedMetric.label : "";
     const skipPhrases = ["Generating summary...", "Set your Anthropic API key", "Unable to generate"];
     const aiUsable = aiText && !skipPhrases.some(p => aiText.startsWith(p));
+    const handle = platform === "bluesky" ? "@home-economics.bsky.social" : "@AzizSunderji";
     const text = aiUsable
-      ? `${metricLabel} in ${cityName}:\n${aiText}\n\nvia @AzizSunderji | homeeconomics.substack.com`
-      : `${metricLabel} in ${cityName}\n\nvia @AzizSunderji | homeeconomics.substack.com`;
+      ? `${metricLabel} in ${cityName}:\n${aiText}\n\nvia ${handle} | homeeconomics.substack.com`
+      : `${metricLabel} in ${cityName}\n\nvia ${handle} | homeeconomics.substack.com`;
     const svgEl = document.querySelector(svgSelector);
 
     // All platforms: show confirmation modal
