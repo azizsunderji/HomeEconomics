@@ -1025,9 +1025,9 @@ body {
 const METRICS = [
   { key: "median_sale_price", label: "Sale Price", unit: "$", fmt: v => v >= 1e6 ? `$${(v/1e6).toFixed(2)}M` : v >= 1000 ? `$${(v/1000).toFixed(0)}K` : `$${v.toFixed(0)}`, fmtAxis: v => v >= 1e6 ? `$${(v/1e6).toFixed(1)}M` : v >= 1000 ? `$${(v/1000).toFixed(0)}K` : `$${v.toFixed(0)}`, histLabel: "Median Sale Price", histFmt: v => v >= 1e6 ? `$${(v/1e6).toFixed(1)}M` : v >= 1000 ? `$${(v/1000).toFixed(0)}K` : `$${v.toFixed(0)}` },
   { key: "inventory", label: "Inventory", unit: "", fmt: v => v >= 1000 ? `${(v/1000).toFixed(1)}K` : v.toFixed(0), fmtAxis: v => v >= 1000 ? `${(v/1000).toFixed(0)}K` : v.toFixed(0), histLabel: "Inventory", histFmt: v => v >= 1000 ? `${(v/1000).toFixed(0)}K` : v.toFixed(0) },
-  { key: "new_listings", label: "New Listings", unit: "", fmt: v => v >= 1000 ? `${(v/1000).toFixed(1)}K` : v.toFixed(0), fmtAxis: v => v >= 1000 ? `${(v/1000).toFixed(0)}K` : v.toFixed(0), histLabel: "New Listings % of Inventory", histFmt: v => `${v.toFixed(1)}%` },
+  { key: "new_listings", label: "New Listings", unit: "", fmt: v => v >= 1000 ? `${(v/1000).toFixed(1)}K` : v.toFixed(0), fmtAxis: v => v >= 1000 ? `${(v/1000).toFixed(0)}K` : v.toFixed(0), histLabel: "New Listings % of Homes Sold", histFmt: v => `${v.toFixed(1)}%` },
   { key: "homes_sold", label: "Homes Sold", unit: "", fmt: v => v >= 1000 ? `${(v/1000).toFixed(1)}K` : v.toFixed(0), fmtAxis: v => v >= 1000 ? `${(v/1000).toFixed(0)}K` : v.toFixed(0), histLabel: "Homes Sold % of Inventory", histFmt: v => `${v.toFixed(1)}%` },
-  { key: "pending_sales", label: "Pending Sales", unit: "", fmt: v => v >= 1000 ? `${(v/1000).toFixed(1)}K` : v.toFixed(0), fmtAxis: v => v >= 1000 ? `${(v/1000).toFixed(0)}K` : v.toFixed(0), histLabel: "Pending Sales % of Inventory", histFmt: v => `${v.toFixed(1)}%` },
+  { key: "pending_sales", label: "Pending Sales", unit: "", fmt: v => v >= 1000 ? `${(v/1000).toFixed(1)}K` : v.toFixed(0), fmtAxis: v => v >= 1000 ? `${(v/1000).toFixed(0)}K` : v.toFixed(0), histLabel: "Pending Sales % of Homes Sold", histFmt: v => `${v.toFixed(1)}%` },
   { key: "months_supply", label: "Months of Supply", unit: "mo", fmt: v => v.toFixed(1), fmtAxis: v => v.toFixed(1), histLabel: "Months of Supply", histFmt: v => v.toFixed(1) },
   { key: "median_dom", label: "Days on Market", unit: "days", fmt: v => v.toFixed(0), fmtAxis: v => v.toFixed(0), histLabel: "Days on Market", histFmt: v => v.toFixed(0) },
   { key: "sale_to_list_ratio", label: "Sale-to-List", unit: "%", fmt: v => `${(v * 100).toFixed(1)}%`, fmtAxis: v => `${(v * 100).toFixed(1)}%`, histLabel: "Sale-to-List Ratio", histFmt: v => `${(v * 100).toFixed(1)}%` },
@@ -1228,8 +1228,9 @@ function requestHistSummary() {
   const m = selectedMetric;
   const hFmt = m.histFmt || m.fmt;
   const ptKey = selectedPropTypes[0]?.key || "all";
-  const pctMetrics = ["new_listings", "homes_sold", "pending_sales", "off_market_in_2_weeks"];
-  const histKey = pctMetrics.includes(m.key) ? `${m.key}_pct_inventory` : m.key;
+  const pctHomesSold = ["new_listings", "pending_sales"];
+  const pctInventory = ["homes_sold", "off_market_in_2_weeks"];
+  const histKey = pctHomesSold.includes(m.key) ? `${m.key}_pct_homes_sold` : pctInventory.includes(m.key) ? `${m.key}_pct_inventory` : m.key;
   const cityVal = histogramData[selectedCity?.slug]?.[ptKey]?.[histKey];
   if (cityVal == null) return;
 
@@ -1243,7 +1244,7 @@ function requestHistSummary() {
   const percentile = Math.round((rank / allVals.length) * 100);
   const medianVal = allVals[Math.floor(allVals.length / 2)];
 
-  // For the histogram, the metric is already normalized (pct_inventory for count metrics,
+  // For the histogram, the metric is already normalized (pct of homes sold or inventory for count metrics,
   // or inherently normalized like price, DOM, sale-to-list). So comparison is meaningful.
   const diff = medianVal !== 0 ? (((cityVal - medianVal) / medianVal) * 100).toFixed(0) : null;
   const aboveBelow = cityVal > medianVal ? "above" : cityVal < medianVal ? "below" : "at";
@@ -2003,9 +2004,10 @@ function renderHistogram() {
   const hFmt = m.histFmt || m.fmt;
   const hLabel = m.histLabel || m.label;
 
-  // Use histogramData for transformed values (e.g. new_listings as % of inventory)
-  const pctMetrics = ["new_listings", "homes_sold", "pending_sales", "off_market_in_2_weeks"];
-  const histKey = pctMetrics.includes(m.key) ? `${m.key}_pct_inventory` : m.key;
+  // Use histogramData for transformed values (e.g. new_listings as % of homes sold)
+  const pctHomesSold = ["new_listings", "pending_sales"];
+  const pctInventory = ["homes_sold", "off_market_in_2_weeks"];
+  const histKey = pctHomesSold.includes(m.key) ? `${m.key}_pct_homes_sold` : pctInventory.includes(m.key) ? `${m.key}_pct_inventory` : m.key;
   const ptKey = selectedPropTypes[0]?.key || "all";
   const cityVal = histogramData[selectedCity.slug]?.[ptKey]?.[histKey];
   if (cityVal == null) return;
