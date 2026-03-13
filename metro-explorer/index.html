@@ -1909,7 +1909,7 @@ function renderChart() {
   // ── Legend (top center, between header and chart area) ──────────
   const needsLegend = hasMultipleCitySeries || allSeries.some(s => s.isNational);
   if (needsLegend) {
-    const legendY = 68;
+    const legendY = 80;
     let lgX = W / 2;
     const font = "'ABC Oracle Edu', sans-serif";
 
@@ -2165,7 +2165,7 @@ function renderHistogram() {
 
   // Centered legend — matching time series style
   const font = "'ABC Oracle Edu', sans-serif";
-  const legendY = 68;
+  const legendY = 80;
   const legendItems = [
     { label: `${cityData.name}: ${hFmt(cityVal)}`, color: COLORS.blue, dashed: false },
     { label: `Other metros`, color: COLORS.blue, dashed: false, opacity: 0.65 },
