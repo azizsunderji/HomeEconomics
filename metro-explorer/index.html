@@ -2035,10 +2035,9 @@ function renderHistogram() {
   let lowerBound = Math.max(p05, medianVal - 3 * iqr);
   let upperBound = Math.min(p95, medianVal + 3 * iqr);
 
-  // Expand slightly if city value is just outside but close
-  if (cityVal < lowerBound && cityVal > p05 * 0.5) lowerBound = cityVal * 0.95;
-  if (cityVal > upperBound && cityVal < p95 * 1.5) upperBound = cityVal * 1.05;
-  // If city is way outside, keep bounds as-is (city won't appear on chart)
+  // Always include the selected city in the histogram range
+  if (cityVal < lowerBound) lowerBound = cityVal * 0.95;
+  if (cityVal > upperBound) upperBound = cityVal * 1.05;
 
   const filteredValues = values.filter(v => v >= lowerBound && v <= upperBound);
   if (filteredValues.length < 5) return;
