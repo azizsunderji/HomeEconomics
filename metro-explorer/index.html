@@ -2108,18 +2108,34 @@ function renderHistogram() {
   barGrad.append("stop").attr("offset", "100%").attr("stop-color", COLORS.blue).attr("stop-opacity", 0.06);
 
   const cityInRange = cityVal >= extent[0] && cityVal <= extent[1];
+  let cityBinX = null;  // track city marker position
   bins.forEach(bin => {
     if (bin.length === 0) return;
     const contains = cityInRange && cityVal >= bin.x0 && (cityVal < bin.x1 || (bin.x1 === extent[1] && cityVal <= bin.x1));
-    const barH = Math.max(1, innerH - yScale(bin.length));
+    const rawBarH = innerH - yScale(bin.length);
+    const minH = contains ? Math.max(12, rawBarH) : Math.max(1, rawBarH);
     g.append("rect")
       .attr("x", xScale(bin.x0))
-      .attr("y", innerH - barH)
+      .attr("y", innerH - minH)
       .attr("width", Math.max(1, xScale(bin.x1) - xScale(bin.x0)))
-      .attr("height", barH)
+      .attr("height", minH)
       .attr("fill", contains ? COLORS.blue : `url(#${barGradId})`)
       .attr("fill-opacity", 1);
+    if (contains) cityBinX = xScale(cityVal);
   });
+
+  // City marker — triangle + line at exact value
+  if (cityBinX !== null) {
+    const triSize = 6;
+    g.append("path")
+      .attr("d", `M${cityBinX - triSize},${-4} L${cityBinX + triSize},${-4} L${cityBinX},${triSize - 4} Z`)
+      .attr("fill", COLORS.blue);
+    g.append("line")
+      .attr("x1", cityBinX).attr("x2", cityBinX)
+      .attr("y1", triSize - 4).attr("y2", innerH)
+      .attr("stroke", COLORS.blue).attr("stroke-width", 1.5)
+      .attr("stroke-dasharray", "3,3").attr("stroke-opacity", 0.7);
+  }
 
   // Median dashed line
   if (medianVal >= extent[0] && medianVal <= extent[1]) {
