@@ -2121,7 +2121,7 @@ function renderHistogram() {
       .attr("height", minH)
       .attr("fill", contains ? COLORS.blue : `url(#${barGradId})`)
       .attr("fill-opacity", 1);
-    if (contains) { cityBinX = xScale(cityVal); cityBarTop = innerH - minH; }
+    if (contains) { cityBinX = (xScale(bin.x0) + xScale(bin.x1)) / 2; cityBarTop = innerH - minH; }
   });
 
   // City marker — triangle just above the bar
