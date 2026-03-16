@@ -2033,9 +2033,11 @@ function renderChart() {
     .text(mob ? "Source: Redfin | Zillow ZHVI" : "Source: Redfin monthly data | Zillow ZHVI for sale price");
 
   // HE emblem (bar chart icon) bottom-right
-  const emblemSize = 22;
+  const emblemSize = soc ? 40 : 22;
   const emblemX = W - margin.right - emblemSize;
-  const emblemY = H - 18 - emblemSize + 4;
+  // Align emblem bottom with source text baseline
+  const sourceBottomY = H - (soc ? 28 : mob ? 10 : 18);
+  const emblemY = sourceBottomY - emblemSize + 4;
   svg.append("g")
     .attr("transform", `translate(${emblemX},${emblemY}) scale(${emblemSize / 127})`)
     .attr("opacity", 0.25)
@@ -2270,9 +2272,10 @@ function renderHistogram() {
     .text(hmob ? "Source: Redfin | Zillow ZHVI" : "Source: Redfin monthly data | Zillow ZHVI for sale price");
 
   // HE emblem bottom-right
-  const hEmblemSize = 22;
+  const hEmblemSize = hsoc ? 40 : 22;
   const hEmblemX = W - margin.right - hEmblemSize;
-  const hEmblemY = H - 18 - hEmblemSize + 4;
+  const hSourceBottomY = H - (hsoc ? 28 : hmob ? 10 : 18);
+  const hEmblemY = hSourceBottomY - hEmblemSize + 4;
   svg.append("g")
     .attr("transform", `translate(${hEmblemX},${hEmblemY}) scale(${hEmblemSize / 127})`)
     .attr("opacity", 0.25)
