@@ -330,7 +330,7 @@ def generate_jsons(redfin_path, zillow_path):
             hs = pt_latest.get('homes_sold', 0)
             inv = pt_latest.get('inventory', 0)
             if hs and hs > 0:
-                for mk in ['new_listings', 'pending_sales']:
+                for mk in ['new_listings', 'pending_sales', 'inventory']:
                     if mk in pt_latest:
                         pt_latest[f'{mk}_pct_homes_sold'] = round(pt_latest[mk] / hs * 100, 2)
             if inv and inv > 0:
