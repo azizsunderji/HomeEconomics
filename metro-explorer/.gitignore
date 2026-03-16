@@ -6,3 +6,6 @@
 
 # But exclude secrets
 api/config.json
+
+# Temp files from data refresh
+_tmp/

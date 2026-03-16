@@ -1,0 +1,51 @@
+name: Refresh Metro Explorer Data
+
+on:
+  schedule:
+    # Run every Tuesday at 6am UTC (Redfin typically updates Monday evening)
+    - cron: '0 6 * * 2'
+  workflow_dispatch:
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    - name: Install dependencies
+      run: pip install duckdb numpy
+
+    - name: Download fresh Redfin data and regenerate JSONs
+      run: |
+        cd metro-explorer
+        python3 scripts/refresh_data.py
+
+    - name: Check for changes
+      id: check
+      run: |
+        cd metro-explorer
+        git diff --name-only data/ | head -5
+        CHANGED=$(git diff --name-only data/ | wc -l | tr -d ' ')
+        echo "changed=$CHANGED" >> $GITHUB_OUTPUT
+        if [ "$CHANGED" -gt "0" ]; then
+          echo "Data updated — $CHANGED files changed"
+        else
+          echo "No new data available"
+        fi
+
+    - name: Commit and push updated data
+      if: steps.check.outputs.changed != '0'
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        cd metro-explorer
+        LATEST=$(python3 -c "import json; d=json.load(open('data/index.json')); f=json.load(open('data/louisville_ky.json')); print(f['dates'][-1])")
+        git add data/
+        git commit -m "Auto-refresh metro-explorer data through $LATEST"
+        git push
