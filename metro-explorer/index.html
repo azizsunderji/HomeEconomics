@@ -1622,12 +1622,15 @@ function renderChart() {
   const isPrice = m.key === "median_sale_price";
   const multiLine = selectedPropTypes.length > 1;
   const rect = container.getBoundingClientRect();
-  const mob = isMobile() && !_socialRenderMode;
-  const W = _socialRenderMode ? Math.max(rect.width, 800) : Math.max(rect.width, mob ? 360 : 800);
-  const H = _socialRenderMode ? W : mob ? W * 3 / 4 : W * 9 / 16;
+  const soc = _socialRenderMode;
+  const mob = isMobile() && !soc;
+  const W = soc ? Math.max(rect.width, 800) : Math.max(rect.width, mob ? 360 : 800);
+  const H = soc ? W : mob ? W * 3 / 4 : W * 9 / 16;
 
-  const margin = mob
-    ? { top: 72, right: 16, bottom: 50, left: 44 }
+  const margin = soc
+    ? { top: 160, right: 44, bottom: 110, left: 90 }
+    : mob
+    ? { top: 72, right: 16, bottom: 85, left: 44 }
     : { top: 105, right: 32, bottom: 80, left: 64 };
   const innerW = W - margin.left - margin.right;
   const innerH = H - margin.top - margin.bottom;
@@ -1721,11 +1724,12 @@ function renderChart() {
 
   // ── Header ──────────────────────
   // City name — top left, aligned with y-axis label left edge
-  const hx = mob ? 10 : 16;
+  const socLeft = 24; // consistent left edge for social images
+  const hx = soc ? socLeft : mob ? 10 : 16;
   svg.append("text")
-    .attr("x", hx).attr("y", mob ? 18 : 24)
+    .attr("x", hx).attr("y", soc ? 44 : mob ? 18 : 24)
     .attr("font-family", "'ABC Oracle Edu', Georgia, serif")
-    .attr("font-size", mob ? 15 : 20).attr("font-weight", 600).attr("fill", COLORS.black)
+    .attr("font-size", soc ? 46 : mob ? 15 : 20).attr("font-weight", 700).attr("fill", COLORS.black)
     .text(cityData.name);
 
   // Metric label — below city name, same left alignment
@@ -1733,9 +1737,9 @@ function renderChart() {
     measurementType === "rebase" && rebaseDate ? `${m.label} — Rebased to ${rebaseDate.toLocaleDateString("en-US", { month: "short", year: "numeric" })}` :
     m.label;
   svg.append("text")
-    .attr("x", hx).attr("y", mob ? 32 : 42)
+    .attr("x", hx).attr("y", soc ? 74 : mob ? 32 : 42)
     .attr("font-family", "'ABC Oracle Edu', sans-serif")
-    .attr("font-size", mob ? 10 : 12).attr("fill", COLORS.blue)
+    .attr("font-size", soc ? 28 : mob ? 10 : 12).attr("font-weight", soc ? 500 : 400).attr("fill", COLORS.blue)
     .text(measureLabel);
 
   // Latest value — large, top right
@@ -1743,32 +1747,32 @@ function renderChart() {
     measurementType === "rebase" ? lastVal.toFixed(1) :
     m.fmt(lastVal);
   svg.append("text")
-    .attr("x", W - margin.right).attr("y", mob ? 20 : 28)
+    .attr("x", W - margin.right).attr("y", soc ? 48 : mob ? 20 : 28)
     .attr("text-anchor", "end")
     .attr("font-family", "'ABC Oracle Edu', sans-serif")
-    .attr("font-size", mob ? 15 : 18).attr("font-weight", 700).attr("fill", "#0BB4FF")
+    .attr("font-size", soc ? 42 : mob ? 15 : 18).attr("font-weight", 700).attr("fill", "#0BB4FF")
     .text(displayVal);
 
   // "as of" date — below the value, right-aligned
   svg.append("text")
-    .attr("x", W - margin.right).attr("y", mob ? 33 : 44)
+    .attr("x", W - margin.right).attr("y", soc ? 72 : mob ? 33 : 44)
     .attr("text-anchor", "end")
     .attr("font-family", "'ABC Oracle Edu', sans-serif")
-    .attr("font-size", mob ? 8 : 9).attr("fill", COLORS.gray)
+    .attr("font-size", soc ? 16 : mob ? 8 : 9).attr("fill", COLORS.gray)
     .text(`as of ${dateStr}`);
 
   // Property type subtitle (if not "all" or multi-select)
   if (multiLine) {
     svg.append("text")
-      .attr("x", hx).attr("y", mob ? 44 : 56)
+      .attr("x", hx).attr("y", soc ? 96 : mob ? 44 : 56)
       .attr("font-family", "'ABC Oracle Edu', sans-serif")
-      .attr("font-size", mob ? 9 : 11).attr("fill", COLORS.gray)
+      .attr("font-size", soc ? 20 : mob ? 9 : 11).attr("fill", COLORS.gray)
       .text(selectedPropTypes.map(pt => pt.label).join(" vs "));
   } else if (selectedPropTypes[0].key !== "all") {
     svg.append("text")
-      .attr("x", hx).attr("y", mob ? 44 : 56)
+      .attr("x", hx).attr("y", soc ? 96 : mob ? 44 : 56)
       .attr("font-family", "'ABC Oracle Edu', sans-serif")
-      .attr("font-size", mob ? 9 : 11).attr("fill", COLORS.gray)
+      .attr("font-size", soc ? 20 : mob ? 9 : 11).attr("fill", COLORS.gray)
       .text(selectedPropTypes[0].label);
   }
 
@@ -1803,24 +1807,24 @@ function renderChart() {
     m.fmtAxis;
   yTicks.forEach(t => {
     g.append("text")
-      .attr("x", mob ? -6 : -10).attr("y", yScale(t))
-      .attr("text-anchor", "end").attr("dominant-baseline", "middle")
+      .attr("x", soc ? (socLeft - margin.left) : mob ? -6 : -10).attr("y", yScale(t))
+      .attr("text-anchor", soc ? "start" : "end").attr("dominant-baseline", "middle")
       .attr("font-family", "'ABC Oracle Edu', sans-serif")
-      .attr("font-size", mob ? 10 : 13).attr("fill", COLORS.gray)
+      .attr("font-size", soc ? 22 : mob ? 10 : 13).attr("fill", COLORS.gray)
       .text(yFmt(t));
   });
 
   // X axis labels — every other year, starting from most recent
   const allYearTicks = xScale.ticks(d3.timeYear.every(1));
   const maxYear = d3.max(allYearTicks, d => d.getFullYear());
-  const yearStep = mob ? 3 : 2;
+  const yearStep = soc ? 4 : mob ? 3 : 2;
   const xTicks = allYearTicks.filter(t => (maxYear - t.getFullYear()) % yearStep === 0);
   xTicks.forEach(t => {
     g.append("text")
-      .attr("x", xScale(t)).attr("y", innerH + (mob ? 14 : 18))
+      .attr("x", xScale(t)).attr("y", innerH + (soc ? 34 : mob ? 14 : 18))
       .attr("text-anchor", "middle")
       .attr("font-family", "'ABC Oracle Edu', sans-serif")
-      .attr("font-size", mob ? 10 : 12).attr("fill", COLORS.gray)
+      .attr("font-size", soc ? 22 : mob ? 10 : 12).attr("fill", COLORS.gray)
       .text(d3.timeFormat("%Y")(t));
   });
 
@@ -1874,8 +1878,8 @@ function renderChart() {
       .curve(d3.curveMonotoneX);
     g.append("path").datum(pairs).attr("d", line)
       .attr("fill", "none").attr("stroke", seriesColor)
-      .attr("stroke-width", isDashed ? 1.5 : 2)
-      .attr("stroke-dasharray", isDashed ? "6,4" : "none")
+      .attr("stroke-width", soc ? (isDashed ? 2.5 : 3.5) : (isDashed ? 1.5 : 2))
+      .attr("stroke-dasharray", isDashed ? (soc ? "8,5" : "6,4") : "none")
       .attr("stroke-opacity", isDashed ? 0.6 : 1)
       .attr("stroke-linejoin", "round").attr("stroke-linecap", "round");
 
@@ -1890,12 +1894,12 @@ function renderChart() {
         const cx = xScale(match.date), cy = yScale(match.value);
         if (!hasMultipleCitySeries) {
           g.append("line").attr("x1", cx).attr("x2", cx).attr("y1", cy).attr("y2", innerH)
-            .attr("stroke", seriesColor).attr("stroke-width", mob ? 1 : 1.5).attr("stroke-opacity", 0.6);
+            .attr("stroke", seriesColor).attr("stroke-width", soc ? 2.5 : mob ? 1 : 1.5).attr("stroke-opacity", 0.6);
         }
-        const dotR = mob ? (hasMultipleCitySeries ? 2.5 : 3.5) : (hasMultipleCitySeries ? 3.5 : 5);
+        const dotR = soc ? (hasMultipleCitySeries ? 5 : 7) : mob ? (hasMultipleCitySeries ? 2.5 : 3.5) : (hasMultipleCitySeries ? 3.5 : 5);
         g.append("circle").attr("cx", cx).attr("cy", cy).attr("r", dotR).attr("fill", seriesColor);
         g.append("circle").attr("cx", cx).attr("cy", cy).attr("r", dotR)
-          .attr("fill", "none").attr("stroke", COLORS.surface).attr("stroke-width", mob ? 1 : 1.5);
+          .attr("fill", "none").attr("stroke", COLORS.surface).attr("stroke-width", soc ? 2 : mob ? 1 : 1.5);
       });
     }
 
@@ -1966,7 +1970,7 @@ function renderChart() {
   // ── Legend (top center, between header and chart area) ──────────
   const needsLegend = hasMultipleCitySeries || allSeries.some(s => s.isNational);
   if (needsLegend) {
-    const legendY = mob ? 54 : 80;
+    const legendY = soc ? 126 : mob ? 54 : 80;
     let lgX = W / 2;
     const font = "'ABC Oracle Edu', sans-serif";
 
@@ -1987,11 +1991,11 @@ function renderChart() {
     });
 
     // Measure total width to center
-    const legendFontSize = mob ? 9 : 12;
-    const itemGap = mob ? 10 : 20;
-    const swatchW = mob ? 12 : 16;
-    const swatchGap = mob ? 3 : 5;
-    const charW = mob ? 5 : 6.5; // approx px per char
+    const legendFontSize = soc ? 20 : mob ? 9 : 12;
+    const itemGap = soc ? 28 : mob ? 10 : 20;
+    const swatchW = soc ? 26 : mob ? 12 : 16;
+    const swatchGap = soc ? 8 : mob ? 3 : 5;
+    const charW = soc ? 11 : mob ? 5 : 6.5; // approx px per char
     const totalW = legendItems.reduce((acc, item, i) => {
       return acc + swatchW + swatchGap + item.label.length * charW + (i < legendItems.length - 1 ? itemGap : 0);
     }, 0);
@@ -2022,9 +2026,9 @@ function renderChart() {
 
   // ── Source ──────────────────────
   svg.append("text")
-    .attr("x", mob ? 8 : 16).attr("y", H - (mob ? 10 : 18))
+    .attr("x", soc ? socLeft : mob ? 8 : 16).attr("y", H - (soc ? 28 : mob ? 10 : 18))
     .attr("font-family", "'ABC Oracle Edu', sans-serif")
-    .attr("font-size", mob ? 8 : 10).attr("fill", COLORS.gray)
+    .attr("font-size", soc ? 16 : mob ? 8 : 10).attr("fill", COLORS.gray)
     .text(mob ? "Source: Redfin | Zillow ZHVI" : "Source: Redfin monthly data | Zillow ZHVI for sale price");
 
   // HE emblem (bar chart icon) bottom-right
@@ -2099,11 +2103,14 @@ function renderHistogram() {
   const filteredValues = values.filter(v => v >= lowerBound && v <= upperBound);
   if (filteredValues.length < 5) return;
 
-  const hmob = isMobile() && !_socialRenderMode;
-  const W = _socialRenderMode ? Math.max(container.getBoundingClientRect().width, 800) : Math.max(container.getBoundingClientRect().width, hmob ? 360 : 800);
-  const H = _socialRenderMode ? W : hmob ? W * 3 / 4 : W * 9 / 16;
-  const margin = hmob
-    ? { top: 72, right: 16, bottom: 50, left: 44 }
+  const hsoc = _socialRenderMode;
+  const hmob = isMobile() && !hsoc;
+  const W = hsoc ? Math.max(container.getBoundingClientRect().width, 800) : Math.max(container.getBoundingClientRect().width, hmob ? 360 : 800);
+  const H = hsoc ? W : hmob ? W * 3 / 4 : W * 9 / 16;
+  const margin = hsoc
+    ? { top: 160, right: 44, bottom: 110, left: 90 }
+    : hmob
+    ? { top: 72, right: 16, bottom: 85, left: 44 }
     : { top: 105, right: 32, bottom: 80, left: 64 };
   const innerW = W - margin.left - margin.right;
   const innerH = H - margin.top - margin.bottom;
@@ -2117,26 +2124,27 @@ function renderHistogram() {
 
   // Header — same layout as time series chart
   // City name — top left
-  const hx = hmob ? 10 : 16;
+  const socLeft = 24;
+  const hx = hsoc ? socLeft : hmob ? 10 : 16;
   svg.append("text")
-    .attr("x", hx).attr("y", hmob ? 18 : 24)
+    .attr("x", hx).attr("y", hsoc ? 44 : hmob ? 18 : 24)
     .attr("font-family", "'ABC Oracle Edu', Georgia, serif")
-    .attr("font-size", hmob ? 15 : 20).attr("font-weight", 600).attr("fill", COLORS.black)
+    .attr("font-size", hsoc ? 46 : hmob ? 15 : 20).attr("font-weight", 700).attr("fill", COLORS.black)
     .text(cityData.name);
 
   // Metric label — below city name
   svg.append("text")
-    .attr("x", hx).attr("y", hmob ? 32 : 42)
+    .attr("x", hx).attr("y", hsoc ? 74 : hmob ? 32 : 42)
     .attr("font-family", "'ABC Oracle Edu', sans-serif")
-    .attr("font-size", hmob ? 10 : 12).attr("fill", COLORS.blue)
+    .attr("font-size", hsoc ? 24 : hmob ? 10 : 12).attr("font-weight", hsoc ? 500 : 400).attr("fill", COLORS.blue)
     .text(`${hLabel} — vs. U.S. Metros${ptKey !== "all" ? ` (${selectedPropTypes[0]?.label || ""})` : ""}`);
 
   // Percentile — top right, same style as value in time series
   svg.append("text")
-    .attr("x", W - margin.right).attr("y", hmob ? 20 : 28)
+    .attr("x", W - margin.right).attr("y", hsoc ? 48 : hmob ? 20 : 28)
     .attr("text-anchor", "end")
     .attr("font-family", "'ABC Oracle Edu', sans-serif")
-    .attr("font-size", hmob ? 13 : 18).attr("font-weight", 700).attr("fill", "#0BB4FF")
+    .attr("font-size", hsoc ? 38 : hmob ? 13 : 18).attr("font-weight", 700).attr("fill", "#0BB4FF")
     .text(`${percentile}${ordinalSuffix(percentile)} percentile`);
 
   const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
@@ -2206,34 +2214,34 @@ function renderHistogram() {
   // Y-axis labels — matching time series style
   yTicks.forEach(t => {
     g.append("text")
-      .attr("x", hmob ? -6 : -10).attr("y", yScale(t))
-      .attr("text-anchor", "end").attr("dominant-baseline", "middle")
+      .attr("x", hsoc ? (socLeft - margin.left) : hmob ? -6 : -10).attr("y", yScale(t))
+      .attr("text-anchor", hsoc ? "start" : "end").attr("dominant-baseline", "middle")
       .attr("font-family", "'ABC Oracle Edu', sans-serif")
-      .attr("font-size", hmob ? 10 : 13).attr("fill", COLORS.gray)
+      .attr("font-size", hsoc ? 22 : hmob ? 10 : 13).attr("fill", COLORS.gray)
       .text(t);
   });
 
   // X-axis ticks — matching time series style
-  const xTicks = xScale.ticks(hmob ? 4 : 6);
+  const xTicks = xScale.ticks(hsoc ? 5 : hmob ? 4 : 6);
   xTicks.forEach(t => {
     g.append("text")
-      .attr("x", xScale(t)).attr("y", innerH + (hmob ? 14 : 18))
+      .attr("x", xScale(t)).attr("y", innerH + (hsoc ? 34 : hmob ? 14 : 18))
       .attr("text-anchor", "middle")
       .attr("font-family", "'ABC Oracle Edu', sans-serif")
-      .attr("font-size", hmob ? 9 : 12).attr("fill", COLORS.gray)
+      .attr("font-size", hsoc ? 20 : hmob ? 9 : 12).attr("fill", COLORS.gray)
       .text(hFmt(t));
   });
 
   // Centered legend — matching time series style
   const font = "'ABC Oracle Edu', sans-serif";
-  const hLegendFontSize = hmob ? 9 : 12;
-  const legendY = hmob ? 54 : 80;
+  const hLegendFontSize = hsoc ? 20 : hmob ? 9 : 12;
+  const legendY = hsoc ? 126 : hmob ? 54 : 80;
   const legendItems = [
     { label: hmob ? `${cityData.name.split(",")[0]}: ${hFmt(cityVal)}` : `${cityData.name}: ${hFmt(cityVal)}`, color: COLORS.blue, dashed: false },
     { label: `Other metros`, color: COLORS.blue, dashed: false, opacity: 0.65 },
     { label: `Median: ${hFmt(medianVal)}`, color: COLORS.black, dashed: true },
   ];
-  const hItemGap = hmob ? 8 : 20, hSwatchW = hmob ? 10 : 16, hSwatchGap = hmob ? 3 : 5, hCharW = hmob ? 4.8 : 6.5;
+  const hItemGap = hsoc ? 28 : hmob ? 8 : 20, hSwatchW = hsoc ? 26 : hmob ? 10 : 16, hSwatchGap = hsoc ? 8 : hmob ? 3 : 5, hCharW = hsoc ? 11 : hmob ? 4.8 : 6.5;
   const totalLgW = legendItems.reduce((acc, item, i) => {
     return acc + hSwatchW + hSwatchGap + item.label.length * hCharW + (i < legendItems.length - 1 ? hItemGap : 0);
   }, 0);
@@ -2244,7 +2252,7 @@ function renderHistogram() {
         .attr("y1", legendY + 4).attr("y2", legendY + 4)
         .attr("stroke", item.color).attr("stroke-width", 1).attr("stroke-dasharray", "4,3").attr("stroke-opacity", 0.4);
     } else {
-      svg.append("rect").attr("x", lgX).attr("y", legendY - 1).attr("width", hSwatchW).attr("height", hmob ? 8 : 10)
+      svg.append("rect").attr("x", lgX).attr("y", legendY - 1).attr("width", hSwatchW).attr("height", hsoc ? 14 : hmob ? 8 : 10)
         .attr("fill", item.color).attr("fill-opacity", item.opacity || 1);
     }
     lgX += hSwatchW + hSwatchGap;
@@ -2256,8 +2264,8 @@ function renderHistogram() {
 
   // Source — left-aligned
   svg.append("text")
-    .attr("x", hmob ? 8 : 16).attr("y", H - (hmob ? 10 : 18))
-    .attr("font-family", font).attr("font-size", hmob ? 8 : 10).attr("fill", COLORS.gray)
+    .attr("x", hsoc ? socLeft : hmob ? 8 : 16).attr("y", H - (hsoc ? 28 : hmob ? 10 : 18))
+    .attr("font-family", font).attr("font-size", hsoc ? 16 : hmob ? 8 : 10).attr("fill", COLORS.gray)
     .text(hmob ? "Source: Redfin | Zillow ZHVI" : "Source: Redfin monthly data | Zillow ZHVI for sale price");
 
   // HE emblem bottom-right
