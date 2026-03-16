@@ -2347,6 +2347,29 @@ function setupShareButtons() {
   const _logoImg = new Image();
   _logoImg.src = "he-logo.svg";
 
+  // Cache base64-encoded font faces for SVG embedding
+  let _fontFacesBase64 = null;
+  async function getFontFacesBase64() {
+    if (_fontFacesBase64) return _fontFacesBase64;
+    const fontFiles = [
+      { url: 'fonts/ABCOracle-Light.otf', weight: 300 },
+      { url: 'fonts/ABCOracle-Regular.otf', weight: 400 },
+      { url: 'fonts/ABCOracle-Medium.otf', weight: 500 },
+      { url: 'fonts/ABCOracle-Bold.otf', weight: 700 },
+    ];
+    const faces = [];
+    for (const f of fontFiles) {
+      try {
+        const resp = await fetch(f.url);
+        const buf = await resp.arrayBuffer();
+        const b64 = btoa(String.fromCharCode(...new Uint8Array(buf)));
+        faces.push(`@font-face { font-family: 'ABC Oracle Edu'; src: url('data:font/opentype;base64,${b64}') format('opentype'); font-weight: ${f.weight}; font-style: normal; }`);
+      } catch(e) { console.warn("Font embed failed:", f.url, e); }
+    }
+    _fontFacesBase64 = faces.join("\n");
+    return _fontFacesBase64;
+  }
+
   async function captureSvg(svgEl, { scale = 2, padding = 0, format = "image/png", quality = 1 } = {}) {
     const vb = (svgEl.getAttribute("viewBox") || "").split(" ").map(Number);
     const vbW = vb[2] || svgEl.getBoundingClientRect().width;
@@ -2358,12 +2381,7 @@ function setupShareButtons() {
     clone.setAttribute("viewBox", `${vb[0]||0} ${vb[1]||0} ${vbW} ${vbH}`);
 
     const styleEl = document.createElementNS("http://www.w3.org/2000/svg", "style");
-    const fontFaces = Array.from(document.styleSheets)
-      .flatMap(sheet => { try { return Array.from(sheet.cssRules); } catch { return []; } })
-      .filter(r => r instanceof CSSFontFaceRule)
-      .map(r => r.cssText)
-      .join("\n");
-    styleEl.textContent = fontFaces;
+    styleEl.textContent = await getFontFacesBase64();
     clone.insertBefore(styleEl, clone.firstChild);
 
     const svgData = new XMLSerializer().serializeToString(clone);
