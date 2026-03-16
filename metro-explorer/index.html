@@ -1631,7 +1631,7 @@ function renderChart() {
   const H = soc ? W : mob ? W * 3 / 4 : W * 9 / 16;
 
   const margin = soc
-    ? { top: 160, right: 44, bottom: 110, left: 90 }
+    ? { top: 160, right: 44, bottom: 140, left: 90 }
     : mob
     ? { top: 72, right: 16, bottom: 68, left: 44 }
     : { top: 105, right: 32, bottom: 80, left: 64 };
@@ -2115,7 +2115,7 @@ function renderHistogram() {
   const W = hsoc ? Math.max(container.getBoundingClientRect().width, 800) : Math.max(container.getBoundingClientRect().width, hmob ? 360 : 800);
   const H = hsoc ? W : hmob ? W * 3 / 4 : W * 9 / 16;
   const margin = hsoc
-    ? { top: 160, right: 44, bottom: 110, left: 90 }
+    ? { top: 160, right: 44, bottom: 140, left: 90 }
     : hmob
     ? { top: 72, right: 16, bottom: 68, left: 44 }
     : { top: 105, right: 32, bottom: 80, left: 64 };
@@ -2353,6 +2353,15 @@ function setupShareButtons() {
 
   // Cache base64-encoded font faces for SVG embedding
   let _fontFacesBase64 = null;
+  function arrayBufferToBase64(buf) {
+    const bytes = new Uint8Array(buf);
+    let binary = '';
+    const chunk = 8192;
+    for (let i = 0; i < bytes.length; i += chunk) {
+      binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+    }
+    return btoa(binary);
+  }
   async function getFontFacesBase64() {
     if (_fontFacesBase64) return _fontFacesBase64;
     const fontFiles = [
@@ -2366,7 +2375,7 @@ function setupShareButtons() {
       try {
         const resp = await fetch(f.url);
         const buf = await resp.arrayBuffer();
-        const b64 = btoa(String.fromCharCode(...new Uint8Array(buf)));
+        const b64 = arrayBufferToBase64(buf);
         faces.push(`@font-face { font-family: 'ABC Oracle Edu'; src: url('data:font/opentype;base64,${b64}') format('opentype'); font-weight: ${f.weight}; font-style: normal; }`);
       } catch(e) { console.warn("Font embed failed:", f.url, e); }
     }
