@@ -785,7 +785,8 @@ body {
 
   /* Share bar */
   .share-bar { flex-direction: column; align-items: stretch; padding: 12px 12px; gap: 12px; }
-  .share-left { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+  .share-left { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .share-btn.primary { display: none; }
   .share-btn { justify-content: center; padding: 10px 8px; font-size: 0.72rem; border-radius: 8px; }
   .share-btn svg { width: 13px; height: 13px; }
   .share-right { align-items: center; }
@@ -2598,30 +2599,9 @@ function setupShareButtons() {
   document.getElementById("btn-copy").onclick = async () => {
     try {
       const blob = await svgToBlob(document.querySelector("#chart-canvas svg"));
-      if (navigator.clipboard?.write && typeof ClipboardItem !== "undefined") {
-        await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
-        copyFeedback(document.getElementById("btn-copy"));
-      } else {
-        // Fallback for iOS Safari: download instead
-        const citySlug = selectedCity.slug.replace(/_/g, "-");
-        downloadBlob(blob, `home-economics-${citySlug}-${selectedMetric.key}.png`);
-        const btn = document.getElementById("btn-copy");
-        const orig = btn.innerHTML;
-        btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Saved!`;
-        setTimeout(() => { btn.innerHTML = orig; }, 2000);
-      }
-    } catch(e) {
-      // Clipboard write can also throw on iOS even when API exists
-      try {
-        const blob2 = await svgToBlob(document.querySelector("#chart-canvas svg"));
-        const citySlug = selectedCity.slug.replace(/_/g, "-");
-        downloadBlob(blob2, `home-economics-${citySlug}-${selectedMetric.key}.png`);
-        const btn = document.getElementById("btn-copy");
-        const orig = btn.innerHTML;
-        btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Saved!`;
-        setTimeout(() => { btn.innerHTML = orig; }, 2000);
-      } catch(e2) { console.error("Copy/download failed:", e2); }
-    }
+      await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+      copyFeedback(document.getElementById("btn-copy"));
+    } catch(e) { console.error("Copy failed:", e); }
   };
   document.getElementById("btn-download").onclick = async () => {
     try {
@@ -2681,29 +2661,9 @@ function setupShareButtons() {
     try {
       const svgEl = document.querySelector("#histogram-canvas svg");
       const blob = await svgToBlob(svgEl);
-      const btn = document.getElementById("hist-btn-copy");
-      if (navigator.clipboard?.write && typeof ClipboardItem !== "undefined") {
-        await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
-        copyFeedback(btn);
-      } else {
-        const citySlug = selectedCity.slug.replace(/_/g, "-");
-        downloadBlob(blob, `home-economics-${citySlug}-${selectedMetric.key}-histogram.png`);
-        const orig = btn.innerHTML;
-        btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Saved!`;
-        setTimeout(() => { btn.innerHTML = orig; }, 2000);
-      }
-    } catch(e) {
-      try {
-        const svgEl = document.querySelector("#histogram-canvas svg");
-        const blob2 = await svgToBlob(svgEl);
-        const citySlug = selectedCity.slug.replace(/_/g, "-");
-        downloadBlob(blob2, `home-economics-${citySlug}-${selectedMetric.key}-histogram.png`);
-        const btn = document.getElementById("hist-btn-copy");
-        const orig = btn.innerHTML;
-        btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Saved!`;
-        setTimeout(() => { btn.innerHTML = orig; }, 2000);
-      } catch(e2) { console.error("Hist copy/download failed:", e2); }
-    }
+      await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+      copyFeedback(document.getElementById("hist-btn-copy"));
+    } catch(e) { console.error("Hist copy failed:", e); }
   };
   document.getElementById("hist-btn-download").onclick = async () => {
     try {
