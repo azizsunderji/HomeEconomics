@@ -1283,7 +1283,8 @@ function requestHistSummary() {
   const ptKey = selectedPropTypes[0]?.key || "all";
   const pctHomesSold = ["new_listings", "pending_sales", "inventory"];
   const pctInventory = ["homes_sold", "off_market_in_2_weeks"];
-  const histKey = pctHomesSold.includes(m.key) ? `${m.key}_pct_homes_sold` : pctInventory.includes(m.key) ? `${m.key}_pct_inventory` : m.key;
+  const useZillowHist = m.key === "median_sale_price" && ptKey === "all";
+  const histKey = useZillowHist ? "zillow_sale_price" : pctHomesSold.includes(m.key) ? `${m.key}_pct_homes_sold` : pctInventory.includes(m.key) ? `${m.key}_pct_inventory` : m.key;
   const cityVal = histogramData[selectedCity?.slug]?.[ptKey]?.[histKey];
   if (cityVal == null) return;
 
@@ -2072,8 +2073,10 @@ function renderHistogram() {
   // Use histogramData for transformed values (e.g. new_listings as % of homes sold)
   const pctHomesSold = ["new_listings", "pending_sales", "inventory"];
   const pctInventory = ["homes_sold", "off_market_in_2_weeks"];
-  const histKey = pctHomesSold.includes(m.key) ? `${m.key}_pct_homes_sold` : pctInventory.includes(m.key) ? `${m.key}_pct_inventory` : m.key;
   const ptKey = selectedPropTypes[0]?.key || "all";
+  // For sale price with "all" property type, use Zillow ZHVI instead of Redfin
+  const useZillowHist = m.key === "median_sale_price" && ptKey === "all";
+  const histKey = useZillowHist ? "zillow_sale_price" : pctHomesSold.includes(m.key) ? `${m.key}_pct_homes_sold` : pctInventory.includes(m.key) ? `${m.key}_pct_inventory` : m.key;
   const cityVal = histogramData[selectedCity.slug]?.[ptKey]?.[histKey];
   if (cityVal == null) return;
 

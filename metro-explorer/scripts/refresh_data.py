@@ -338,6 +338,16 @@ def generate_jsons(redfin_path, zillow_path):
                     if mk in pt_latest:
                         pt_latest[f'{mk}_pct_inventory'] = round(pt_latest[mk] / inv * 100, 2)
             hist_entry[pt_key] = pt_latest
+        # Add Zillow sale price for histogram (overrides Redfin for "all" property type)
+        if zillow_match and 'all' in hist_entry:
+            zillow_vals = zillow_lookup[zillow_match]
+            non_null_z = [v for v in zillow_vals if v is not None]
+            if non_null_z:
+                hist_entry['all']['zillow_sale_price'] = non_null_z[-1]
+        elif slug == 'united_states' and zillow_us_vals and 'all' in hist_entry:
+            non_null_z = [v for v in zillow_us_vals if v is not None]
+            if non_null_z:
+                hist_entry['all']['zillow_sale_price'] = non_null_z[-1]
         histogram_json[slug] = hist_entry
 
         # Collect for US median computation
