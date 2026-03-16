@@ -13,7 +13,8 @@
 @font-face { font-family: 'ABC Oracle Edu'; src: url('fonts/ABCOracle-Bold.otf') format('opentype'); font-weight: 700; font-style: normal; }
 
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-html, body { overflow-x: hidden; }
+html { overflow-x: hidden; width: 100%; }
+body { overflow-x: hidden; width: 100%; max-width: 100vw; }
 
 :root {
   --bg: #F6F7F3;
@@ -749,7 +750,7 @@ body {
 /* ── Responsive ─────────────────────────────────────── */
 
 @media (max-width: 640px) {
-  .container { padding: 0 16px; }
+  .container { padding: 0 20px; overflow-x: hidden; }
 
   /* Header */
   .site-header { padding: 20px 0 0; }
@@ -758,7 +759,7 @@ body {
 
   /* Search */
   .search-input { padding: 14px 40px 14px 44px; font-size: 0.95rem; }
-  .search-wrap { max-width: 100%; }
+  .search-wrap { max-width: 100%; min-width: 0; }
 
   /* City pill */
   .city-pill { font-size: 0.85rem; padding: 8px 14px; }
@@ -772,7 +773,7 @@ body {
   .metrics-section > div[style*="display:flex"][style*="gap:32px"] { gap: 16px !important; }
 
   /* Chart */
-  .chart-card { padding: 12px 8px 0; border-radius: 12px; }
+  .chart-card { padding: 12px 12px 0; border-radius: 12px; }
   .chart-canvas { aspect-ratio: 4 / 3; }
 
   /* AI Summary */
