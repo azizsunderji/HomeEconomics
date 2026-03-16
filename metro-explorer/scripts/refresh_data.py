@@ -115,6 +115,22 @@ def generate_jsons(redfin_path, zillow_path):
     # Normalize column names
     redfin.columns = [c.lower().strip('"') for c in redfin.columns]
 
+    # Normalize dates to end-of-month
+    import calendar
+    def to_eom(date_val):
+        """Convert any date to end-of-month string."""
+        if hasattr(date_val, 'strftime'):
+            y, m = date_val.year, date_val.month
+            last_day = calendar.monthrange(y, m)[1]
+            return f"{y:04d}-{m:02d}-{last_day:02d}"
+        s = str(date_val)[:10]
+        parts = s.split('-')
+        if len(parts) == 3:
+            y, m = int(parts[0]), int(parts[1])
+            last_day = calendar.monthrange(y, m)[1]
+            return f"{y:04d}-{m:02d}-{last_day:02d}"
+        return s
+
     # Map property types
     PT_MAP = {
         'All Residential': 'all',
@@ -220,7 +236,7 @@ def generate_jsons(redfin_path, zillow_path):
             continue
 
         dates = sorted(all_pt['period_end'].unique())
-        date_strs = [d.strftime('%Y-%m-%d') if hasattr(d, 'strftime') else str(d)[:10] for d in dates]
+        date_strs = [to_eom(d) for d in dates]
 
         # Build property type data
         property_types = {}
@@ -229,7 +245,7 @@ def generate_jsons(redfin_path, zillow_path):
             if len(pt_group) == 0:
                 continue
 
-            pt_dates = [d.strftime('%Y-%m-%d') if hasattr(d, 'strftime') else str(d)[:10] for d in pt_group['period_end']]
+            pt_dates = [to_eom(d) for d in pt_group['period_end']]
             metrics = {}
             for json_key, redfin_col in METRIC_MAP.items():
                 col = get_col(redfin_col)
@@ -364,14 +380,12 @@ def generate_jsons(redfin_path, zillow_path):
 
     # Build US median JSON (median across all metros for each date/metric)
     print("Computing US median data...")
-    # Use the united_states dates as the reference
-    us_entry = summary_json.get('united_states', {})
-    if 'united_states' in sorted_index:
-        ref_city = json.loads(open(DATA_DIR / "united_states.json").read())
-        us_dates = ref_city['dates']
-    else:
-        # Fallback: use the most common date set
-        us_dates = date_strs
+    # Collect all unique dates across all metros (end-of-month format)
+    all_dates = set()
+    for pt_metrics in all_metro_values.values():
+        for date_vals in pt_metrics.values():
+            all_dates.update(date_vals.keys())
+    us_dates = sorted(all_dates)
 
     us_pt = {}
     for pt_key in ['all', 'sfh', 'condo']:
