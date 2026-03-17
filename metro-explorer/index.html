@@ -1284,7 +1284,7 @@ function requestHistSummary() {
   const ptKey = selectedPropTypes[0]?.key || "all";
   const pctHomesSold = ["new_listings", "pending_sales", "inventory"];
   const pctInventory = ["homes_sold", "off_market_in_2_weeks"];
-  const useZillowHist = m.key === "median_sale_price" && ptKey === "all";
+  const useZillowHist = m.key === "median_sale_price";
   const histKey = useZillowHist ? "zillow_sale_price" : pctHomesSold.includes(m.key) ? `${m.key}_pct_homes_sold` : pctInventory.includes(m.key) ? `${m.key}_pct_inventory` : m.key;
   const cityVal = histogramData[selectedCity?.slug]?.[ptKey]?.[histKey];
   if (cityVal == null) return;
@@ -1649,11 +1649,13 @@ function renderChart() {
   // Helper to build pairs from data
   function buildPairs(data, ptKey, metricKey) {
     const ptData = data.property_types?.[ptKey] || {};
-    const useZillow = metricKey === "median_sale_price" && ptKey === "all" && data.price_dates;
-    const rawDates = useZillow ? data.price_dates : data.dates;
+    const useZillow = metricKey === "median_sale_price" && (
+      (ptKey === "all" && data.price_dates) || ptData.zillow_price_dates
+    );
+    const rawDates = useZillow ? (ptData.zillow_price_dates || data.price_dates) : data.dates;
     if (!rawDates) return [];
     const dates = rawDates.map(d => new Date(d));
-    const values = useZillow ? data.price_values : (ptData[metricKey] || []);
+    const values = useZillow ? (ptData.zillow_price_values || data.price_values) : (ptData[metricKey] || []);
     let pairs = dates.map((d, i) => ({ date: d, value: values[i] })).filter(d => d.value != null);
     // Apply time range filter
     if (timeRangeYears > 0 && pairs.length) {
@@ -2076,7 +2078,7 @@ function renderHistogram() {
   const pctInventory = ["homes_sold", "off_market_in_2_weeks"];
   const ptKey = selectedPropTypes[0]?.key || "all";
   // For sale price with "all" property type, use Zillow ZHVI instead of Redfin
-  const useZillowHist = m.key === "median_sale_price" && ptKey === "all";
+  const useZillowHist = m.key === "median_sale_price";
   const histKey = useZillowHist ? "zillow_sale_price" : pctHomesSold.includes(m.key) ? `${m.key}_pct_homes_sold` : pctInventory.includes(m.key) ? `${m.key}_pct_inventory` : m.key;
   const cityVal = histogramData[selectedCity.slug]?.[ptKey]?.[histKey];
   if (cityVal == null) return;

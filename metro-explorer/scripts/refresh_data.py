@@ -18,10 +18,16 @@ SCRIPT_DIR = Path(__file__).parent
 DATA_DIR = SCRIPT_DIR.parent / "data"
 DATA_LAKE = Path("/Users/azizsunderji/Dropbox/Home Economics/Data")
 REDFIN_PARQUET = DATA_LAKE / "Redfin" / "monthly_metro.parquet"
-ZILLOW_PARQUET = DATA_LAKE / "Price" / "Zillow" / "Metro_zhvi_uc_sfrcondo_tier_0.33_0.67_sm_sa_month.parquet"
+ZILLOW_ALL = DATA_LAKE / "Price" / "Zillow" / "Metro_zhvi_uc_sfrcondo_tier_0.33_0.67_sm_sa_month.parquet"
+ZILLOW_SFR_CSV = DATA_LAKE / "Price" / "Zillow" / "Metro_zhvi_uc_sfr_sm_sa_month.csv"
+ZILLOW_CONDO_CSV = DATA_LAKE / "Price" / "Zillow" / "Metro_zhvi_uc_condo_sm_sa_month.csv"
 
 REDFIN_URL = "https://redfin-public-data.s3.us-west-2.amazonaws.com/redfin_market_tracker/redfin_metro_market_tracker.tsv000.gz"
-ZILLOW_URL = "https://files.zillowstatic.com/research/public_csvs/zhvi/Metro_zhvi_uc_sfrcondo_tier_0.33_0.67_sm_sa_month.csv"
+ZILLOW_URLS = {
+    'all': "https://files.zillowstatic.com/research/public_csvs/zhvi/Metro_zhvi_uc_sfrcondo_tier_0.33_0.67_sm_sa_month.csv",
+    'sfr': "https://files.zillowstatic.com/research/public_csvs/zhvi/Metro_zhvi_uc_sfr_sm_sa_month.csv",
+    'condo': "https://files.zillowstatic.com/research/public_csvs/zhvi/Metro_zhvi_uc_condo_sm_sa_month.csv",
+}
 TMP_DIR = SCRIPT_DIR.parent / "_tmp"
 
 # ── Step 1: Download fresh data ────────────────────────
@@ -76,31 +82,37 @@ def download_sources():
     latest = con.execute(f"SELECT MAX(period_end) FROM '{redfin_path}'").fetchone()[0]
     print(f"  Redfin latest date: {latest}")
 
-    # -- Zillow --
-    zillow_path = None
-    if ZILLOW_PARQUET.exists():
-        zillow_path = str(ZILLOW_PARQUET)
-        print(f"Zillow: using local parquet")
-    else:
-        print("Downloading fresh Zillow ZHVI data...")
-        zillow_csv = TMP_DIR / "zillow_zhvi_metro.csv"
-        zillow_pq = TMP_DIR / "zillow_zhvi_metro.parquet"
-        resp = urllib.request.urlopen(ZILLOW_URL)
-        with open(zillow_csv, 'wb') as f:
-            f.write(resp.read())
-        con.execute(f"""
-            COPY (SELECT * FROM read_csv_auto('{zillow_csv}', header=true))
-            TO '{zillow_pq}' (FORMAT PARQUET)
-        """)
-        zillow_csv.unlink()
-        zillow_path = str(zillow_pq)
-        print(f"  Zillow downloaded")
+    # -- Zillow (all three property types) --
+    local_zillow = {
+        'all': ZILLOW_ALL,
+        'sfr': Path(str(ZILLOW_SFR_CSV).replace('.csv', '.parquet')) if Path(str(ZILLOW_SFR_CSV).replace('.csv', '.parquet')).exists() else ZILLOW_SFR_CSV,
+        'condo': Path(str(ZILLOW_CONDO_CSV).replace('.csv', '.parquet')) if Path(str(ZILLOW_CONDO_CSV).replace('.csv', '.parquet')).exists() else ZILLOW_CONDO_CSV,
+    }
+    zillow_paths = {}
+    for zkey, zurl in ZILLOW_URLS.items():
+        local_path = local_zillow[zkey]
+        if local_path.exists():
+            zillow_paths[zkey] = str(local_path)
+            print(f"Zillow {zkey}: using local {local_path.name}")
+        else:
+            print(f"Downloading Zillow {zkey}...")
+            tmp_csv = TMP_DIR / f"zillow_{zkey}.csv"
+            tmp_pq = TMP_DIR / f"zillow_{zkey}.parquet"
+            resp = urllib.request.urlopen(zurl)
+            with open(tmp_csv, 'wb') as f:
+                f.write(resp.read())
+            con.execute(f"""
+                COPY (SELECT * FROM read_csv_auto('{tmp_csv}', header=true))
+                TO '{tmp_pq}' (FORMAT PARQUET)
+            """)
+            tmp_csv.unlink()
+            zillow_paths[zkey] = str(tmp_pq)
 
-    return redfin_path, zillow_path
+    return redfin_path, zillow_paths
 
 
 # ── Step 2: Generate metro JSON files ──────────────────
-def generate_jsons(redfin_path, zillow_path):
+def generate_jsons(redfin_path, zillow_paths):
     """Read Redfin parquet + Zillow ZHVI, generate all metro-explorer JSONs."""
     import duckdb
     con = duckdb.connect()
@@ -187,29 +199,40 @@ def generate_jsons(redfin_path, zillow_path):
                 return v
         return None
 
-    # Load Zillow ZHVI data
+    # Load Zillow ZHVI data for all property types
     print("Loading Zillow ZHVI data...")
-    zillow_df = con.execute(f"SELECT * FROM '{zillow_path}' WHERE \"RegionType\" = 'msa'").df()
-    # Also get US national
-    zillow_us = con.execute(f"SELECT * FROM '{zillow_path}' WHERE \"RegionType\" = 'country'").df()
-
-    # Get Zillow date columns
-    zillow_date_cols = sorted([c for c in zillow_df.columns if re.match(r'^\d{4}-\d{2}-\d{2}$', c)])
-    print(f"  Zillow date range: {zillow_date_cols[0]} to {zillow_date_cols[-1]}")
-
-    # Build Zillow lookup: region_name -> {dates, values}
-    def build_zillow_lookup(df):
+    # pt_key -> { lookup: {region_name -> values}, us_vals: [...], date_cols: [...] }
+    zillow_by_pt = {}
+    zillow_date_cols = None
+    pt_zillow_map = {'all': 'all', 'sfh': 'sfr', 'condo': 'condo'}
+    for pt_key, z_key in pt_zillow_map.items():
+        zpath = zillow_paths.get(z_key)
+        if not zpath:
+            continue
+        # Read as CSV or parquet based on extension
+        if zpath.endswith('.csv'):
+            zdf = con.execute(f"SELECT * FROM read_csv_auto('{zpath}', header=true) WHERE \"RegionType\" = 'msa'").df()
+            zus = con.execute(f"SELECT * FROM read_csv_auto('{zpath}', header=true) WHERE \"RegionType\" = 'country'").df()
+        else:
+            zdf = con.execute(f"SELECT * FROM '{zpath}' WHERE \"RegionType\" = 'msa'").df()
+            zus = con.execute(f"SELECT * FROM '{zpath}' WHERE \"RegionType\" = 'country'").df()
+        dcols = sorted([c for c in zdf.columns if re.match(r'^\d{4}-\d{2}-\d{2}$', c)])
+        if zillow_date_cols is None:
+            zillow_date_cols = dcols
         lookup = {}
-        for _, row in df.iterrows():
+        for _, row in zdf.iterrows():
             name = str(row.get('RegionName', ''))
-            vals = [row[c] if not (isinstance(row[c], float) and np.isnan(row[c])) else None for c in zillow_date_cols]
+            vals = [row[c] if not (isinstance(row[c], float) and np.isnan(row[c])) else None for c in dcols]
             lookup[name] = vals
-        return lookup
+        us_vals = None
+        if len(zus) > 0:
+            us_vals = [zus.iloc[0][c] if not (isinstance(zus.iloc[0][c], float) and np.isnan(zus.iloc[0][c])) else None for c in dcols]
+        zillow_by_pt[pt_key] = {'lookup': lookup, 'us_vals': us_vals, 'date_cols': dcols}
+        print(f"  Zillow {pt_key}: {len(lookup)} metros, {dcols[0]} to {dcols[-1]}")
 
-    zillow_lookup = build_zillow_lookup(zillow_df)
-    zillow_us_vals = None
-    if len(zillow_us) > 0:
-        zillow_us_vals = [zillow_us.iloc[0][c] if not (isinstance(zillow_us.iloc[0][c], float) and np.isnan(zillow_us.iloc[0][c])) else None for c in zillow_date_cols]
+    # Backward compat aliases
+    zillow_lookup = zillow_by_pt.get('all', {}).get('lookup', {})
+    zillow_us_vals = zillow_by_pt.get('all', {}).get('us_vals')
 
     # Group Redfin data by region
     regions = redfin.groupby('region')
@@ -294,12 +317,36 @@ def generate_jsons(redfin_path, zillow_path):
             'property_types': property_types,
         }
 
-        if zillow_match and slug != 'united_states':
-            city_data['price_dates'] = zillow_date_cols
-            city_data['price_values'] = zillow_lookup[zillow_match]
-        elif slug == 'united_states' and zillow_us_vals:
-            city_data['price_dates'] = zillow_date_cols
-            city_data['price_values'] = zillow_us_vals
+        # Add Zillow price data per property type
+        # Top-level price_dates/price_values = "all" (backward compat)
+        for pt_key in ['all', 'sfh', 'condo']:
+            zpt = zillow_by_pt.get(pt_key)
+            if not zpt:
+                continue
+            z_match = None
+            if slug == 'united_states':
+                if zpt['us_vals']:
+                    z_match = '__us__'
+            else:
+                for zname in zpt['lookup']:
+                    if display.lower().replace(' ', '') in zname.lower().replace(' ', ''):
+                        z_match = zname
+                        break
+                    city_part = display.split(',')[0].strip().lower()
+                    if city_part in zname.lower():
+                        z_match = zname
+                        break
+            if z_match:
+                zvals = zpt['us_vals'] if z_match == '__us__' else zpt['lookup'][z_match]
+                zdates = zpt['date_cols']
+                if pt_key == 'all':
+                    # Top-level for backward compat
+                    city_data['price_dates'] = zdates
+                    city_data['price_values'] = zvals
+                # Per-property-type Zillow prices
+                if pt_key in property_types:
+                    property_types[pt_key]['zillow_price_dates'] = zdates
+                    property_types[pt_key]['zillow_price_values'] = zvals
 
         # Write city JSON
         with open(DATA_DIR / f"{slug}.json", 'w') as f:
@@ -338,16 +385,30 @@ def generate_jsons(redfin_path, zillow_path):
                     if mk in pt_latest:
                         pt_latest[f'{mk}_pct_inventory'] = round(pt_latest[mk] / inv * 100, 2)
             hist_entry[pt_key] = pt_latest
-        # Add Zillow sale price for histogram (overrides Redfin for "all" property type)
-        if zillow_match and 'all' in hist_entry:
-            zillow_vals = zillow_lookup[zillow_match]
-            non_null_z = [v for v in zillow_vals if v is not None]
-            if non_null_z:
-                hist_entry['all']['zillow_sale_price'] = non_null_z[-1]
-        elif slug == 'united_states' and zillow_us_vals and 'all' in hist_entry:
-            non_null_z = [v for v in zillow_us_vals if v is not None]
-            if non_null_z:
-                hist_entry['all']['zillow_sale_price'] = non_null_z[-1]
+        # Add Zillow sale price for histogram (all property types)
+        for pt_key in ['all', 'sfh', 'condo']:
+            if pt_key not in hist_entry:
+                continue
+            zpt = zillow_by_pt.get(pt_key)
+            if not zpt:
+                continue
+            z_match = None
+            if slug == 'united_states' and zpt['us_vals']:
+                z_match = '__us__'
+            else:
+                for zname in zpt['lookup']:
+                    if display.lower().replace(' ', '') in zname.lower().replace(' ', ''):
+                        z_match = zname
+                        break
+                    city_part = display.split(',')[0].strip().lower()
+                    if city_part in zname.lower():
+                        z_match = zname
+                        break
+            if z_match:
+                zvals = zpt['us_vals'] if z_match == '__us__' else zpt['lookup'][z_match]
+                non_null_z = [v for v in zvals if v is not None]
+                if non_null_z:
+                    hist_entry[pt_key]['zillow_sale_price'] = non_null_z[-1]
         histogram_json[slug] = hist_entry
 
         # Collect for US median computation
@@ -355,6 +416,8 @@ def generate_jsons(redfin_path, zillow_path):
             if pt_key not in all_metro_values:
                 all_metro_values[pt_key] = {}
             for k, vals in metrics.items():
+                if k.startswith('zillow_'):
+                    continue  # skip Zillow price arrays (not aligned to date_strs)
                 non_null = [(i, v) for i, v in enumerate(vals) if v is not None]
                 if non_null:
                     if k not in all_metro_values[pt_key]:
