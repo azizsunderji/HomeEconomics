@@ -392,7 +392,7 @@ def generate_jsons(redfin_path, zillow_paths):
                     if mk in pt_latest:
                         pt_latest[f'{mk}_pct_homes_sold'] = round(pt_latest[mk] / hs * 100, 2)
             if inv and inv > 0:
-                for mk in ['homes_sold', 'off_market_in_2_weeks']:
+                for mk in ['homes_sold']:
                     if mk in pt_latest:
                         pt_latest[f'{mk}_pct_inventory'] = round(pt_latest[mk] / inv * 100, 2)
             hist_entry[pt_key] = pt_latest

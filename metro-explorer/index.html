@@ -1267,7 +1267,7 @@ const METRICS = [
   { key: "median_dom", label: "Days on Market", unit: "days", fmt: v => v.toFixed(0), fmtAxis: v => v.toFixed(0), histLabel: "Days on Market", histFmt: v => v.toFixed(0) },
   { key: "sale_to_list_ratio", label: "Sale-to-List", unit: "%", fmt: v => `${(v * 100).toFixed(1)}%`, fmtAxis: v => `${(v * 100).toFixed(0)}%`, histLabel: "Sale-to-List Ratio", histFmt: v => `${(v * 100).toFixed(1)}%` },
   { key: "pct_price_drops", label: "Price Drops", unit: "%", fmt: v => `${(v * 100).toFixed(1)}%`, fmtAxis: v => `${(v * 100).toFixed(0)}%`, histLabel: "% Listings with Price Drops", histFmt: v => `${(v * 100).toFixed(0)}%` },
-  { key: "off_market_in_2_weeks", label: "Off Market <2 Wks", unit: "%", fmt: v => `${(v * 100).toFixed(1)}%`, fmtAxis: v => `${(v * 100).toFixed(0)}%`, histLabel: "Off Market <2 Wks % of Inventory", histFmt: v => `${v.toFixed(1)}%` },
+  { key: "off_market_in_2_weeks", label: "Off Market <2 Wks", unit: "%", fmt: v => `${(v * 100).toFixed(1)}%`, fmtAxis: v => `${(v * 100).toFixed(0)}%`, histLabel: "% Off Market Within 2 Weeks", histFmt: v => `${(v * 100).toFixed(1)}%` },
   { key: "median_list_price", label: "List Price", unit: "$", fmt: v => v >= 1e6 ? `$${(v/1e6).toFixed(2)}M` : v >= 1000 ? `$${(v/1000).toFixed(0)}K` : `$${v.toFixed(0)}`, fmtAxis: v => v >= 1e6 ? `$${(v/1e6).toFixed(1)}M` : v >= 1000 ? `$${(v/1000).toFixed(0)}K` : `$${v.toFixed(0)}`, histLabel: "Median List Price", histFmt: v => v >= 1e6 ? `$${(v/1e6).toFixed(1)}M` : v >= 1000 ? `$${(v/1000).toFixed(0)}K` : `$${v.toFixed(0)}` },
   { key: "median_ppsf", label: "Price/SqFt", unit: "$", fmt: v => `$${v.toFixed(0)}`, fmtAxis: v => `$${v.toFixed(0)}`, histLabel: "Median Price per Sq Ft", histFmt: v => `$${v.toFixed(0)}` },
   { key: "sold_above_list", label: "Sold Above List", unit: "%", fmt: v => `${(v * 100).toFixed(1)}%`, fmtAxis: v => `${(v * 100).toFixed(0)}%`, histLabel: "% Sold Above List", histFmt: v => `${(v * 100).toFixed(0)}%` },
@@ -1465,7 +1465,7 @@ function requestHistSummary() {
   const hFmt = m.histFmt || m.fmt;
   const ptKey = selectedPropTypes[0]?.key || "all";
   const pctHomesSold = ["new_listings", "pending_sales", "inventory"];
-  const pctInventory = ["homes_sold", "off_market_in_2_weeks"];
+  const pctInventory = ["homes_sold"];
   const useZillowHist = m.key === "median_sale_price";
   const histKey = useZillowHist ? "zillow_sale_price" : pctHomesSold.includes(m.key) ? `${m.key}_pct_homes_sold` : pctInventory.includes(m.key) ? `${m.key}_pct_inventory` : m.key;
   const cityVal = histogramData[selectedCity?.slug]?.[ptKey]?.[histKey];
@@ -2257,7 +2257,7 @@ function renderHistogram() {
 
   // Use histogramData for transformed values (e.g. new_listings as % of homes sold)
   const pctHomesSold = ["new_listings", "pending_sales", "inventory"];
-  const pctInventory = ["homes_sold", "off_market_in_2_weeks"];
+  const pctInventory = ["homes_sold"];
   const ptKey = selectedPropTypes[0]?.key || "all";
   // For sale price with "all" property type, use Zillow ZHVI instead of Redfin
   const useZillowHist = m.key === "median_sale_price";
