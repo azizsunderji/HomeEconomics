@@ -1381,7 +1381,7 @@ function requestChartSummary() {
   const fiveYearAgoVal = latest.length > 60 ? latest[latest.length - 61] : null;
 
   // Get homes sold as anchor for count-based metrics
-  const countMetrics = ["inventory", "new_listings", "pending_sales", "off_market_in_2_weeks"];
+  const countMetrics = ["inventory", "new_listings", "pending_sales"];
   const isCount = countMetrics.includes(m.key);
   const isHomesSold = m.key === "homes_sold";
   let ratioContext = "";
