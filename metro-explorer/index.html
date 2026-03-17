@@ -1381,8 +1381,8 @@ function requestChartSummary() {
   const ptKey = selectedPropTypes[0]?.key || "all";
   const ptData = cityData.property_types?.[ptKey] || {};
   const isPrice = m.key === "median_sale_price";
-  const useZ = isPrice && ptKey === "all" && cityData.price_dates;
-  const vals = useZ ? cityData.price_values : (ptData[m.key] || []);
+  const useZ = isPrice && ((ptKey === "all" && cityData.price_dates) || ptData.zillow_price_values);
+  const vals = useZ ? (ptData.zillow_price_values || cityData.price_values) : (ptData[m.key] || []);
   const latest = vals.filter(v => v != null);
   const currentVal = latest.length ? latest[latest.length - 1] : null;
   const yearAgoVal = latest.length > 12 ? latest[latest.length - 13] : null;
@@ -1432,8 +1432,8 @@ function requestChartSummary() {
   let natInfo = "";
   if (!isCount && !isHomesSold && nationalData) {
     const natPt = nationalData.property_types?.[ptKey] || {};
-    const natUseZ = isPrice && ptKey === "all" && nationalData.price_dates;
-    const natVals = natUseZ ? nationalData.price_values : (natPt[m.key] || []);
+    const natUseZ = isPrice && ((ptKey === "all" && nationalData.price_dates) || natPt.zillow_price_values);
+    const natVals = natUseZ ? (natPt.zillow_price_values || nationalData.price_values) : (natPt[m.key] || []);
     const natLatest = natVals.filter(v => v != null);
     const natCurrent = natLatest.length ? natLatest[natLatest.length - 1] : null;
     if (natCurrent != null) {
@@ -1460,7 +1460,7 @@ function requestChartSummary() {
 City: ${cityData.name}
 Metric: ${m.label}
 Current value: ${currentVal != null ? m.fmt(currentVal) : "N/A"}${yoyInfo}${fiveYrInfo}${ratioContext}${natInfo}
-Property type: ${selectedPropTypes.map(p => p.label).join(", ")}
+Property type: ${selectedPropTypes[0]?.label || "All"}${selectedPropTypes.length > 1 ? ` (chart also shows ${selectedPropTypes.slice(1).map(p => p.label).join(", ")} for comparison, but summarize the ${selectedPropTypes[0]?.label || "All"} data above)` : ""}
 ${countGuidance}
 Write exactly one sentence (max 30 words). Do not start with the city name.`;
 
