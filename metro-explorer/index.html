@@ -2730,21 +2730,22 @@ function setupShareButtons() {
     const postBtn = document.getElementById("social-modal-post-btn");
     postBtn.disabled = true;
 
-    // LinkedIn: copy image to clipboard + open compose
+    // LinkedIn: try to copy image to clipboard, then open compose
     if (_socialPlatform === "linkedin") {
+      let imageCopied = false;
       try {
         if (_socialBlob) {
           await navigator.clipboard.write([new ClipboardItem({ "image/png": _socialBlob })]);
+          imageCopied = true;
         }
-        window.open(`https://www.linkedin.com/feed/?shareActive=true&text=${encodeURIComponent(text)}`, "_blank");
-        status.className = "social-modal-status success";
-        status.textContent = "LinkedIn opened — paste the chart image with Cmd+V.";
       } catch(e) {
-        console.error("LinkedIn error:", e);
-        status.className = "social-modal-status error";
-        status.textContent = "Failed to copy image. Try the Copy Image button instead.";
-        postBtn.disabled = false;
+        console.warn("Clipboard write failed (expected in some browsers):", e);
       }
+      window.open(`https://www.linkedin.com/feed/?shareActive=true&text=${encodeURIComponent(text)}`, "_blank");
+      status.className = "social-modal-status success";
+      status.textContent = imageCopied
+        ? "LinkedIn opened — paste the chart image with Cmd+V."
+        : "LinkedIn opened. Use Download Image to save the chart, then attach it to your post.";
       return;
     }
 
