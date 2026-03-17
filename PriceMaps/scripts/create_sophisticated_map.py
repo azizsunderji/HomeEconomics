@@ -835,8 +835,8 @@ html,body {{margin:0; padding:0; overflow:hidden; font-family:'Oracle',-apple-sy
 /* Tip jar floating button */
 .tip-icon {{
     position:fixed;
-    top:80px;
-    right:24px;
+    bottom:46px;
+    right:200px;
     height:36px;
     border-radius:18px;
     background:#F6F7F3;
@@ -876,8 +876,8 @@ html,body {{margin:0; padding:0; overflow:hidden; font-family:'Oracle',-apple-sy
 /* Tip bubble speech popup */
 .tip-bubble {{
     position:fixed;
-    top:122px;
-    right:20px;
+    bottom:90px;
+    right:180px;
     background:white;
     border-radius:10px;
     padding:12px 14px;
@@ -901,13 +901,13 @@ html,body {{margin:0; padding:0; overflow:hidden; font-family:'Oracle',-apple-sy
 .tip-bubble::after {{
     content:'';
     position:absolute;
-    top:-7px;
+    bottom:-7px;
     right:24px;
     width:14px;
     height:14px;
     background:white;
     transform:rotate(45deg);
-    box-shadow:-2px -2px 4px rgba(0,0,0,0.06);
+    box-shadow:2px 2px 4px rgba(0,0,0,0.06);
 }}
 .tip-bubble-close {{
     position:absolute;
