@@ -117,12 +117,23 @@ def generate_jsons(redfin_path, zillow_paths):
     import duckdb
     con = duckdb.connect()
 
-    print("Loading Redfin data...")
+    print("Loading Redfin data (preferring seasonally adjusted where available)...")
+    # For each region+property_type+period_end, prefer SA row if it exists, else use non-SA
     redfin = con.execute(f"""
-        SELECT * FROM '{redfin_path}'
-        WHERE region_type = 'metro'
+        WITH ranked AS (
+            SELECT *,
+                ROW_NUMBER() OVER (
+                    PARTITION BY region, property_type, period_end
+                    ORDER BY is_seasonally_adjusted DESC
+                ) as rn
+            FROM '{redfin_path}'
+            WHERE region_type = 'metro'
+        )
+        SELECT * FROM ranked WHERE rn = 1
         ORDER BY region, property_type, period_end
     """).df()
+    n_sa = con.execute(f"SELECT COUNT(*) FROM '{redfin_path}' WHERE region_type='metro' AND is_seasonally_adjusted=true").fetchone()[0]
+    print(f"  {n_sa:,} seasonally adjusted rows used where available")
 
     # Normalize column names
     redfin.columns = [c.lower().strip('"') for c in redfin.columns]
