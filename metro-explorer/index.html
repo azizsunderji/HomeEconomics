@@ -1280,6 +1280,7 @@ const PROP_TYPES = [
   { key: "condo", label: "Condo", color: "#F4743B" },
 ];
 let selectedPropTypes = [PROP_TYPES[0]];
+let primaryPropType = PROP_TYPES[0]; // tracks last-clicked PT for AI summaries
 
 const COLORS = {
   blue: "#0BB4FF", black: "#3D3733", bg: "#F6F7F3", surface: "#FFFFFF",
@@ -1378,7 +1379,7 @@ async function generateAISummary(targetId, prompt) {
 function requestChartSummary() {
   if (!cityData || !selectedMetric) return;
   const m = selectedMetric;
-  const ptKey = selectedPropTypes[0]?.key || "all";
+  const ptKey = primaryPropType?.key || "all";
   const ptData = cityData.property_types?.[ptKey] || {};
   const isPrice = m.key === "median_sale_price";
   const useZ = isPrice && ((ptKey === "all" && cityData.price_dates) || ptData.zillow_price_values);
@@ -1460,7 +1461,7 @@ function requestChartSummary() {
 City: ${cityData.name}
 Metric: ${m.label}
 Current value: ${currentVal != null ? m.fmt(currentVal) : "N/A"}${yoyInfo}${fiveYrInfo}${ratioContext}${natInfo}
-Property type: ${selectedPropTypes[0]?.label || "All"}${selectedPropTypes.length > 1 ? ` (chart also shows ${selectedPropTypes.slice(1).map(p => p.label).join(", ")} for comparison, but summarize the ${selectedPropTypes[0]?.label || "All"} data above)` : ""}
+Property type: ${primaryPropType?.label || "All"}
 ${countGuidance}
 Write exactly one sentence (max 30 words). Do not start with the city name.`;
 
@@ -1471,7 +1472,7 @@ function requestHistSummary() {
   if (!cityData || !selectedMetric || !Object.keys(histogramData).length) return;
   const m = selectedMetric;
   const hFmt = m.histFmt || m.fmt;
-  const ptKey = selectedPropTypes[0]?.key || "all";
+  const ptKey = primaryPropType?.key || "all";
   const pctHomesSold = ["new_listings", "pending_sales", "inventory"];
   const pctInventory = ["homes_sold"];
   const useZillowHist = m.key === "median_sale_price";
@@ -1568,9 +1569,11 @@ function buildPropTypeButtons() {
       if (isActive) {
         btn.classList.remove("active");
         selectedPropTypes = selectedPropTypes.filter(p => p.key !== pt.key);
+        primaryPropType = selectedPropTypes[0] || PROP_TYPES[0];
       } else {
         btn.classList.add("active");
         selectedPropTypes.push(pt);
+        primaryPropType = pt; // the one the user just clicked
       }
       if (selectedMetric && cityData) renderChart();
     };
