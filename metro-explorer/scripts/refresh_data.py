@@ -481,10 +481,15 @@ def generate_jsons(redfin_path, zillow_paths):
         'dates': us_dates,
         'property_types': us_pt,
     }
-    # Add Zillow price data for US
+    # Add Zillow price data for US (all property types)
     if zillow_us_vals:
         us_median['price_dates'] = zillow_date_cols
         us_median['price_values'] = zillow_us_vals
+    for pt_key in ['all', 'sfh', 'condo']:
+        zpt = zillow_by_pt.get(pt_key)
+        if zpt and zpt['us_vals'] and pt_key in us_pt:
+            us_pt[pt_key]['zillow_price_dates'] = zpt['date_cols']
+            us_pt[pt_key]['zillow_price_values'] = zpt['us_vals']
 
     with open(DATA_DIR / "us_median.json", 'w') as f:
         json.dump(us_median, f, separators=(',', ':'))
