@@ -959,7 +959,7 @@ body {
 
 .tip-bubble {
   position: fixed;
-  bottom: 68px;
+  bottom: 96px;
   right: 20px;
   background: white;
   border-radius: 10px;
@@ -2927,8 +2927,8 @@ init();
   </svg>
   TIP JAR
 </div>
-<div class="tip-bubble" id="tipBubble">
-  <button class="tip-bubble-close" onclick="closeTipBubble()">&times;</button>
+<div class="tip-bubble" id="tipBubble" onclick="openTipModal()" style="cursor:pointer;">
+  <button class="tip-bubble-close" onclick="event.stopPropagation();closeTipBubble()">&times;</button>
   Hey! This tool is free, but if you find it useful, would you consider supporting my work with a small tip?
 </div>
 <div class="tip-modal-overlay" id="tipOverlay" onclick="closeTipModal(event)">
