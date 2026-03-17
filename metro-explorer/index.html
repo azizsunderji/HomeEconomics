@@ -1315,15 +1315,21 @@ try {
 } catch(e) {}
 
 let aiSummaryCache = {};
+let _aiRequestIds = {};  // track latest request per targetId to prevent stale responses
 
 async function generateAISummary(targetId, prompt) {
   const el = document.getElementById(targetId);
   const textEl = document.getElementById(targetId.replace("summary", "text"));
   if (!el || !textEl) return;
 
+  // Increment request ID for this target — any in-flight request with an older ID will be discarded
+  const reqId = (_aiRequestIds[targetId] || 0) + 1;
+  _aiRequestIds[targetId] = reqId;
+
   // Check cache — use a hash of the full prompt
   const cacheKey = targetId + "|" + prompt.replace(/\s+/g, " ").trim();
   if (aiSummaryCache[cacheKey]) {
+    if (_aiRequestIds[targetId] !== reqId) return; // stale
     textEl.textContent = aiSummaryCache[cacheKey];
     el.style.display = "";
     el.classList.remove("loading");
@@ -1355,12 +1361,14 @@ async function generateAISummary(targetId, prompt) {
         messages: [{ role: "user", content: prompt }],
       }),
     });
+    if (_aiRequestIds[targetId] !== reqId) return; // stale — a newer request superseded this one
     const data = await resp.json();
     const text = data.content?.[0]?.text || "Unable to generate summary.";
     textEl.textContent = text;
     aiSummaryCache[cacheKey] = text;
     el.classList.remove("loading");
   } catch (err) {
+    if (_aiRequestIds[targetId] !== reqId) return; // stale
     console.error("AI summary error:", err);
     textEl.textContent = "Unable to generate summary.";
     el.classList.remove("loading");
