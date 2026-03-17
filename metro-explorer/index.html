@@ -914,6 +914,188 @@ body {
 .ai-summary.loading .ai-text {
   color: var(--black-20);
 }
+
+/* ── Tip jar ───────────────────────────────────────── */
+
+.tip-icon {
+  position: fixed;
+  bottom: 46px;
+  right: 24px;
+  height: 36px;
+  border-radius: 18px;
+  background: white;
+  border: 1.5px solid #eee;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 14px 0 10px;
+  cursor: pointer;
+  z-index: 9999;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.5s ease, transform 0.15s ease;
+  font-family: var(--sans);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--black);
+  letter-spacing: 0.3px;
+}
+.tip-icon.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+.tip-icon:hover {
+  transform: scale(1.05);
+  border-color: var(--red);
+}
+.tip-icon.pulse {
+  animation: tipPulse 2s ease-in-out infinite;
+}
+@keyframes tipPulse {
+  0%,100% { box-shadow: 0 2px 8px rgba(0,0,0,0.12); }
+  50% { box-shadow: 0 2px 14px rgba(244,116,59,0.35); }
+}
+
+.tip-bubble {
+  position: fixed;
+  bottom: 68px;
+  right: 20px;
+  background: white;
+  border-radius: 10px;
+  padding: 12px 28px 12px 14px;
+  font-family: var(--sans);
+  font-size: 12px;
+  color: var(--black);
+  line-height: 1.45;
+  max-width: 240px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  z-index: 9999;
+  opacity: 0;
+  transform: translateY(8px);
+  pointer-events: none;
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+.tip-bubble.visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+.tip-bubble::after {
+  content: '';
+  position: absolute;
+  bottom: -7px;
+  right: 24px;
+  width: 14px;
+  height: 14px;
+  background: white;
+  transform: rotate(45deg);
+  box-shadow: 2px 2px 4px rgba(0,0,0,0.06);
+}
+.tip-bubble-close {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  background: none;
+  border: none;
+  font-size: 14px;
+  color: #aaa;
+  cursor: pointer;
+  padding: 2px 4px;
+  line-height: 1;
+}
+.tip-bubble-close:hover {
+  color: #666;
+}
+
+.tip-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(61,55,51,0.45);
+  z-index: 10001;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+.tip-modal-overlay.active {
+  display: flex;
+}
+.tip-modal {
+  background: var(--bg);
+  border-radius: 12px;
+  padding: 32px 28px 24px;
+  max-width: 360px;
+  width: 90%;
+  text-align: center;
+  font-family: var(--sans);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.2);
+  position: relative;
+}
+.tip-modal h3 {
+  margin: 0 0 6px;
+  font-size: 17px;
+  color: var(--black);
+  font-weight: 600;
+}
+.tip-modal .tip-time {
+  font-size: 12px;
+  color: #999;
+  margin-bottom: 14px;
+}
+.tip-modal .tip-desc {
+  font-size: 13px;
+  color: #666;
+  line-height: 1.5;
+  margin-bottom: 20px;
+}
+.tip-amounts {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-bottom: 18px;
+}
+.tip-amount-btn {
+  flex: 1;
+  padding: 10px 0;
+  border-radius: 8px;
+  border: 1.5px solid #ddd;
+  background: white;
+  font-family: var(--sans);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--black);
+  cursor: pointer;
+  transition: all 0.15s;
+  text-decoration: none;
+  display: block;
+  text-align: center;
+}
+.tip-amount-btn:hover {
+  border-color: var(--blue);
+  color: var(--blue);
+}
+.tip-amount-btn.primary {
+  background: var(--blue);
+  color: white;
+  border-color: var(--blue);
+}
+.tip-amount-btn.primary:hover {
+  background: #0099dd;
+  border-color: #0099dd;
+  color: white;
+}
+.tip-dismiss {
+  background: none;
+  border: none;
+  font-family: var(--sans);
+  font-size: 12px;
+  color: #aaa;
+  cursor: pointer;
+  padding: 4px 12px;
+}
+.tip-dismiss:hover {
+  color: #666;
+}
 </style>
 </head>
 <body>
@@ -2737,6 +2919,80 @@ init();
     </div>
   </div>
 </div>
+
+<!-- Tip jar -->
+<div class="tip-icon" id="tipIcon" onclick="openTipModal()">
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="#F4743B" stroke="none">
+    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+  </svg>
+  TIP JAR
+</div>
+<div class="tip-bubble" id="tipBubble">
+  <button class="tip-bubble-close" onclick="closeTipBubble()">&times;</button>
+  Hey! This tool is free, but if you find it useful, would you consider supporting my work with a small tip?
+</div>
+<div class="tip-modal-overlay" id="tipOverlay" onclick="closeTipModal(event)">
+  <div class="tip-modal" onclick="event.stopPropagation()">
+    <h3>Enjoying Metro Explorer?</h3>
+    <div class="tip-time" id="tipTime"></div>
+    <div class="tip-desc">Metro Explorer is free for everyone. If it's been useful, consider leaving a tip to support the project.</div>
+    <div class="tip-amounts">
+      <a class="tip-amount-btn" href="https://donate.stripe.com/3cI3cv32h19N2AccRReIw00" target="_blank" rel="noopener">$5</a>
+      <a class="tip-amount-btn primary" href="https://donate.stripe.com/3cI3cv32h19N2AccRReIw00" target="_blank" rel="noopener">$15</a>
+      <a class="tip-amount-btn" href="https://donate.stripe.com/3cI3cv32h19N2AccRReIw00" target="_blank" rel="noopener">$25</a>
+    </div>
+    <button class="tip-dismiss" onclick="closeTipModal(event, true)">No thanks</button>
+  </div>
+</div>
+
+<script>
+// --- Tip jar ---
+var _tipStartTime = Date.now();
+var _tipDismissed = false;
+try { _tipDismissed = localStorage.getItem('metro_tip_dismissed') === '1'; } catch(e) {}
+
+if (!_tipDismissed) {
+    document.getElementById('tipIcon').classList.add('visible');
+    var _tipBubbleShown = false;
+    setInterval(function() {
+        var elapsed = (Date.now() - _tipStartTime) / 1000;
+        var icon = document.getElementById('tipIcon');
+        if (elapsed >= 60 && !_tipBubbleShown) {
+            _tipBubbleShown = true;
+            document.getElementById('tipBubble').classList.add('visible');
+        }
+        if (elapsed >= 180 && !icon.classList.contains('pulse')) {
+            icon.classList.add('pulse');
+        }
+    }, 3000);
+}
+
+function _formatTipTime() {
+    var mins = Math.floor((Date.now() - _tipStartTime) / 60000);
+    if (mins < 1) return 'You just started exploring';
+    if (mins === 1) return "You've been exploring for 1 minute";
+    return "You've been exploring for " + mins + " minutes";
+}
+
+function closeTipBubble() {
+    document.getElementById('tipBubble').classList.remove('visible');
+}
+
+function openTipModal() {
+    closeTipBubble();
+    document.getElementById('tipTime').textContent = _formatTipTime();
+    document.getElementById('tipOverlay').classList.add('active');
+    var icon = document.getElementById('tipIcon');
+    icon.classList.remove('pulse');
+}
+
+function closeTipModal(e, dismiss) {
+    document.getElementById('tipOverlay').classList.remove('active');
+    if (dismiss) {
+        try { localStorage.setItem('metro_tip_dismissed', '1'); } catch(ex) {}
+    }
+}
+</script>
 
 </body>
 </html>
