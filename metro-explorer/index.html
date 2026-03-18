@@ -1456,13 +1456,22 @@ function requestChartSummary() {
 
   const countGuidance = (isCount || isHomesSold) ? `\nIMPORTANT: Focus on the ratio to homes sold and changes over time, NOT the absolute count. Absolute counts vary wildly by city size and are not meaningful on their own. When citing a ratio, ALWAYS clarify what it's relative to, e.g. "1.3x homes sold" or "turnover rate of 8.5%". Never write just "1.3x" without specifying "homes sold" or the denominator.` : "";
 
+  const directionality = {
+    "median_dom": "IMPORTANT: Higher days on market = SLOWER market (homes sitting longer). Lower = FASTER. If DOM increased over 5 years, the market SLOWED DOWN, not sped up.",
+    "months_supply": "IMPORTANT: Higher months of supply = more inventory relative to sales = COOLER/buyer-friendly market. Lower = hotter/seller-friendly.",
+    "pct_price_drops": "IMPORTANT: Higher % of price drops = WEAKER market (more sellers cutting prices). Lower = stronger.",
+    "off_market_in_2_weeks": "IMPORTANT: Higher % gone in 2 weeks = FASTER/hotter market. Lower = slower/cooler.",
+    "sale_to_list_ratio": "IMPORTANT: Above 100% = homes selling ABOVE asking (hot market). Below 100% = selling below asking (cool market).",
+  };
+  const dirGuidance = directionality[m.key] ? `\n${directionality[m.key]}` : "";
+
   const prompt = `You are a housing market data analyst writing one pithy, insightful sentence about this metro area's data. Be specific with numbers. No hedging or caveats. Conversational but precise.
 
 City: ${cityData.name}
 Metric: ${m.label}
 Current value: ${currentVal != null ? m.fmt(currentVal) : "N/A"}${yoyInfo}${fiveYrInfo}${ratioContext}${natInfo}
 Property type: ${primaryPropType?.label || "All"}
-${countGuidance}
+${countGuidance}${dirGuidance}
 Write exactly one sentence (max 30 words). Do not start with the city name.`;
 
   generateAISummary("chart-ai-summary", prompt);
