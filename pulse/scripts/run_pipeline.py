@@ -150,6 +150,14 @@ def cmd_daily(args):
         logger.error(f"Synthesis failed: {briefing['error']}")
         return briefing
 
+    # Inject starred emails
+    try:
+        from collectors.gmail_starred import get_starred_emails
+        briefing["_starred_emails"] = get_starred_emails()
+    except Exception as e:
+        logger.warning(f"Starred emails failed: {e}")
+        briefing["_starred_emails"] = []
+
     # Inject Apify spend for the email header
     briefing["_apify_spend_cents"] = get_apify_spend_today(conn)
 

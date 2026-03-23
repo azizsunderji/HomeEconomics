@@ -127,9 +127,9 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
     pulse = briefing.get("conversation_pulse", "")
     themes = briefing.get("conversation_themes", [])
     claims = briefing.get("notable_claims", [])
-    reality = briefing.get("data_reality_check", {})
     substacker = briefing.get("substacker_takes", [])
     institutional = briefing.get("institutional_signal", [])
+    starred_emails = briefing.get("_starred_emails", [])
     twitter_roundup = briefing.get("twitter_roundup", [])
     collection_errors = briefing.get("_collection_errors", [])
     apify_spend_cents = briefing.get("_apify_spend_cents", 0)
@@ -284,24 +284,6 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
 
         html += _spacer(14)
 
-    # ── DATA REALITY CHECK (standalone section if present) ──
-    if reality and reality.get("summary"):
-        stats_html = ""
-        for stat in reality.get("key_stats", [])[:5]:
-            stats_html += f"""<div style="font-size: 12px; padding: 4px 0; border-top: 1px solid #f0f0f0;">
-    <span style="font-weight: 600;">{_esc(stat.get('stat', ''))}</span>
-    <span style="color: #888;"> &mdash; {_esc(stat.get('relevance', ''))}</span>
-  </div>
-"""
-        html += f"""<table width="100%" cellpadding="0" cellspacing="0"><tr>
-<td bgcolor="#FFFFFF" style="background-color: #fff; padding: 12px 14px; border-radius: 6px; border: 1px solid #ddd;">
-  <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #0BB4FF; font-weight: 600; margin-bottom: 6px;">Data Reality Check</div>
-  <div style="font-size: 13px; color: #555; line-height: 1.5; margin-bottom: 8px;">{_esc(reality['summary'])}</div>
-  {stats_html}
-</td></tr></table>
-"""
-        html += _spacer(28)
-
     # ── SUBSTACKER TAKES ──
     if substacker:
         html += _section_heading("Substacker Takes")
@@ -348,6 +330,32 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
 </td></tr></table>
 """
         html += _spacer(28)
+
+    # ── FROM YOUR INBOX (starred emails) ──
+    if starred_emails:
+        html += _section_heading("From Your Inbox")
+        html += _spacer(14)
+
+        for email in starred_emails[:3]:
+            url = email.get("url", "")
+            subject_text = _esc(email.get('subject', ''))
+            if url:
+                subject_link = f'<a href="{url}" target="_blank" style="color: #0BB4FF; text-decoration: none;">{subject_text}</a>'
+            else:
+                subject_link = subject_text
+
+            html += f"""<table width="100%" cellpadding="0" cellspacing="0"><tr>
+<td style="padding-bottom: 14px; border-bottom: 1px solid #e8e8e8;">
+  <div style="font-size: 14px;">
+    <span style="font-weight: 600;">{subject_link}</span>
+  </div>
+  <div style="font-size: 11px; color: #888; margin-top: 2px;">{_esc(email.get('from', ''))}</div>
+  <div style="font-size: 13px; color: #555; margin-top: 6px; line-height: 1.5;">{_esc(email.get('summary', ''))}</div>
+</td></tr></table>
+"""
+            html += _spacer(14)
+
+        html += _spacer(14)
 
     # ── FOOTER ──
     url_audit = briefing.get("_url_audit", {})

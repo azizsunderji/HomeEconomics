@@ -182,7 +182,7 @@ def classify_batch(
 def run_classification(
     db_path: Optional[str] = None,
     batch_size: int = MAX_BATCH_SIZE,
-    max_items: int = 500,
+    max_items: int = 2500,
 ) -> int:
     """Classify all unclassified items in the database.
 

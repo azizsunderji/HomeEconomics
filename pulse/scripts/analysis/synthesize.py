@@ -425,13 +425,6 @@ Return a JSON object:
     }
   ],
 
-  "data_reality_check": {
-    "summary": "2-3 sentences on how the data lake numbers compare to the conversation mood. Are people's perceptions aligned with reality, or is there a gap?",
-    "key_stats": [
-      {"stat": "Specific data lake number", "relevance": "Why it matters for today's conversations"}
-    ]
-  },
-
   "twitter_roundup": [
     {
       "author": "@handle",
@@ -474,35 +467,33 @@ Return a JSON object:
 
 3. NEWS IS CONTEXT ONLY. Never feature a Google News headline as a standalone item. News only matters as a conversation trigger.
 
-4. DATA REALITY CHECK IS MANDATORY. Pick the 2-3 most viral claims circulating in conversations and verify them against the data lake stats provided. Use EXACT numbers — dollar values, percentages, peak dates. Never say "appears exaggerated" without computing the actual number.
+4. REAL URLS ONLY. Every source must include the actual URL from the collected items. Never fabricate URLs.
 
-5. REAL URLS ONLY. Every source must include the actual URL from the collected items. Never fabricate URLs.
+5. SUBSTACKER TAKES MUST COME FROM SUBSTACK NEWSLETTERS ONLY. The substacker_takes section is EXCLUSIVELY for items from the "Substack Newsletters" section above. Do NOT include Twitter commentators or any other source. Use the URL provided with each Substack item (even if it's a redirect link). For each take, summarize their specific ARGUMENT — not just the topic. "Erdmann argues builders are underbuilding relative to population growth" is good. "Erdmann wrote about housing supply" is not.
 
-6. SUBSTACKER TAKES MUST COME FROM SUBSTACK NEWSLETTERS ONLY. The substacker_takes section is EXCLUSIVELY for items from the "Substack Newsletters" section above. Do NOT include Twitter commentators or any other source. Use the URL provided with each Substack item (even if it's a redirect link). For each take, summarize their specific ARGUMENT — not just the topic. "Erdmann argues builders are underbuilding relative to population growth" is good. "Erdmann wrote about housing supply" is not.
+6. INSTITUTIONAL SIGNAL MUST COME FROM EMAIL NEWSLETTERS. The institutional_signal section is SPECIFICALLY for email-sourced items (labeled "INSTITUTIONAL SIGNAL" in the tier headings above). Feature analysis from Goldman Sachs Research, ResiClub, Pulsenomics, AEI Housing, Zillow Research, Fannie Mae, Daily Shot, Thesis Driven, and similar email newsletters. Do NOT put Twitter sources in institutional_signal — those belong in conversation_themes. Use the URL provided with each email item, even if it's a tracking/redirect link.
 
-7. INSTITUTIONAL SIGNAL MUST COME FROM EMAIL NEWSLETTERS. The institutional_signal section is SPECIFICALLY for email-sourced items (labeled "INSTITUTIONAL SIGNAL" in the tier headings above). Feature analysis from Goldman Sachs Research, ResiClub, Pulsenomics, AEI Housing, Zillow Research, Fannie Mae, Daily Shot, Thesis Driven, and similar email newsletters. Do NOT put Twitter sources in institutional_signal — those belong in conversation_themes. Use the URL provided with each email item, even if it's a tracking/redirect link.
+7. CONVERSATION THEMES: 3-6 themes max. Each must have platform evidence. At least 2 themes should involve economist/analyst voices.
 
-8. CONVERSATION THEMES: 3-6 themes max. Each must have platform evidence. At least 2 themes should involve economist/analyst voices.
+8. ONE TOPIC PER THEME. Do NOT group unrelated threads or voices into one theme just to reduce count. If Winton ARK is talking about AI and photography employment, and Arindube is making a separate argument about AI asset valuations, those are TWO separate themes — not one. Only group threads together when they are genuinely part of the SAME conversation (people replying to each other, referencing each other's points). Three separate people talking about three separate things on the same broad topic is NOT one theme.
 
-9. ONE TOPIC PER THEME. Do NOT group unrelated threads or voices into one theme just to reduce count. If Winton ARK is talking about AI and photography employment, and Arindube is making a separate argument about AI asset valuations, those are TWO separate themes — not one. Only group threads together when they are genuinely part of the SAME conversation (people replying to each other, referencing each other's points). Three separate people talking about three separate things on the same broad topic is NOT one theme.
+9. HEAT LEVELS: "viral" = 500+ comments across platforms, "high" = active debate with strong opinions, "medium" = noticeable discussion, "low" = a few mentions.
 
-10. HEAT LEVELS: "viral" = 500+ comments across platforms, "high" = active debate with strong opinions, "medium" = noticeable discussion, "low" = a few mentions.
+10. KEEP IT UNDER 20,000 CHARACTERS. Be substantive but not bloated.
 
-11. KEEP IT UNDER 20,000 CHARACTERS. Be substantive but not bloated.
+11. SKIP IRRELEVANT NOISE. Do not feature: Nigerian/international housing stories, memes about landlords, generic "economy is rigged" venting, partisan political rants with no economic substance.
 
-12. SKIP IRRELEVANT NOISE. Do not feature: Nigerian/international housing stories, memes about landlords, generic "economy is rigged" venting, partisan political rants with no economic substance.
-
-13. TWITTER ROUNDUP: Feature 10-15 individual economist/analyst voices in the twitter_roundup section. This is a quick-scan section so the reader can see what specific people are saying. CRITICAL RULES:
+12. TWITTER ROUNDUP: Feature 10-15 individual economist/analyst voices in the twitter_roundup section. This is a quick-scan section so the reader can see what specific people are saying. CRITICAL RULES:
     a. Do NOT include any tweet or voice you already covered in conversation_themes. If @jasonfurman's thread was featured as a conversation theme, do NOT put him in the twitter roundup too. Use the roundup to surface DIFFERENT voices and takes that didn't make it into the themes.
     b. Include a DIVERSE range of voices — aim for 10+ DIFFERENT handles. Do not over-index on any 2-3 accounts (e.g., do not feature the same person in multiple entries). Spread across different perspectives and expertise areas.
     c. Each entry should name the author (@handle), summarize their specific take in 1-2 sentences, and include the tweet URL.
     d. Prioritize: contrarian views, data-backed claims, novel arguments, and lesser-known voices the reader might not follow.
 
-14. NOTABLE CLAIMS: Do NOT repeat claims from previous days. You will be given a list of recent claims. If a claim is substantially similar to one from a previous briefing (e.g., "Austin prices down 25%"), SKIP IT and pick a different circulating claim. The reader wants to see NEW claims being fact-checked, not the same ones every day.
+13. NOTABLE CLAIMS: Do NOT repeat claims from previous days. You will be given a list of recent claims. If a claim is substantially similar to one from a previous briefing (e.g., "Austin prices down 25%"), SKIP IT and pick a different circulating claim. The reader wants to see NEW claims being fact-checked, not the same ones every day.
 
-15. ALL SECTIONS ARE MANDATORY. Your JSON output MUST include ALL of these keys with populated arrays: conversation_themes, notable_claims, twitter_roundup, substacker_takes, institutional_signal. If you omit any section, the briefing is broken. substacker_takes should have 3-5 entries from the Substack newsletters provided. institutional_signal should have 2-4 entries from the email newsletters provided.
+14. ALL SECTIONS ARE MANDATORY. Your JSON output MUST include ALL of these keys with populated arrays: conversation_themes, notable_claims, twitter_roundup, substacker_takes, institutional_signal. If you omit any section, the briefing is broken. substacker_takes should have 3-5 entries from the Substack newsletters provided. institutional_signal should have 2-4 entries from the email newsletters provided.
 
-16. TWITTER ROUNDUP: STRICTLY ONE ENTRY PER PERSON. Never include the same @handle twice. If you have 9 slots, that means 9 different people.
+15. TWITTER ROUNDUP: STRICTLY ONE ENTRY PER PERSON. Never include the same @handle twice. If you have 9 slots, that means 9 different people.
 """
 
 
