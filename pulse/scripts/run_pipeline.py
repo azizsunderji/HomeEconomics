@@ -158,6 +158,72 @@ def cmd_daily(args):
         logger.warning(f"Starred emails failed: {e}")
         briefing["_starred_emails"] = []
 
+    # Inject journal articles (from academic RSS feeds — show all, bypass Sonnet)
+    try:
+        from datetime import timedelta
+        journal_keywords = [
+            "Housing Studies", "Journal of Housing Research", "Journal of Real Estate Research",
+            "Journal of the American Planning Association", "Real Estate Economics",
+            "Cornell Real Estate Review", "NBER New Working Papers", "ScienceDirect",
+        ]
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
+        all_rss = conn.execute(
+            "SELECT * FROM items WHERE source = 'rss' AND collected_at >= ? ORDER BY collected_at DESC",
+            (cutoff,),
+        ).fetchall()
+        journal_items = []
+        for row in all_rss:
+            item = dict(row)
+            feed = item.get("feed_name", "")
+            if any(k in feed for k in journal_keywords):
+                journal_items.append({
+                    "journal": feed.replace("ScienceDirect Publication: ", ""),
+                    "title": item.get("title", ""),
+                    "url": item.get("url", ""),
+                })
+        briefing["_journal_articles"] = journal_items
+        logger.info(f"Journal articles: {len(journal_items)}")
+    except Exception as e:
+        logger.warning(f"Journal articles failed: {e}")
+        briefing["_journal_articles"] = []
+
+    # Inject reporter articles (from byline Google News queries — show all, bypass Sonnet)
+    try:
+        import json as _json
+        cutoff_36h = (datetime.now(timezone.utc) - timedelta(hours=36)).isoformat()
+        all_gnews = conn.execute(
+            "SELECT * FROM items WHERE source = 'google_news' AND collected_at >= ? ORDER BY collected_at DESC",
+            (cutoff_36h,),
+        ).fetchall()
+        reporter_items = []
+        seen_titles = set()
+        for row in all_gnews:
+            item = dict(row)
+            tags = item.get("platform_tags", "")
+            if isinstance(tags, str):
+                try:
+                    tags = _json.loads(tags)
+                except (ValueError, TypeError):
+                    tags = []
+            query = tags[0] if isinstance(tags, list) and tags else ""
+            # Reporter queries start with a quote (byline search)
+            if query.startswith('"') and not query.startswith('"site:'):
+                reporter_name = query.split('"')[1] if '"' in query else query
+                title_key = item.get("title", "")[:50].lower()
+                if title_key not in seen_titles:
+                    seen_titles.add(title_key)
+                    reporter_items.append({
+                        "reporter": reporter_name,
+                        "publication": item.get("author", ""),
+                        "title": item.get("title", ""),
+                        "url": item.get("url", ""),
+                    })
+        briefing["_reporter_articles"] = reporter_items
+        logger.info(f"Reporter articles: {len(reporter_items)}")
+    except Exception as e:
+        logger.warning(f"Reporter articles failed: {e}")
+        briefing["_reporter_articles"] = []
+
     # Inject press mentions
     try:
         from collectors.press_mentions import get_press_mentions

@@ -129,6 +129,8 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
     substacker = briefing.get("substacker_takes", [])
     institutional = briefing.get("institutional_signal", [])
     headlines = briefing.get("headlines", [])
+    journal_articles = briefing.get("_journal_articles", [])
+    reporter_articles = briefing.get("_reporter_articles", [])
     starred_emails = briefing.get("_starred_emails", [])
     press_mentions = briefing.get("_press_mentions", [])
     twitter_roundup = briefing.get("twitter_roundup", [])
@@ -274,6 +276,31 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
 """
         html += _spacer(24)
 
+    # ── REPORTER ARTICLES (from journalist byline queries) ──
+    if reporter_articles:
+        html += _section_heading(f"Journalist Articles ({len(reporter_articles)})")
+        html += _spacer(10)
+
+        for item in reporter_articles[:20]:
+            url = item.get("url", "")
+            title_text = _esc(item.get('title', ''))
+            reporter = _esc(item.get('reporter', ''))
+            publication = _esc(item.get('publication', ''))
+
+            if url:
+                title_link = f'<a href="{url}" target="_blank" style="color: #3D3733; text-decoration: none;">{title_text}</a>'
+            else:
+                title_link = title_text
+
+            html += f"""<table width="100%" cellpadding="0" cellspacing="0"><tr>
+<td style="font-size: 13px; padding: 4px 0; border-bottom: 1px solid #f0f0f0; line-height: 1.45;">
+  <span style="font-weight: 600; color: #67A275; font-size: 11px;">{reporter}</span>
+  <span style="color: #888; font-size: 11px;">({publication})</span>
+  <span style="font-weight: 600;">{title_link}</span>
+</td></tr></table>
+"""
+        html += _spacer(24)
+
     # ── TWITTER ROUNDUP ──
     if twitter_roundup:
         html += _section_heading("Twitter Roundup")
@@ -339,6 +366,29 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
 </td></tr></table>
 """
         html += _spacer(28)
+
+    # ── JOURNAL ARTICLES (academic, 7-day window) ──
+    if journal_articles:
+        html += _section_heading(f"Academic Journals ({len(journal_articles)})")
+        html += _spacer(10)
+
+        for item in journal_articles[:20]:
+            url = item.get("url", "")
+            title_text = _esc(item.get('title', ''))
+            journal_name = _esc(item.get('journal', ''))
+
+            if url:
+                title_link = f'<a href="{url}" target="_blank" style="color: #3D3733; text-decoration: none;">{title_text}</a>'
+            else:
+                title_link = title_text
+
+            html += f"""<table width="100%" cellpadding="0" cellspacing="0"><tr>
+<td style="font-size: 13px; padding: 4px 0; border-bottom: 1px solid #f0f0f0; line-height: 1.45;">
+  <span style="font-weight: 600; color: #F4743B; font-size: 11px;">{journal_name}</span>
+  {title_link}
+</td></tr></table>
+"""
+        html += _spacer(24)
 
     # ── FROM YOUR INBOX (starred emails) ──
     if starred_emails:
