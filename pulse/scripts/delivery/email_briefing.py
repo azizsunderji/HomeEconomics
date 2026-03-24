@@ -256,15 +256,18 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
             headline_text = _esc(item.get('headline', ''))
             source_name = _esc(item.get('source', ''))
             summary_text = _esc(item.get('summary', ''))
+            via_text = _esc(item.get('via', ''))
 
             if url:
                 headline_link = f'<a href="{url}" target="_blank" style="color: #3D3733; text-decoration: none;">{headline_text}</a>'
             else:
                 headline_link = headline_text
 
+            via_html = f' <span style="color: #aaa; font-size: 10px;">via {via_text}</span>' if via_text else ''
+
             html += f"""<table width="100%" cellpadding="0" cellspacing="0"><tr>
 <td style="font-size: 13px; padding: 5px 0; border-bottom: 1px solid #f0f0f0; line-height: 1.45;">
-  <span style="font-weight: 600; color: #0BB4FF; font-size: 11px;">{source_name}</span>
+  <span style="font-weight: 600; color: #0BB4FF; font-size: 11px;">{source_name}</span>{via_html}
   <span style="font-weight: 600;">{headline_link}</span>
   <span style="color: #555;"> &mdash; {summary_text}</span>
 </td></tr></table>

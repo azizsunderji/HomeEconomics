@@ -767,6 +767,40 @@ Generate the daily briefing JSON. LEAD WITH CONVERSATION — what are people deb
         # Ensure headlines key exists (Sonnet may omit on first runs)
         briefing.setdefault("headlines", [])
 
+        # Tag each headline with its provenance (how we found it)
+        if briefing["headlines"]:
+            url_to_item = {}
+            for item in all_items:
+                url = item.get("url", "")
+                if url:
+                    url_to_item[url] = item
+            for h in briefing["headlines"]:
+                h_url = h.get("url", "")
+                matched = url_to_item.get(h_url)
+                if matched:
+                    source_type = matched.get("source", "")
+                    feed = matched.get("feed_name", "")
+                    tags = matched.get("platform_tags", "")
+                    if isinstance(tags, str):
+                        try:
+                            tags = json.loads(tags)
+                        except (json.JSONDecodeError, TypeError):
+                            tags = []
+                    if source_type == "rss" and feed:
+                        h["via"] = f"RSS: {feed}"
+                    elif source_type == "google_news" and tags:
+                        query = tags[0] if isinstance(tags, list) and tags else str(tags)
+                        if query.startswith('"') or query.startswith("site:"):
+                            h["via"] = f"Query: {query[:40]}"
+                        else:
+                            h["via"] = f"Google News: {query[:30]}"
+                    elif source_type == "gmail":
+                        h["via"] = "Email newsletter"
+                    else:
+                        h["via"] = source_type or "unknown"
+                else:
+                    h["via"] = ""
+
         # Validate all URLs against the database
         briefing = _validate_briefing_urls(briefing, conn)
 
