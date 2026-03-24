@@ -29,9 +29,9 @@ from config import (
 logger = logging.getLogger(__name__)
 
 APIFY_BASE = "https://api.apify.com/v2"
-# Using xtdata/twitter-x-user-tweets-scraper — $0.0008/tweet (BRONZE tier)
-# Takes startUrls (profile URLs), minimum 50 items per run
-ACTOR_ID = "xtdata/twitter-x-user-tweets-scraper"
+# Using apidojo/twitter-scraper-lite — "Twitter Scraper Unlimited: No Limits"
+# Pay-per-event pricing, works on Apify Starter plan
+ACTOR_ID = "apidojo/twitter-scraper-lite"
 
 # DB path for budget tracking (same DB as pulse data, synced via rclone)
 _DB_PATH = Path(__file__).parent.parent.parent / "data" / "pulse.db"
@@ -94,7 +94,7 @@ def _record_spend(cents: int) -> None:
         logger.warning(f"Budget record failed: {e}")
 
 
-def _run_actor(profile_urls: list[str]) -> list[dict]:
+def _run_actor(search_terms: list[str], max_tweets: int = 50) -> list[dict]:
     """Run the Apify Twitter scraper actor and wait for results."""
     api_key = os.environ.get("APIFY_API_KEY", "")
     if not api_key:
@@ -109,7 +109,9 @@ def _run_actor(profile_urls: list[str]) -> list[dict]:
     url = f"{APIFY_BASE}/acts/{actor_api_id}/runs"
 
     payload = {
-        "startUrls": profile_urls,
+        "searchTerms": search_terms,
+        "maxItems": max_tweets,
+        "filter": "Top",
     }
 
     headers = {"Authorization": f"Bearer {api_key}"}
@@ -183,6 +185,8 @@ def _run_actor(profile_urls: list[str]) -> list[dict]:
     results_resp.raise_for_status()
     results = results_resp.json()
 
+    # Filter out noResults sentinel items
+    results = [r for r in results if not r.get("noResults")]
     return results
 
 
@@ -212,20 +216,32 @@ def collect(
     items = []
     seen_ids = set()
 
-    raw_tweets = []
+    # Account-focused collection: batches of ~10 accounts each.
+    # Small batches ensure quiet economist accounts aren't drowned out
+    # by viral takes from louder voices in the same batch.
+    all_batches = []
 
     # Discovery queries (if any — currently empty, account tracking is primary)
     if queries:
-        # Discovery queries not supported by the new actor; log and skip
-        logger.info(f"Discovery queries ({len(queries)}) skipped — xtdata actor uses profile URLs only")
+        all_batches.append((queries, max_per_query))
 
-    # All accounts in a SINGLE run — xtdata actor has minimum 50 items per run,
-    # so batching into one run is both cheaper and required
+    # Account batches of 30 — larger batches = fewer Apify runs = lower cost
+    # Each run has a fixed overhead (~$0.16), so fewer runs saves money
+    BATCH_SIZE = 30
     if accounts:
-        profile_urls = [f"https://x.com/{handle}" for handle in accounts]
-        batch_results = _run_actor(profile_urls)
+        for i in range(0, len(accounts), BATCH_SIZE):
+            batch = accounts[i:i + BATCH_SIZE]
+            account_terms = [f"from:{a}" for a in batch]
+            all_batches.append((account_terms, max_per_query))
+
+    raw_tweets = []
+    for batch_terms, batch_max in all_batches:
+        if not _check_budget():
+            logger.warning("Budget exhausted mid-collection — stopping")
+            break
+        batch_results = _run_actor(batch_terms, max_tweets=batch_max)
         raw_tweets.extend(batch_results)
-        logger.info(f"  All accounts ({len(accounts)}): {len(batch_results)} raw tweets")
+        logger.info(f"  Batch [{batch_terms[0][:40]}{'...' if len(batch_terms) > 1 else ''}]: {len(batch_results)} raw tweets")
 
     for tweet in raw_tweets:
         tweet_id = tweet.get("id", "")
@@ -233,32 +249,28 @@ def collect(
             continue
         seen_ids.add(tweet_id)
 
-        likes = tweet.get("favorite_count", 0) or 0
+        likes = tweet.get("likeCount", 0) or 0
         if likes < min_likes:
             continue
 
-        # Parse date — new format: "Fri Mar 21 14:26:29 +0000 2026"
+        # Parse date
         published = None
-        created_at = tweet.get("created_at", "")
+        created_at = tweet.get("createdAt", "")
         if created_at:
             try:
-                published = datetime.strptime(created_at, "%a %b %d %H:%M:%S %z %Y")
+                published = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
             except ValueError:
-                # Fallback to ISO format parsing
-                try:
-                    published = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
-                except ValueError:
-                    pass
+                pass
 
         author = tweet.get("author", {})
-        username = author.get("screen_name", "") if isinstance(author, dict) else str(author)
+        username = author.get("userName", "") if isinstance(author, dict) else str(author)
 
-        reply_count = tweet.get("reply_count", 0) or 0
+        reply_count = tweet.get("replyCount", 0) or 0
 
-        # Use full_text if available, fall back to text
-        tweet_text = tweet.get("full_text") or tweet.get("text") or ""
-        # Use url if available, fall back to twitterUrl or construct from username/id
-        tweet_url = tweet.get("url") or tweet.get("twitterUrl") or f"https://x.com/{username}/status/{tweet_id}"
+        # Use fullText if available, fall back to text
+        tweet_text = tweet.get("fullText") or tweet.get("text") or ""
+        # Use twitterUrl if available, fall back to url or construct from username/id
+        tweet_url = tweet.get("twitterUrl") or tweet.get("url") or f"https://x.com/{username}/status/{tweet_id}"
 
         item = PulseItem(
             source="twitter",
@@ -268,15 +280,15 @@ def collect(
             body=tweet_text,
             author=f"@{username}" if username else "",
             published_at=published,
-            score=likes + (tweet.get("retweet_count", 0) or 0),
+            score=likes + (tweet.get("retweetCount", 0) or 0),
             num_comments=reply_count,
             engagement_raw={
                 "likes": likes,
-                "retweets": tweet.get("retweet_count", 0) or 0,
+                "retweets": tweet.get("retweetCount", 0) or 0,
                 "replies": reply_count,
-                "quotes": tweet.get("quote_count", 0) or 0,
-                "views": 0,
-                "bookmarks": tweet.get("bookmark_count", 0) or 0,
+                "quotes": tweet.get("quoteCount", 0) or 0,
+                "views": tweet.get("viewCount", 0) or 0,
+                "bookmarks": tweet.get("bookmarkCount", 0) or 0,
                 "is_conversation": reply_count >= 20,
             },
         )
