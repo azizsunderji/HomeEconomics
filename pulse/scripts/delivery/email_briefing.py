@@ -130,6 +130,7 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
     institutional = briefing.get("institutional_signal", [])
     headlines = briefing.get("headlines", [])
     starred_emails = briefing.get("_starred_emails", [])
+    press_mentions = briefing.get("_press_mentions", [])
     twitter_roundup = briefing.get("twitter_roundup", [])
     collection_errors = briefing.get("_collection_errors", [])
     apify_spend_cents = briefing.get("_apify_spend_cents", 0)
@@ -361,6 +362,31 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
             html += _spacer(14)
 
         html += _spacer(14)
+
+    # ── AZIZ IN THE NEWS (press mentions) ──
+    if press_mentions:
+        html += _section_heading("Aziz in the News")
+        html += _spacer(10)
+
+        for mention in press_mentions[:10]:
+            url = mention.get("url", "")
+            headline_text = _esc(mention.get('headline', ''))
+            source_name = _esc(mention.get('source', ''))
+            date_str = _esc(mention.get('date', ''))
+
+            if url:
+                headline_link = f'<a href="{url}" target="_blank" style="color: #3D3733; text-decoration: none;">{headline_text}</a>'
+            else:
+                headline_link = headline_text
+
+            html += f"""<table width="100%" cellpadding="0" cellspacing="0"><tr>
+<td style="font-size: 13px; padding: 4px 0; border-bottom: 1px solid #f0f0f0; line-height: 1.45;">
+  <span style="font-weight: 600; color: #0BB4FF; font-size: 11px;">{source_name}</span>
+  {headline_link}
+  {f'<span style="color: #888; font-size: 11px;"> ({date_str})</span>' if date_str else ''}
+</td></tr></table>
+"""
+        html += _spacer(24)
 
     # ── FOOTER ──
     url_audit = briefing.get("_url_audit", {})

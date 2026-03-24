@@ -158,6 +158,14 @@ def cmd_daily(args):
         logger.warning(f"Starred emails failed: {e}")
         briefing["_starred_emails"] = []
 
+    # Inject press mentions
+    try:
+        from collectors.press_mentions import get_press_mentions
+        briefing["_press_mentions"] = get_press_mentions()
+    except Exception as e:
+        logger.warning(f"Press mentions failed: {e}")
+        briefing["_press_mentions"] = []
+
     # Inject Apify spend for the email header
     briefing["_apify_spend_cents"] = get_apify_spend_today(conn)
 
