@@ -120,7 +120,7 @@ def _get_source_display_name(item: dict) -> str:
     return source.title()
 
 
-def _format_items_for_conversation(items: list[dict], limit: int = 80) -> str:
+def _format_items_for_conversation(items: list[dict], limit: int = 150) -> str:
     """Format items for the conversation-focused synthesis prompt.
 
     Conversation items get full treatment (body + comments).
@@ -144,7 +144,7 @@ def _format_items_for_conversation(items: list[dict], limit: int = 80) -> str:
         2: "SUBSTACKER TAKES — Peer Analysis (FEATURE THESE PROMINENTLY, 3-5 minimum)",
         3: "INSTITUTIONAL SIGNAL — AEI, Goldman, Fed, ResiClub, Global Housing Watch (FEATURE KEY FINDINGS)",
         4: "JOURNALISM — Opinion & Analysis",
-        5: "NEWS HEADLINES — For context only, do NOT feature these as standalone items",
+        5: "NEWS HEADLINES — Use these for the headlines section (20-30 items)",
     }
 
     by_tier = defaultdict(list)
@@ -203,11 +203,21 @@ def _format_items_for_conversation(items: list[dict], limit: int = 80) -> str:
                     f"       Preview: {body_preview}"
                     f"{' | Stats: ' + '; '.join(stats[:2]) if stats else ''}"
                 )
-            else:
-                # News: title only, minimal space
+            elif tier == 4:
+                # Quality journalism: title + body preview for headline summaries
+                body_preview = (item.get("body") or "")[:300]
                 lines.append(
-                    f"  {item['_source_display']}: {item['title'][:160]} "
+                    f"  {item['_source_display']}: {item['title'][:200]}\n"
+                    f"       URL: {item.get('url', '')}\n"
+                    f"       Preview: {body_preview}"
+                )
+            else:
+                # News headlines (Tier 5): title + short preview
+                body_preview = (item.get("body") or "")[:200]
+                lines.append(
+                    f"  {item['_source_display']}: {item['title'][:200]} "
                     f"[URL: {item.get('url', '')}]"
+                    f"{chr(10) + '       Preview: ' + body_preview if body_preview else ''}"
                 )
             count += 1
 
@@ -314,6 +324,12 @@ def _validate_briefing_urls(briefing: dict, conn: sqlite3.Connection) -> dict:
         "bls.gov", "census.gov", "freddiemac.com", "fanniemae.com",
         "goldmansachs.com", "jpmorgan.com", "gs.com", "housingwire.com",
         "redfin.com", "zillow.com", "nar.realtor", "calculatedriskblog.com",
+        # Major news publications
+        "nytimes.com", "wsj.com", "bloomberg.com", "ft.com", "economist.com",
+        "reuters.com", "cnbc.com", "washingtonpost.com", "latimes.com",
+        "sfchronicle.com", "bostonglobe.com", "seattletimes.com",
+        "fortune.com", "marketwatch.com", "axios.com", "semafor.com",
+        "inman.com", "bisnow.com", "therealdeal.com", "costar.com",
         # Newsletter tracking/redirect domains (legitimate email links)
         "beehiiv.com", "prnewswire.com", "paragraph.com",
         "mail.google.com", "thesisdriven.com", "thedailyshot.com",
@@ -361,6 +377,9 @@ def _validate_briefing_urls(briefing: dict, conn: sqlite3.Connection) -> dict:
     for i, item in enumerate(briefing.get("twitter_roundup", [])):
         if "url" in item:
             item["url"] = validate_url(item["url"], f"twitter_roundup[{i}]")
+    for i, item in enumerate(briefing.get("headlines", [])):
+        if "url" in item:
+            item["url"] = validate_url(item["url"], f"headlines[{i}]")
 
     briefing["_url_audit"] = audit
     total = audit["verified"] + audit["corrected"] + audit["stripped"]
@@ -386,7 +405,7 @@ You receive items from multiple platforms, ranked by INTELLECTUAL value:
 - Tier 2: Substacker analysis — peer newsletters with specific arguments
 - Tier 3: Institutional research — Goldman, AEI, Fed (from email)
 - Tier 4: Quality journalism — opinion pieces with specific arguments
-- Tier 5: Commodity news — Google News headlines (CONTEXT ONLY, never feature standalone)
+- Tier 5: News headlines — Google News + RSS feeds (use for the headlines section)
 
 You also receive REAL DATA from the Home Economics data lake (Zillow ZHVI for prices, Redfin for activity metrics). Use these to reality-check claims. CRITICAL: When checking a claim, state the EXACT numbers from the data — current value, peak value + peak date if relevant, and the computed percentage. Never hedge with "appears exaggerated" or "seems unlikely." Just state what the data shows and whether the claim is correct, close, or wrong.
 
@@ -439,6 +458,15 @@ Return a JSON object:
     }
   ],
 
+  "headlines": [
+    {
+      "source": "Publication name (e.g., 'Wall Street Journal', 'Financial Times', 'Bloomberg', 'NYT')",
+      "headline": "Article headline as published",
+      "summary": "One pithy sentence summarizing the key takeaway. Be specific — include numbers, names, or policy details. Not just a restatement of the headline.",
+      "url": "Article URL from the collected item"
+    }
+  ],
+
   "stats_summary": {
     "total_items_analyzed": N,
     "conversation_items": N,
@@ -453,7 +481,7 @@ Return a JSON object:
 
 2. QUOTE REAL PEOPLE BY NAME. "Claudia Sahm argues the labor market is weakening faster than the Fed acknowledges" is useful. "Users are panicking" is not. Focus on substantive discussions, not populist venting.
 
-3. NEWS IS CONTEXT ONLY. Never feature a Google News headline as a standalone item. News only matters as a conversation trigger.
+3. NEWS GOES IN HEADLINES. Mainstream media articles (Google News, RSS feeds from NYT, WSJ, Bloomberg, FT, Reuters, Economist, HousingWire, etc.) belong in the headlines section, NOT in conversation_themes. conversation_themes is for organic social media debates. Headlines is for published journalism.
 
 4. REAL URLS ONLY. Every source must include the actual URL from the collected items. Never fabricate URLs.
 
@@ -467,7 +495,7 @@ Return a JSON object:
 
 9. HEAT LEVELS: "viral" = 500+ comments across platforms, "high" = active debate with strong opinions, "medium" = noticeable discussion, "low" = a few mentions.
 
-10. KEEP IT UNDER 20,000 CHARACTERS. Be substantive but not bloated.
+10. KEEP IT UNDER 30,000 CHARACTERS. The headlines section alone will be substantial — that's fine.
 
 11. SKIP IRRELEVANT NOISE. Do not feature: Nigerian/international housing stories, memes about landlords, generic "economy is rigged" venting, partisan political rants with no economic substance.
 
@@ -477,9 +505,11 @@ Return a JSON object:
     c. Each entry should name the author (@handle), summarize their specific take in 1-2 sentences, and include the tweet URL.
     d. Prioritize: contrarian views, data-backed claims, novel arguments, and lesser-known voices the reader might not follow.
 
-13. ALL SECTIONS ARE MANDATORY. Your JSON output MUST include ALL of these keys with populated arrays: conversation_themes, twitter_roundup, substacker_takes, institutional_signal. If you omit any section, the briefing is broken. substacker_takes should have 3-5 entries from the Substack newsletters provided. institutional_signal should have 2-4 entries from the email newsletters provided.
+13. ALL SECTIONS ARE MANDATORY. Your JSON output MUST include ALL of these keys with populated arrays: conversation_themes, twitter_roundup, substacker_takes, institutional_signal, headlines. If you omit any section, the briefing is broken. substacker_takes should have 3-5 entries from the Substack newsletters provided. institutional_signal should have 2-4 entries from the email newsletters provided.
 
 14. TWITTER ROUNDUP: STRICTLY ONE ENTRY PER PERSON. Never include the same @handle twice. If you have 9 slots, that means 9 different people.
+
+15. HEADLINES: Include 20-30 headlines from the NEWS HEADLINES and JOURNALISM tiers. This is a CHUNKY section — the reader wants a comprehensive scan of what mainstream media is reporting on housing and the macro economy. Include a good blend of housing-specific coverage (inventory, prices, mortgage rates, construction) and broader macro (Fed, inflation, jobs, GDP). For each headline, write a ONE-SENTENCE summary that adds context beyond what the headline says — a specific number, a comparison, or why it matters. Use the publication name as the source (e.g., "Wall Street Journal" not "WSJ.com: Markets"). Do NOT duplicate stories already covered in conversation_themes.
 """
 
 
@@ -730,6 +760,9 @@ Generate the daily briefing JSON. LEAD WITH CONVERSATION — what are people deb
                 existing_urls.add(item.get("url", ""))
                 if len(briefing["institutional_signal"]) >= 4:
                     break
+
+        # Ensure headlines key exists (Sonnet may omit on first runs)
+        briefing.setdefault("headlines", [])
 
         # Validate all URLs against the database
         briefing = _validate_briefing_urls(briefing, conn)
