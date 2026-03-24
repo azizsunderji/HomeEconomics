@@ -512,6 +512,7 @@ Return a JSON object:
 14. TWITTER ROUNDUP: STRICTLY ONE ENTRY PER PERSON. Never include the same @handle twice. If you have 9 slots, that means 9 different people.
 
 15. HEADLINES: Include 20-30 headlines from the NEWS HEADLINES and JOURNALISM tiers. This is a CHUNKY section — the reader wants a comprehensive scan of what mainstream media is reporting on housing and the macro economy. Include a good blend of housing-specific coverage (inventory, prices, mortgage rates, construction) and broader macro (Fed, inflation, jobs, GDP). For each headline, write a ONE-SENTENCE summary that adds context beyond what the headline says — a specific number, a comparison, or why it matters. Use the publication name as the source (e.g., "Wall Street Journal" not "WSJ.com: Markets"). Do NOT duplicate stories already covered in conversation_themes.
+    CRITICAL: NATIONAL AND GLOBAL OUTLETS ONLY. Strongly prefer major national publications: WSJ, NYT, Bloomberg, Financial Times, Reuters, Economist, CNBC, Washington Post, Vox, Fortune, HousingWire, Realtor.com. Do NOT include local newspaper stories (e.g., Fresno Bee, Idaho Statesman, Orange County Register, Denver Post, local TV stations). The reader wants macro-level national and global coverage, not city-specific local news. If a local outlet breaks a nationally significant story, you may include it, but the default should be national sources.
 """
 
 

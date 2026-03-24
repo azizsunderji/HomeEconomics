@@ -122,21 +122,16 @@ TOPICS = {
 
 # ── Google News search queries ────────────────────────────────────────────────
 GOOGLE_NEWS_QUERIES = [
-    # Topic queries
-    "housing market",
-    "mortgage rates",
-    "home prices",
-    "rent prices",
-    "housing affordability",
-    "housing inventory",
-    "real estate market",
-    "housing starts",
-    "home sales",
-    "housing crisis",
+    # Macro topic queries (national scope)
     "federal reserve interest rates",
     "inflation shelter costs",
-    "migration domestic United States",
-    # Publication housing/real estate sections
+    "US housing starts",
+    "US mortgage rates",
+    "national housing market",
+    "Case-Shiller home prices",
+    "existing home sales national",
+    "new home sales national",
+    # Publication-specific queries (guarantees national sources)
     "site:wsj.com real estate OR housing OR mortgage",
     "site:nytimes.com real estate OR housing OR rent",
     "site:bloomberg.com housing OR mortgage OR real estate",
@@ -144,6 +139,9 @@ GOOGLE_NEWS_QUERIES = [
     "site:reuters.com housing OR mortgage OR real estate",
     "site:washingtonpost.com housing OR real estate OR rent",
     "site:economist.com housing OR property",
+    "site:cnbc.com housing OR mortgage OR real estate",
+    "site:fortune.com housing OR real estate",
+    "site:vox.com housing OR rent",
     # Key housing reporters (from press contacts)
     '"Nicole Friedman" housing OR mortgage',
     '"Conor Dougherty" housing OR rent',
