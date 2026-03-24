@@ -123,5 +123,25 @@
 <outline type="rss" htmlUrl="https://www.sciencedirect.com/journal/journal-of-urban-economics" xmlUrl="https://rss.sciencedirect.com/publication/science/00941190" title="ScienceDirect Publication: Journal of Urban Economics" text="ScienceDirect Publication: Journal of Urban Economics" />
 <outline text="Wiley: Real Estate Economics: Table of Contents" htmlUrl="https://onlinelibrary.wiley.com/journal/15406229?af=R" title="Wiley: Real Estate Economics: Table of Contents" xmlUrl="https://onlinelibrary.wiley.com/feed/15406229/most-recent" type="rss" />
 </outline>
+<outline title="Financial Times" text="Financial Times">
+<outline text="FT - Home" title="FT - Home" type="rss" xmlUrl="https://www.ft.com/rss/home" htmlUrl="https://www.ft.com" />
+<outline text="FT - Property" title="FT - Property" type="rss" xmlUrl="https://www.ft.com/property-sector?format=rss" htmlUrl="https://www.ft.com/property-sector" />
+<outline text="FT - US Economy" title="FT - US Economy" type="rss" xmlUrl="https://www.ft.com/us-economy?format=rss" htmlUrl="https://www.ft.com/us-economy" />
+<outline text="FT - Global Economy" title="FT - Global Economy" type="rss" xmlUrl="https://www.ft.com/global-economy?format=rss" htmlUrl="https://www.ft.com/global-economy" />
+<outline text="FT - Markets" title="FT - Markets" type="rss" xmlUrl="https://www.ft.com/markets?format=rss" htmlUrl="https://www.ft.com/markets" />
+</outline>
+<outline title="Reuters" text="Reuters">
+<outline text="Reuters - Business" title="Reuters - Business" type="rss" xmlUrl="https://www.reutersagency.com/feed/?taxonomy=best-sectors&post_type=best" htmlUrl="https://www.reuters.com/business" />
+</outline>
+<outline title="CNBC" text="CNBC">
+<outline text="CNBC - Real Estate" title="CNBC - Real Estate" type="rss" xmlUrl="https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=104723869" htmlUrl="https://www.cnbc.com/real-estate/" />
+<outline text="CNBC - Economy" title="CNBC - Economy" type="rss" xmlUrl="https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=20910258" htmlUrl="https://www.cnbc.com/economy/" />
+</outline>
+<outline title="Washington Post" text="Washington Post">
+<outline text="WaPo - Business" title="WaPo - Business" type="rss" xmlUrl="https://feeds.washingtonpost.com/rss/business" htmlUrl="https://www.washingtonpost.com/business" />
+</outline>
+<outline title="AP News" text="AP News">
+<outline text="AP - Business" title="AP - Business" type="rss" xmlUrl="https://rsshub.app/apnews/topics/business" htmlUrl="https://apnews.com/hub/business" />
+</outline>
 </body>
 </opml>

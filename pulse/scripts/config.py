@@ -122,6 +122,7 @@ TOPICS = {
 
 # ── Google News search queries ────────────────────────────────────────────────
 GOOGLE_NEWS_QUERIES = [
+    # Topic queries
     "housing market",
     "mortgage rates",
     "home prices",
@@ -135,6 +136,28 @@ GOOGLE_NEWS_QUERIES = [
     "federal reserve interest rates",
     "inflation shelter costs",
     "migration domestic United States",
+    # Publication housing/real estate sections
+    "site:wsj.com real estate OR housing OR mortgage",
+    "site:nytimes.com real estate OR housing OR rent",
+    "site:bloomberg.com housing OR mortgage OR real estate",
+    "site:ft.com housing OR property OR mortgage",
+    "site:reuters.com housing OR mortgage OR real estate",
+    "site:washingtonpost.com housing OR real estate OR rent",
+    "site:economist.com housing OR property",
+    # Key housing reporters (from press contacts)
+    '"Nicole Friedman" housing OR mortgage',
+    '"Conor Dougherty" housing OR rent',
+    '"Will Parker" real estate OR housing',
+    '"Konrad Putzier" real estate OR housing',
+    '"Emily Badger" housing OR cities',
+    '"Debra Kamin" real estate',
+    '"Patrick Clark" housing OR real estate',
+    '"Prashant Gopal" housing OR mortgage',
+    '"Rachel Siegel" economy OR housing',
+    '"Nick Timiraos" fed OR mortgage OR rates',
+    '"Lance Lambert" housing OR real estate',
+    '"John Burn-Murdoch" economy OR housing',
+    '"Jon Hilsenrath" economy OR fed',
 ]
 
 # ── Competitor Substacks ──────────────────────────────────────────────────────
