@@ -90,7 +90,17 @@ def _thread_id_to_gmail_url(thread_id_hex: str) -> str:
     plaintext = f"f:{decimal_id}"
     b64 = b64encode(plaintext.encode("utf-8")).decode("utf-8").rstrip("=")
     token = _base_convert(b64, _B64_CHARSET, _GMAIL_CHARSET)
-    return f"https://mail.google.com/mail/u/0/#all/{token}"
+    return f"https://mail.google.com/mail/#all/{token}"
+
+
+def _thread_id_to_gmail_url_for_account(thread_id_hex: str, email_address: str) -> str:
+    """Convert a Gmail API hex thread ID to a working Gmail web URL for a specific account."""
+    decimal_id = int(thread_id_hex, 16)
+    plaintext = f"f:{decimal_id}"
+    b64 = b64encode(plaintext.encode("utf-8")).decode("utf-8").rstrip("=")
+    token = _base_convert(b64, _B64_CHARSET, _GMAIL_CHARSET)
+    encoded_email = email_address.replace("@", "%40")
+    return f"https://mail.google.com/mail/u/?authuser={encoded_email}#all/{token}"
 
 
 def _refresh_access_token(token_data: dict) -> Optional[str]:

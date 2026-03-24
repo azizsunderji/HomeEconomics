@@ -15,7 +15,7 @@ from datetime import datetime, timezone
 import anthropic
 import httpx
 
-from collectors.gmail import _get_all_access_tokens, _thread_id_to_gmail_url
+from collectors.gmail import _get_all_access_tokens, _thread_id_to_gmail_url_for_account
 
 logger = logging.getLogger(__name__)
 
@@ -43,48 +43,66 @@ def get_starred_emails(pick: int = 5, pool_size: int = 50) -> list[dict]:
         logger.warning("No Gmail access tokens — skipping starred emails")
         return []
 
-    # Use the first account
-    access_token = access_tokens[0]
-    headers = {"Authorization": f"Bearer {access_token}"}
+    # Collect starred messages from ALL accounts
+    all_candidates = []  # list of (msg_ref, access_token, email_address)
 
-    # Fetch a pool of starred messages to randomly select from
-    try:
-        resp = httpx.get(
-            f"{GMAIL_API}/messages",
-            headers=headers,
-            params={"q": "is:starred", "maxResults": pool_size},
-            timeout=30,
-        )
-        resp.raise_for_status()
-        messages = resp.json().get("messages", [])
-    except Exception as e:
-        logger.error(f"Failed to list starred messages: {e}")
+    for access_token in access_tokens:
+        acct_headers = {"Authorization": f"Bearer {access_token}"}
+
+        # Get this account's email address for deep linking
+        try:
+            profile_resp = httpx.get(
+                f"{GMAIL_API}/profile", headers=acct_headers, timeout=15,
+            )
+            profile_resp.raise_for_status()
+            email_address = profile_resp.json().get("emailAddress", "")
+        except Exception as e:
+            logger.warning(f"Could not get profile for account: {e}")
+            email_address = ""
+
+        # Fetch starred messages for this account
+        try:
+            resp = httpx.get(
+                f"{GMAIL_API}/messages",
+                headers=acct_headers,
+                params={"q": "is:starred", "maxResults": pool_size},
+                timeout=30,
+            )
+            resp.raise_for_status()
+            messages = resp.json().get("messages", [])
+        except Exception as e:
+            logger.warning(f"Failed to list starred messages for {email_address}: {e}")
+            continue
+
+        for msg in messages:
+            all_candidates.append((msg, access_token, email_address))
+
+        logger.info(f"Starred emails from {email_address}: {len(messages)} found")
+
+    if not all_candidates:
+        logger.info("No starred emails found across any account")
         return []
 
-    if not messages:
-        logger.info("No starred emails found")
-        return []
-
-    # Dedupe by threadId — multiple starred messages in the same thread
-    # should only appear once. Keep the first (most recent) per thread.
+    # Dedupe by threadId across all accounts
     seen_threads = set()
-    unique_messages = []
-    for msg in messages:
+    unique_candidates = []
+    for msg, token, email in all_candidates:
         tid = msg.get("threadId", msg["id"])
         if tid not in seen_threads:
             seen_threads.add(tid)
-            unique_messages.append(msg)
+            unique_candidates.append((msg, token, email))
 
     # Randomly select from the deduplicated pool
-    selected = random.sample(unique_messages, min(pick, len(unique_messages)))
-    logger.info(f"Starred emails: picked {len(selected)} from {len(unique_messages)} unique threads ({len(messages)} total starred)")
+    selected = random.sample(unique_candidates, min(pick, len(unique_candidates)))
+    logger.info(f"Starred emails: picked {len(selected)} from {len(unique_candidates)} unique threads ({len(all_candidates)} total)")
 
     results = []
-    for msg_ref in selected:
+    for msg_ref, access_token, email_address in selected:
         try:
+            acct_headers = {"Authorization": f"Bearer {access_token}"}
             msg_resp = httpx.get(
                 f"{GMAIL_API}/messages/{msg_ref['id']}",
-                headers=headers,
+                headers=acct_headers,
                 params={"format": "metadata", "metadataHeaders": ["Subject", "From", "Date"]},
                 timeout=15,
             )
@@ -98,8 +116,8 @@ def get_starred_emails(pick: int = 5, pool_size: int = 50) -> list[dict]:
             snippet = msg.get("snippet", "")
             thread_id = msg.get("threadId", msg_ref.get("threadId", ""))
 
-            # Build Gmail deep link using the new-interface FMfcg token format
-            gmail_url = _thread_id_to_gmail_url(thread_id)
+            # Build Gmail deep link with authuser for the correct account
+            gmail_url = _thread_id_to_gmail_url_for_account(thread_id, email_address)
 
             results.append({
                 "subject": subject,
