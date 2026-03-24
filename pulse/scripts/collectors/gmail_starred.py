@@ -1,6 +1,6 @@
-"""Fetch recent starred Gmail emails with AI summaries.
+"""Fetch random starred Gmail emails with AI summaries.
 
-Returns the 3 most recent starred emails with Haiku-generated summaries
+Returns 5 randomly selected starred emails with Haiku-generated summaries
 for display in the daily briefing. Uses the same OAuth pattern as gmail.py.
 """
 
@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import random
 from datetime import datetime, timezone
 
 import anthropic
@@ -29,8 +30,11 @@ def _extract_header(headers: list[dict], name: str) -> str:
     return ""
 
 
-def get_starred_emails(max_results: int = 3) -> list[dict]:
-    """Fetch up to 3 starred Gmail messages and summarize each with Haiku.
+def get_starred_emails(pick: int = 5, pool_size: int = 50) -> list[dict]:
+    """Fetch starred Gmail messages and randomly select 5 to summarize.
+
+    Fetches up to pool_size starred messages, randomly picks `pick` of them,
+    then summarizes each with Haiku.
 
     Returns list of dicts: [{"subject", "from", "date", "summary", "url"}]
     """
@@ -43,12 +47,12 @@ def get_starred_emails(max_results: int = 3) -> list[dict]:
     access_token = access_tokens[0]
     headers = {"Authorization": f"Bearer {access_token}"}
 
-    # Fetch starred messages
+    # Fetch a pool of starred messages to randomly select from
     try:
         resp = httpx.get(
             f"{GMAIL_API}/messages",
             headers=headers,
-            params={"q": "is:starred", "maxResults": max_results},
+            params={"q": "is:starred", "maxResults": pool_size},
             timeout=30,
         )
         resp.raise_for_status()
@@ -61,8 +65,22 @@ def get_starred_emails(max_results: int = 3) -> list[dict]:
         logger.info("No starred emails found")
         return []
 
+    # Dedupe by threadId — multiple starred messages in the same thread
+    # should only appear once. Keep the first (most recent) per thread.
+    seen_threads = set()
+    unique_messages = []
+    for msg in messages:
+        tid = msg.get("threadId", msg["id"])
+        if tid not in seen_threads:
+            seen_threads.add(tid)
+            unique_messages.append(msg)
+
+    # Randomly select from the deduplicated pool
+    selected = random.sample(unique_messages, min(pick, len(unique_messages)))
+    logger.info(f"Starred emails: picked {len(selected)} from {len(unique_messages)} unique threads ({len(messages)} total starred)")
+
     results = []
-    for msg_ref in messages[:max_results]:
+    for msg_ref in selected:
         try:
             msg_resp = httpx.get(
                 f"{GMAIL_API}/messages/{msg_ref['id']}",
@@ -78,9 +96,10 @@ def get_starred_emails(max_results: int = 3) -> list[dict]:
             sender = _extract_header(msg_headers, "From")
             date_str = _extract_header(msg_headers, "Date")
             snippet = msg.get("snippet", "")
-            message_id = msg_ref["id"]
+            thread_id = msg.get("threadId", msg_ref["id"])
 
-            gmail_url = f"https://mail.google.com/mail/u/0/#inbox/{message_id}"
+            # Use threadId with #all/ for reliable deep linking
+            gmail_url = f"https://mail.google.com/mail/u/0/#all/{thread_id}"
 
             results.append({
                 "subject": subject,

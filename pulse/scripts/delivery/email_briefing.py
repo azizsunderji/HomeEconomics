@@ -336,7 +336,7 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
         html += _section_heading("From Your Inbox")
         html += _spacer(14)
 
-        for email in starred_emails[:3]:
+        for email in starred_emails[:5]:
             url = email.get("url", "")
             subject_text = _esc(email.get('subject', ''))
             if url:
