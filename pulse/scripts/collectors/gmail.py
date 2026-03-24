@@ -8,6 +8,7 @@ Uses the Gmail API with read-only scope.
 from __future__ import annotations
 
 import base64
+from base64 import b64encode
 import json
 import logging
 import os
@@ -23,6 +24,73 @@ from config import GMAIL_SENDER_WHITELIST, GMAIL_LABELS, GMAIL_MAX_RESULTS
 logger = logging.getLogger(__name__)
 
 GMAIL_API = "https://gmail.googleapis.com/gmail/v1/users/me"
+
+# Gmail new-interface URL encoding character sets
+_B64_CHARSET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+_GMAIL_CHARSET = "BCDFGHJKLMNPQRSTVWXZbcdfghjklmnpqrstvwxz"
+
+
+def _base_convert(token: str, charset_in: str, charset_out: str) -> str:
+    """Convert a string between two numeral systems with arbitrary character sets.
+
+    This implements the base-conversion algorithm used by Gmail's new interface
+    to encode thread IDs into URL-safe tokens (the FMfcg... format).
+    See: https://arsenalrecon.com/insights/digging-deeper-into-gmail-urls
+    """
+    size_in = len(charset_in)
+    size_out = len(charset_out)
+    alph_map = {charset_in[i]: i for i in range(size_in)}
+    in_str_idx = [alph_map[token[i]] for i in reversed(range(len(token)))]
+    out_str_idx: list[int] = []
+    for i in reversed(range(len(in_str_idx))):
+        offset = 0
+        for j in range(len(out_str_idx)):
+            idx = size_in * out_str_idx[j] + offset
+            if idx >= size_out:
+                rest = idx % size_out
+                offset = (idx - rest) // size_out
+                idx = rest
+            else:
+                offset = 0
+            out_str_idx[j] = idx
+        while offset:
+            rest = offset % size_out
+            out_str_idx.append(rest)
+            offset = (offset - rest) // size_out
+        offset = in_str_idx[i]
+        j = 0
+        while offset:
+            if j >= len(out_str_idx):
+                out_str_idx.append(0)
+            idx = out_str_idx[j] + offset
+            if idx >= size_out:
+                rest = idx % size_out
+                offset = (idx - rest) // size_out
+                idx = rest
+            else:
+                offset = 0
+            out_str_idx[j] = idx
+            j += 1
+    return "".join(
+        charset_out[out_str_idx[i]] for i in reversed(range(len(out_str_idx)))
+    )
+
+
+def _thread_id_to_gmail_url(thread_id_hex: str) -> str:
+    """Convert a Gmail API hex thread ID to a working Gmail web URL.
+
+    The new Gmail interface (post-2018) uses an encoded token format (FMfcg...)
+    rather than raw hex IDs. The encoding is:
+      1. Convert hex thread ID to decimal
+      2. Build string "f:<decimal>"
+      3. Base64-encode that string
+      4. Convert from standard base64 alphabet to Gmail's vowel-less alphabet
+    """
+    decimal_id = int(thread_id_hex, 16)
+    plaintext = f"f:{decimal_id}"
+    b64 = b64encode(plaintext.encode("utf-8")).decode("utf-8").rstrip("=")
+    token = _base_convert(b64, _B64_CHARSET, _GMAIL_CHARSET)
+    return f"https://mail.google.com/mail/u/0/#all/{token}"
 
 
 def _refresh_access_token(token_data: dict) -> Optional[str]:
@@ -327,7 +395,7 @@ def collect(
                     # Extract the primary article URL from the email
                     html_body = _extract_html_body(payload)
                     article_url = _extract_primary_url(html_body, body)
-                    gmail_url = f"https://mail.google.com/mail/#all/{msg_ref['id']}"
+                    gmail_url = _thread_id_to_gmail_url(msg.get("threadId", msg_ref["id"]))
 
                     # Skip Pulse's own emails (self-referential)
                     sender_lower = (sender or "").lower()

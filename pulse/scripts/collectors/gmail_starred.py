@@ -10,13 +10,12 @@ import json
 import logging
 import os
 import random
-import urllib.parse
 from datetime import datetime, timezone
 
 import anthropic
 import httpx
 
-from collectors.gmail import _get_all_access_tokens
+from collectors.gmail import _get_all_access_tokens, _thread_id_to_gmail_url
 
 logger = logging.getLogger(__name__)
 
@@ -86,7 +85,7 @@ def get_starred_emails(pick: int = 5, pool_size: int = 50) -> list[dict]:
             msg_resp = httpx.get(
                 f"{GMAIL_API}/messages/{msg_ref['id']}",
                 headers=headers,
-                params={"format": "metadata", "metadataHeaders": ["Subject", "From", "Date", "Message-ID"]},
+                params={"format": "metadata", "metadataHeaders": ["Subject", "From", "Date"]},
                 timeout=15,
             )
             msg_resp.raise_for_status()
@@ -97,15 +96,10 @@ def get_starred_emails(pick: int = 5, pool_size: int = 50) -> list[dict]:
             sender = _extract_header(msg_headers, "From")
             date_str = _extract_header(msg_headers, "Date")
             snippet = msg.get("snippet", "")
-            rfc_message_id = _extract_header(msg_headers, "Message-ID").strip("<>")
+            thread_id = msg.get("threadId", msg_ref.get("threadId", ""))
 
-            # Deep link via rfc822msgid search — most reliable Gmail URL format
-            if rfc_message_id:
-                encoded_mid = urllib.parse.quote(rfc_message_id, safe="")
-                gmail_url = f"https://mail.google.com/mail/u/0/#search/rfc822msgid%3A{encoded_mid}"
-            else:
-                # Fallback: search by subject
-                gmail_url = f"https://mail.google.com/mail/u/0/#search/{urllib.parse.quote(subject)}"
+            # Build Gmail deep link using the new-interface FMfcg token format
+            gmail_url = _thread_id_to_gmail_url(thread_id)
 
             results.append({
                 "subject": subject,
