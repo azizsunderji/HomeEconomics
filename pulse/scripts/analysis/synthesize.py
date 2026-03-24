@@ -144,7 +144,7 @@ def _format_items_for_conversation(items: list[dict], limit: int = 150) -> str:
         2: "SUBSTACKER TAKES — Peer Analysis (FEATURE THESE PROMINENTLY, 3-5 minimum)",
         3: "INSTITUTIONAL SIGNAL — AEI, Goldman, Fed, ResiClub, Global Housing Watch (FEATURE KEY FINDINGS)",
         4: "JOURNALISM — Opinion & Analysis",
-        5: "NEWS HEADLINES — Use these for the headlines section (20-30 items)",
+        5: "NEWS HEADLINES — Google News results for the headlines section",
     }
 
     by_tier = defaultdict(list)
@@ -234,6 +234,45 @@ def _format_substacker_items(items: list[dict]) -> str:
         body_preview = (item.get("body") or "")[:400]
         lines.append(
             f"- {author}: {item.get('title', '')[:200]}\n"
+            f"  URL: {item.get('url', '')}\n"
+            f"  Preview: {body_preview}"
+        )
+    return "\n".join(lines)
+
+
+def _format_rss_headlines(items: list[dict]) -> str:
+    """Format RSS feed items as a dedicated section for headlines."""
+    if not items:
+        return "No RSS feed items collected in this period."
+    lines = []
+    for item in items[:50]:
+        feed = item.get("feed_name", "")
+        body_preview = (item.get("body") or "")[:200]
+        lines.append(
+            f"- [{feed}] {item.get('title', '')[:200]}\n"
+            f"  URL: {item.get('url', '')}\n"
+            f"  Preview: {body_preview}"
+        )
+    return "\n".join(lines)
+
+
+def _format_reporter_items(items: list[dict]) -> str:
+    """Format reporter-sourced Google News items."""
+    if not items:
+        return "No reporter-sourced articles found in this period."
+    lines = []
+    for item in items[:30]:
+        author = item.get("author", "")  # publication name
+        tags = item.get("platform_tags", "")
+        if isinstance(tags, str):
+            try:
+                tags = json.loads(tags)
+            except (json.JSONDecodeError, TypeError):
+                tags = []
+        query = tags[0] if isinstance(tags, list) and tags else ""
+        body_preview = (item.get("body") or "")[:200]
+        lines.append(
+            f"- [{author}] {item.get('title', '')[:200]} (reporter query: {query[:40]})\n"
             f"  URL: {item.get('url', '')}\n"
             f"  Preview: {body_preview}"
         )
@@ -511,8 +550,12 @@ Return a JSON object:
 
 14. TWITTER ROUNDUP: STRICTLY ONE ENTRY PER PERSON. Never include the same @handle twice. If you have 9 slots, that means 9 different people.
 
-15. HEADLINES: Include 20-30 headlines from the NEWS HEADLINES and JOURNALISM tiers. This is a CHUNKY section — the reader wants a comprehensive scan of what mainstream media is reporting on housing and the macro economy. Include a good blend of housing-specific coverage (inventory, prices, mortgage rates, construction) and broader macro (Fed, inflation, jobs, GDP). For each headline, write a ONE-SENTENCE summary that adds context beyond what the headline says — a specific number, a comparison, or why it matters. Use the publication name as the source (e.g., "Wall Street Journal" not "WSJ.com: Markets"). Do NOT duplicate stories already covered in conversation_themes.
-    CRITICAL: NATIONAL AND GLOBAL OUTLETS ONLY. Strongly prefer major national publications: WSJ, NYT, Bloomberg, Financial Times, Reuters, Economist, CNBC, Washington Post, Vox, Fortune, HousingWire, Realtor.com. Do NOT include local newspaper stories (e.g., Fresno Bee, Idaho Statesman, Orange County Register, Denver Post, local TV stations). The reader wants macro-level national and global coverage, not city-specific local news. If a local outlet breaks a nationally significant story, you may include it, but the default should be national sources.
+15. HEADLINES: Include 20-30 headlines. PRIORITY ORDER for sourcing:
+    a. FIRST: Use the "RSS Feed Headlines" section above — these are curated feeds from WSJ, NYT, Bloomberg, FT, Economist, CNBC, HousingWire, etc. These should make up the MAJORITY of your headlines.
+    b. SECOND: Supplement with Google News results ONLY from major national publications.
+    c. NEVER include Hacker News, Bluesky, or Twitter items in headlines — those belong in conversation_themes/twitter_roundup.
+    d. NEVER include local newspapers (Fresno Bee, Idaho Statesman, Orange County Register, Denver Post, local TV stations). National and global outlets ONLY.
+    For each headline, write a ONE-SENTENCE summary that adds context beyond what the headline says — a specific number, a comparison, or why it matters. Use the publication name as the source (e.g., "Wall Street Journal" not "WSJ.com: Markets"). Do NOT duplicate stories already covered in conversation_themes.
 """
 
 
@@ -584,6 +627,31 @@ def generate_daily_briefing(
     institutional_emails.sort(key=lambda x: -(x.get("relevance_score") or 0))
     logger.info(f"Institutional email items: {len(institutional_emails)}")
 
+    # RSS headline items (from curated feeds — these are PREMIUM headline sources)
+    rss_headline_items = [
+        i for i in all_items
+        if i.get("source") == "rss" and i.get("feed_name")
+    ]
+    rss_headline_items.sort(key=lambda x: -(x.get("relevance_score") or 0))
+    logger.info(f"RSS headline items: {len(rss_headline_items)}")
+
+    # Reporter-sourced Google News items (from byline queries)
+    reporter_items = []
+    for i in all_items:
+        if i.get("source") != "google_news":
+            continue
+        tags = i.get("platform_tags", "")
+        if isinstance(tags, str):
+            try:
+                tags = json.loads(tags)
+            except (json.JSONDecodeError, TypeError):
+                tags = []
+        query = tags[0] if isinstance(tags, list) and tags else ""
+        if query.startswith('"') and not query.startswith('"site:'):
+            reporter_items.append(i)
+    reporter_items.sort(key=lambda x: -(x.get("relevance_score") or 0))
+    logger.info(f"Reporter-sourced items: {len(reporter_items)}")
+
     # Log source breakdown for relevant items
     relevant_source_counts = Counter(i.get("source", "?") for i in relevant_items)
     logger.info(f"Relevant items by source: {dict(relevant_source_counts.most_common())}")
@@ -615,6 +683,16 @@ These are actual Substack newsletter articles. Populate substacker_takes ONLY fr
 These are email newsletters from research teams and industry analysts. Feature their key findings in institutional_signal.
 
 {_format_institutional_emails(institutional_emails)}
+
+## RSS Feed Headlines — PRIORITY SOURCE FOR HEADLINES SECTION
+These are from curated RSS feeds (WSJ, NYT, Bloomberg, FT, Economist, CNBC, HousingWire, etc.). PRIORITIZE these for the headlines section over Google News results. These are higher-quality national sources.
+
+{_format_rss_headlines(rss_headline_items)}
+
+## Reporter Articles — ALSO PRIORITY FOR HEADLINES
+These are articles by specific housing/economics journalists we follow (Nicole Friedman, Conor Dougherty, Will Parker, Nick Timiraos, Emily Badger, etc.). Include the best of these in the headlines section.
+
+{_format_reporter_items(reporter_items)}
 
 ## Cross-Platform Convergence (topics appearing on 3+ platforms)
 
