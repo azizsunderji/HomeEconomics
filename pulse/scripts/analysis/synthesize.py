@@ -333,7 +333,9 @@ def _validate_briefing_urls(briefing: dict, conn: sqlite3.Connection) -> dict:
         # Newsletter tracking/redirect domains (legitimate email links)
         "beehiiv.com", "prnewswire.com", "paragraph.com",
         "mail.google.com", "thesisdriven.com", "thedailyshot.com",
-        "resiclubanalytics.com", "pulsenomics.com",
+        "resiclubanalytics.com", "pulsenomics.com", "apollo.com",
+        "coachingatcompass.com", "substack.com", "mailchimp.com",
+        "sendgrid.net", "hubspot.com", "constantcontact.com",
         # Social media (Twitter roundup)
         "twitter.com", "x.com",
     }
@@ -505,7 +507,7 @@ Return a JSON object:
     c. Each entry should name the author (@handle), summarize their specific take in 1-2 sentences, and include the tweet URL.
     d. Prioritize: contrarian views, data-backed claims, novel arguments, and lesser-known voices the reader might not follow.
 
-13. ALL SECTIONS ARE MANDATORY. Your JSON output MUST include ALL of these keys with populated arrays: conversation_themes, twitter_roundup, substacker_takes, institutional_signal, headlines. If you omit any section, the briefing is broken. substacker_takes should have 3-5 entries from the Substack newsletters provided. institutional_signal should have 2-4 entries from the email newsletters provided.
+13. ALL SECTIONS ARE MANDATORY. Your JSON output MUST include ALL of these keys with populated arrays: conversation_themes, twitter_roundup, substacker_takes, institutional_signal, headlines. If you omit any section, the briefing is broken. substacker_takes should include ALL Substack newsletters provided — give a full roundup, not just a few. institutional_signal should have 2-4 entries from the email newsletters provided.
 
 14. TWITTER ROUNDUP: STRICTLY ONE ENTRY PER PERSON. Never include the same @handle twice. If you have 9 slots, that means 9 different people.
 

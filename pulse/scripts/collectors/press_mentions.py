@@ -21,8 +21,7 @@ GNEWS_RSS_BASE = "https://news.google.com/rss/search"
 # Queries to find press mentions
 MENTION_QUERIES = [
     '"Aziz Sunderji"',
-    '"Home Economics" housing newsletter',
-    'site:home-economics.us',
+    'site:home-economics.us -site:substack.com',
 ]
 
 

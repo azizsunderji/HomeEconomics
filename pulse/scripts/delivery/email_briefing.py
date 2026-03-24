@@ -295,7 +295,7 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
         html += _section_heading("Substacker Takes")
         html += _spacer(14)
 
-        for take in substacker[:7]:
+        for take in substacker[:15]:
             url = take.get("url", "")
             title_text = _esc(take.get('title', ''))
             if url:
