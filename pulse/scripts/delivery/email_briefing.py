@@ -1,8 +1,8 @@
 """Email delivery via Resend.
 
 Renders the daily conversation briefing as styled HTML and sends via Resend API.
-Conversation-focused format: themes with platform badges, notable claims
-with data reality checks, substacker takes, institutional signal.
+Conversation-focused format: themes with platform badges, substacker takes,
+institutional signal.
 """
 
 from __future__ import annotations
@@ -126,7 +126,6 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
     stats = briefing.get("stats_summary", {})
     pulse = briefing.get("conversation_pulse", "")
     themes = briefing.get("conversation_themes", [])
-    claims = briefing.get("notable_claims", [])
     substacker = briefing.get("substacker_takes", [])
     institutional = briefing.get("institutional_signal", [])
     starred_emails = briefing.get("_starred_emails", [])
@@ -263,26 +262,6 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
 </td></tr></table>
 """
         html += _spacer(24)
-
-    # ── NOTABLE CLAIMS + DATA REALITY CHECK ──
-    if claims:
-        html += _section_heading("Notable Claims vs. Reality")
-        html += _spacer(14)
-
-        for claim in claims[:5]:
-            html += f"""<table width="100%" cellpadding="0" cellspacing="0"><tr>
-<td bgcolor="#FFFFFF" style="background-color: #fff; padding: 12px; border-radius: 6px; border-left: 3px solid #0BB4FF;">
-  <div style="font-size: 14px; font-weight: 600; margin-bottom: 4px;">&ldquo;{_esc(claim.get('claim', ''))}&rdquo;</div>
-  <div style="font-size: 11px; color: #888; margin-bottom: 6px;">Circulating on: {_esc(claim.get('source', ''))}</div>
-  <div style="font-size: 13px; color: #555; line-height: 1.5; border-top: 1px solid #eee; padding-top: 6px;">
-    <span style="color: #0BB4FF; font-weight: 600; font-size: 10px; text-transform: uppercase;">Data Check</span><br>
-    {_esc(claim.get('data_lake_check', ''))}
-  </div>
-</td></tr></table>
-"""
-            html += _spacer(14)
-
-        html += _spacer(14)
 
     # ── SUBSTACKER TAKES ──
     if substacker:

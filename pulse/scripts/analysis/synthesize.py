@@ -22,13 +22,12 @@ import anthropic
 from config import TOPICS, RELEVANCE_THRESHOLD_HIGHLIGHT, SOURCE_WEIGHTS
 from store import (
     get_db, get_items_since, get_conversation_items, add_story_opportunity,
-    save_briefing, get_collection_stats, get_recent_notable_claims,
+    save_briefing, get_collection_stats,
     get_recent_collection_errors,
 )
 from analysis.convergence import compute_convergence, detect_organic_conversations
 from analysis.arc_tracker import detect_narrative_shifts
 from analysis.data_snapshot import get_full_snapshot
-from analysis.data_lake_query import run_claim_verification
 
 logger = logging.getLogger(__name__)
 
@@ -353,9 +352,6 @@ def _validate_briefing_urls(briefing: dict, conn: sqlite3.Connection) -> dict:
         for j, plat in enumerate(theme.get("platforms", [])):
             if "url" in plat:
                 plat["url"] = validate_url(plat["url"], f"conversation_themes[{i}].platforms[{j}]")
-    for i, claim in enumerate(briefing.get("notable_claims", [])):
-        if "url" in claim:
-            claim["url"] = validate_url(claim["url"], f"notable_claims[{i}]")
     for i, take in enumerate(briefing.get("substacker_takes", [])):
         if "url" in take:
             take["url"] = validate_url(take["url"], f"substacker_takes[{i}]")
@@ -414,14 +410,6 @@ Return a JSON object:
       "heat_level": "low|medium|high|viral",
       "related_news_trigger": "What news event sparked this conversation, if any. Empty string if organic.",
       "topics": ["topic_key1", "topic_key2"]
-    }
-  ],
-
-  "notable_claims": [
-    {
-      "claim": "Specific factual assertion circulating in conversations (e.g., 'Austin prices are down 25% from peak')",
-      "source": "Where it's appearing (e.g., 'Twitter thread from @ConorSen and Bluesky discussion')",
-      "data_lake_check": "USE EXACT NUMBERS FROM THE DATA LAKE STATS. Do not hedge or say 'appears exaggerated.' Compute and state the answer. e.g., 'Zillow ZHVI shows Austin at $419,518, peaked at $554,273 in 2022-06, down 24.3% from peak. The 25% claim is roughly correct.' Always include: current value, peak value + date if relevant, and the computed percentage."
     }
   ],
 
@@ -489,11 +477,9 @@ Return a JSON object:
     c. Each entry should name the author (@handle), summarize their specific take in 1-2 sentences, and include the tweet URL.
     d. Prioritize: contrarian views, data-backed claims, novel arguments, and lesser-known voices the reader might not follow.
 
-13. NOTABLE CLAIMS: Do NOT repeat claims from previous days. You will be given a list of recent claims. If a claim is substantially similar to one from a previous briefing (e.g., "Austin prices down 25%"), SKIP IT and pick a different circulating claim. The reader wants to see NEW claims being fact-checked, not the same ones every day.
+13. ALL SECTIONS ARE MANDATORY. Your JSON output MUST include ALL of these keys with populated arrays: conversation_themes, twitter_roundup, substacker_takes, institutional_signal. If you omit any section, the briefing is broken. substacker_takes should have 3-5 entries from the Substack newsletters provided. institutional_signal should have 2-4 entries from the email newsletters provided.
 
-14. ALL SECTIONS ARE MANDATORY. Your JSON output MUST include ALL of these keys with populated arrays: conversation_themes, notable_claims, twitter_roundup, substacker_takes, institutional_signal. If you omit any section, the briefing is broken. substacker_takes should have 3-5 entries from the Substack newsletters provided. institutional_signal should have 2-4 entries from the email newsletters provided.
-
-15. TWITTER ROUNDUP: STRICTLY ONE ENTRY PER PERSON. Never include the same @handle twice. If you have 9 slots, that means 9 different people.
+14. TWITTER ROUNDUP: STRICTLY ONE ENTRY PER PERSON. Never include the same @handle twice. If you have 9 slots, that means 9 different people.
 """
 
 
@@ -535,9 +521,6 @@ def generate_daily_briefing(
 
     # Get real data lake stats
     data_snapshot = get_full_snapshot(mentioned_metros)
-
-    # Get recent claims to avoid repetition
-    recent_claims = get_recent_notable_claims(conn, days=7)
 
     # Get collection errors for transparency
     collection_errors = get_recent_collection_errors(conn, hours=36)
@@ -611,9 +594,6 @@ These are email newsletters from research teams and industry analysts. Feature t
 ## Organic Conversations (discussions with no news trigger)
 
 {json.dumps([{"title": o["title"][:100], "source": o["source"], "score": o.get("score", 0), "url": o.get("url", "")} for o in organic[:10]], indent=2) if organic else "None detected."}
-
-## Recent Notable Claims (DO NOT REPEAT THESE — pick NEW claims to fact-check)
-{chr(10).join(f'- "{c}"' for c in recent_claims[:15]) if recent_claims else "No recent claims on file."}
 
 Generate the daily briefing JSON. LEAD WITH CONVERSATION — what are people debating, arguing about, reacting to? News is context only."""
 
@@ -692,59 +672,6 @@ Generate the daily briefing JSON. LEAD WITH CONVERSATION — what are people deb
                 except Exception as fix_err:
                     logger.error(f"JSON repair also failed: {fix_err}")
                     raise e  # Re-raise the original error
-
-        # === PASS 2: Dynamic data lake queries for claim verification ===
-        notable_claims = briefing.get("notable_claims", [])
-        if notable_claims:
-            # Build claim text for the query generator
-            claims_text = "\n".join(
-                f'{i+1}. "{c.get("claim", "")}" (source: {c.get("source", "unknown")})'
-                for i, c in enumerate(notable_claims)
-            )
-            logger.info(f"Running data lake queries for {len(notable_claims)} claims...")
-            query_results = run_claim_verification(claims_text, client)
-
-            if query_results and query_results != "No verifiable claims identified.":
-                # Use Haiku to rewrite data_lake_check fields with real query results
-                rewrite_prompt = f"""Rewrite the data_lake_check field for each notable claim using these ACTUAL query results from the data lake.
-
-## Original Claims
-{json.dumps(notable_claims, indent=2)}
-
-## Precomputed Stats (Zillow + Redfin)
-{data_snapshot}
-
-## Query Results (FRED API + DuckDB data lake)
-{query_results}
-
-## Instructions
-- Return a JSON array with the same structure as the original claims
-- Replace each data_lake_check with a precise statement using the actual numbers from the query results
-- Query results include FRED API data (mortgage rates, GDP, employment, etc.) AND DuckDB data lake results (prices, migration, etc.)
-- If BOTH query results and precomputed stats cover a claim, cross-check and use the more precise number
-- Use exact numbers: dollar values, percentages, dates
-- State whether the claim is confirmed, roughly correct, or contradicted by the data
-- Keep it concise — 1-2 sentences max per check
-- NEVER say "data not available" if query results returned relevant numbers for that claim
-"""
-                try:
-                    rewrite_resp = client.messages.create(
-                        model="claude-haiku-4-5-20251001",
-                        max_tokens=4096,
-                        messages=[{"role": "user", "content": rewrite_prompt}],
-                    )
-                    rewrite_text = rewrite_resp.content[0].text.strip()
-                    if rewrite_text.startswith("```"):
-                        rewrite_text = rewrite_text.split("```")[1]
-                        if rewrite_text.startswith("json"):
-                            rewrite_text = rewrite_text[4:]
-                        if "```" in rewrite_text:
-                            rewrite_text = rewrite_text[:rewrite_text.index("```")]
-                    updated_claims = json.loads(rewrite_text)
-                    briefing["notable_claims"] = updated_claims
-                    logger.info(f"Updated {len(updated_claims)} claims with data lake query results")
-                except Exception as e:
-                    logger.warning(f"Failed to rewrite claims with query results: {e}")
 
         # === POST-PROCESSING: Fix common Sonnet omissions ===
 
