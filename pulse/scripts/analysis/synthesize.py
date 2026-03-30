@@ -27,7 +27,7 @@ from store import (
 )
 from analysis.convergence import compute_convergence, detect_organic_conversations
 from analysis.arc_tracker import detect_narrative_shifts
-from analysis.data_snapshot import get_full_snapshot
+
 
 logger = logging.getLogger(__name__)
 
@@ -298,20 +298,6 @@ def _format_institutional_emails(items: list[dict]) -> str:
     return "\n".join(lines)
 
 
-def _extract_mentioned_metros(items: list[dict]) -> list[str]:
-    """Extract metro/city names from entities in top items."""
-    metros = set()
-    for item in items[:50]:
-        entities = item.get("entities", "[]")
-        if isinstance(entities, str):
-            entities = json.loads(entities)
-        for e in entities:
-            if any(st in e for st in [", TX", ", FL", ", CA", ", AZ", ", CO", ", NC", ", GA", ", TN", ", WA", ", OR", ", NV", ", ID", ", UT"]):
-                city = e.split(",")[0].strip()
-                if len(city) > 2:
-                    metros.add(city)
-    return list(metros)[:15]
-
 
 # ── URL validation ────────────────────────────────────────────────────────────
 
@@ -442,8 +428,6 @@ You receive items from multiple platforms, ranked by INTELLECTUAL value:
 - Tier 4: Quality journalism — opinion pieces with specific arguments
 - Tier 5: News headlines — Google News + RSS feeds (use for the headlines section)
 
-You also receive REAL DATA from the Home Economics data lake (Zillow ZHVI for prices, Redfin for activity metrics). Use these to reality-check claims. CRITICAL: When checking a claim, state the EXACT numbers from the data — current value, peak value + peak date if relevant, and the computed percentage. Never hedge with "appears exaggerated" or "seems unlikely." Just state what the data shows and whether the claim is correct, close, or wrong.
-
 ## Output Format
 
 Return a JSON object:
@@ -559,12 +543,6 @@ def generate_daily_briefing(
     # Conversation item counts
     conversation_items = [i for i in all_items if (i.get("conversation_signal") or 0) >= 30]
 
-    # Extract metros mentioned in conversations for data lake queries
-    mentioned_metros = _extract_mentioned_metros(relevant_items)
-
-    # Get real data lake stats
-    data_snapshot = get_full_snapshot(mentioned_metros)
-
     # Get collection errors for transparency
     collection_errors = get_recent_collection_errors(conn, hours=36)
 
@@ -599,17 +577,12 @@ def generate_daily_briefing(
     logger.info(
         f"Synthesis inputs: {len(all_items)} total items ({len(relevant_items)} above threshold, "
         f"{len(conversation_items)} conversation items), "
-        f"{len(convergence)} convergence topics, "
-        f"{len(mentioned_metros)} metros for data lookup"
+        f"{len(convergence)} convergence topics"
     )
 
     user_content = f"""## Today's Collected Items — {len(all_items)} total, {len(relevant_items)} above relevance threshold, {len(conversation_items)} with active conversation
 
 {_format_items_for_conversation(relevant_items, limit=150)}
-
-## Data Lake — Precomputed Stats (Zillow prices + Redfin activity)
-
-{data_snapshot}
 
 ## Substack Newsletters — SUBSTACKER TAKES (use ONLY these for the substacker_takes section)
 These are actual Substack newsletter articles. Populate substacker_takes ONLY from this list. Use the URL provided with each item.
