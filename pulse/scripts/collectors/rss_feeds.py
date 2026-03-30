@@ -69,8 +69,8 @@ def _parse_date(entry: dict) -> Optional[datetime]:
 
 def collect(
     opml_path: str = DEFAULT_OPML_PATH,
-    max_per_feed: int = 10,
-    max_age_hours: int = 48,
+    max_per_feed: int = 25,
+    max_age_hours: int = 24,
 ) -> list[PulseItem]:
     """Fetch all feeds from OPML and collect recent entries.
 

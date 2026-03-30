@@ -1,24 +1,46 @@
 #!/usr/bin/env python3
-"""One-time Gmail OAuth flow to get a refresh token.
-
-Run locally only — requires GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET env vars.
-"""
+"""Gmail OAuth flow — uses only stdlib (no httpx dependency)."""
 
 import json
 import os
+import sys
 import webbrowser
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlencode, urlparse, parse_qs
-import httpx
+from urllib.request import urlopen, Request
 
-CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
-CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "")
+print("=== Gmail OAuth Re-authorization ===")
+print()
+
+# Get credentials
+CLIENT_ID = ""
+CLIENT_SECRET = ""
+for var in ("GMAIL_TOKEN", "GMAIL_TOKENS"):
+    raw = os.environ.get(var, "")
+    if not raw:
+        continue
+    try:
+        data = json.loads(raw)
+        if isinstance(data, list):
+            data = data[0]
+        CLIENT_ID = data.get("client_id", "")
+        CLIENT_SECRET = data.get("client_secret", "")
+        if CLIENT_ID and CLIENT_SECRET:
+            break
+    except Exception:
+        continue
+
+if not CLIENT_ID:
+    CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
+    CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "")
+
 if not CLIENT_ID or not CLIENT_SECRET:
-    print("Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET env vars first")
-    exit(1)
-REDIRECT_URI = "http://localhost:8080"
-SCOPES = "https://www.googleapis.com/auth/gmail.readonly"
+    print("ERROR: No credentials found. Set GMAIL_TOKEN env var.")
+    sys.exit(1)
 
+print(f"Using client_id: {CLIENT_ID[:20]}...")
+
+REDIRECT_URI = "http://localhost:8080"
 auth_code = None
 
 class Handler(BaseHTTPRequestHandler):
@@ -29,48 +51,55 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", "text/html")
         self.end_headers()
-        self.wfile.write(b"<h1>Done! You can close this tab.</h1>")
+        self.wfile.write(b"<h1>Done! Close this tab and go back to terminal.</h1>")
+    def log_message(self, *a):
+        pass
 
-    def log_message(self, format, *args):
-        pass  # Suppress logs
+# Start server first
+print("Starting callback server...")
+server = HTTPServer(("localhost", 8080), Handler)
 
-# Step 1: Open browser for consent
 auth_url = "https://accounts.google.com/o/oauth2/v2/auth?" + urlencode({
     "client_id": CLIENT_ID,
     "redirect_uri": REDIRECT_URI,
     "response_type": "code",
-    "scope": SCOPES,
+    "scope": "https://www.googleapis.com/auth/gmail.readonly",
     "access_type": "offline",
     "prompt": "consent",
 })
 
-print("Opening browser for Gmail authorization...")
+print("Opening browser...")
+print()
+print(">>> If browser doesn't open, paste this URL:")
+print(auth_url)
+print()
 webbrowser.open(auth_url)
 
-# Step 2: Wait for redirect
-server = HTTPServer(("localhost", 8080), Handler)
+print("Waiting for authorization...")
 server.handle_request()
 
 if not auth_code:
     print("ERROR: No auth code received")
-    exit(1)
+    sys.exit(1)
 
-# Step 3: Exchange code for tokens
 print("Exchanging code for tokens...")
-resp = httpx.post("https://oauth2.googleapis.com/token", data={
+post_data = urlencode({
     "client_id": CLIENT_ID,
     "client_secret": CLIENT_SECRET,
     "code": auth_code,
     "grant_type": "authorization_code",
     "redirect_uri": REDIRECT_URI,
-})
+}).encode()
 
-if resp.status_code != 200:
-    print(f"ERROR: {resp.text}")
-    exit(1)
-
-tokens = resp.json()
+req = Request("https://oauth2.googleapis.com/token", data=post_data, method="POST")
+req.add_header("Content-Type", "application/x-www-form-urlencoded")
+resp = urlopen(req)
+tokens = json.loads(resp.read())
 refresh_token = tokens.get("refresh_token")
+
+if not refresh_token:
+    print("ERROR: No refresh token returned")
+    sys.exit(1)
 
 gmail_token = json.dumps({
     "client_id": CLIENT_ID,
@@ -78,8 +107,9 @@ gmail_token = json.dumps({
     "refresh_token": refresh_token,
 })
 
-print("\n=== SUCCESS ===")
-print(f"\nYour GMAIL_TOKEN (save this):\n")
-print(gmail_token)
-print(f"\nFor your terminal:\n")
-print(f"export GMAIL_TOKEN='{gmail_token}'")
+print()
+print("=" * 60)
+print("SUCCESS! Update GMAIL_TOKENS in GitHub secrets with:")
+print("=" * 60)
+print(f"[{gmail_token}]")
+print("=" * 60)
