@@ -235,23 +235,21 @@ def cmd_daily(args):
         briefing["_institutional_emails"] = []
         briefing["_gmail_newsletters"] = []
 
-    # Inject headlines (strict domain allowlist: NYT, FT, Bloomberg, WSJ, WaPo)
+    # Inject headlines (RSS-only from allowlisted publication domains)
     try:
-        from config import (HEADLINE_DOMAIN_ALLOWLIST, HEADLINE_AUTHOR_ALLOWLIST,
-                          JOURNAL_FEED_PATTERNS, HEADLINE_FEED_BLOCKLIST)
+        from config import HEADLINE_DOMAIN_ALLOWLIST, JOURNAL_FEED_PATTERNS, HEADLINE_FEED_BLOCKLIST
         cutoff_36h = (datetime.now(timezone.utc) - timedelta(hours=36)).isoformat()
-        all_rss_gnews = conn.execute(
-            "SELECT * FROM items WHERE source IN ('rss', 'google_news') AND collected_at >= ? ORDER BY collected_at DESC",
+        all_rss = conn.execute(
+            "SELECT * FROM items WHERE source = 'rss' AND collected_at >= ? ORDER BY collected_at DESC",
             (cutoff_36h,),
         ).fetchall()
         headline_items = []
         seen_titles = set()
-        for row in all_rss_gnews:
+        for row in all_rss:
             item = dict(row)
             feed = (item.get("feed_name", "") or "").lower()
             title = item.get("title", "")
             url = item.get("url", "") or ""
-            author = (item.get("author", "") or "").lower()
             title_key = title[:50].lower()
             if title_key in seen_titles:
                 continue
@@ -265,17 +263,13 @@ def cmd_daily(args):
             published = item.get("published_at", "")
             if published and published < cutoff_36h:
                 continue
+            # Match by URL domain only (RSS items have direct URLs)
             url_lower = url.lower()
             source_label = ""
             for domain, label in HEADLINE_DOMAIN_ALLOWLIST.items():
                 if domain in url_lower:
                     source_label = label
                     break
-            if not source_label:
-                for ap, label in HEADLINE_AUTHOR_ALLOWLIST.items():
-                    if ap in author:
-                        source_label = label
-                        break
             if not source_label:
                 continue
             seen_titles.add(title_key)

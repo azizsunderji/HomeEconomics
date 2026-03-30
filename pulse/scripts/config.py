@@ -389,10 +389,12 @@ TWITTER_ACCOUNTS = [
     "saumjha", "shehzadhqazi", "skorusARK",
     "slatestarcodex", "stat_sherpa", "stevecuozzo", "SteveRattner",
     "suani_pilau", "TashaARK", "tashecon", "TaviCosta",
-    "TenantBloc", "TheStalwart", "trdny",
+    "TenantBloc", "TheStalwart", "trdny", "trq212",
     "UrbanDigs", "urbanistvc",
     "wintonARK", "wwwojtekk", "xurbanxcowboyx", "YaleEconomics",
     "YIMBYLAND", "ZouhairABH",
+    # Individual voices requested
+    "ezraklein", "jabornesworth",
 ]
 
 TWITTER_MIN_LIKES = 5    # Low threshold — these are curated voices, not keyword search
@@ -432,17 +434,11 @@ HEADLINE_DOMAIN_ALLOWLIST = {
     "bloomberg.com": "Bloomberg",
     "wsj.com": "Wall Street Journal",
     "washingtonpost.com": "Washington Post",
+    "economist.com": "The Economist",
 }
 
-HEADLINE_AUTHOR_ALLOWLIST = {
-    "wsj": "Wall Street Journal",
-    "wall street journal": "Wall Street Journal",
-    "new york times": "New York Times",
-    "nyt": "New York Times",
-    "financial times": "Financial Times",
-    "bloomberg": "Bloomberg",
-    "washington post": "Washington Post",
-}
+# No longer used for headlines (RSS-only now), but kept for reference
+HEADLINE_AUTHOR_ALLOWLIST = {}
 
 HEADLINE_FEED_BLOCKLIST = [
     "ft opinion",
