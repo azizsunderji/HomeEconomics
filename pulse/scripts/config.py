@@ -405,6 +405,56 @@ GMAIL_SENDER_WHITELIST = []  # No whitelist — let Haiku classify everything in
 GMAIL_LABELS = ["INBOX"]
 GMAIL_MAX_RESULTS = 50
 
+# Junk sender patterns for institutional signal filtering (blocklist approach)
+GMAIL_JUNK_SENDER_PATTERNS = [
+    "stripe.com", "github.com", "statuspage.io", "apify.com",
+    "calendar-notification", "google.com/calendar", "calendly.com",
+    "noreply", "no-reply", "donotreply", "notifications@",
+    "buildinglink.com", "notify@",
+    "theneurondaily.com", "joinsuperhuman.ai", "harkaudio.com",
+    "theverge.com", "thecity.nyc",
+    "amazon.com", "uber.com", "doordash.com",
+    "linkedin.com", "facebook.com",
+]
+
+GMAIL_JUNK_TITLE_PATTERNS = [
+    "invitation:", "accepted:", "updated invitation", "tentative accepted:",
+    "daily agenda", "password", "payment receipt",
+    "payout for", "run failed:", "new subscriber", "new paid subscriber",
+    "new free subscriber", "unsubscription", "meeting today",
+    "re: founders", "gemini-notes",
+]
+
+# Headlines: strict domain allowlist
+HEADLINE_DOMAIN_ALLOWLIST = {
+    "nytimes.com": "New York Times",
+    "ft.com": "Financial Times",
+    "bloomberg.com": "Bloomberg",
+    "wsj.com": "Wall Street Journal",
+    "washingtonpost.com": "Washington Post",
+}
+
+HEADLINE_AUTHOR_ALLOWLIST = {
+    "wsj": "Wall Street Journal",
+    "wall street journal": "Wall Street Journal",
+    "new york times": "New York Times",
+    "nyt": "New York Times",
+    "financial times": "Financial Times",
+    "bloomberg": "Bloomberg",
+    "washington post": "Washington Post",
+}
+
+HEADLINE_FEED_BLOCKLIST = [
+    "ft opinion",
+]
+HEADLINE_HIGH_THRESHOLD = 60
+
+JOURNAL_FEED_PATTERNS = [
+    "sciencedirect", "journal of", "housing studies", "real estate economics",
+    "cornell real estate", "nber", "wiley", "taylor & francis",
+    "journal of urban economics", "journal of housing economics", "cities",
+]
+
 # ── Classification thresholds ─────────────────────────────────────────────────
 RELEVANCE_THRESHOLD_INCLUDE = 30  # Below this, skip entirely
 RELEVANCE_THRESHOLD_HIGHLIGHT = 70  # Above this, feature in briefing

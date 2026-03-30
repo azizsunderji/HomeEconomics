@@ -165,6 +165,8 @@ def cmd_daily(args):
             "Housing Studies", "Journal of Housing Research", "Journal of Real Estate Research",
             "Journal of the American Planning Association", "Real Estate Economics",
             "Cornell Real Estate Review", "NBER New Working Papers", "ScienceDirect",
+            "Journal of Urban Economics", "Journal of Housing Economics", "Cities",
+            "Wiley", "Taylor & Francis",
         ]
         cutoff = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
         all_rss = conn.execute(
@@ -187,42 +189,93 @@ def cmd_daily(args):
         logger.warning(f"Journal articles failed: {e}")
         briefing["_journal_articles"] = []
 
-    # Inject reporter articles (from byline Google News queries — show all, bypass Sonnet)
+    # Inject institutional emails (bypass Sonnet — show all Gmail except Substacks and junk)
     try:
-        import json as _json
+        from config import GMAIL_JUNK_SENDER_PATTERNS, GMAIL_JUNK_TITLE_PATTERNS
+        import re as _re
         cutoff_36h = (datetime.now(timezone.utc) - timedelta(hours=36)).isoformat()
-        all_gnews = conn.execute(
-            "SELECT * FROM items WHERE source = 'google_news' AND collected_at >= ? ORDER BY collected_at DESC",
+        all_gmail = conn.execute(
+            "SELECT * FROM items WHERE source = 'gmail' AND collected_at >= ? ORDER BY collected_at DESC",
             (cutoff_36h,),
         ).fetchall()
-        reporter_items = []
-        seen_titles = set()
-        for row in all_gnews:
+        institutional_items = []
+        for row in all_gmail:
             item = dict(row)
-            tags = item.get("platform_tags", "")
-            if isinstance(tags, str):
-                try:
-                    tags = _json.loads(tags)
-                except (ValueError, TypeError):
-                    tags = []
-            query = tags[0] if isinstance(tags, list) and tags else ""
-            # Reporter queries start with a quote (byline search)
-            if query.startswith('"') and not query.startswith('"site:'):
-                reporter_name = query.split('"')[1] if '"' in query else query
-                title_key = item.get("title", "")[:50].lower()
-                if title_key not in seen_titles:
-                    seen_titles.add(title_key)
-                    reporter_items.append({
-                        "reporter": reporter_name,
-                        "publication": item.get("author", ""),
-                        "title": item.get("title", ""),
-                        "url": item.get("url", ""),
-                    })
-        briefing["_reporter_articles"] = reporter_items
-        logger.info(f"Reporter articles: {len(reporter_items)}")
+            sender = (item.get("author", "") or "").lower()
+            title = (item.get("title", "") or "").lower()
+            if any(p in sender for p in GMAIL_JUNK_SENDER_PATTERNS):
+                continue
+            if any(p in title for p in GMAIL_JUNK_TITLE_PATTERNS):
+                continue
+            raw_author = item.get("author", "")
+            match = _re.match(r'"?([^"<]+)"?\s*<', raw_author)
+            display_name = match.group(1).strip() if match else raw_author.split("<")[0].strip() or raw_author
+            institutional_items.append({
+                "source": display_name,
+                "headline": item.get("title", ""),
+                "url": item.get("url", ""),
+            })
+        briefing["_institutional_emails"] = institutional_items
+        logger.info(f"Institutional emails (bypassing Sonnet): {len(institutional_items)}")
     except Exception as e:
-        logger.warning(f"Reporter articles failed: {e}")
-        briefing["_reporter_articles"] = []
+        logger.warning(f"Institutional email injection failed: {e}")
+        briefing["_institutional_emails"] = []
+
+    # Inject headlines (strict domain allowlist: NYT, FT, Bloomberg, WSJ, WaPo)
+    try:
+        from config import (HEADLINE_DOMAIN_ALLOWLIST, HEADLINE_AUTHOR_ALLOWLIST,
+                          JOURNAL_FEED_PATTERNS, HEADLINE_FEED_BLOCKLIST)
+        cutoff_36h = (datetime.now(timezone.utc) - timedelta(hours=36)).isoformat()
+        all_rss_gnews = conn.execute(
+            "SELECT * FROM items WHERE source IN ('rss', 'google_news') AND collected_at >= ? ORDER BY collected_at DESC",
+            (cutoff_36h,),
+        ).fetchall()
+        headline_items = []
+        seen_titles = set()
+        for row in all_rss_gnews:
+            item = dict(row)
+            feed = (item.get("feed_name", "") or "").lower()
+            title = item.get("title", "")
+            url = item.get("url", "") or ""
+            author = (item.get("author", "") or "").lower()
+            title_key = title[:50].lower()
+            if title_key in seen_titles:
+                continue
+            if any(p in feed for p in JOURNAL_FEED_PATTERNS):
+                continue
+            if any(p in feed for p in HEADLINE_FEED_BLOCKLIST):
+                continue
+            relevance = item.get("relevance_score") or 0
+            if relevance < 30:
+                continue
+            published = item.get("published_at", "")
+            if published and published < cutoff_36h:
+                continue
+            url_lower = url.lower()
+            source_label = ""
+            for domain, label in HEADLINE_DOMAIN_ALLOWLIST.items():
+                if domain in url_lower:
+                    source_label = label
+                    break
+            if not source_label:
+                for ap, label in HEADLINE_AUTHOR_ALLOWLIST.items():
+                    if ap in author:
+                        source_label = label
+                        break
+            if not source_label:
+                continue
+            seen_titles.add(title_key)
+            headline_items.append({
+                "source": source_label,
+                "headline": title,
+                "url": url,
+                "relevance": relevance,
+            })
+        briefing["_headlines"] = headline_items
+        logger.info(f"Headlines (allowlist only): {len(headline_items)}")
+    except Exception as e:
+        logger.warning(f"Headlines injection failed: {e}")
+        briefing["_headlines"] = []
 
     # Inject press mentions
     try:

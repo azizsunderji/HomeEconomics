@@ -412,15 +412,9 @@ def _validate_briefing_urls(briefing: dict, conn: sqlite3.Connection) -> dict:
     for i, take in enumerate(briefing.get("substacker_takes", [])):
         if "url" in take:
             take["url"] = validate_url(take["url"], f"substacker_takes[{i}]")
-    for i, item in enumerate(briefing.get("institutional_signal", [])):
-        if "url" in item:
-            item["url"] = validate_url(item["url"], f"institutional_signal[{i}]")
     for i, item in enumerate(briefing.get("twitter_roundup", [])):
         if "url" in item:
             item["url"] = validate_url(item["url"], f"twitter_roundup[{i}]")
-    for i, item in enumerate(briefing.get("headlines", [])):
-        if "url" in item:
-            item["url"] = validate_url(item["url"], f"headlines[{i}]")
 
     briefing["_url_audit"] = audit
     total = audit["verified"] + audit["corrected"] + audit["stripped"]
@@ -490,24 +484,6 @@ Return a JSON object:
     }
   ],
 
-  "institutional_signal": [
-    {
-      "source": "Goldman Sachs Research",
-      "headline": "Brief description",
-      "key_number": "The single most important number from this piece",
-      "url": "URL from the collected item (use the URL provided in the item, even if it's a tracking link)"
-    }
-  ],
-
-  "headlines": [
-    {
-      "source": "Publication name (e.g., 'Wall Street Journal', 'Financial Times', 'Bloomberg', 'NYT')",
-      "headline": "Article headline as published",
-      "summary": "One pithy sentence summarizing the key takeaway. Be specific — include numbers, names, or policy details. Not just a restatement of the headline.",
-      "url": "Article URL from the collected item"
-    }
-  ],
-
   "stats_summary": {
     "total_items_analyzed": N,
     "conversation_items": N,
@@ -522,15 +498,13 @@ Return a JSON object:
 
 2. QUOTE REAL PEOPLE BY NAME. "Claudia Sahm argues the labor market is weakening faster than the Fed acknowledges" is useful. "Users are panicking" is not. Focus on substantive discussions, not populist venting.
 
-3. NEWS GOES IN HEADLINES. Mainstream media articles (Google News, RSS feeds from NYT, WSJ, Bloomberg, FT, Reuters, Economist, HousingWire, etc.) belong in the headlines section, NOT in conversation_themes. conversation_themes is for organic social media debates. Headlines is for published journalism.
+3. NEWS IN CONVERSATION THEMES. If mainstream media articles spark genuine debate among economists on Twitter/Bluesky, include that debate as a conversation theme. But do NOT include news articles that aren't generating conversation.
 
 4. REAL URLS ONLY. Every source must include the actual URL from the collected items. Never fabricate URLs.
 
-5. SUBSTACKER TAKES MUST COME FROM SUBSTACK NEWSLETTERS ONLY. The substacker_takes section is EXCLUSIVELY for items from the "Substack Newsletters" section above. Do NOT include Twitter commentators or any other source. Use the URL provided with each Substack item (even if it's a redirect link). For each take, summarize their specific ARGUMENT — not just the topic. "Erdmann argues builders are underbuilding relative to population growth" is good. "Erdmann wrote about housing supply" is not.
+5. SUBSTACKER TAKES MUST COME FROM SUBSTACK NEWSLETTERS ONLY. The substacker_takes section is EXCLUSIVELY for items from the "Substack Newsletters" section above. Do NOT include Twitter commentators or any other source. Use the URL provided with each Substack item (even if it's a redirect link). For each take, summarize their specific ARGUMENT — not just the topic. "Erdmann argues builders are underbuilding relative to population growth" is good. "Erdmann wrote about housing supply" is not. IMPORTANT: Include a take for EVERY Substack newsletter provided. Do not cherry-pick — summarize all of them.
 
-6. INSTITUTIONAL SIGNAL MUST COME FROM EMAIL NEWSLETTERS. The institutional_signal section is SPECIFICALLY for email-sourced items (labeled "INSTITUTIONAL SIGNAL" in the tier headings above). Feature analysis from Goldman Sachs Research, ResiClub, Pulsenomics, AEI Housing, Zillow Research, Fannie Mae, Daily Shot, Thesis Driven, and similar email newsletters. Do NOT put Twitter sources in institutional_signal — those belong in conversation_themes. Use the URL provided with each email item, even if it's a tracking/redirect link.
-
-7. CONVERSATION THEMES: 3-6 themes max. Each must have platform evidence. At least 2 themes should involve economist/analyst voices.
+6. CONVERSATION THEMES: 3-6 themes max. Each must have platform evidence. At least 2 themes should involve economist/analyst voices.
 
 8. ONE TOPIC PER THEME. Do NOT group unrelated threads or voices into one theme just to reduce count. If Winton ARK is talking about AI and photography employment, and Arindube is making a separate argument about AI asset valuations, those are TWO separate themes — not one. Only group threads together when they are genuinely part of the SAME conversation (people replying to each other, referencing each other's points). Three separate people talking about three separate things on the same broad topic is NOT one theme.
 
@@ -540,22 +514,15 @@ Return a JSON object:
 
 11. SKIP IRRELEVANT NOISE. Do not feature: Nigerian/international housing stories, memes about landlords, generic "economy is rigged" venting, partisan political rants with no economic substance.
 
-12. TWITTER ROUNDUP: Feature 10-15 individual economist/analyst voices in the twitter_roundup section. This is a quick-scan section so the reader can see what specific people are saying. CRITICAL RULES:
+12. TWITTER ROUNDUP: Feature 20-30 individual economist/analyst voices in the twitter_roundup section. This is a quick-scan section so the reader can see what specific people are saying. CRITICAL RULES:
     a. Do NOT include any tweet or voice you already covered in conversation_themes. If @jasonfurman's thread was featured as a conversation theme, do NOT put him in the twitter roundup too. Use the roundup to surface DIFFERENT voices and takes that didn't make it into the themes.
-    b. Include a DIVERSE range of voices — aim for 10+ DIFFERENT handles. Do not over-index on any 2-3 accounts (e.g., do not feature the same person in multiple entries). Spread across different perspectives and expertise areas.
+    b. Include a DIVERSE range of voices — aim for 20+ DIFFERENT handles. Do not over-index on any 2-3 accounts (e.g., do not feature the same person in multiple entries). Spread across different perspectives and expertise areas.
     c. Each entry should name the author (@handle), summarize their specific take in 1-2 sentences, and include the tweet URL.
     d. Prioritize: contrarian views, data-backed claims, novel arguments, and lesser-known voices the reader might not follow.
+    e. You can include more than one tweet per person if they made multiple substantive points on different topics.
 
-13. ALL SECTIONS ARE MANDATORY. Your JSON output MUST include ALL of these keys with populated arrays: conversation_themes, twitter_roundup, substacker_takes, institutional_signal, headlines. If you omit any section, the briefing is broken. substacker_takes should include ALL Substack newsletters provided — give a full roundup, not just a few. institutional_signal should have 2-4 entries from the email newsletters provided.
+13. ALL SECTIONS ARE MANDATORY. Your JSON output MUST include ALL of these keys with populated arrays: conversation_themes, twitter_roundup, substacker_takes. If you omit any section, the briefing is broken. substacker_takes should include a take for EVERY Substack newsletter provided — summarize all of them, not just a few.
 
-14. TWITTER ROUNDUP: STRICTLY ONE ENTRY PER PERSON. Never include the same @handle twice. If you have 9 slots, that means 9 different people.
-
-15. HEADLINES: Include 20-30 headlines. PRIORITY ORDER for sourcing:
-    a. FIRST: Use the "RSS Feed Headlines" section above — these are curated feeds from WSJ, NYT, Bloomberg, FT, Economist, CNBC, HousingWire, etc. These should make up the MAJORITY of your headlines.
-    b. SECOND: Supplement with Google News results ONLY from major national publications.
-    c. NEVER include Hacker News, Bluesky, or Twitter items in headlines — those belong in conversation_themes/twitter_roundup.
-    d. NEVER include local newspapers (Fresno Bee, Idaho Statesman, Orange County Register, Denver Post, local TV stations). National and global outlets ONLY.
-    For each headline, write a ONE-SENTENCE summary that adds context beyond what the headline says — a specific number, a comparison, or why it matters. Use the publication name as the source (e.g., "Wall Street Journal" not "WSJ.com: Markets"). Do NOT duplicate stories already covered in conversation_themes.
 """
 
 
@@ -611,46 +578,16 @@ def generate_daily_briefing(
         author_lower = (i.get("author") or "").lower()
         if "aziz" in author_lower or "home-economics" in author_lower:
             continue
-        title_key = (i.get("title") or "").strip().lower()[:60]
+        title_lower = (i.get("title") or "").strip().lower()
+        if any(p in title_lower for p in ["subscriber", "unsubscription", "payment receipt", "discussion thread", "open thread", "sunday thread", "saturday discussion", "chat thread", "mailbag"]):
+            continue
+        title_key = title_lower[:60]
         if title_key in seen_titles:
             continue
         seen_titles.add(title_key)
         substacker_items.append(i)
     substacker_items.sort(key=lambda x: -(x.get("relevance_score") or 0))
     logger.info(f"Substacker items: {len(substacker_items)} (RSS + newsletter, deduped)")
-
-    # Institutional email items (Gmail items that aren't Substack)
-    institutional_emails = [
-        i for i in relevant_items
-        if i.get("source") == "gmail" and (i.get("relevance_score") or 0) >= 50
-    ]
-    institutional_emails.sort(key=lambda x: -(x.get("relevance_score") or 0))
-    logger.info(f"Institutional email items: {len(institutional_emails)}")
-
-    # RSS headline items (from curated feeds — these are PREMIUM headline sources)
-    rss_headline_items = [
-        i for i in all_items
-        if i.get("source") == "rss" and i.get("feed_name")
-    ]
-    rss_headline_items.sort(key=lambda x: -(x.get("relevance_score") or 0))
-    logger.info(f"RSS headline items: {len(rss_headline_items)}")
-
-    # Reporter-sourced Google News items (from byline queries)
-    reporter_items = []
-    for i in all_items:
-        if i.get("source") != "google_news":
-            continue
-        tags = i.get("platform_tags", "")
-        if isinstance(tags, str):
-            try:
-                tags = json.loads(tags)
-            except (json.JSONDecodeError, TypeError):
-                tags = []
-        query = tags[0] if isinstance(tags, list) and tags else ""
-        if query.startswith('"') and not query.startswith('"site:'):
-            reporter_items.append(i)
-    reporter_items.sort(key=lambda x: -(x.get("relevance_score") or 0))
-    logger.info(f"Reporter-sourced items: {len(reporter_items)}")
 
     # Log source breakdown for relevant items
     relevant_source_counts = Counter(i.get("source", "?") for i in relevant_items)
@@ -678,21 +615,6 @@ def generate_daily_briefing(
 These are actual Substack newsletter articles. Populate substacker_takes ONLY from this list. Use the URL provided with each item.
 
 {_format_substacker_items(substacker_items)}
-
-## Email Newsletters — INSTITUTIONAL SIGNAL (use these for the institutional_signal section)
-These are email newsletters from research teams and industry analysts. Feature their key findings in institutional_signal.
-
-{_format_institutional_emails(institutional_emails)}
-
-## RSS Feed Headlines — PRIORITY SOURCE FOR HEADLINES SECTION
-These are from curated RSS feeds (WSJ, NYT, Bloomberg, FT, Economist, CNBC, HousingWire, etc.). PRIORITIZE these for the headlines section over Google News results. These are higher-quality national sources.
-
-{_format_rss_headlines(rss_headline_items)}
-
-## Reporter Articles — ALSO PRIORITY FOR HEADLINES
-These are articles by specific housing/economics journalists we follow (Nicole Friedman, Conor Dougherty, Will Parker, Nick Timiraos, Emily Badger, etc.). Include the best of these in the headlines section.
-
-{_format_reporter_items(reporter_items)}
 
 ## Cross-Platform Convergence (topics appearing on 3+ platforms)
 
@@ -800,84 +722,36 @@ Generate the daily briefing JSON. LEAD WITH CONVERSATION — what are people deb
                 logger.info(f"Twitter roundup deduped: {len(roundup)} → {len(deduped)} entries")
             briefing["twitter_roundup"] = deduped
 
-        # 2. Backfill substacker_takes if Sonnet omitted or under-populated them
-        if len(briefing.get("substacker_takes", [])) < 3 and substacker_items:
-            logger.warning(f"Sonnet returned only {len(briefing.get('substacker_takes', []))} substacker_takes — backfilling from {len(substacker_items)} collected items")
-            existing_urls = {t.get("url", "") for t in briefing.get("substacker_takes", [])}
-            for item in substacker_items[:8]:
-                if item.get("url", "") in existing_urls:
+        # 2. Supplement twitter_roundup if Sonnet returned fewer than 20
+        roundup_authors = {(e.get("author") or "").lower().strip() for e in briefing.get("twitter_roundup", [])}
+        theme_urls = set()
+        for theme in briefing.get("conversation_themes", []):
+            for p in theme.get("platforms", []):
+                if p.get("url"):
+                    theme_urls.add(p["url"])
+        if len(briefing.get("twitter_roundup", [])) < 20:
+            twitter_supplement = [
+                i for i in relevant_items
+                if i.get("source") == "twitter"
+                and (i.get("relevance_score") or 0) >= 60
+                and (i.get("author") or "").lower().strip() not in roundup_authors
+                and i.get("url", "") not in theme_urls
+            ]
+            twitter_supplement.sort(key=lambda x: -(x.get("relevance_score") or 0))
+            for item in twitter_supplement:
+                author = (item.get("author") or "").strip()
+                author_key = author.lower()
+                if author_key in roundup_authors:
                     continue
-                author = item.get("author", "")
-                # Clean author display
-                match = re.match(r'"?([^"<]+)"?\s*<', author)
-                display = match.group(1).strip() if match else author.split("<")[0].strip() or author
-                body = (item.get("body") or "")[:300]
-                briefing.setdefault("substacker_takes", []).append({
-                    "author": display,
-                    "title": item.get("title", ""),
-                    "take": body if body else "See full article.",
+                roundup_authors.add(author_key)
+                body = (item.get("body") or "")[:150]
+                briefing.setdefault("twitter_roundup", []).append({
+                    "author": author if author.startswith("@") else f"@{author}",
+                    "take": body if body else item.get("title", "")[:150],
                     "url": item.get("url", ""),
                 })
-                existing_urls.add(item.get("url", ""))
-                if len(briefing["substacker_takes"]) >= 5:
+                if len(briefing["twitter_roundup"]) >= 30:
                     break
-
-        # 3. Backfill institutional_signal if Sonnet omitted or under-populated it
-        if len(briefing.get("institutional_signal", [])) < 2 and institutional_emails:
-            logger.warning(f"Sonnet returned only {len(briefing.get('institutional_signal', []))} institutional_signal — backfilling from {len(institutional_emails)} collected emails")
-            existing_urls = {s.get("url", "") for s in briefing.get("institutional_signal", [])}
-            for item in institutional_emails[:8]:
-                if item.get("url", "") in existing_urls:
-                    continue
-                author = item.get("author", "")
-                match = re.match(r'"?([^"<]+)"?\s*<', author)
-                display = match.group(1).strip() if match else author.split("<")[0].strip() or author
-                briefing.setdefault("institutional_signal", []).append({
-                    "source": display,
-                    "headline": item.get("title", ""),
-                    "key_number": "",
-                    "url": item.get("url", ""),
-                })
-                existing_urls.add(item.get("url", ""))
-                if len(briefing["institutional_signal"]) >= 4:
-                    break
-
-        # Ensure headlines key exists (Sonnet may omit on first runs)
-        briefing.setdefault("headlines", [])
-
-        # Tag each headline with its provenance (how we found it)
-        if briefing["headlines"]:
-            url_to_item = {}
-            for item in all_items:
-                url = item.get("url", "")
-                if url:
-                    url_to_item[url] = item
-            for h in briefing["headlines"]:
-                h_url = h.get("url", "")
-                matched = url_to_item.get(h_url)
-                if matched:
-                    source_type = matched.get("source", "")
-                    feed = matched.get("feed_name", "")
-                    tags = matched.get("platform_tags", "")
-                    if isinstance(tags, str):
-                        try:
-                            tags = json.loads(tags)
-                        except (json.JSONDecodeError, TypeError):
-                            tags = []
-                    if source_type == "rss" and feed:
-                        h["via"] = f"RSS: {feed}"
-                    elif source_type == "google_news" and tags:
-                        query = tags[0] if isinstance(tags, list) and tags else str(tags)
-                        if query.startswith('"') or query.startswith("site:"):
-                            h["via"] = f"Query: {query[:40]}"
-                        else:
-                            h["via"] = f"Google News: {query[:30]}"
-                    elif source_type == "gmail":
-                        h["via"] = "Email newsletter"
-                    else:
-                        h["via"] = source_type or "unknown"
-                else:
-                    h["via"] = ""
 
         # Validate all URLs against the database
         briefing = _validate_briefing_urls(briefing, conn)

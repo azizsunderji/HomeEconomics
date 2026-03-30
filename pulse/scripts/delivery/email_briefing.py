@@ -127,10 +127,9 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
     pulse = briefing.get("conversation_pulse", "")
     themes = briefing.get("conversation_themes", [])
     substacker = briefing.get("substacker_takes", [])
-    institutional = briefing.get("institutional_signal", [])
-    headlines = briefing.get("headlines", [])
+    institutional = briefing.get("_institutional_emails", []) or briefing.get("institutional_signal", [])
+    headlines = briefing.get("_headlines", [])
     journal_articles = briefing.get("_journal_articles", [])
-    reporter_articles = briefing.get("_reporter_articles", [])
     starred_emails = briefing.get("_starred_emails", [])
     press_mentions = briefing.get("_press_mentions", [])
     twitter_roundup = briefing.get("twitter_roundup", [])
@@ -182,12 +181,15 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
 """
         html += _spacer(16)
 
-    # ── CONVERSATION PULSE (mood box) ──
-    if pulse:
+    # ── TOP BULLETS (key themes summary) ──
+    if themes:
+        bullet_html = ""
+        for t in themes[:3]:
+            bullet_html += f'<li style="margin-bottom: 4px;">{_esc(t.get("theme", ""))}</li>'
         html += f"""<table width="100%" cellpadding="0" cellspacing="0"><tr>
 <td bgcolor="#DADFCE" style="background-color: #DADFCE; padding: 14px 16px; border-radius: 6px; font-size: 14px; line-height: 1.6;">
-  <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #67A275; font-weight: 600; margin-bottom: 6px;">Conversation Pulse</div>
-  {_esc(pulse)}
+  <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #67A275; font-weight: 600; margin-bottom: 6px;">Today's Top Themes</div>
+  <ul style="margin: 0; padding-left: 18px;">{bullet_html}</ul>
 </td></tr></table>
 """
         html += _spacer(24)
@@ -248,65 +250,45 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
 
         html += _spacer(10)
 
-    # ── HEADLINES (mainstream media digest) ──
+    # ── HEADLINES (grouped by source — strict allowlist) ──
     if headlines:
+        from collections import defaultdict as _defaultdict
+        grouped_headlines = _defaultdict(list)
+        for item in headlines[:50]:
+            grouped_headlines[item.get("source", "News")].append(item)
+
         html += _section_heading(f"Headlines ({len(headlines)})")
         html += _spacer(10)
 
-        for item in headlines[:30]:
-            url = item.get("url", "")
-            headline_text = _esc(item.get('headline', ''))
-            source_name = _esc(item.get('source', ''))
-            summary_text = _esc(item.get('summary', ''))
-            via_text = _esc(item.get('via', ''))
-
-            if url:
-                headline_link = f'<a href="{url}" target="_blank" style="color: #3D3733; text-decoration: none;">{headline_text}</a>'
-            else:
-                headline_link = headline_text
-
-            via_html = f' <span style="color: #aaa; font-size: 10px;">via {via_text}</span>' if via_text else ''
-
+        for source_name, articles in grouped_headlines.items():
             html += f"""<table width="100%" cellpadding="0" cellspacing="0"><tr>
-<td style="font-size: 13px; padding: 5px 0; border-bottom: 1px solid #f0f0f0; line-height: 1.45;">
-  <span style="font-weight: 600; color: #0BB4FF; font-size: 11px;">{source_name}</span>{via_html}
-  <span style="font-weight: 600;">{headline_link}</span>
-  <span style="color: #555;"> &mdash; {summary_text}</span>
+<td style="font-size: 13px; font-weight: 600; color: #0BB4FF; padding: 8px 0 4px 0;">{_esc(source_name)}</td>
+</tr></table>
+"""
+            for item in articles:
+                url = item.get("url", "")
+                headline_text = _esc(item.get('headline', ''))
+                if url:
+                    headline_link = f'<a href="{url}" target="_blank" style="color: #3D3733; text-decoration: none;">{headline_text}</a>'
+                else:
+                    headline_link = headline_text
+                rel_score = item.get('relevance', '')
+                rel_html = f' <span style="color: #aaa; font-size: 10px;">[{rel_score}]</span>' if rel_score else ''
+                html += f"""<table width="100%" cellpadding="0" cellspacing="0"><tr>
+<td style="font-size: 13px; padding: 2px 0 2px 16px; line-height: 1.45;">
+  &bull; {headline_link}{rel_html}
 </td></tr></table>
 """
-        html += _spacer(24)
+            html += _spacer(4)
 
-    # ── REPORTER ARTICLES (from journalist byline queries) ──
-    if reporter_articles:
-        html += _section_heading(f"Journalist Articles ({len(reporter_articles)})")
-        html += _spacer(10)
-
-        for item in reporter_articles[:20]:
-            url = item.get("url", "")
-            title_text = _esc(item.get('title', ''))
-            reporter = _esc(item.get('reporter', ''))
-            publication = _esc(item.get('publication', ''))
-
-            if url:
-                title_link = f'<a href="{url}" target="_blank" style="color: #3D3733; text-decoration: none;">{title_text}</a>'
-            else:
-                title_link = title_text
-
-            html += f"""<table width="100%" cellpadding="0" cellspacing="0"><tr>
-<td style="font-size: 13px; padding: 4px 0; border-bottom: 1px solid #f0f0f0; line-height: 1.45;">
-  <span style="font-weight: 600; color: #67A275; font-size: 11px;">{reporter}</span>
-  <span style="color: #888; font-size: 11px;">({publication})</span>
-  <span style="font-weight: 600;">{title_link}</span>
-</td></tr></table>
-"""
-        html += _spacer(24)
+        html += _spacer(20)
 
     # ── TWITTER ROUNDUP ──
     if twitter_roundup:
         html += _section_heading("Twitter Roundup")
         html += _spacer(14)
 
-        for voice in twitter_roundup[:15]:
+        for voice in twitter_roundup[:40]:
             url = voice.get("url", "")
             author = _esc(voice.get("author", ""))
             take = _esc(voice.get("take", ""))
@@ -325,7 +307,7 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
         html += _section_heading("Substacker Takes")
         html += _spacer(14)
 
-        for take in substacker[:15]:
+        for take in substacker:
             url = take.get("url", "")
             title_text = _esc(take.get('title', ''))
             if url:
@@ -346,49 +328,73 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
 
         html += _spacer(14)
 
-    # ── INSTITUTIONAL SIGNAL (compact 1-line-per-item) ──
+    # ── INSTITUTIONAL SIGNAL (all non-junk Gmail emails, grouped by source) ──
     if institutional:
-        html += _section_heading("Institutional Signal")
+        from collections import defaultdict as _defaultdict2
+        grouped_inst = _defaultdict2(list)
+        for item in institutional:
+            grouped_inst[item.get("source", "Email")].append(item)
+
+        html += _section_heading(f"From Your Email ({len(institutional)})")
         html += _spacer(10)
 
-        for item in institutional[:5]:
-            url = item.get("url", "")
-            headline = _esc(item.get('headline', ''))
-            source_name = _esc(item.get('source', ''))
-            key_num = item.get('key_number', '')
-
-            link = f'<a href="{url}" target="_blank" style="color: #0BB4FF; text-decoration: none;">{headline}</a>' if url else headline
-
-            html += f"""<table width="100%" cellpadding="0" cellspacing="0"><tr>
+        for source_name, items_list in grouped_inst.items():
+            if len(items_list) > 1:
+                html += f"""<table width="100%" cellpadding="0" cellspacing="0"><tr>
+<td style="font-size: 13px; font-weight: 600; color: #888; padding: 6px 0 2px 0;">{_esc(source_name)}</td>
+</tr></table>
+"""
+                for item in items_list:
+                    url = item.get("url", "")
+                    headline = _esc(item.get('headline', ''))
+                    link = f'<a href="{url}" target="_blank" style="color: #0BB4FF; text-decoration: none;">{headline}</a>' if url else headline
+                    html += f"""<table width="100%" cellpadding="0" cellspacing="0"><tr>
+<td style="font-size: 13px; padding: 2px 0 2px 16px; border-bottom: 1px solid #f0f0f0;">
+  &bull; {link}
+</td></tr></table>
+"""
+            else:
+                item = items_list[0]
+                url = item.get("url", "")
+                headline = _esc(item.get('headline', ''))
+                link = f'<a href="{url}" target="_blank" style="color: #0BB4FF; text-decoration: none;">{headline}</a>' if url else headline
+                html += f"""<table width="100%" cellpadding="0" cellspacing="0"><tr>
 <td style="font-size: 13px; padding: 4px 0; border-bottom: 1px solid #f0f0f0;">
-  <span style="font-weight: 600; color: #888;">{source_name}</span>: {link}
-  {f'<span style="color: #0BB4FF; font-weight: 600; margin-left: 4px;">{_esc(key_num)}</span>' if key_num else ''}
+  <span style="font-weight: 600; color: #888;">{_esc(source_name)}</span>: {link}
 </td></tr></table>
 """
         html += _spacer(28)
 
-    # ── JOURNAL ARTICLES (academic, 7-day window) ──
+    # ── JOURNAL ARTICLES (academic, 7-day window, grouped by journal) ──
     if journal_articles:
+        from collections import defaultdict as _defaultdict3
+        grouped_journals = _defaultdict3(list)
+        for item in journal_articles[:30]:
+            grouped_journals[item.get("journal", "Other")].append(item)
+
         html += _section_heading(f"Academic Journals ({len(journal_articles)})")
         html += _spacer(10)
 
-        for item in journal_articles[:20]:
-            url = item.get("url", "")
-            title_text = _esc(item.get('title', ''))
-            journal_name = _esc(item.get('journal', ''))
-
-            if url:
-                title_link = f'<a href="{url}" target="_blank" style="color: #3D3733; text-decoration: none;">{title_text}</a>'
-            else:
-                title_link = title_text
-
+        for journal_name, articles in grouped_journals.items():
             html += f"""<table width="100%" cellpadding="0" cellspacing="0"><tr>
-<td style="font-size: 13px; padding: 4px 0; border-bottom: 1px solid #f0f0f0; line-height: 1.45;">
-  <span style="font-weight: 600; color: #F4743B; font-size: 11px;">{journal_name}</span>
-  {title_link}
+<td style="font-size: 13px; font-weight: 600; color: #F4743B; padding: 8px 0 4px 0;">{_esc(journal_name)}</td>
+</tr></table>
+"""
+            for item in articles:
+                url = item.get("url", "")
+                title_text = _esc(item.get('title', ''))
+                if url:
+                    title_link = f'<a href="{url}" target="_blank" style="color: #3D3733; text-decoration: none;">{title_text}</a>'
+                else:
+                    title_link = title_text
+                html += f"""<table width="100%" cellpadding="0" cellspacing="0"><tr>
+<td style="font-size: 13px; padding: 2px 0 2px 16px; line-height: 1.45;">
+  &bull; {title_link}
 </td></tr></table>
 """
-        html += _spacer(24)
+            html += _spacer(4)
+
+        html += _spacer(20)
 
     # ── FROM YOUR INBOX (starred emails) ──
     if starred_emails:
