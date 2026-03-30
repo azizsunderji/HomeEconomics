@@ -564,8 +564,23 @@ def generate_daily_briefing(
             continue
         seen_titles.add(title_key)
         substacker_items.append(i)
+    # Also include Gmail newsletter senders (Brandon Donnelly, FT Unhedged, etc.)
+    from config import GMAIL_NEWSLETTER_SENDERS
+    for i in all_items:
+        if i.get("source") != "gmail":
+            continue
+        sender = (i.get("author") or "").lower()
+        if not any(p in sender for p in GMAIL_NEWSLETTER_SENDERS):
+            continue
+        title_lower = (i.get("title") or "").strip().lower()
+        title_key = title_lower[:60]
+        if title_key in seen_titles:
+            continue
+        seen_titles.add(title_key)
+        substacker_items.append(i)
+
     substacker_items.sort(key=lambda x: -(x.get("relevance_score") or 0))
-    logger.info(f"Substacker items: {len(substacker_items)} (RSS + newsletter, deduped)")
+    logger.info(f"Newsletter items: {len(substacker_items)} (Substack RSS + Gmail newsletters, deduped)")
 
     # Log source breakdown for relevant items
     relevant_source_counts = Counter(i.get("source", "?") for i in relevant_items)
@@ -584,8 +599,8 @@ def generate_daily_briefing(
 
 {_format_items_for_conversation(relevant_items, limit=150)}
 
-## Substack Newsletters — SUBSTACKER TAKES (use ONLY these for the substacker_takes section)
-These are actual Substack newsletter articles. Populate substacker_takes ONLY from this list. Use the URL provided with each item.
+## Newsletters — SUBSTACKER TAKES (use ONLY these for the substacker_takes section)
+These are newsletter articles (Substack + email newsletters). Populate substacker_takes from this list. Use the URL provided with each item. Summarize EVERY one.
 
 {_format_substacker_items(substacker_items)}
 

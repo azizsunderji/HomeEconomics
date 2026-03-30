@@ -304,20 +304,9 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
 """
         html += _spacer(24)
 
-    # ── NEWSLETTERS (Substack + Gmail newsletter senders) ──
-    gmail_newsletters = briefing.get("_gmail_newsletters", [])
-    all_newsletters = list(substacker)  # Sonnet-summarized Substacks first
-    # Append Gmail newsletters (Brandon Donnelly, FT Unhedged, etc.)
-    for gn in gmail_newsletters:
-        all_newsletters.append({
-            "author": gn.get("author", ""),
-            "title": gn.get("title", ""),
-            "take": "",
-            "url": gn.get("url", ""),
-        })
-
-    if all_newsletters:
-        html += _section_heading(f"Newsletters ({len(all_newsletters)})")
+    # ── NEWSLETTERS (all Sonnet-summarized: Substack + Gmail newsletters) ──
+    if substacker:
+        html += _section_heading(f"Newsletters ({len(substacker)})")
         html += _spacer(14)
 
         for take in all_newsletters:

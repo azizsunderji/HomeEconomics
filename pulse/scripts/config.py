@@ -466,7 +466,7 @@ GMAIL_HEADLINE_SENDERS = [
 INSTITUTIONAL_SENDER_ALLOWLIST = [
     "thesis driven", "thesisdriven",
     "gothamist",
-    "leonard steinberg", "compass",
+    "leonard steinberg", "ls@compass.com",
     "the city scoop", "thecity",
     "dan rasmussen", "verdadcap",
     "gs macro", "goldman",
