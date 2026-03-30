@@ -250,11 +250,13 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
 
         html += _spacer(10)
 
-    # ── HEADLINES (grouped by source — strict allowlist) ──
+    # ── HEADLINES (grouped by source, ranked by relevance) ──
     if headlines:
+        # Sort by relevance descending within each source group
         from collections import defaultdict as _defaultdict
+        sorted_headlines = sorted(headlines[:50], key=lambda x: -(x.get("relevance") or 0))
         grouped_headlines = _defaultdict(list)
-        for item in headlines[:50]:
+        for item in sorted_headlines:
             grouped_headlines[item.get("source", "News")].append(item)
 
         html += _section_heading(f"Headlines ({len(headlines)})")
@@ -335,7 +337,7 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
         for item in institutional:
             grouped_inst[item.get("source", "Email")].append(item)
 
-        html += _section_heading(f"From Your Email ({len(institutional)})")
+        html += _section_heading(f"Institutional Signal ({len(institutional)})")
         html += _spacer(10)
 
         for source_name, items_list in grouped_inst.items():
@@ -388,17 +390,17 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
                 else:
                     title_link = title_text
                 html += f"""<table width="100%" cellpadding="0" cellspacing="0"><tr>
-<td style="font-size: 13px; padding: 2px 0 2px 16px; line-height: 1.45;">
-  &bull; {title_link}
+<td style="font-size: 13px; padding: 2px 0; line-height: 1.45;">
+  {title_link}
 </td></tr></table>
 """
             html += _spacer(4)
 
         html += _spacer(20)
 
-    # ── FROM YOUR INBOX (starred emails) ──
+    # ── FROM YOUR EMAIL (starred emails only) ──
     if starred_emails:
-        html += _section_heading("From Your Inbox")
+        html += _section_heading("From Your Email")
         html += _spacer(14)
 
         for email in starred_emails[:5]:
