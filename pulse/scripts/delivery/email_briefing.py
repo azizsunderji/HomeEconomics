@@ -304,12 +304,23 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
 """
         html += _spacer(24)
 
-    # ── SUBSTACKER TAKES ──
-    if substacker:
-        html += _section_heading("Substacker Takes")
+    # ── NEWSLETTERS (Substack + Gmail newsletter senders) ──
+    gmail_newsletters = briefing.get("_gmail_newsletters", [])
+    all_newsletters = list(substacker)  # Sonnet-summarized Substacks first
+    # Append Gmail newsletters (Brandon Donnelly, FT Unhedged, etc.)
+    for gn in gmail_newsletters:
+        all_newsletters.append({
+            "author": gn.get("author", ""),
+            "title": gn.get("title", ""),
+            "take": "",
+            "url": gn.get("url", ""),
+        })
+
+    if all_newsletters:
+        html += _section_heading(f"Newsletters ({len(all_newsletters)})")
         html += _spacer(14)
 
-        for take in substacker:
+        for take in all_newsletters:
             url = take.get("url", "")
             title_text = _esc(take.get('title', ''))
             if url:
@@ -317,13 +328,16 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
             else:
                 title_link = title_text
 
+            take_text = take.get('take', '')
+            take_html = f'<div style="font-size: 13px; color: #555; margin-top: 6px; line-height: 1.5;">{_esc(take_text)}</div>' if take_text else ''
+
             html += f"""<table width="100%" cellpadding="0" cellspacing="0"><tr>
 <td style="padding-bottom: 14px; border-bottom: 1px solid #e8e8e8;">
   <div style="font-size: 14px;">
     <span style="font-weight: 600;">{_esc(take.get('author', ''))}</span>:
     {title_link}
   </div>
-  <div style="font-size: 13px; color: #555; margin-top: 6px; line-height: 1.5;">{_esc(take.get('take', ''))}</div>
+  {take_html}
 </td></tr></table>
 """
             html += _spacer(14)

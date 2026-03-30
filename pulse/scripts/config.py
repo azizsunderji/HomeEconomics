@@ -447,7 +447,43 @@ HEADLINE_AUTHOR_ALLOWLIST = {
 HEADLINE_FEED_BLOCKLIST = [
     "ft opinion",
 ]
-HEADLINE_HIGH_THRESHOLD = 60
+
+# Gmail senders that should route to Newsletters section (not institutional signal)
+# These are individual writers/columnists whose emails read like newsletter posts.
+GMAIL_NEWSLETTER_SENDERS = [
+    "brandondonnelly",          # Brandon Donnelly (Paragraph)
+    "newsletters.ft.com",       # FT newsletters (Unhedged/Robert Armstrong, etc.)
+    "noreply@news.bloomberg",   # Bloomberg Opinion newsletters (Conor Sen, etc.)
+]
+
+# Gmail senders that should route to Headlines section
+GMAIL_HEADLINE_SENDERS = [
+    # Conor Sen's Bloomberg column should be in headlines, not institutional
+]
+
+# Institutional signal: only these senders qualify.
+# Built from triage votes. Everything else from Gmail is excluded.
+INSTITUTIONAL_SENDER_ALLOWLIST = [
+    "thesis driven", "thesisdriven",
+    "gothamist",
+    "leonard steinberg", "compass",
+    "the city scoop", "thecity",
+    "dan rasmussen", "verdadcap",
+    "gs macro", "goldman",
+    "torsten slok", "apollo",
+    "aei", "edward pinto",
+    "daily shot",
+    "resiclub", "lance lambert",
+    "pulsenomics",
+    "zillow research",
+    "fannie mae", "freddie mac",
+    "fhfa",
+    "fed", "newyorkfed", "ny.frb.org",
+    "nber",
+    "census.gov", "bls.gov",
+    "brookings",
+    "wiley",  # journal alerts
+]
 
 JOURNAL_FEED_PATTERNS = [
     "sciencedirect", "journal of", "housing studies", "real estate economics",

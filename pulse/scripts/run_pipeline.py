@@ -189,9 +189,10 @@ def cmd_daily(args):
         logger.warning(f"Journal articles failed: {e}")
         briefing["_journal_articles"] = []
 
-    # Inject institutional emails (bypass Sonnet — show all Gmail except Substacks and junk)
+    # Inject institutional emails + Gmail newsletters (routed to separate sections)
     try:
-        from config import GMAIL_JUNK_SENDER_PATTERNS, GMAIL_JUNK_TITLE_PATTERNS
+        from config import (GMAIL_JUNK_SENDER_PATTERNS, GMAIL_JUNK_TITLE_PATTERNS,
+                          INSTITUTIONAL_SENDER_ALLOWLIST, GMAIL_NEWSLETTER_SENDERS)
         import re as _re
         cutoff_36h = (datetime.now(timezone.utc) - timedelta(hours=36)).isoformat()
         all_gmail = conn.execute(
@@ -199,27 +200,40 @@ def cmd_daily(args):
             (cutoff_36h,),
         ).fetchall()
         institutional_items = []
+        gmail_newsletter_items = []
         for row in all_gmail:
             item = dict(row)
             sender = (item.get("author", "") or "").lower()
             title = (item.get("title", "") or "").lower()
+            # Skip junk
             if any(p in sender for p in GMAIL_JUNK_SENDER_PATTERNS):
                 continue
             if any(p in title for p in GMAIL_JUNK_TITLE_PATTERNS):
                 continue
+            # Clean sender name
             raw_author = item.get("author", "")
             match = _re.match(r'"?([^"<]+)"?\s*<', raw_author)
             display_name = match.group(1).strip() if match else raw_author.split("<")[0].strip() or raw_author
-            institutional_items.append({
+            entry = {
                 "source": display_name,
+                "author": display_name,
                 "headline": item.get("title", ""),
+                "title": item.get("title", ""),
                 "url": item.get("url", ""),
-            })
+            }
+            # Route: newsletter senders → newsletters section
+            if any(p in sender for p in GMAIL_NEWSLETTER_SENDERS):
+                gmail_newsletter_items.append(entry)
+            # Route: institutional allowlist → institutional signal
+            elif any(p in sender or p in display_name.lower() for p in INSTITUTIONAL_SENDER_ALLOWLIST):
+                institutional_items.append(entry)
         briefing["_institutional_emails"] = institutional_items
-        logger.info(f"Institutional emails (bypassing Sonnet): {len(institutional_items)}")
+        briefing["_gmail_newsletters"] = gmail_newsletter_items
+        logger.info(f"Institutional emails: {len(institutional_items)}, Gmail newsletters: {len(gmail_newsletter_items)}")
     except Exception as e:
         logger.warning(f"Institutional email injection failed: {e}")
         briefing["_institutional_emails"] = []
+        briefing["_gmail_newsletters"] = []
 
     # Inject headlines (strict domain allowlist: NYT, FT, Bloomberg, WSJ, WaPo)
     try:
