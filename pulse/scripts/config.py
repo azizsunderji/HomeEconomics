@@ -478,7 +478,6 @@ INSTITUTIONAL_SENDER_ALLOWLIST = [
     "nber",
     "census.gov", "bls.gov",
     "brookings",
-    "wiley",  # journal alerts
 ]
 
 JOURNAL_FEED_PATTERNS = [

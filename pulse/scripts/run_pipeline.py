@@ -210,6 +210,9 @@ def cmd_daily(args):
                 continue
             if any(p in title for p in GMAIL_JUNK_TITLE_PATTERNS):
                 continue
+            # Skip journal alert emails — these are covered by RSS journal feeds
+            if any(p in title for p in ["early view alert", "table of contents alert"]):
+                continue
             # Clean sender name
             raw_author = item.get("author", "")
             match = _re.match(r'"?([^"<]+)"?\s*<', raw_author)
