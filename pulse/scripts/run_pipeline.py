@@ -240,7 +240,7 @@ def cmd_daily(args):
 
     # Inject headlines (RSS-only from allowlisted publication domains)
     try:
-        from config import HEADLINE_DOMAIN_ALLOWLIST, JOURNAL_FEED_PATTERNS, HEADLINE_FEED_BLOCKLIST
+        from config import HEADLINE_DOMAIN_ALLOWLIST, JOURNAL_FEED_PATTERNS, HEADLINE_FEED_BLOCKLIST, HEADLINE_CURATED_FEEDS
         cutoff_36h = (datetime.now(timezone.utc) - timedelta(hours=36)).isoformat()
         all_rss = conn.execute(
             "SELECT * FROM items WHERE source = 'rss' AND collected_at >= ? ORDER BY collected_at DESC",
@@ -261,7 +261,8 @@ def cmd_daily(args):
             if any(p in feed for p in HEADLINE_FEED_BLOCKLIST):
                 continue
             relevance = item.get("relevance_score") or 0
-            if relevance < 30:
+            is_curated = any(p in feed for p in HEADLINE_CURATED_FEEDS)
+            if not is_curated and relevance < 30:
                 continue
             published = item.get("published_at", "")
             if published and published < cutoff_36h:

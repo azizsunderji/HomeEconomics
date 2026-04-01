@@ -444,6 +444,13 @@ HEADLINE_FEED_BLOCKLIST = [
     "ft opinion",
 ]
 
+# Curated feeds that skip the relevance filter for headlines — these are
+# editorially curated by the publication, so everything in them is relevant
+HEADLINE_CURATED_FEEDS = [
+    "nyt dealbook", "nyt economy", "nyt the upshot", "nyt real estate",
+    "nyt > business > dealbook", "nyt > business > economy", "nyt > real estate",
+]
+
 # Gmail senders that should route to Newsletters section (not institutional signal)
 # These are individual writers/columnists whose emails read like newsletter posts.
 GMAIL_NEWSLETTER_SENDERS = [
