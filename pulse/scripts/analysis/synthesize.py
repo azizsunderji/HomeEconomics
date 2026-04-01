@@ -721,7 +721,7 @@ Generate the daily briefing JSON. LEAD WITH CONVERSATION — what are people deb
             twitter_supplement = [
                 i for i in relevant_items
                 if i.get("source") == "twitter"
-                and (i.get("relevance_score") or 0) >= 60
+                and (i.get("relevance_score") or 0) >= 40
                 and (i.get("author") or "").lower().strip() not in roundup_authors
                 and i.get("url", "") not in theme_urls
             ]

@@ -225,9 +225,9 @@ def collect(
     if queries:
         all_batches.append((queries, max_per_query))
 
-    # Account batches of 30 — larger batches = fewer Apify runs = lower cost
+    # Account batches of 50 — larger batches = fewer Apify runs = lower cost
     # Each run has a fixed overhead (~$0.16), so fewer runs saves money
-    BATCH_SIZE = 30
+    BATCH_SIZE = 50
     if accounts:
         for i in range(0, len(accounts), BATCH_SIZE):
             batch = accounts[i:i + BATCH_SIZE]
