@@ -399,7 +399,7 @@ TWITTER_ACCOUNTS = [
 
 TWITTER_MIN_LIKES = 5    # Low threshold — these are curated voices, not keyword search
 TWITTER_MAX_PER_QUERY = 60  # Per batch; more results = better coverage of quiet accounts
-TWITTER_DAILY_BUDGET_CENTS = 300  # $3/day max Apify spend (4 batches × $0.16 × 2 runs/day ≈ $1.28)
+TWITTER_DAILY_BUDGET_CENTS = 400  # $4/day max Apify spend (6 batches + sweep × $0.16 × 2 runs/day)
 
 # ── Gmail configuration ──────────────────────────────────────────────────────
 GMAIL_SENDER_WHITELIST = []  # No whitelist — let Haiku classify everything in the inbox

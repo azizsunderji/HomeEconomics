@@ -216,18 +216,15 @@ def collect(
     items = []
     seen_ids = set()
 
-    # Account-focused collection: batches of ~10 accounts each.
-    # Small batches ensure quiet economist accounts aren't drowned out
-    # by viral takes from louder voices in the same batch.
     all_batches = []
 
     # Discovery queries (if any — currently empty, account tracking is primary)
     if queries:
         all_batches.append((queries, max_per_query))
 
-    # Account batches of 50 — larger batches = fewer Apify runs = lower cost
+    # Account batches of 30 — moderate size balances cost vs diversity
     # Each run has a fixed overhead (~$0.16), so fewer runs saves money
-    BATCH_SIZE = 50
+    BATCH_SIZE = 30
     if accounts:
         for i in range(0, len(accounts), BATCH_SIZE):
             batch = accounts[i:i + BATCH_SIZE]
@@ -242,6 +239,29 @@ def collect(
         batch_results = _run_actor(batch_terms, max_tweets=batch_max)
         raw_tweets.extend(batch_results)
         logger.info(f"  Batch [{batch_terms[0][:40]}{'...' if len(batch_terms) > 1 else ''}]: {len(batch_results)} raw tweets")
+
+    # Diversity sweep: find accounts that got zero tweets, re-query them
+    # in a single follow-up batch to ensure every voice has a chance
+    if accounts and _check_budget():
+        covered_authors = set()
+        for tweet in raw_tweets:
+            author = tweet.get("author", {})
+            username = (author.get("userName", "") if isinstance(author, dict) else str(author)).lower()
+            covered_authors.add(username)
+
+        missed = [a for a in accounts if a.lower() not in covered_authors]
+        if missed:
+            logger.info(f"Diversity sweep: {len(missed)} accounts had zero tweets, re-querying")
+            # Run missed accounts in batches too, in case there are many
+            SWEEP_BATCH = 50
+            for i in range(0, len(missed), SWEEP_BATCH):
+                if not _check_budget():
+                    break
+                sweep_batch = missed[i:i + SWEEP_BATCH]
+                sweep_terms = [f"from:{a}" for a in sweep_batch]
+                sweep_results = _run_actor(sweep_terms, max_tweets=len(sweep_batch) * 2)
+                raw_tweets.extend(sweep_results)
+                logger.info(f"  Sweep batch: {len(sweep_results)} tweets from {len(sweep_batch)} missed accounts")
 
     for tweet in raw_tweets:
         tweet_id = tweet.get("id", "")
