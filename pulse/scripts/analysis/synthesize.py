@@ -435,12 +435,12 @@ Return a JSON object:
 {
   "date": "YYYY-MM-DD",
 
-  "conversation_pulse": "3-4 sentences: mood/debate weather report. What is the overall tone of housing conversations right now? Are people panicking, cautiously optimistic, arguing about X vs Y? This is NOT a news summary — it's a read on the conversational temperature.",
+  "conversation_pulse": "3-4 sentences: what is the dominant debate right now and where does opinion split? Be concrete and factual — name the data points, name the people. NO filler phrases like 'the mood is cautious' or 'markets are watching closely'. State what happened and who disagrees about what.",
 
   "conversation_themes": [
     {
       "theme": "Short label (5-8 words max)",
-      "summary": "What people are saying across platforms. Quote actual thread titles, note the tenor of comments. Are people bullish or bearish? Is there genuine disagreement? What specific claims are being made?",
+      "summary": "Factual summary of who said what and where they disagree. Lead with the specific claims, data, or arguments — not meta-commentary about the conversation. BAD: 'People are watching to see if rates stabilize.' GOOD: 'Timiraos reported breakeven job growth fell to -3k/month; Tedeschi says this predates Iran and reflects structural hiring weakness; Sen pushes back citing weather effects.' No narrativizing. No filler. Just the substance.",
       "platforms": [
         {"name": "twitter", "reply_count": 89, "sentiment": "mixed", "url": "..."},
         {"name": "bluesky", "reply_count": 12, "sentiment": "bullish", "url": "..."}
@@ -505,7 +505,15 @@ Return a JSON object:
     d. Prioritize: contrarian views, data-backed claims, novel arguments, and lesser-known voices the reader might not follow.
     e. You can include more than one tweet per person if they made multiple substantive points on different topics.
 
-13. ALL SECTIONS ARE MANDATORY. Your JSON output MUST include ALL of these keys with populated arrays: conversation_themes, twitter_roundup, substacker_takes. If you omit any section, the briefing is broken. substacker_takes should include a take for EVERY Substack newsletter provided — summarize all of them, not just a few.
+13. WRITING STYLE: Be direct and factual. NO AI slop. Avoid these patterns:
+    - "People aren't arguing X; they're watching Y" — just state what they're arguing
+    - "The conversation centers on whether..." — just state the disagreement
+    - "Sentiment is cautious/mixed/nervous" — instead say WHO thinks WHAT
+    - "The broader mood is..." — cut this entirely
+    - Any sentence that could apply to any topic on any day is filler. Delete it.
+    - Write like a wire service, not a podcast host. Facts and attributions only.
+
+14. ALL SECTIONS ARE MANDATORY. Your JSON output MUST include ALL of these keys with populated arrays: conversation_themes, twitter_roundup, substacker_takes. If you omit any section, the briefing is broken. substacker_takes should include a take for EVERY Substack newsletter provided — summarize all of them, not just a few.
 
 """
 
