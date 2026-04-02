@@ -16,6 +16,7 @@
 <outline text="NYT Economy" title="NYT Economy" type="rss" xmlUrl="https://rss.nytimes.com/services/xml/rss/nyt/Economy.xml" htmlUrl="https://www.nytimes.com/section/business/economy" />
 <outline text="NYT DealBook" title="NYT DealBook" type="rss" xmlUrl="https://rss.nytimes.com/services/xml/rss/nyt/Dealbook.xml" htmlUrl="https://www.nytimes.com/section/business/dealbook" />
 <outline text="NYT The Upshot" title="NYT The Upshot" type="rss" xmlUrl="https://rss.nytimes.com/services/xml/rss/nyt/Upshot.xml" htmlUrl="https://www.nytimes.com/section/upshot" />
+<outline text="NYT Calculator" title="NYT Calculator" type="rss" xmlUrl="https://rss.app/feeds/tnGyM2ss2ZY7ZlcQ.xml" htmlUrl="https://www.nytimes.com/column/calculator" />
 <outline text="NYT Farhad Manjoo" title="NYT Farhad Manjoo" type="rss" xmlUrl="https://www.nytimes.com/svc/collections/v1/publish/www.nytimes.com/column/farhad-manjoo/rss.xml" htmlUrl="https://www.nytimes.com/column/farhad-manjoo" />
 </outline>
 <outline title="Financial Times" text="Financial Times">
