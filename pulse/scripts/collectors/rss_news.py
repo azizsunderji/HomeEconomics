@@ -17,6 +17,11 @@ import feedparser
 from collectors import PulseItem
 from config import GOOGLE_NEWS_QUERIES
 
+try:
+    from googlenewsdecoder import new_decoderv1 as _decode_gnews_url
+except ImportError:
+    _decode_gnews_url = None
+
 logger = logging.getLogger(__name__)
 
 GNEWS_RSS_BASE = "https://news.google.com/rss/search"
@@ -69,6 +74,18 @@ def collect(
             for entry in feed.entries[:max_per_query]:
                 link = entry.get("link", "")
                 if not link or link in seen_urls:
+                    continue
+
+                # Decode Google News redirect URLs to actual article URLs
+                if "news.google.com" in link and _decode_gnews_url:
+                    try:
+                        result = _decode_gnews_url(link)
+                        if result.get("status") and result.get("decoded_url"):
+                            link = result["decoded_url"]
+                    except Exception:
+                        pass  # Keep the original URL if decoding fails
+
+                if link in seen_urls:
                     continue
                 seen_urls.add(link)
 
