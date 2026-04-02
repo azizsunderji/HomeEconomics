@@ -165,7 +165,7 @@ def cmd_daily(args):
             "Housing Studies", "Journal of Housing Research", "Journal of Real Estate Research",
             "Journal of the American Planning Association", "Real Estate Economics",
             "Cornell Real Estate Review", "NBER New Working Papers", "ScienceDirect",
-            "Journal of Urban Economics", "Journal of Housing Economics", "Cities",
+            "Journal of Urban Economics", "Journal of Housing Economics", "ScienceDirect: Cities",
             "Wiley", "Taylor & Francis",
         ]
         cutoff = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
@@ -174,16 +174,23 @@ def cmd_daily(args):
             (cutoff,),
         ).fetchall()
         journal_items = []
+        seen_journal_titles = set()
         for row in all_rss:
             item = dict(row)
             feed = item.get("feed_name", "")
             if any(k in feed for k in journal_keywords):
+                title = item.get("title", "")
+                title_key = title[:80].lower().strip()
+                if title_key in seen_journal_titles:
+                    continue
+                seen_journal_titles.add(title_key)
                 journal_items.append({
-                    "journal": feed.replace("ScienceDirect Publication: ", ""),
-                    "title": item.get("title", ""),
+                    "journal": feed.replace("ScienceDirect Publication: ", "").replace("ScienceDirect: ", ""),
+                    "title": title,
                     "url": item.get("url", ""),
                 })
-        briefing["_journal_articles"] = journal_items
+        # Cap at 30 most recent to keep the section readable
+        briefing["_journal_articles"] = journal_items[:30]
         logger.info(f"Journal articles: {len(journal_items)}")
     except Exception as e:
         logger.warning(f"Journal articles failed: {e}")
@@ -255,6 +262,9 @@ def cmd_daily(args):
             url = item.get("url", "") or ""
             title_key = title[:50].lower()
             if title_key in seen_titles:
+                continue
+            # Skip junk/boilerplate headlines
+            if any(junk in title_key for junk in ["sign up for", "subscribe to", "newsletter"]):
                 continue
             if any(p in feed for p in JOURNAL_FEED_PATTERNS):
                 continue
