@@ -122,16 +122,9 @@ TOPICS = {
 
 # ── Google News search queries ────────────────────────────────────────────────
 GOOGLE_NEWS_QUERIES = [
-    # Macro topic queries (national scope)
-    "federal reserve interest rates",
-    "inflation shelter costs",
-    "US housing starts",
-    "US mortgage rates",
-    "national housing market",
-    "Case-Shiller home prices",
-    "existing home sales national",
-    "new home sales national",
-    # Publication-specific queries (guarantees national sources)
+    # Publication-specific site searches only.
+    # Reporter name searches removed — they returned mostly junk/bio pages
+    # and the reporters are better covered via RSS feeds + Twitter/Bluesky.
     "site:wsj.com real estate OR housing OR mortgage",
     "site:nytimes.com real estate OR housing OR rent",
     "site:bloomberg.com housing OR mortgage OR real estate",
@@ -142,120 +135,6 @@ GOOGLE_NEWS_QUERIES = [
     "site:cnbc.com housing OR mortgage OR real estate",
     "site:fortune.com housing OR real estate",
     "site:vox.com housing OR rent",
-    # ALL reporters from press contacts list (PressEmailsOnly.csv) — 100+ journalists
-    # WSJ
-    '"Will Parker" housing OR real estate',
-    '"Veronica Dagher" housing OR real estate',
-    '"Sarah Paynter" housing OR real estate',
-    '"Rebecca Picciotto" housing OR real estate',
-    '"Nancy Keates" housing OR real estate',
-    '"Konrad Putzier" housing OR real estate',
-    '"Katherine Clarke" housing OR real estate',
-    '"Kate King" housing OR real estate',
-    '"Nicole Friedman" housing OR real estate',
-    '"Eliot Brown" housing OR real estate',
-    '"E.B. Solomont" housing OR real estate',
-    '"Deborah Acosta" housing OR real estate',
-    '"Candace Taylor" housing OR real estate',
-    '"Jon Hilsenrath" economy OR fed',
-    '"James Mackintosh" economy OR markets',
-    '"Aaron Kuriloff" housing OR real estate',
-    '"Craig Karmin" housing OR real estate',
-    # NYT
-    '"Conor Dougherty" housing OR real estate',
-    '"Emily Badger" housing OR cities',
-    '"Debra Kamin" real estate',
-    '"Stefanos Chen" real estate',
-    '"Ronda Kaysen" real estate',
-    '"Mihir Zaveri" housing OR real estate',
-    '"Keiko Morris" housing OR real estate',
-    '"Talmon Smith" housing OR economy',
-    # Bloomberg
-    '"Patrick Clark" housing OR real estate',
-    '"Prashant Gopal" housing OR mortgage',
-    '"Alexandre Tanzi" economy',
-    '"Noah Buhayar" housing OR insurance',
-    '"Enda Curran" economy',
-    '"Jonathan Levin" economy OR housing',
-    '"Natalie Wong" housing OR real estate',
-    '"Caleb Zachariahs" housing OR real estate',
-    '"Tracy Chui" housing OR real estate',
-    '"Jordan Karl" housing OR real estate',
-    # Washington Post
-    '"Rachel Siegel" economy OR housing',
-    '"Marissa Lang" housing OR real estate',
-    '"Aaron Wiener" housing OR real estate',
-    # FT / Economist
-    '"John Burn-Murdoch" economy OR housing',
-    '"Archie Hall" housing OR economy',
-    # CNBC / Fortune / Axios / Semafor
-    '"Lance Lambert" housing OR real estate',
-    # Nick Timiraos removed — already covered via Twitter/Bluesky/Substack
-    '"Sami Sparber" housing OR real estate',
-    '"Jason Capelouto" housing OR real estate',
-    '"Priyanka Rao" housing OR real estate',
-    # Vox / NY Mag / Newsweek
-    '"Kim Velsey" housing OR real estate',
-    '"Giulia Carbonaro" housing OR real estate',
-    '"Rachel Cohen Booth" housing OR real estate',
-    '"Kriston Capps" housing OR real estate',
-    # ProPublica / USA Today / MarketWatch
-    '"Joel Jacobs" housing OR real estate',
-    '"Anny Riquier" housing OR real estate',
-    '"Aarthi Swaminathan" housing OR real estate',
-    # LA Times / SF Chronicle / Seattle Times / Boston Globe
-    '"Jack Flemming" housing OR real estate',
-    '"Andrew Khouri" housing OR real estate',
-    '"Roland Li" housing OR real estate',
-    '"JK Dineen" housing OR real estate',
-    '"Hannah Groover" housing OR real estate',
-    '"Timothy Logan" housing OR real estate',
-    '"Catherine Carlock" housing OR real estate',
-    '"Andrew Brinker" housing OR real estate',
-    # Crain's / The Real Deal / Bisnow
-    '"Julianne Cuba" housing OR real estate',
-    '"Eddie Small" housing OR real estate',
-    '"Rachel Herzog" housing OR real estate',
-    '"Dennis Rodkin" housing OR real estate',
-    '"Sasha Jones" housing OR real estate',
-    '"Sheridan Wall" real estate',
-    '"Abigail Nehring" real estate',
-    '"Rich Bockmann" real estate',
-    # Other regional / trade
-    '"Rebecca Schuetz" housing OR real estate',
-    '"Matt Reynolds" housing OR real estate',
-    '"Mia Ryder-Marks" housing OR real estate',
-    '"Rebecca Liebson" housing OR real estate',
-    '"Paul Blennerhassett" housing OR real estate',
-    '"Michaelle Bond" housing OR real estate',
-    '"Jeff Bach" housing OR real estate',
-    '"Olivera Perkins" housing OR real estate',
-    # CoStar
-    '"Candace Carlisle" housing OR real estate',
-    '"Kathleen Brooks" housing OR real estate',
-    '"Mark Ritter" housing OR real estate',
-    '"Rori Kelner" housing OR real estate',
-    # Think tanks / research
-    '"Jenny Schuetz" housing OR real estate',
-    '"Orphe Divounguy" housing OR real estate',
-    '"Daryl Fairweather" housing OR real estate',
-    '"Chen Zhao" housing OR real estate',
-    '"Jeff Tucker" housing OR real estate',
-    # HousingWire / Inman / other industry
-    '"Sarah Wheeler" housing OR real estate',
-    '"Andrea Brambila" housing OR real estate',
-    '"Les Shaver" housing OR real estate',
-    '"Rob Binsacca" housing OR real estate',
-    '"Lew Sichelman" housing OR real estate',
-    '"Byron Lazine" housing OR real estate',
-    # Freelance / Gmail journalists
-    '"Joyce Cohen" housing OR real estate',
-    '"Julie Lasky" housing OR real estate',
-    '"Emily Flitter" housing OR real estate',
-    # Canadian press
-    '"Rachelle Younglai" housing OR real estate',
-    '"Carolyn Ireland" housing OR real estate',
-    '"Maria Vega" housing OR real estate',
     # Radio / public media
     '"Audrey McGlinchy" housing OR real estate',
     '"David Brand" housing OR real estate',
