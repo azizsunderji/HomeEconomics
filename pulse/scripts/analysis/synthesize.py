@@ -498,6 +498,8 @@ Return a JSON object:
 
 11. SKIP IRRELEVANT NOISE. Do not feature: Nigerian/international housing stories, memes about landlords, generic "economy is rigged" venting, partisan political rants with no economic substance.
 
+11b. PER-PERSON CAP: No single person should appear in more than 2 conversation themes. If someone (e.g., Nick Timiraos) is involved in 4 different threads, pick the 2 most substantive and leave the rest. Spread the spotlight across different voices. The reader wants a diverse range of perspectives, not one person's feed.
+
 12. TWITTER ROUNDUP: Feature 20-30 individual economist/analyst voices in the twitter_roundup section. This is a quick-scan section so the reader can see what specific people are saying. CRITICAL RULES:
     a. Do NOT include any tweet or voice you already covered in conversation_themes. If @jasonfurman's thread was featured as a conversation theme, do NOT put him in the twitter roundup too. Use the roundup to surface DIFFERENT voices and takes that didn't make it into the themes.
     b. Include a DIVERSE range of voices — aim for 20+ DIFFERENT handles. Do not over-index on any 2-3 accounts (e.g., do not feature the same person in multiple entries). Spread across different perspectives and expertise areas.

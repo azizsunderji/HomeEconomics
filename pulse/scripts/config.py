@@ -190,7 +190,7 @@ GOOGLE_NEWS_QUERIES = [
     '"Archie Hall" housing OR economy',
     # CNBC / Fortune / Axios / Semafor
     '"Lance Lambert" housing OR real estate',
-    '"Nick Timiraos" fed OR mortgage OR rates',
+    # Nick Timiraos removed — already covered via Twitter/Bluesky/Substack
     '"Sami Sparber" housing OR real estate',
     '"Jason Capelouto" housing OR real estate',
     '"Priyanka Rao" housing OR real estate',
