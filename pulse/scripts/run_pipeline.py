@@ -173,15 +173,15 @@ def cmd_daily(args):
 
         logger.info(f"OPML: {len(headline_feed_names)} headline feeds, {len(journal_feed_names)} journal feeds")
 
-        # --- Journal articles (7-day window, deduped) ---
-        cutoff_7d = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
-        all_rss_7d = conn.execute(
+        # --- Journal articles (24h window, deduped) ---
+        cutoff_24h = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
+        all_rss_24h_journals = conn.execute(
             "SELECT * FROM items WHERE source = 'rss' AND collected_at >= ? ORDER BY collected_at DESC",
-            (cutoff_7d,),
+            (cutoff_24h,),
         ).fetchall()
         journal_items = []
         seen_journal_titles = set()
-        for row in all_rss_7d:
+        for row in all_rss_24h_journals:
             item = dict(row)
             feed = item.get("feed_name", "")
             if feed not in journal_feed_names:
