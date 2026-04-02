@@ -19,10 +19,14 @@ from collectors import PulseItem
 
 logger = logging.getLogger(__name__)
 
-# Look for OPML in repo root (pulse/) first (CI), then Dropbox (local dev)
+# Look for OPML: new data/ location first, then legacy repo root, then Dropbox
+_DATA_OPML = Path(__file__).parent.parent.parent / "data" / "Feeds.opml"
 _REPO_OPML = Path(__file__).parent.parent.parent / "HomeEconomicsRSS.opml"
 _DROPBOX_OPML = Path("/Users/azizsunderji/Dropbox/Home Economics/RSSFeeds/HomeEconomicsRSS.opml")
-DEFAULT_OPML_PATH = str(_REPO_OPML if _REPO_OPML.exists() else _DROPBOX_OPML)
+DEFAULT_OPML_PATH = str(
+    _DATA_OPML if _DATA_OPML.exists() else
+    _REPO_OPML if _REPO_OPML.exists() else _DROPBOX_OPML
+)
 
 
 def parse_opml(opml_path: str = DEFAULT_OPML_PATH) -> list[dict]:

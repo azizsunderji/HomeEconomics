@@ -449,7 +449,7 @@ HEADLINE_FEED_BLOCKLIST = [
 HEADLINE_CURATED_FEEDS = [
     "nyt dealbook", "nyt economy", "nyt the upshot", "nyt real estate",
     "nyt > business > dealbook", "nyt > business > economy", "nyt > real estate",
-    "nyt calculator",
+    "nyt calculator", "calculator",
 ]
 
 # Gmail senders that should route to Newsletters section (not institutional signal)

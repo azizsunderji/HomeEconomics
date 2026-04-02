@@ -158,43 +158,79 @@ def cmd_daily(args):
         logger.warning(f"Starred emails failed: {e}")
         briefing["_starred_emails"] = []
 
-    # Inject journal articles (from academic RSS feeds — show all, bypass Sonnet)
+    # Inject headlines and journal articles — driven by OPML folder structure.
+    # OPML is the single source of truth:
+    #   HighPriority + top-level feeds → Headlines section
+    #   Journals folder → Academic Journals section
+    #   Twitter folder → ignored here (handled by twitter_apify collector)
     try:
         from datetime import timedelta
-        journal_keywords = [
-            "Housing Studies", "Journal of Housing Research", "Journal of Real Estate Research",
-            "Journal of the American Planning Association", "Real Estate Economics",
-            "Cornell Real Estate Review", "NBER New Working Papers", "ScienceDirect",
-            "Journal of Urban Economics", "Journal of Housing Economics", "ScienceDirect: Cities",
-            "Wiley", "Taylor & Francis",
-        ]
-        cutoff = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
-        all_rss = conn.execute(
+        from collectors.rss_feeds import parse_opml, DEFAULT_OPML_PATH
+
+        opml_feeds = parse_opml(DEFAULT_OPML_PATH)
+        journal_feed_names = {f["title"] for f in opml_feeds if f.get("priority") == "journal"}
+        headline_feed_names = {f["title"] for f in opml_feeds if f.get("folder") == "HighPriority"}
+
+        logger.info(f"OPML: {len(headline_feed_names)} headline feeds, {len(journal_feed_names)} journal feeds")
+
+        # --- Journal articles (7-day window, deduped) ---
+        cutoff_7d = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
+        all_rss_7d = conn.execute(
             "SELECT * FROM items WHERE source = 'rss' AND collected_at >= ? ORDER BY collected_at DESC",
-            (cutoff,),
+            (cutoff_7d,),
         ).fetchall()
         journal_items = []
         seen_journal_titles = set()
-        for row in all_rss:
+        for row in all_rss_7d:
             item = dict(row)
             feed = item.get("feed_name", "")
-            if any(k in feed for k in journal_keywords):
-                title = item.get("title", "")
-                title_key = title[:80].lower().strip()
-                if title_key in seen_journal_titles:
-                    continue
-                seen_journal_titles.add(title_key)
-                journal_items.append({
-                    "journal": feed.replace("ScienceDirect Publication: ", "").replace("ScienceDirect: ", ""),
-                    "title": title,
-                    "url": item.get("url", ""),
-                })
-        # Cap at 30 most recent to keep the section readable
+            if feed not in journal_feed_names:
+                continue
+            title = item.get("title", "")
+            title_key = title[:80].lower().strip()
+            if title_key in seen_journal_titles:
+                continue
+            seen_journal_titles.add(title_key)
+            journal_items.append({
+                "journal": feed.replace("ScienceDirect Publication: ", "").replace("ScienceDirect: ", ""),
+                "title": title,
+                "url": item.get("url", ""),
+            })
         briefing["_journal_articles"] = journal_items[:30]
-        logger.info(f"Journal articles: {len(journal_items)}")
+        logger.info(f"Journal articles: {len(journal_items)} unique (capped at 30)")
+
+        # --- Headlines (24h window, all feeds from OPML except journals/twitter) ---
+        cutoff_24h = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
+        all_rss_24h = conn.execute(
+            "SELECT * FROM items WHERE source = 'rss' AND collected_at >= ? ORDER BY collected_at DESC",
+            (cutoff_24h,),
+        ).fetchall()
+        headline_items = []
+        seen_headline_titles = set()
+        for row in all_rss_24h:
+            item = dict(row)
+            feed = item.get("feed_name", "")
+            if feed not in headline_feed_names:
+                continue
+            title = item.get("title", "")
+            title_key = title[:50].lower().strip()
+            if title_key in seen_headline_titles:
+                continue
+            # Skip boilerplate
+            if any(junk in title_key for junk in ["sign up for", "subscribe to", "newsletter"]):
+                continue
+            seen_headline_titles.add(title_key)
+            headline_items.append({
+                "source": feed,
+                "headline": title,
+                "url": item.get("url", "") or "",
+            })
+        briefing["_headlines"] = headline_items
+        logger.info(f"Headlines (OPML-driven): {len(headline_items)}")
     except Exception as e:
-        logger.warning(f"Journal articles failed: {e}")
-        briefing["_journal_articles"] = []
+        logger.warning(f"Headlines/journal injection failed: {e}")
+        briefing.setdefault("_journal_articles", [])
+        briefing.setdefault("_headlines", [])
 
     # Inject institutional emails + Gmail newsletters (routed to separate sections)
     try:
@@ -245,59 +281,7 @@ def cmd_daily(args):
         briefing["_institutional_emails"] = []
         briefing["_gmail_newsletters"] = []
 
-    # Inject headlines (RSS-only from allowlisted publication domains)
-    try:
-        from config import HEADLINE_DOMAIN_ALLOWLIST, JOURNAL_FEED_PATTERNS, HEADLINE_FEED_BLOCKLIST, HEADLINE_CURATED_FEEDS
-        cutoff_36h = (datetime.now(timezone.utc) - timedelta(hours=36)).isoformat()
-        all_rss = conn.execute(
-            "SELECT * FROM items WHERE source = 'rss' AND collected_at >= ? ORDER BY collected_at DESC",
-            (cutoff_36h,),
-        ).fetchall()
-        headline_items = []
-        seen_titles = set()
-        for row in all_rss:
-            item = dict(row)
-            feed = (item.get("feed_name", "") or "").lower()
-            title = item.get("title", "")
-            url = item.get("url", "") or ""
-            title_key = title[:50].lower()
-            if title_key in seen_titles:
-                continue
-            # Skip junk/boilerplate headlines
-            if any(junk in title_key for junk in ["sign up for", "subscribe to", "newsletter"]):
-                continue
-            if any(p in feed for p in JOURNAL_FEED_PATTERNS):
-                continue
-            if any(p in feed for p in HEADLINE_FEED_BLOCKLIST):
-                continue
-            relevance = item.get("relevance_score") or 0
-            is_curated = any(p in feed for p in HEADLINE_CURATED_FEEDS)
-            if not is_curated and relevance < 30:
-                continue
-            published = item.get("published_at", "")
-            if published and published < cutoff_36h:
-                continue
-            # Match by URL domain only (RSS items have direct URLs)
-            url_lower = url.lower()
-            source_label = ""
-            for domain, label in HEADLINE_DOMAIN_ALLOWLIST.items():
-                if domain in url_lower:
-                    source_label = label
-                    break
-            if not source_label:
-                continue
-            seen_titles.add(title_key)
-            headline_items.append({
-                "source": source_label,
-                "headline": title,
-                "url": url,
-                "relevance": relevance,
-            })
-        briefing["_headlines"] = headline_items
-        logger.info(f"Headlines (allowlist only): {len(headline_items)}")
-    except Exception as e:
-        logger.warning(f"Headlines injection failed: {e}")
-        briefing["_headlines"] = []
+    # NOTE: Headlines and journal articles are now injected above (OPML-driven block)
 
     # Inject press mentions
     try:
