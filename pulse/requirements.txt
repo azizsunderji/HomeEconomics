@@ -6,6 +6,7 @@ duckdb>=0.10.0
 
 # RSS/Atom parsing
 feedparser>=6.0
+googlenewsdecoder>=0.1.7
 
 # Data lake queries (DuckDB .df() needs pandas/numpy)
 pandas>=2.0
