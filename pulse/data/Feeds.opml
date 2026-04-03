@@ -1,138 +1,163 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <opml version="2.0">
-<head>
-<title>Feeds</title>
-</head>
-<body>
-<outline text="BiggerPockets" htmlUrl="https://www.biggerpockets.com/blog" xmlUrl="https://www.biggerpockets.com/blog/feed" type="rss" title="BiggerPockets" />
-<outline text="Brick Underground" type="rss" title="Brick Underground" xmlUrl="http://www.brickunderground.com/rss.xml" htmlUrl="https://www.brickunderground.com/" />
-<outline title="Business" text="Business" htmlUrl="https://www.huffingtonpost.com" xmlUrl="https://www.huffingtonpost.com/topic/real-estate/feed" type="rss" />
-<outline title="California Real Estate Blog – McLaughlin Ventures" type="rss" xmlUrl="https://compasscaliforniablog.com/feed/" text="California Real Estate Blog – McLaughlin Ventures" htmlUrl="https://blog.mclaughlin-ventures.com/" />
-<outline xmlUrl="https://feeds.feedburner.com/cbpp/fYJq" text="CBPP Comprehensive Reports and Blog Posts" type="rss" title="CBPP Comprehensive Reports and Blog Posts" htmlUrl="https://www.cbpp.org/" />
-<outline htmlUrl="https://blog.c21.com/real-estate-blog" xmlUrl="https://www.century21.com/real-estate-blog/feed/" text="Century 21®" title="Century 21®" type="rss" />
-<outline text="Comments on: Real Estate Blog: Articles, News, and Insights" htmlUrl="http://www.noradarealestate.com" title="Comments on: Real Estate Blog: Articles, News, and Insights" type="rss" xmlUrl="http://www.noradarealestate.com/blog/feed/" />
-<outline htmlUrl="http://ny.curbed.com" title="Curbed NY -  All" type="rss" xmlUrl="http://ny.curbed.com/atom.xml" text="Curbed NY -  All" />
-<outline xmlUrl="http://feeds.feedburner.com/narnewsline" text="feeds.feedburner.com" title="feeds.feedburner.com" htmlUrl="http://feeds.feedburner.com" type="rss" />
-<outline text="GeekEstate Blog" htmlUrl="https://geekestateblog.com/" type="rss" xmlUrl="https://geekestateblog.com/feed/" title="GeekEstate Blog" />
-<outline htmlUrl="https://twitter.com" xmlUrl="https://twitter.com/home" type="rss" title="Home Timeline" text="Home Timeline" />
-<outline title="Inman" htmlUrl="https://www.inman.com" type="rss" xmlUrl="https://www.inman.com/feed" text="Inman" />
-<outline text="nar.realtor" xmlUrl="http://feeds.feedburner.com/EconomistsOutlook" type="rss" title="nar.realtor" htmlUrl="https://www.nar.realtor/economists-outlook/feed" />
-<outline title="nar.realtor" type="rss" text="nar.realtor" htmlUrl="https://www.nar.realtor/culture-scan/feed" xmlUrl="https://feeds.feedburner.com/nar/culture-scan" />
-<outline title="News | Real Estate News &amp; Insights | realtor.com®" htmlUrl="https://www.realtor.com/news/" xmlUrl="https://www.realtor.com/news/feed/rss" text="News | Real Estate News &amp; Insights | realtor.com®" type="rss" />
-<outline title="News Releases | Move, Inc." htmlUrl="https://mediaroom.realtor.com/" xmlUrl="https://mediaroom.realtor.com/news_releases?pagetemplate=rss" type="rss" text="News Releases | Move, Inc." />
-<outline type="rss" title="NotoriousROB" text="NotoriousROB" xmlUrl="https://notoriousrob.com/feed/rss" htmlUrl="https://notoriousrob.com" />
-<outline text="Redfin | Real Estate Tips for Home Buying, Selling &amp; More" title="Redfin | Real Estate Tips for Home Buying, Selling &amp; More" htmlUrl="https://www.redfin.com/blog/" xmlUrl="https://www.redfin.com/blog/feed/" type="rss" />
-<outline type="rss" text="Residential Real Estate News - Residential Real Estate News Headlines | Bizjournals.com" xmlUrl="http://feeds.bizjournals.com/industry_21" title="Residential Real Estate News - Residential Real Estate News Headlines | Bizjournals.com" htmlUrl="https://www.bizjournals.com" />
-<outline xmlUrl="http://torontorealtyblog.com/feed/" htmlUrl="https://torontorealtyblog.com/" title="Toronto Realty Blog" type="rss" text="Toronto Realty Blog" />
-<outline xmlUrl="https://www.trulia.com/blog/feed/rss" title="Trulia's Blog" type="rss" text="Trulia's Blog" htmlUrl="https://www.trulia.com/blog/" />
-<outline text="HighPriority" title="HighPriority">
-<outline xmlUrl="https://www.vox.com/authors/rachel-m-cohen/rss" title="Rachel M. Cohen – Vox" text="Rachel M. Cohen – Vox" type="rss" htmlUrl="https://www.vox.com" />
-<outline text="City Observatory" htmlUrl="https://cityobservatory.org" xmlUrl="http://cityobservatory.org/feed" type="rss" title="City Observatory" />
-<outline text="Charlemagne’s notebook" type="rss" xmlUrl="https://www.economist.com/charlemagnes-notebook/rss.xml" htmlUrl="https://www.economist.com/charlemagnes-notebook" title="Charlemagne’s notebook" />
-<outline text="Business" htmlUrl="https://www.economist.com/business" xmlUrl="https://www.economist.com/business/rss.xml" type="rss" title="Business" />
-<outline type="rss" text="Eric Levitz | Vox" htmlUrl="https://www.vox.com/author/eric-levitz" xmlUrl="https://www.vox.com/authors/eric-levitz/rss" title="Eric Levitz | Vox" />
-<outline xmlUrl="https://rss.nytimes.com/services/xml/rss/nyt/Tennis.xml" type="rss" title="NYT &gt; Sports &gt; Tennis" htmlUrl="https://www.nytimes.com/section/sports/tennis" text="NYT &gt; Sports &gt; Tennis" />
-<outline title="Search Results for “rss” – City Limits" type="rss" htmlUrl="https://citylimits.org" xmlUrl="https://citylimits.org/search/rss/feed/rss2/" text="Search Results for “rss” – City Limits" />
-<outline title="United States" htmlUrl="https://www.economist.com/united-states" text="United States" xmlUrl="https://www.economist.com/united-states/rss.xml" type="rss" />
-<outline htmlUrl="https://www.economist.com/special-report" type="rss" title="Special report" text="Special report" xmlUrl="https://www.economist.com/special-report/rss.xml" />
-<outline title="Letters" text="Letters" xmlUrl="https://www.economist.com/letters/rss.xml" type="rss" htmlUrl="https://www.economist.com/letters" />
-<outline text="Prospero" htmlUrl="https://www.economist.com/prospero" type="rss" title="Prospero" xmlUrl="https://www.economist.com/prospero/rss.xml" />
-<outline title="Liberty Street Economics" htmlUrl="https://libertystreeteconomics.newyorkfed.org/" type="rss" xmlUrl="https://libertystreeteconomics.newyorkfed.org/feed/" text="Liberty Street Economics" />
-<outline htmlUrl="https://www.nytimes.com/section/technology/personaltech" xmlUrl="https://rss.nytimes.com/services/xml/rss/nyt/PersonalTech.xml" type="rss" title="NYT &gt; Technology &gt; Personal Tech" text="NYT &gt; Technology &gt; Personal Tech" />
-<outline title="Marie Patino -" text="Marie Patino -" type="rss" htmlUrl="https://www.bloomberg.com/authors/AT8YdozwhFs/marie-patino" xmlUrl="https://www.bloomberg.com/authors/AT8YdozwhFs/marie-patino.rss" />
-<outline type="rss" xmlUrl="https://www.economist.com/bartleby/rss.xml" title="Bartleby" htmlUrl="https://www.economist.com/bartleby" text="Bartleby" />
-<outline text="Noel King | Vox" htmlUrl="https://www.vox.com/author/noel-king" title="Noel King | Vox" xmlUrl="https://www.vox.com/authors/noel-king/rss" type="rss" />
-<outline type="rss" htmlUrl="https://www.economist.com/the-world-this-week" xmlUrl="https://www.economist.com/the-world-this-week/rss.xml" title="The world this week" text="The world this week" />
-<outline xmlUrl="https://kill-the-newsletter.com/feeds/fsin10dgsl77782m.xml" type="rss" title="home economics" text="home economics" htmlUrl="https://kill-the-newsletter.com/feeds/fsin10dgsl77782m.xml" />
-<outline xmlUrl="https://feeds.a.dj.com/rss/RSSMarketsMain.xml" text="WSJ.com: Markets" type="rss" title="WSJ.com: Markets" htmlUrl="http://online.wsj.com" />
-<outline title="Briefing" text="Briefing" htmlUrl="https://www.economist.com/briefing" type="rss" xmlUrl="https://www.economist.com/briefing/rss.xml" />
-<outline text="The Economist explains" title="The Economist explains" type="rss" htmlUrl="https://www.economist.com/the-economist-explains" xmlUrl="https://www.economist.com/the-economist-explains/rss.xml" />
-<outline title="Kelsey Piper | Vox" type="rss" text="Kelsey Piper | Vox" htmlUrl="https://www.vox.com/author/kelsey-piper" xmlUrl="https://www.vox.com/authors/kelsey-piper/rss" />
-<outline title="atlantafed.org" xmlUrl="https://www.atlantafed.org/RSS/HomeOwnershipAffordabilityMonitor" text="atlantafed.org" htmlUrl="https://www.atlantafed.org" type="rss" />
-<outline xmlUrl="https://www.economist.com/science-and-technology/rss.xml" type="rss" text="Science &amp; technology" title="Science &amp; technology" htmlUrl="https://www.economist.com/science-and-technology" />
-<outline htmlUrl="https://www.bloomberg.com/authors/ADENOlzHbyY/alexandre-tanzi" type="rss" xmlUrl="https://www.bloomberg.com/authors/ADENOlzHbyY/alexandre-tanzi.rss" text="Alexandre Tanzi - Economist" title="Alexandre Tanzi - Economist" />
-<outline htmlUrl="https://www.thecity.nyc/" xmlUrl="https://www.thecity.nyc/feed/" title="THE CITY – NYC News" type="rss" text="THE CITY – NYC News" />
-<outline type="rss" title="Erasmus" htmlUrl="https://www.economist.com/erasmus" xmlUrl="https://www.economist.com/erasmus/rss.xml" text="Erasmus" />
-<outline title="Jennifer Epstein - Former Reporter:Wealth/Real estate" type="rss" text="Jennifer Epstein - Former Reporter:Wealth/Real estate" xmlUrl="https://www.bloomberg.com/authors/ASKmo1LEDZ4/jennifer-epstein.rss" htmlUrl="https://www.bloomberg.com/authors/ASKmo1LEDZ4/jennifer-epstein" />
-<outline xmlUrl="https://www.economist.com/asia/rss.xml" type="rss" text="Asia" title="Asia" htmlUrl="https://www.economist.com/asia" />
-<outline xmlUrl="https://www.economist.com/europe/rss.xml" type="rss" title="Europe" text="Europe" htmlUrl="https://www.economist.com/europe" />
-<outline xmlUrl="https://rss.nytimes.com/services/xml/rss/nyt/Dealbook.xml" title="NYT &gt; Business &gt; DealBook" text="NYT &gt; Business &gt; DealBook" htmlUrl="https://www.nytimes.com/section/business/dealbook" type="rss" />
-<outline type="rss" htmlUrl="https://www.nytimes.com/column/farhad-manjoo" text="NYT &gt; Farhad Manjoo" title="NYT &gt; Farhad Manjoo" xmlUrl="https://www.nytimes.com/svc/collections/v1/publish/www.nytimes.com/column/farhad-manjoo/rss.xml" />
-<outline type="rss" title="Amanda Lewellyn | Vox" text="Amanda Lewellyn | Vox" xmlUrl="https://www.vox.com/authors/amanda-lewellyn/rss" htmlUrl="https://www.vox.com/author/amanda-lewellyn" />
-<outline htmlUrl="https://www.economist.com/international" title="International" xmlUrl="https://www.economist.com/international/rss.xml" type="rss" text="International" />
-<outline text="RSS.app - Feed Generator" htmlUrl="https://rss.app" xmlUrl="https://rss.app/feeds/uru1cab74ulLAhHg.xml" type="rss" title="RSS.app - Feed Generator" />
-<outline type="rss" htmlUrl="https://www.economist.com/britain" text="Britain" title="Britain" xmlUrl="https://www.economist.com/britain/rss.xml" />
-<outline type="rss" title="The Seattle Times Real Estate – The Seattle Times" text="The Seattle Times Real Estate – The Seattle Times" xmlUrl="https://www.seattletimes.com/real-estate/feed/" htmlUrl="https://www.seattletimes.com" />
-<outline title="Jolie Myers | Vox" xmlUrl="https://www.vox.com/authors/jolie-myers/rss" type="rss" text="Jolie Myers | Vox" htmlUrl="https://www.vox.com/author/jolie-myers" />
-<outline htmlUrl="https://www.vox.com/author/adam-freelander" xmlUrl="https://www.vox.com/authors/adam-freelander/rss" text="Adam Freelander | Vox" title="Adam Freelander | Vox" type="rss" />
-<outline type="rss" xmlUrl="https://ny.curbed.com/rss/index.xml" text="Curbed NY -  All" htmlUrl="https://ny.curbed.com" title="Curbed NY -  All" />
-<outline title="Finance &amp; economics" htmlUrl="https://www.economist.com/finance-and-economics" text="Finance &amp; economics" xmlUrl="https://www.economist.com/finance-and-economics/rss.xml" type="rss" />
-<outline title="Eye On Housing" xmlUrl="https://eyeonhousing.org/feed/rss" text="Eye On Housing" type="rss" htmlUrl="https://eyeonhousing.org" />
-<outline title="Graphic detail" text="Graphic detail" xmlUrl="https://www.economist.com/graphic-detail/rss.xml" htmlUrl="https://www.economist.com/graphic-detail" type="rss" />
-<outline text="Game theory" htmlUrl="https://www.economist.com/game-theory" type="rss" xmlUrl="https://www.economist.com/game-theory/rss.xml" title="Game theory" />
-<outline type="rss" htmlUrl="https://www.wsj.com/real-estate" text="Real Estate" title="Real Estate" xmlUrl="https://rss.app/feeds/coPfwn4ipqsFw9dR.xml" />
-<outline type="rss" htmlUrl="https://www.theverge.com" xmlUrl="https://www.theverge.com/rss/index.xml" text="The Verge" title="The Verge" />
-<outline text="Fast Company - Lance Lambert" type="rss" title="Fast Company - Lance Lambert" htmlUrl="https://www.fastcompany.com" xmlUrl="https://fastcompany.com/user/lancelambert/rss" />
-<outline xmlUrl="https://www.economist.com/leaders/rss.xml" text="Leaders" htmlUrl="https://www.economist.com/leaders" title="Leaders" type="rss" />
-<outline title="Economic &amp; financial indicators" type="rss" htmlUrl="https://www.economist.com/economic-and-financial-indicators" xmlUrl="https://www.economist.com/economic-and-financial-indicators/rss.xml" text="Economic &amp; financial indicators" />
-<outline type="rss" text="The Americas" title="The Americas" xmlUrl="https://www.economist.com/the-americas/rss.xml" htmlUrl="https://www.economist.com/the-americas" />
-<outline title="Section Page News - Crain's New York Business" htmlUrl="https://www.crainsnewyork.com" type="rss" xmlUrl="http://feeds.crainsnewyork.com/crainsnewyork/latestnews" text="Section Page News - Crain's New York Business" />
-<outline type="rss" xmlUrl="https://www.economist.com/free-exchange/rss.xml" htmlUrl="https://www.economist.com/free-exchange" title="Free exchange" text="Free exchange" />
-<outline text="Obituary" title="Obituary" xmlUrl="https://www.economist.com/obituary/rss.xml" htmlUrl="https://www.economist.com/obituary" type="rss" />
-<outline xmlUrl="https://feeds.a.dj.com/rss/WSJcomUSBusiness.xml" type="rss" title="WSJ.com: US Business" htmlUrl="http://online.wsj.com" text="WSJ.com: US Business" />
-<outline htmlUrl="https://siftrss.com" text="WSJ.com: Lifestyle" xmlUrl="https://siftrss.com/f/llbMjv67Qv" title="WSJ.com: Lifestyle" type="rss" />
-<outline title="NYT &gt; Business &gt; Economy" xmlUrl="https://rss.nytimes.com/services/xml/rss/nyt/Economy.xml" text="NYT &gt; Business &gt; Economy" type="rss" htmlUrl="https://www.nytimes.com/section/business/economy" />
-<outline type="rss" xmlUrl="https://fortune.com/feed/fortune-feeds/?id=3230629" title="Fortune | FORTUNE" htmlUrl="https://fortune.com" text="Fortune | FORTUNE" />
-<outline xmlUrl="https://rss.app/feeds/tnGyM2ss2ZY7ZlcQ.xml" type="rss" htmlUrl="https://www.nytimes.com/column/calculator" title="Calculator" text="Calculator" />
-<outline title="Real Estate" text="Real Estate" xmlUrl="http://www.cnbc.com/id/10000115/device/rss" type="rss" htmlUrl="https://www.cnbc.com/real-estate/" />
-<outline htmlUrl="https://www.economist.com/china" xmlUrl="https://www.economist.com/china/rss.xml" title="China" type="rss" text="China" />
-<outline title="HousingWire" type="rss" htmlUrl="https://www.housingwire.com/" xmlUrl="https://www.housingwire.com/feed" text="HousingWire" />
-<outline htmlUrl="https://www.economist.com/middle-east-and-africa" type="rss" title="Middle East &amp; Africa" text="Middle East &amp; Africa" xmlUrl="https://www.economist.com/middle-east-and-africa/rss.xml" />
-<outline text="Kaffeeklatsch" type="rss" htmlUrl="https://www.economist.com/kaffeeklatsch" xmlUrl="https://www.economist.com/kaffeeklatsch/rss.xml" title="Kaffeeklatsch" />
-<outline htmlUrl="https://www.vox.com/author/rani-molla" type="rss" xmlUrl="https://www.vox.com/authors/rani-molla/rss" text="Rani Molla | Vox" title="Rani Molla | Vox" />
-<outline title="Manhattan Institute" xmlUrl="https://manhattan.institute/rss.xml" htmlUrl="https://manhattan.institute" type="rss" text="Manhattan Institute" />
-<outline title="Whizy Kim | Vox" htmlUrl="https://www.vox.com/author/whizy-kim" type="rss" text="Whizy Kim | Vox" xmlUrl="https://www.vox.com/authors/whizy-kim/rss" />
-<outline xmlUrl="https://rss.app/feeds/4dmz615DEJwYIR67.xml" text="Real Estate Archives | amNewYork" title="Real Estate Archives | amNewYork" type="rss" htmlUrl="https://www.amny.com/real-estate/" />
-<outline xmlUrl="https://www.brownstoner.com/feed/rss" title="Brownstoner" type="rss" text="Brownstoner" htmlUrl="https://www.brownstoner.com" />
-<outline type="rss" htmlUrl="https://www.economist.com/buttonwoods-notebook" xmlUrl="https://www.economist.com/buttonwoods-notebook/rss.xml" title="Buttonwood’s notebook" text="Buttonwood’s notebook" />
-<outline htmlUrl="https://www.economist.com/bagehots-notebook" type="rss" title="Bagehot’s notebook" xmlUrl="https://www.economist.com/bagehots-notebook/rss.xml" text="Bagehot’s notebook" />
-<outline type="rss" text="NYT &gt; Real Estate" title="NYT &gt; Real Estate" xmlUrl="https://rss.nytimes.com/services/xml/rss/nyt/RealEstate.xml" htmlUrl="https://www.nytimes.com/section/realestate" />
-<outline title="Matt Levine - Bloomberg Opinion Columnist" htmlUrl="https://www.bloomberg.com/authors/ARbTQlRLRjE/matthew-s-levine" type="rss" text="Matt Levine - Bloomberg Opinion Columnist" xmlUrl="https://www.bloomberg.com/authors/ARbTQlRLRjE/matthew-s-levine.rss" />
-<outline type="rss" htmlUrl="http://www.calculatedriskblog.com/" title="Calculated Risk" text="Calculated Risk" xmlUrl="https://feeds.feedburner.com/CalculatedRisk" />
-<outline htmlUrl="https://www.economist.com/democracy-in-america" text="Democracy in America" type="rss" xmlUrl="https://www.economist.com/democracy-in-america/rss.xml" title="Democracy in America" />
-<outline htmlUrl="https://www.bloomberg.com/authors/APdpbRfjZ5g/jonathan-levin" xmlUrl="https://www.bloomberg.com/authors/APdpbRfjZ5g/jonathan-levin.rss" text="Jonathan Levin - Bloomberg Opinion Columnist" type="rss" title="Jonathan Levin - Bloomberg Opinion Columnist" />
-<outline type="rss" title="Books &amp; arts" htmlUrl="https://www.economist.com/books-and-arts/" text="Books &amp; arts" xmlUrl="https://www.economist.com/books-and-arts/rss.xml" />
-<outline title="Building Design &amp; Construction" htmlUrl="https://www.bdcnetwork.com/" type="rss" xmlUrl="https://feeds.feedburner.com/bdcnetwork/news-feed" text="Building Design &amp; Construction" />
-<outline type="rss" htmlUrl="https://www.economist.com/gulliver" title="Gulliver" xmlUrl="https://www.economist.com/gulliver/rss.xml" text="Gulliver" />
-<outline xmlUrl="https://rss.app/feeds/dyOmestbKGqbPYfU.xml" text="Housing policy in America" type="rss" htmlUrl="https://www.vox.com/housing" title="Housing policy in America" />
-<outline xmlUrl="https://www.latimes.com/business/realestate/rss2.0.xml" title="Real Estate" htmlUrl="https://www.latimes.com" type="rss" text="Real Estate" />
-<outline text="Real Estate" xmlUrl="https://rss.app/feeds/D2sIzHq8eVxkkyhj.xml" title="Real Estate" type="rss" htmlUrl="https://www.wsj.com/real-estate" />
-<outline title="RealPage, Inc. | LinkedIn" htmlUrl="https://www.linkedin.com/company/realpage/" text="RealPage, Inc. | LinkedIn" type="rss" xmlUrl="https://rss.app/feeds/P689RzBUbeuINsDv.xml" />
-<outline text="Multifamily Talks" xmlUrl="https://www.realpage.com/podcasts-rss/apple/multifamily-talks/" type="rss" htmlUrl="https://www.realpage.com/podcasts/" title="Multifamily Talks" />
-<outline title="John Burns Research and Consulting | LinkedIn" text="John Burns Research and Consulting | LinkedIn" xmlUrl="https://rss.app/feeds/94he2j6jTPUNzUX7.xml" type="rss" htmlUrl="https://www.linkedin.com/company/john-burns-research-and-consulting/" />
-<outline text="Ethan Mollick (@emollick) / Twitter" htmlUrl="https://x.com/emollick" title="Ethan Mollick (@emollick) / Twitter" xmlUrl="https://rss.app/feeds/JNkkMEjSySIAH64k.xml" type="rss" />
-<outline type="rss" title="CityLab - Bloomberg" htmlUrl="https://www.bloomberg.com/citylab" xmlUrl="https://rss.app/feeds/NzVJgO8blctrL5Dk.xml" text="CityLab - Bloomberg" />
-<outline type="rss" title="City Journal" xmlUrl="https://feeds.feedburner.com/city-journal" htmlUrl="https://www.city-journal.org" text="City Journal" />
-<outline htmlUrl="https://www.edwardconard.com/?s=&amp;topic_filter%5B%5D=Housing" xmlUrl="https://rss.app/feeds/10oRHV2Q2ni83b3V.xml" type="rss" title="Edward Conard — Housing" text="Edward Conard — Housing" />
-<outline title="The Journal of Real Estate Finance and Economics" text="The Journal of Real Estate Finance and Economics" xmlUrl="https://rss.app/feeds/caR672s4FzsCd70S.xml" htmlUrl="https://link.springer.com/journal/11146/volumes-and-issues/70-3?utm_source=springer_etoc&amp;utm_medium=email&amp;utm_campaign=CONR_11146_AWA1_GL_DTEC_054CI_TOC-080525&amp;utm_content=etoc_springer_20250508" type="rss" />
-<outline text="Asad Khan - Redfin Real Estate News" htmlUrl="https://www.redfin.com/news/author/asad-khan/" title="Asad Khan - Redfin Real Estate News" type="rss" xmlUrl="https://rss.app/feeds/6kCcbVo1BVOOTcJ4.xml" />
-<outline title="News | Search" type="rss" xmlUrl="https://rss.app/feeds/zSB2Za8WwpSvjb2z.xml" htmlUrl="https://www.costar.com/search?label=CoStar%20Insight" text="News | Search" />
-<outline type="rss" text="Gothamist: New York City Local News, Food, Arts &amp; Events" htmlUrl="https://gothamist.com/staff/david-brand" xmlUrl="https://rss.app/feeds/8q4JaNc99LWhqdjx.xml" title="Gothamist: New York City Local News, Food, Arts &amp; Events" />
-<outline text="Data Is Plural" type="rss" htmlUrl="https://www.data-is-plural.com" title="Data Is Plural" xmlUrl="https://www.data-is-plural.com/feed.xml" />
-</outline>
-<outline title="Journals" text="Journals">
-<outline type="rss" xmlUrl="https://www.tandfonline.com/feed/rss/rjer20" htmlUrl="https://www.tandfonline.com/loi/rjer20?af=R" text="Journal of Real Estate Research" title="Journal of Real Estate Research" />
-<outline title="Journal of the American Planning Association" xmlUrl="https://www.tandfonline.com/feed/rss/rjpa20" htmlUrl="https://www.tandfonline.com/loi/rjpa20?af=R" type="rss" text="Journal of the American Planning Association" />
-<outline xmlUrl="https://onlinelibrary.wiley.com/feed/15406229/most-recent" text="Wiley: Real Estate Economics: Table of Contents" type="rss" title="Wiley: Real Estate Economics: Table of Contents" htmlUrl="https://onlinelibrary.wiley.com/journal/15406229?af=R" />
-<outline text="ScienceDirect Publication: Journal of Housing Economics" xmlUrl="https://rss.sciencedirect.com/publication/science/10511377" type="rss" htmlUrl="https://www.sciencedirect.com/journal/journal-of-housing-economics" title="ScienceDirect Publication: Journal of Housing Economics" />
-<outline xmlUrl="https://www.tandfonline.com/feed/rss/rjrh20" text="Journal of Housing Research" title="Journal of Housing Research" type="rss" htmlUrl="https://www.tandfonline.com/loi/rjrh20?af=R" />
-<outline text="Housing Studies" type="rss" htmlUrl="https://www.tandfonline.com/loi/chos20?af=R" title="Housing Studies" xmlUrl="https://www.tandfonline.com/feed/rss/chos20" />
-<outline title="Cornell Real Estate Review" type="rss" htmlUrl="https://blog.realestate.cornell.edu" xmlUrl="https://blog.realestate.cornell.edu/feed/rss" text="Cornell Real Estate Review" />
-<outline text="ScienceDirect Publication: Journal of Urban Economics" title="ScienceDirect Publication: Journal of Urban Economics" type="rss" htmlUrl="https://www.sciencedirect.com/journal/journal-of-urban-economics" xmlUrl="https://rss.sciencedirect.com/publication/science/00941190" />
-<outline text="ScienceDirect Publication: Cities" htmlUrl="https://www.sciencedirect.com/journal/cities" xmlUrl="https://rss.sciencedirect.com/publication/science/02642751" type="rss" title="ScienceDirect Publication: Cities" />
-</outline>
-<outline text="Twitter" title="Twitter">
-<outline type="rss" htmlUrl="https://x.com/i/lists/1663911929352470530" text="Twitter List: @AzizSunderji/Real Estate / X" xmlUrl="https://rss.app/feeds/RvuauwvTPgMS5mTW.xml" title="Twitter List: @AzizSunderji/Real Estate / X" />
-</outline>
-</body>
+  <head>
+    <title>Feeds</title>
+  </head>
+  <body>
+    <outline text="BiggerPockets" htmlUrl="https://www.biggerpockets.com/blog" xmlUrl="https://www.biggerpockets.com/blog/feed" type="rss" title="BiggerPockets" />
+    <outline text="Brick Underground" type="rss" title="Brick Underground" xmlUrl="http://www.brickunderground.com/rss.xml" htmlUrl="https://www.brickunderground.com/" />
+    <outline title="HuffPost Business" text="HuffPost Business" htmlUrl="https://www.huffingtonpost.com" xmlUrl="https://www.huffingtonpost.com/topic/real-estate/feed" type="rss" />
+    <outline title="California Real Estate Blog – McLaughlin Ventures" type="rss" xmlUrl="https://compasscaliforniablog.com/feed/" text="California Real Estate Blog – McLaughlin Ventures" htmlUrl="https://blog.mclaughlin-ventures.com/" />
+    <outline xmlUrl="https://feeds.feedburner.com/cbpp/fYJq" text="CBPP Comprehensive Reports and Blog Posts" type="rss" title="CBPP Comprehensive Reports and Blog Posts" htmlUrl="https://www.cbpp.org/" />
+    <outline htmlUrl="https://blog.c21.com/real-estate-blog" xmlUrl="https://www.century21.com/real-estate-blog/feed/" text="Century 21®" title="Century 21®" type="rss" />
+    <outline text="Comments on: Real Estate Blog: Articles, News, and Insights" htmlUrl="http://www.noradarealestate.com" title="Comments on: Real Estate Blog: Articles, News, and Insights" type="rss" xmlUrl="http://www.noradarealestate.com/blog/feed/" />
+    <outline htmlUrl="http://ny.curbed.com" title="Curbed NY -  All" type="rss" xmlUrl="http://ny.curbed.com/atom.xml" text="Curbed NY -  All" />
+    <outline xmlUrl="http://feeds.feedburner.com/narnewsline" text="feeds.feedburner.com" title="feeds.feedburner.com" htmlUrl="http://feeds.feedburner.com" type="rss" />
+    <outline text="GeekEstate Blog" htmlUrl="https://geekestateblog.com/" type="rss" xmlUrl="https://geekestateblog.com/feed/" title="GeekEstate Blog" />
+    <outline htmlUrl="https://twitter.com" xmlUrl="https://twitter.com/home" type="rss" title="Home Timeline" text="Home Timeline" />
+    <outline title="Inman" htmlUrl="https://www.inman.com" type="rss" xmlUrl="https://www.inman.com/feed" text="Inman" />
+    <outline text="nar.realtor" xmlUrl="http://feeds.feedburner.com/EconomistsOutlook" type="rss" title="nar.realtor" htmlUrl="https://www.nar.realtor/economists-outlook/feed" />
+    <outline title="nar.realtor" type="rss" text="nar.realtor" htmlUrl="https://www.nar.realtor/culture-scan/feed" xmlUrl="https://feeds.feedburner.com/nar/culture-scan" />
+    <outline title="News | Real Estate News &amp; Insights | realtor.com®" htmlUrl="https://www.realtor.com/news/" xmlUrl="https://www.realtor.com/news/feed/rss" text="News | Real Estate News &amp; Insights | realtor.com®" type="rss" />
+    <outline title="News Releases | Move, Inc." htmlUrl="https://mediaroom.realtor.com/" xmlUrl="https://mediaroom.realtor.com/news_releases?pagetemplate=rss" type="rss" text="News Releases | Move, Inc." />
+    <outline type="rss" title="NotoriousROB" text="NotoriousROB" xmlUrl="https://notoriousrob.com/feed/rss" htmlUrl="https://notoriousrob.com" />
+    <outline text="Redfin | Real Estate Tips for Home Buying, Selling &amp; More" title="Redfin | Real Estate Tips for Home Buying, Selling &amp; More" htmlUrl="https://www.redfin.com/blog/" xmlUrl="https://www.redfin.com/blog/feed/" type="rss" />
+    <outline type="rss" text="Residential Real Estate News - Residential Real Estate News Headlines | Bizjournals.com" xmlUrl="http://feeds.bizjournals.com/industry_21" title="Residential Real Estate News - Residential Real Estate News Headlines | Bizjournals.com" htmlUrl="https://www.bizjournals.com" />
+    <outline xmlUrl="http://torontorealtyblog.com/feed/" htmlUrl="https://torontorealtyblog.com/" title="Toronto Realty Blog" type="rss" text="Toronto Realty Blog" />
+    <outline xmlUrl="https://www.trulia.com/blog/feed/rss" title="Trulia's Blog" type="rss" text="Trulia's Blog" htmlUrl="https://www.trulia.com/blog/" />
+    <outline text="HighPriority" title="HighPriority">
+      <outline xmlUrl="https://www.vox.com/authors/rachel-m-cohen/rss" title="Rachel M. Cohen – Vox" text="Rachel M. Cohen – Vox" type="rss" htmlUrl="https://www.vox.com" />
+      <outline text="City Observatory" htmlUrl="https://cityobservatory.org" xmlUrl="http://cityobservatory.org/feed" type="rss" title="City Observatory" />
+      <outline text="Charlemagne’s notebook" type="rss" xmlUrl="https://www.economist.com/charlemagnes-notebook/rss.xml" htmlUrl="https://www.economist.com/charlemagnes-notebook" title="Charlemagne’s notebook" />
+      <outline text="Economist: Business" htmlUrl="https://www.economist.com/business" xmlUrl="https://www.economist.com/business/rss.xml" type="rss" title="Economist: Business" />
+      <outline type="rss" text="Eric Levitz | Vox" htmlUrl="https://www.vox.com/author/eric-levitz" xmlUrl="https://www.vox.com/authors/eric-levitz/rss" title="Eric Levitz | Vox" />
+      <outline xmlUrl="https://rss.nytimes.com/services/xml/rss/nyt/Tennis.xml" type="rss" title="NYT &gt; Sports &gt; Tennis" htmlUrl="https://www.nytimes.com/section/sports/tennis" text="NYT &gt; Sports &gt; Tennis" />
+      <outline title="Search Results for “rss” – City Limits" type="rss" htmlUrl="https://citylimits.org" xmlUrl="https://citylimits.org/search/rss/feed/rss2/" text="Search Results for “rss” – City Limits" />
+      <outline title="United States" htmlUrl="https://www.economist.com/united-states" text="United States" xmlUrl="https://www.economist.com/united-states/rss.xml" type="rss" />
+      <outline htmlUrl="https://www.economist.com/special-report" type="rss" title="Special report" text="Special report" xmlUrl="https://www.economist.com/special-report/rss.xml" />
+      <outline title="Letters" text="Letters" xmlUrl="https://www.economist.com/letters/rss.xml" type="rss" htmlUrl="https://www.economist.com/letters" />
+      <outline text="Prospero" htmlUrl="https://www.economist.com/prospero" type="rss" title="Prospero" xmlUrl="https://www.economist.com/prospero/rss.xml" />
+      <outline title="Liberty Street Economics" htmlUrl="https://libertystreeteconomics.newyorkfed.org/" type="rss" xmlUrl="https://libertystreeteconomics.newyorkfed.org/feed/" text="Liberty Street Economics" />
+      <outline htmlUrl="https://www.nytimes.com/section/technology/personaltech" xmlUrl="https://rss.nytimes.com/services/xml/rss/nyt/PersonalTech.xml" type="rss" title="NYT &gt; Technology &gt; Personal Tech" text="NYT &gt; Technology &gt; Personal Tech" />
+      <outline title="Marie Patino -" text="Marie Patino -" type="rss" htmlUrl="https://www.bloomberg.com/authors/AT8YdozwhFs/marie-patino" xmlUrl="https://www.bloomberg.com/authors/AT8YdozwhFs/marie-patino.rss" />
+      <outline type="rss" xmlUrl="https://www.economist.com/bartleby/rss.xml" title="Bartleby" htmlUrl="https://www.economist.com/bartleby" text="Bartleby" />
+      <outline text="Noel King | Vox" htmlUrl="https://www.vox.com/author/noel-king" title="Noel King | Vox" xmlUrl="https://www.vox.com/authors/noel-king/rss" type="rss" />
+      <outline type="rss" htmlUrl="https://www.economist.com/the-world-this-week" xmlUrl="https://www.economist.com/the-world-this-week/rss.xml" title="The world this week" text="The world this week" />
+      <outline xmlUrl="https://kill-the-newsletter.com/feeds/fsin10dgsl77782m.xml" type="rss" title="home economics" text="home economics" htmlUrl="https://kill-the-newsletter.com/feeds/fsin10dgsl77782m.xml" />
+      <outline xmlUrl="https://feeds.a.dj.com/rss/RSSMarketsMain.xml" text="WSJ Markets" type="rss" title="WSJ Markets" htmlUrl="http://online.wsj.com" />
+      <outline title="Briefing" text="Briefing" htmlUrl="https://www.economist.com/briefing" type="rss" xmlUrl="https://www.economist.com/briefing/rss.xml" />
+      <outline text="The Economist explains" title="The Economist explains" type="rss" htmlUrl="https://www.economist.com/the-economist-explains" xmlUrl="https://www.economist.com/the-economist-explains/rss.xml" />
+      <outline title="Kelsey Piper | Vox" type="rss" text="Kelsey Piper | Vox" htmlUrl="https://www.vox.com/author/kelsey-piper" xmlUrl="https://www.vox.com/authors/kelsey-piper/rss" />
+      <outline title="atlantafed.org" xmlUrl="https://www.atlantafed.org/RSS/HomeOwnershipAffordabilityMonitor" text="atlantafed.org" htmlUrl="https://www.atlantafed.org" type="rss" />
+      <outline xmlUrl="https://www.economist.com/science-and-technology/rss.xml" type="rss" text="Science &amp; technology" title="Science &amp; technology" htmlUrl="https://www.economist.com/science-and-technology" />
+      <outline htmlUrl="https://www.bloomberg.com/authors/ADENOlzHbyY/alexandre-tanzi" type="rss" xmlUrl="https://www.bloomberg.com/authors/ADENOlzHbyY/alexandre-tanzi.rss" text="Alexandre Tanzi - Economist" title="Alexandre Tanzi - Economist" />
+      <outline htmlUrl="https://www.thecity.nyc/" xmlUrl="https://www.thecity.nyc/feed/" title="THE CITY – NYC News" type="rss" text="THE CITY – NYC News" />
+      <outline type="rss" title="Erasmus" htmlUrl="https://www.economist.com/erasmus" xmlUrl="https://www.economist.com/erasmus/rss.xml" text="Erasmus" />
+      <outline title="Jennifer Epstein - Former Reporter:Wealth/Real estate" type="rss" text="Jennifer Epstein - Former Reporter:Wealth/Real estate" xmlUrl="https://www.bloomberg.com/authors/ASKmo1LEDZ4/jennifer-epstein.rss" htmlUrl="https://www.bloomberg.com/authors/ASKmo1LEDZ4/jennifer-epstein" />
+      <outline xmlUrl="https://www.economist.com/asia/rss.xml" type="rss" text="Asia" title="Asia" htmlUrl="https://www.economist.com/asia" />
+      <outline xmlUrl="https://www.economist.com/europe/rss.xml" type="rss" title="Europe" text="Europe" htmlUrl="https://www.economist.com/europe" />
+      <outline xmlUrl="https://rss.nytimes.com/services/xml/rss/nyt/Dealbook.xml" title="NYT &gt; Business &gt; DealBook" text="NYT &gt; Business &gt; DealBook" htmlUrl="https://www.nytimes.com/section/business/dealbook" type="rss" />
+      <outline type="rss" htmlUrl="https://www.nytimes.com/column/farhad-manjoo" text="NYT &gt; Farhad Manjoo" title="NYT &gt; Farhad Manjoo" xmlUrl="https://www.nytimes.com/svc/collections/v1/publish/www.nytimes.com/column/farhad-manjoo/rss.xml" />
+      <outline type="rss" title="Amanda Lewellyn | Vox" text="Amanda Lewellyn | Vox" xmlUrl="https://www.vox.com/authors/amanda-lewellyn/rss" htmlUrl="https://www.vox.com/author/amanda-lewellyn" />
+      <outline htmlUrl="https://www.economist.com/international" title="International" xmlUrl="https://www.economist.com/international/rss.xml" type="rss" text="International" />
+      <outline text="RSS.app - Feed Generator" htmlUrl="https://rss.app" xmlUrl="https://rss.app/feeds/uru1cab74ulLAhHg.xml" type="rss" title="RSS.app - Feed Generator" />
+      <outline type="rss" htmlUrl="https://www.economist.com/britain" text="Britain" title="Britain" xmlUrl="https://www.economist.com/britain/rss.xml" />
+      <outline type="rss" title="The Seattle Times Real Estate – The Seattle Times" text="The Seattle Times Real Estate – The Seattle Times" xmlUrl="https://www.seattletimes.com/real-estate/feed/" htmlUrl="https://www.seattletimes.com" />
+      <outline title="Jolie Myers | Vox" xmlUrl="https://www.vox.com/authors/jolie-myers/rss" type="rss" text="Jolie Myers | Vox" htmlUrl="https://www.vox.com/author/jolie-myers" />
+      <outline htmlUrl="https://www.vox.com/author/adam-freelander" xmlUrl="https://www.vox.com/authors/adam-freelander/rss" text="Adam Freelander | Vox" title="Adam Freelander | Vox" type="rss" />
+      <outline type="rss" xmlUrl="https://ny.curbed.com/rss/index.xml" text="Curbed NY -  All" htmlUrl="https://ny.curbed.com" title="Curbed NY -  All" />
+      <outline title="Finance &amp; economics" htmlUrl="https://www.economist.com/finance-and-economics" text="Finance &amp; economics" xmlUrl="https://www.economist.com/finance-and-economics/rss.xml" type="rss" />
+      <outline title="Eye On Housing" xmlUrl="https://eyeonhousing.org/feed/rss" text="Eye On Housing" type="rss" htmlUrl="https://eyeonhousing.org" />
+      <outline title="Graphic detail" text="Graphic detail" xmlUrl="https://www.economist.com/graphic-detail/rss.xml" htmlUrl="https://www.economist.com/graphic-detail" type="rss" />
+      <outline text="Game theory" htmlUrl="https://www.economist.com/game-theory" type="rss" xmlUrl="https://www.economist.com/game-theory/rss.xml" title="Game theory" />
+      <outline type="rss" htmlUrl="https://www.wsj.com/real-estate" text="WSJ Real Estate" title="WSJ Real Estate" xmlUrl="https://rss.app/feeds/coPfwn4ipqsFw9dR.xml" />
+      <outline type="rss" htmlUrl="https://www.theverge.com" xmlUrl="https://www.theverge.com/rss/index.xml" text="The Verge" title="The Verge" />
+      <outline text="Fast Company - Lance Lambert" type="rss" title="Fast Company - Lance Lambert" htmlUrl="https://www.fastcompany.com" xmlUrl="https://fastcompany.com/user/lancelambert/rss" />
+      <outline xmlUrl="https://www.economist.com/leaders/rss.xml" text="Leaders" htmlUrl="https://www.economist.com/leaders" title="Leaders" type="rss" />
+      <outline title="Economic &amp; financial indicators" type="rss" htmlUrl="https://www.economist.com/economic-and-financial-indicators" xmlUrl="https://www.economist.com/economic-and-financial-indicators/rss.xml" text="Economic &amp; financial indicators" />
+      <outline type="rss" text="The Americas" title="The Americas" xmlUrl="https://www.economist.com/the-americas/rss.xml" htmlUrl="https://www.economist.com/the-americas" />
+      <outline title="Section Page News - Crain's New York Business" htmlUrl="https://www.crainsnewyork.com" type="rss" xmlUrl="http://feeds.crainsnewyork.com/crainsnewyork/latestnews" text="Section Page News - Crain's New York Business" />
+      <outline type="rss" xmlUrl="https://www.economist.com/free-exchange/rss.xml" htmlUrl="https://www.economist.com/free-exchange" title="Free exchange" text="Free exchange" />
+      <outline text="Obituary" title="Obituary" xmlUrl="https://www.economist.com/obituary/rss.xml" htmlUrl="https://www.economist.com/obituary" type="rss" />
+      <outline xmlUrl="https://feeds.a.dj.com/rss/WSJcomUSBusiness.xml" type="rss" title="WSJ US Business" htmlUrl="http://online.wsj.com" text="WSJ US Business" />
+      <outline htmlUrl="https://siftrss.com" text="WSJ Lifestyle" xmlUrl="https://siftrss.com/f/llbMjv67Qv" title="WSJ Lifestyle" type="rss" />
+      <outline title="NYT &gt; Business &gt; Economy" xmlUrl="https://rss.nytimes.com/services/xml/rss/nyt/Economy.xml" text="NYT &gt; Business &gt; Economy" type="rss" htmlUrl="https://www.nytimes.com/section/business/economy" />
+      <outline type="rss" xmlUrl="https://fortune.com/feed/fortune-feeds/?id=3230629" title="Fortune | FORTUNE" htmlUrl="https://fortune.com" text="Fortune | FORTUNE" />
+      <outline xmlUrl="https://rss.app/feeds/tnGyM2ss2ZY7ZlcQ.xml" type="rss" htmlUrl="https://www.nytimes.com/column/calculator" title="Calculator" text="Calculator" />
+      <outline title="CNBC Real Estate" text="CNBC Real Estate" xmlUrl="http://www.cnbc.com/id/10000115/device/rss" type="rss" htmlUrl="https://www.cnbc.com/real-estate/" />
+      <outline htmlUrl="https://www.economist.com/china" xmlUrl="https://www.economist.com/china/rss.xml" title="China" type="rss" text="China" />
+      <outline title="HousingWire" type="rss" htmlUrl="https://www.housingwire.com/" xmlUrl="https://www.housingwire.com/feed" text="HousingWire" />
+      <outline htmlUrl="https://www.economist.com/middle-east-and-africa" type="rss" title="Middle East &amp; Africa" text="Middle East &amp; Africa" xmlUrl="https://www.economist.com/middle-east-and-africa/rss.xml" />
+      <outline text="Kaffeeklatsch" type="rss" htmlUrl="https://www.economist.com/kaffeeklatsch" xmlUrl="https://www.economist.com/kaffeeklatsch/rss.xml" title="Kaffeeklatsch" />
+      <outline htmlUrl="https://www.vox.com/author/rani-molla" type="rss" xmlUrl="https://www.vox.com/authors/rani-molla/rss" text="Rani Molla | Vox" title="Rani Molla | Vox" />
+      <outline title="Manhattan Institute" xmlUrl="https://manhattan.institute/rss.xml" htmlUrl="https://manhattan.institute" type="rss" text="Manhattan Institute" />
+      <outline title="Whizy Kim | Vox" htmlUrl="https://www.vox.com/author/whizy-kim" type="rss" text="Whizy Kim | Vox" xmlUrl="https://www.vox.com/authors/whizy-kim/rss" />
+      <outline xmlUrl="https://rss.app/feeds/4dmz615DEJwYIR67.xml" text="Real Estate Archives | amNewYork" title="Real Estate Archives | amNewYork" type="rss" htmlUrl="https://www.amny.com/real-estate/" />
+      <outline xmlUrl="https://www.brownstoner.com/feed/rss" title="Brownstoner" type="rss" text="Brownstoner" htmlUrl="https://www.brownstoner.com" />
+      <outline type="rss" htmlUrl="https://www.economist.com/buttonwoods-notebook" xmlUrl="https://www.economist.com/buttonwoods-notebook/rss.xml" title="Buttonwood’s notebook" text="Buttonwood’s notebook" />
+      <outline htmlUrl="https://www.economist.com/bagehots-notebook" type="rss" title="Bagehot’s notebook" xmlUrl="https://www.economist.com/bagehots-notebook/rss.xml" text="Bagehot’s notebook" />
+      <outline type="rss" text="NYT &gt; Real Estate" title="NYT &gt; Real Estate" xmlUrl="https://rss.nytimes.com/services/xml/rss/nyt/RealEstate.xml" htmlUrl="https://www.nytimes.com/section/realestate" />
+      <outline title="Matt Levine - Bloomberg Opinion Columnist" htmlUrl="https://www.bloomberg.com/authors/ARbTQlRLRjE/matthew-s-levine" type="rss" text="Matt Levine - Bloomberg Opinion Columnist" xmlUrl="https://www.bloomberg.com/authors/ARbTQlRLRjE/matthew-s-levine.rss" />
+      <outline type="rss" htmlUrl="http://www.calculatedriskblog.com/" title="Calculated Risk" text="Calculated Risk" xmlUrl="https://feeds.feedburner.com/CalculatedRisk" />
+      <outline htmlUrl="https://www.economist.com/democracy-in-america" text="Democracy in America" type="rss" xmlUrl="https://www.economist.com/democracy-in-america/rss.xml" title="Democracy in America" />
+      <outline htmlUrl="https://www.bloomberg.com/authors/APdpbRfjZ5g/jonathan-levin" xmlUrl="https://www.bloomberg.com/authors/APdpbRfjZ5g/jonathan-levin.rss" text="Jonathan Levin - Bloomberg Opinion Columnist" type="rss" title="Jonathan Levin - Bloomberg Opinion Columnist" />
+      <outline type="rss" title="Books &amp; arts" htmlUrl="https://www.economist.com/books-and-arts/" text="Books &amp; arts" xmlUrl="https://www.economist.com/books-and-arts/rss.xml" />
+      <outline title="Building Design &amp; Construction" htmlUrl="https://www.bdcnetwork.com/" type="rss" xmlUrl="https://feeds.feedburner.com/bdcnetwork/news-feed" text="Building Design &amp; Construction" />
+      <outline type="rss" htmlUrl="https://www.economist.com/gulliver" title="Gulliver" xmlUrl="https://www.economist.com/gulliver/rss.xml" text="Gulliver" />
+      <outline xmlUrl="https://rss.app/feeds/dyOmestbKGqbPYfU.xml" text="Housing policy in America" type="rss" htmlUrl="https://www.vox.com/housing" title="Housing policy in America" />
+      <outline xmlUrl="https://www.latimes.com/business/realestate/rss2.0.xml" title="LA Times Real Estate" htmlUrl="https://www.latimes.com" type="rss" text="LA Times Real Estate" />
+      <outline text="WSJ Real Estate" xmlUrl="https://rss.app/feeds/D2sIzHq8eVxkkyhj.xml" title="WSJ Real Estate" type="rss" htmlUrl="https://www.wsj.com/real-estate" />
+      <outline title="RealPage, Inc. | LinkedIn" htmlUrl="https://www.linkedin.com/company/realpage/" text="RealPage, Inc. | LinkedIn" type="rss" xmlUrl="https://rss.app/feeds/P689RzBUbeuINsDv.xml" />
+      <outline text="Multifamily Talks" xmlUrl="https://www.realpage.com/podcasts-rss/apple/multifamily-talks/" type="rss" htmlUrl="https://www.realpage.com/podcasts/" title="Multifamily Talks" />
+      <outline title="John Burns Research and Consulting | LinkedIn" text="John Burns Research and Consulting | LinkedIn" xmlUrl="https://rss.app/feeds/94he2j6jTPUNzUX7.xml" type="rss" htmlUrl="https://www.linkedin.com/company/john-burns-research-and-consulting/" />
+      <outline text="Ethan Mollick (@emollick) / Twitter" htmlUrl="https://x.com/emollick" title="Ethan Mollick (@emollick) / Twitter" xmlUrl="https://rss.app/feeds/JNkkMEjSySIAH64k.xml" type="rss" />
+      <outline type="rss" title="CityLab - Bloomberg" htmlUrl="https://www.bloomberg.com/citylab" xmlUrl="https://rss.app/feeds/NzVJgO8blctrL5Dk.xml" text="CityLab - Bloomberg" />
+      <outline type="rss" title="City Journal" xmlUrl="https://feeds.feedburner.com/city-journal" htmlUrl="https://www.city-journal.org" text="City Journal" />
+      <outline htmlUrl="https://www.edwardconard.com/?s=&amp;topic_filter%5B%5D=Housing" xmlUrl="https://rss.app/feeds/10oRHV2Q2ni83b3V.xml" type="rss" title="Edward Conard — Housing" text="Edward Conard — Housing" />
+      <outline title="The Journal of Real Estate Finance and Economics" text="The Journal of Real Estate Finance and Economics" xmlUrl="https://rss.app/feeds/caR672s4FzsCd70S.xml" htmlUrl="https://link.springer.com/journal/11146/volumes-and-issues/70-3?utm_source=springer_etoc&amp;utm_medium=email&amp;utm_campaign=CONR_11146_AWA1_GL_DTEC_054CI_TOC-080525&amp;utm_content=etoc_springer_20250508" type="rss" />
+      <outline text="Asad Khan - Redfin Real Estate News" htmlUrl="https://www.redfin.com/news/author/asad-khan/" title="Asad Khan - Redfin Real Estate News" type="rss" xmlUrl="https://rss.app/feeds/6kCcbVo1BVOOTcJ4.xml" />
+      <outline title="News | Search" type="rss" xmlUrl="https://rss.app/feeds/zSB2Za8WwpSvjb2z.xml" htmlUrl="https://www.costar.com/search?label=CoStar%20Insight" text="News | Search" />
+      <outline type="rss" text="Gothamist: New York City Local News, Food, Arts &amp; Events" htmlUrl="https://gothamist.com/staff/david-brand" xmlUrl="https://rss.app/feeds/8q4JaNc99LWhqdjx.xml" title="Gothamist: New York City Local News, Food, Arts &amp; Events" />
+      <outline text="Data Is Plural" type="rss" htmlUrl="https://www.data-is-plural.com" title="Data Is Plural" xmlUrl="https://www.data-is-plural.com/feed.xml" />
+      <outline text="Eye On Housing" title="Eye On Housing" type="rss" xmlUrl="https://eyeonhousing.org/feed/" htmlUrl="https://eyeonhousing.org" />
+      <outline text="Bloomberg Economics" title="Bloomberg Economics" type="rss" xmlUrl="https://feeds.bloomberg.com/economics/news.rss" htmlUrl="https://www.bloomberg.com/economics" />
+      <outline text="Bloomberg Industries" title="Bloomberg Industries" type="rss" xmlUrl="https://feeds.bloomberg.com/industries/news.rss" htmlUrl="https://www.bloomberg.com/industries" />
+      <outline text="Bloomberg Markets" title="Bloomberg Markets" type="rss" xmlUrl="https://feeds.bloomberg.com/markets/news.rss" htmlUrl="https://www.bloomberg.com/markets" />
+      <outline text="Bloomberg Wealth" title="Bloomberg Wealth" type="rss" xmlUrl="https://feeds.bloomberg.com/wealth/news.rss" htmlUrl="https://www.bloomberg.com/wealth" />
+      <outline text="WaPo Business" title="WaPo Business" type="rss" xmlUrl="https://feeds.washingtonpost.com/rss/business" htmlUrl="https://www.washingtonpost.com/business" />
+      <outline text="WaPo Economy" title="WaPo Economy" type="rss" xmlUrl="https://feeds.washingtonpost.com/rss/business/economy" htmlUrl="https://www.washingtonpost.com/business/economy" />
+      <outline text="NYT The Upshot" title="NYT The Upshot" type="rss" xmlUrl="https://rss.nytimes.com/services/xml/rss/nyt/Upshot.xml" htmlUrl="https://www.nytimes.com/section/upshot" />
+      <outline text="CNBC Real Estate" title="CNBC Real Estate" type="rss" xmlUrl="https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&amp;id=10000115" htmlUrl="https://www.cnbc.com/real-estate/" />
+      <outline text="CNBC Economy" title="CNBC Economy" type="rss" xmlUrl="https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&amp;id=20910258" htmlUrl="https://www.cnbc.com/economy/" />
+      <outline text="Brookings Institution" title="Brookings Institution" type="rss" xmlUrl="https://www.brookings.edu/feed/" htmlUrl="https://www.brookings.edu" />
+      <outline text="Census Economic Indicators" title="Census Economic Indicators" type="rss" xmlUrl="https://www.census.gov/economic-indicators/indicator.xml" htmlUrl="https://www.census.gov" />
+      <outline text="Federal Reserve Press Releases" title="Federal Reserve Press Releases" type="rss" xmlUrl="https://www.federalreserve.gov/feeds/press_all.xml" htmlUrl="https://www.federalreserve.gov" />
+      <outline text="Freddie Mac Blog" title="Freddie Mac Blog" type="rss" xmlUrl="https://www.freddiemac.com/blog/feed" htmlUrl="https://www.freddiemac.com/blog" />
+      <outline text="FT Global Economy" title="FT Global Economy" type="rss" xmlUrl="https://www.ft.com/global-economy?format=rss" htmlUrl="https://www.ft.com/global-economy" />
+      <outline text="FT John Burn-Murdoch" title="FT John Burn-Murdoch" type="rss" xmlUrl="https://www.ft.com/john-burn-murdoch?format=rss" htmlUrl="https://www.ft.com/john-burn-murdoch" />
+      <outline text="FT Markets" title="FT Markets" type="rss" xmlUrl="https://www.ft.com/markets?format=rss" htmlUrl="https://www.ft.com/markets" />
+      <outline text="FT Opinion" title="FT Opinion" type="rss" xmlUrl="https://www.ft.com/opinion?format=rss" htmlUrl="https://www.ft.com/opinion" />
+      <outline text="FT Property" title="FT Property" type="rss" xmlUrl="https://www.ft.com/property-sector?format=rss" htmlUrl="https://www.ft.com/property-sector" />
+      <outline text="FT Home" title="FT Home" type="rss" xmlUrl="https://www.ft.com/rss/home/uk" htmlUrl="https://www.ft.com" />
+      <outline text="FT US Economy" title="FT US Economy" type="rss" xmlUrl="https://www.ft.com/us-economy?format=rss" htmlUrl="https://www.ft.com/us-economy" />
+      <outline text="Keeping Current Matters" title="Keeping Current Matters" type="rss" xmlUrl="https://www.keepingcurrentmatters.com/feed/" htmlUrl="https://www.keepingcurrentmatters.com" />
+      <outline text="NotoriousROB" title="NotoriousROB" type="rss" xmlUrl="https://www.notoriousrob.com/rss/" htmlUrl="https://www.notoriousrob.com" />
+      <outline text="Realtor.com News" title="Realtor.com News" type="rss" xmlUrl="https://www.realtor.com/news/feed/" htmlUrl="https://www.realtor.com/news/" />
+    </outline>
+    <outline title="Journals" text="Journals">
+      <outline type="rss" xmlUrl="https://www.tandfonline.com/feed/rss/rjer20" htmlUrl="https://www.tandfonline.com/loi/rjer20?af=R" text="Journal of Real Estate Research" title="Journal of Real Estate Research" />
+      <outline title="Journal of the American Planning Association" xmlUrl="https://www.tandfonline.com/feed/rss/rjpa20" htmlUrl="https://www.tandfonline.com/loi/rjpa20?af=R" type="rss" text="Journal of the American Planning Association" />
+      <outline xmlUrl="https://onlinelibrary.wiley.com/feed/15406229/most-recent" text="Wiley: Real Estate Economics: Table of Contents" type="rss" title="Wiley: Real Estate Economics: Table of Contents" htmlUrl="https://onlinelibrary.wiley.com/journal/15406229?af=R" />
+      <outline text="ScienceDirect Publication: Journal of Housing Economics" xmlUrl="https://rss.sciencedirect.com/publication/science/10511377" type="rss" htmlUrl="https://www.sciencedirect.com/journal/journal-of-housing-economics" title="ScienceDirect Publication: Journal of Housing Economics" />
+      <outline xmlUrl="https://www.tandfonline.com/feed/rss/rjrh20" text="Journal of Housing Research" title="Journal of Housing Research" type="rss" htmlUrl="https://www.tandfonline.com/loi/rjrh20?af=R" />
+      <outline text="Housing Studies" type="rss" htmlUrl="https://www.tandfonline.com/loi/chos20?af=R" title="Housing Studies" xmlUrl="https://www.tandfonline.com/feed/rss/chos20" />
+      <outline title="Cornell Real Estate Review" type="rss" htmlUrl="https://blog.realestate.cornell.edu" xmlUrl="https://blog.realestate.cornell.edu/feed/rss" text="Cornell Real Estate Review" />
+      <outline text="ScienceDirect Publication: Journal of Urban Economics" title="ScienceDirect Publication: Journal of Urban Economics" type="rss" htmlUrl="https://www.sciencedirect.com/journal/journal-of-urban-economics" xmlUrl="https://rss.sciencedirect.com/publication/science/00941190" />
+      <outline text="ScienceDirect Publication: Cities" htmlUrl="https://www.sciencedirect.com/journal/cities" xmlUrl="https://rss.sciencedirect.com/publication/science/02642751" type="rss" title="ScienceDirect Publication: Cities" />
+      <outline text="NBER New Working Papers" title="NBER New Working Papers" type="rss" xmlUrl="https://www.nber.org/rss/new.xml" htmlUrl="https://www.nber.org" />
+    </outline>
+    <outline text="Twitter" title="Twitter">
+      <outline type="rss" htmlUrl="https://x.com/i/lists/1663911929352470530" text="Twitter List: @AzizSunderji/Real Estate / X" xmlUrl="https://rss.app/feeds/RvuauwvTPgMS5mTW.xml" title="Twitter List: @AzizSunderji/Real Estate / X" />
+    </outline>
+  </body>
 </opml>
