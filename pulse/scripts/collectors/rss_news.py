@@ -76,14 +76,9 @@ def collect(
                 if not link or link in seen_urls:
                     continue
 
-                # Decode Google News redirect URLs to actual article URLs
-                if "news.google.com" in link and _decode_gnews_url:
-                    try:
-                        result = _decode_gnews_url(link)
-                        if result.get("status") and result.get("decoded_url"):
-                            link = result["decoded_url"]
-                    except Exception:
-                        pass  # Keep the original URL if decoding fails
+                # NOTE: Google News redirect URLs are kept as-is during collection
+                # for speed. Decoding each URL adds ~1s per item and caused timeouts.
+                # The redirect URLs still work for dedup and classification.
 
                 if link in seen_urls:
                     continue
