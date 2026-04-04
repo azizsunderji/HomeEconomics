@@ -250,14 +250,14 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
 
         html += _spacer(10)
 
-    # ── HEADLINES (grouped by source, ranked by relevance) ──
+    # ── HEADLINES (grouped by source, all items from OPML) ──
     if headlines:
-        # Sort by relevance descending within each source group
         from collections import defaultdict as _defaultdict
-        sorted_headlines = sorted(headlines[:50], key=lambda x: -(x.get("relevance") or 0))
         grouped_headlines = _defaultdict(list)
-        for item in sorted_headlines:
+        for item in headlines:
             grouped_headlines[item.get("source", "News")].append(item)
+        # Sort groups alphabetically by source name
+        grouped_headlines = dict(sorted(grouped_headlines.items()))
 
         html += _section_heading(f"Headlines ({len(headlines)})")
         html += _spacer(10)
