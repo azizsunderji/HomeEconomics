@@ -386,11 +386,52 @@ TWITTER_ACCOUNTS = [
     "YIMBYLAND", "ZouhairABH",
     # Individual voices requested
     "ezraklein", "jabornesworth",
+    # VIP accounts (also in TWITTER_VIP_ACCOUNTS)
+    "phfloor",
+    "scottlincicome",
+    "aarmlovi",
+    "michael_wiebe",
+    "kaerdmann",
+    "mnolangray",
+    "jayparsons",
+    "mikefellman",
+    "AlecStapp",
+    "josephpolitano",
+    "pyradius",
+    "TheStalwart",
+    "ConorSen",
+    "redfin",
+    "producercities",
 ]
 
 TWITTER_MIN_LIKES = 5    # Low threshold — these are curated voices, not keyword search
 TWITTER_MAX_PER_QUERY = 60  # Per batch; more results = better coverage of quiet accounts
 TWITTER_DAILY_BUDGET_CENTS = 400  # $4/day max Apify spend (6 batches + sweep × $0.16 × 2 runs/day)
+
+# VIP Twitter accounts: ALL tweets from these accounts in the last 24h are included
+# in the Twitter roundup, regardless of engagement score or relevance.
+TWITTER_VIP_ACCOUNTS = [
+    "arpitrage",       # Arpit Gupta — housing economist
+    "emollick",        # Ethan Mollick — AI + work
+    "jasonfurman",     # Jason Furman — macro/housing/policy
+    "cremieuxrecueil", # Cremieux — data/demographics
+    "phfloor",         # Pierre — housing/real estate
+    "trq212",          # Thariq — Claude/Anthropic
+    "scottlincicome",  # Scott Lincicome — trade/econ/housing
+    "aarmlovi",         # Alex Armlovich — housing
+    "michael_wiebe",    # Michael Wiebe
+    "kaerdmann",        # Kevin Erdmann — housing
+    "mnolangray",       # M Nolan Gray — housing/zoning
+    "jayparsons",       # Jay Parsons — housing/multifamily
+    "mikefellman",      # Mike Fellman — housing
+    "AlecStapp",        # Alec Stapp — tech/housing policy
+    "josephpolitano",   # Joseph Politano — economics
+    "pyradius",          # pyradius
+    "TheStalwart",      # Joe Weisenthal
+    "ConorSen",         # Conor Sen — housing/macro
+    "redfin",           # Redfin — housing data
+    "producercities",   # Producer Cities
+]
 
 # ── Gmail configuration ──────────────────────────────────────────────────────
 GMAIL_SENDER_WHITELIST = []  # No whitelist — let Haiku classify everything in the inbox

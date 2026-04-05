@@ -478,7 +478,16 @@ Return a JSON object:
 
 ## Rules
 
-1. INTELLECTUAL CONVERSATION FIRST. What are economists and housing analysts debating? A Twitter exchange between Arpit Gupta and Jason Furman about whether tariffs will push mortgage rates up is the gold standard. Lead with the smart conversation.
+1. TOPIC PRIORITIES (in order of importance to the reader):
+   a. HOUSING: market dynamics, prices, inventory, construction, zoning, development, urbanism, mortgage rates as they affect housing. This is the #1 priority.
+   b. AI & TECHNOLOGY: how AI affects work, real estate, cities, and business.
+   c. DEMOGRAPHICS & GEOGRAPHY: migration, household formation, population trends — especially as they relate to housing.
+   d. GENERAL BUSINESS: interesting business stories, startups, industry trends.
+   e. POLITICS: political developments, especially housing policy.
+
+   DEPRIORITIZE: Fed policy for its own sake, jobs reports, inflation data, stock market commentary — UNLESS they directly connect to housing. A theme about "the March jobs report was weak" is low priority. A theme about "weak jobs data could push mortgage rates down, reopening the housing market" is high priority.
+
+   Do NOT lead with pure macro/Fed/inflation themes. Lead with housing.
 
 2. QUOTE REAL PEOPLE BY NAME. "Claudia Sahm argues the labor market is weakening faster than the Fed acknowledges" is useful. "Users are panicking" is not. Focus on substantive discussions, not populist venting.
 
@@ -719,6 +728,33 @@ Generate the daily briefing JSON. LEAD WITH CONVERSATION — what are people deb
             if len(deduped) < len(roundup):
                 logger.info(f"Twitter roundup deduped: {len(roundup)} → {len(deduped)} entries")
             briefing["twitter_roundup"] = deduped
+
+        # 1b. Ensure VIP accounts have ALL their tweets in the roundup
+        try:
+            from config import TWITTER_VIP_ACCOUNTS
+            vip_handles = {f"@{h.lower()}" for h in TWITTER_VIP_ACCOUNTS}
+            roundup_urls = {e.get("url", "") for e in briefing.get("twitter_roundup", [])}
+            vip_added = 0
+            for item in relevant_items:
+                if item.get("source") != "twitter":
+                    continue
+                author = (item.get("author") or "").lower().strip()
+                if author not in vip_handles:
+                    continue
+                if item.get("url", "") in roundup_urls:
+                    continue
+                body = (item.get("body") or "")[:150]
+                briefing.setdefault("twitter_roundup", []).append({
+                    "author": item.get("author", "").strip(),
+                    "take": body if body else item.get("title", "")[:150],
+                    "url": item.get("url", ""),
+                })
+                roundup_urls.add(item.get("url", ""))
+                vip_added += 1
+            if vip_added:
+                logger.info(f"VIP tweets added to roundup: {vip_added}")
+        except ImportError:
+            pass
 
         # 2. Supplement twitter_roundup if Sonnet returned fewer than 20
         roundup_authors = {(e.get("author") or "").lower().strip() for e in briefing.get("twitter_roundup", [])}
