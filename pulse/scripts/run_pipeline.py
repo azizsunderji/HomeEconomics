@@ -169,7 +169,7 @@ def cmd_daily(args):
 
         opml_feeds = parse_opml(DEFAULT_OPML_PATH)
         journal_feed_names = {f["title"] for f in opml_feeds if f.get("priority") == "journal"}
-        headline_feed_names = {f["title"] for f in opml_feeds if f.get("folder") == "HighPriority"}
+        headline_feed_names = {f["title"] for f in opml_feeds if f.get("folder") in ("HighPriority", "Housing Reporters")}
 
         logger.info(f"OPML: {len(headline_feed_names)} headline feeds, {len(journal_feed_names)} journal feeds")
 

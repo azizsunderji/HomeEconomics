@@ -428,7 +428,6 @@ TWITTER_ACCOUNTS = [
     "pyradius",
     "TheStalwart",
     "ConorSen",
-    "redfin",
     "producercities",
 ]
 
@@ -459,7 +458,6 @@ TWITTER_VIP_ACCOUNTS = [
     "pyradius",          # pyradius
     "TheStalwart",      # Joe Weisenthal
     "ConorSen",         # Conor Sen — housing/macro
-    "redfin",           # Redfin — housing data
     "producercities",   # Producer Cities
 ]
 

@@ -70,7 +70,6 @@
       <outline title="Eye On Housing" xmlUrl="https://eyeonhousing.org/feed/rss" text="Eye On Housing" type="rss" htmlUrl="https://eyeonhousing.org" />
       <outline title="Economist: Graphic detail" text="Economist: Graphic detail" xmlUrl="https://www.economist.com/graphic-detail/rss.xml" htmlUrl="https://www.economist.com/graphic-detail" type="rss" />
       <outline text="Economist: Game theory" htmlUrl="https://www.economist.com/game-theory" type="rss" xmlUrl="https://www.economist.com/game-theory/rss.xml" title="Economist: Game theory" />
-      <outline type="rss" htmlUrl="https://www.wsj.com/real-estate" text="WSJ Real Estate" title="WSJ Real Estate" xmlUrl="https://rss.app/feeds/coPfwn4ipqsFw9dR.xml" />
       <outline type="rss" htmlUrl="https://www.theverge.com" xmlUrl="https://www.theverge.com/rss/index.xml" text="The Verge" title="The Verge" />
       <outline text="Fast Company - Lance Lambert" type="rss" title="Fast Company - Lance Lambert" htmlUrl="https://www.fastcompany.com" xmlUrl="https://fastcompany.com/user/lancelambert/rss" />
       <outline xmlUrl="https://www.economist.com/leaders/rss.xml" text="Economist: Leaders" htmlUrl="https://www.economist.com/leaders" title="Economist: Leaders" type="rss" />
@@ -106,7 +105,6 @@
       <outline type="rss" htmlUrl="https://www.economist.com/gulliver" title="Economist: Gulliver" xmlUrl="https://www.economist.com/gulliver/rss.xml" text="Economist: Gulliver" />
       <outline xmlUrl="https://rss.app/feeds/dyOmestbKGqbPYfU.xml" text="Housing policy in America" type="rss" htmlUrl="https://www.vox.com/housing" title="Housing policy in America" />
       <outline xmlUrl="https://www.latimes.com/business/realestate/rss2.0.xml" title="LA Times Real Estate" htmlUrl="https://www.latimes.com" type="rss" text="LA Times Real Estate" />
-      <outline text="WSJ Real Estate" xmlUrl="https://rss.app/feeds/D2sIzHq8eVxkkyhj.xml" title="WSJ Real Estate" type="rss" htmlUrl="https://www.wsj.com/real-estate" />
       <outline title="RealPage, Inc. | LinkedIn" htmlUrl="https://www.linkedin.com/company/realpage/" text="RealPage, Inc. | LinkedIn" type="rss" xmlUrl="https://rss.app/feeds/P689RzBUbeuINsDv.xml" />
       <outline text="Multifamily Talks" xmlUrl="https://www.realpage.com/podcasts-rss/apple/multifamily-talks/" type="rss" htmlUrl="https://www.realpage.com/podcasts/" title="Multifamily Talks" />
       <outline title="John Burns Research and Consulting | LinkedIn" text="John Burns Research and Consulting | LinkedIn" xmlUrl="https://rss.app/feeds/94he2j6jTPUNzUX7.xml" type="rss" htmlUrl="https://www.linkedin.com/company/john-burns-research-and-consulting/" />
@@ -158,6 +156,36 @@
     </outline>
     <outline text="Twitter" title="Twitter">
       <outline type="rss" htmlUrl="https://x.com/i/lists/1663911929352470530" text="Twitter List: @AzizSunderji/Real Estate / X" xmlUrl="https://rss.app/feeds/RvuauwvTPgMS5mTW.xml" title="Twitter List: @AzizSunderji/Real Estate / X" />
+    </outline>
+    <outline text="Housing Reporters" title="Housing Reporters">
+      <outline text="Alert: Craig Karmin Wsj" title="Alert: Craig Karmin Wsj" type="rss" xmlUrl="https://www.google.com/alerts/feeds/09511781838648137995/3763469762738633076" />
+      <outline text="Alert: Chen Zhao Redfin" title="Alert: Chen Zhao Redfin" type="rss" xmlUrl="https://www.google.com/alerts/feeds/09511781838648137995/2148550949003206044" />
+      <outline text="Alert: J Levin Bloomberg News" title="Alert: J Levin Bloomberg News" type="rss" xmlUrl="https://www.google.com/alerts/feeds/09511781838648137995/9215470301858357563" />
+      <outline text="Alert: Capelouto Semafor" title="Alert: Capelouto Semafor" type="rss" xmlUrl="https://www.google.com/alerts/feeds/09511781838648137995/13462683825348882549" />
+      <outline text="Alert: Aarthi Marketwatch" title="Alert: Aarthi Marketwatch" type="rss" xmlUrl="https://www.google.com/alerts/feeds/09511781838648137995/13075784922883114582" />
+      <outline text="Alert: Andrew Khouri La Times" title="Alert: Andrew Khouri La Times" type="rss" xmlUrl="https://www.google.com/alerts/feeds/09511781838648137995/14083028242507203386" />
+      <outline text="Alert: Conor Dougherty Nyt" title="Alert: Conor Dougherty Nyt" type="rss" xmlUrl="https://www.google.com/alerts/feeds/09511781838648137995/14079004634560856550" />
+      <outline text="Alert: Deborah Acosta Wsj" title="Alert: Deborah Acosta Wsj" type="rss" xmlUrl="https://www.google.com/alerts/feeds/09511781838648137995/3958812282640628998" />
+      <outline text="Alert: Eb Solomont Wsj" title="Alert: Eb Solomont Wsj" type="rss" xmlUrl="https://www.google.com/alerts/feeds/09511781838648137995/8844174890153548485" />
+      <outline text="Alert: Emily Badger Nyt" title="Alert: Emily Badger Nyt" type="rss" xmlUrl="https://www.google.com/alerts/feeds/09511781838648137995/17425167206251363322" />
+      <outline text="Alert: Groover Seattle Times" title="Alert: Groover Seattle Times" type="rss" xmlUrl="https://www.google.com/alerts/feeds/09511781838648137995/11133245277966036107" />
+      <outline text="Alert: Joel Jacobs Propublica" title="Alert: Joel Jacobs Propublica" type="rss" xmlUrl="https://www.google.com/alerts/feeds/09511781838648137995/4666625377800459884" />
+      <outline text="Alert: Katherine Clarke Wsj" title="Alert: Katherine Clarke Wsj" type="rss" xmlUrl="https://www.google.com/alerts/feeds/09511781838648137995/7443761690274658646" />
+      <outline text="Alert: Kate King Wsj" title="Alert: Kate King Wsj" type="rss" xmlUrl="https://www.google.com/alerts/feeds/09511781838648137995/4582839839439549545" />
+      <outline text="Alert: Konrad Putzier Wsj" title="Alert: Konrad Putzier Wsj" type="rss" xmlUrl="https://www.google.com/alerts/feeds/09511781838648137995/4284704831847823123" />
+      <outline text="Alert: Mihir Zaveri New York Times" title="Alert: Mihir Zaveri New York Times" type="rss" xmlUrl="https://www.google.com/alerts/feeds/09511781838648137995/11801590678338260802" />
+      <outline text="Alert: M Vega The Star" title="Alert: M Vega The Star" type="rss" xmlUrl="https://www.google.com/alerts/feeds/09511781838648137995/17341386283226208214" />
+      <outline text="Alert: Rachel Siegel Wapo" title="Alert: Rachel Siegel Wapo" type="rss" xmlUrl="https://www.google.com/alerts/feeds/09511781838648137995/17763964934688264358" />
+      <outline text="Alert: Rebecca Picciotto Wsj" title="Alert: Rebecca Picciotto Wsj" type="rss" xmlUrl="https://www.google.com/alerts/feeds/09511781838648137995/12096830485813956261" />
+      <outline text="Alert: Rebecca Schuetz Houston Chronicle" title="Alert: Rebecca Schuetz Houston Chronicle" type="rss" xmlUrl="https://www.google.com/alerts/feeds/09511781838648137995/7719351790860890308" />
+      <outline text="Alert: Roland Li Sf Chronicle" title="Alert: Roland Li Sf Chronicle" type="rss" xmlUrl="https://www.google.com/alerts/feeds/09511781838648137995/8516430811443707906" />
+      <outline text="Alert: Ronda Kaysen Nyt" title="Alert: Ronda Kaysen Nyt" type="rss" xmlUrl="https://www.google.com/alerts/feeds/09511781838648137995/9932018679138375711" />
+      <outline text="Alert: Rachelle Younglai Globe And Mail" title="Alert: Rachelle Younglai Globe And Mail" type="rss" xmlUrl="https://www.google.com/alerts/feeds/09511781838648137995/6311705506319261978" />
+      <outline text="Alert: Sami Sparber Axios" title="Alert: Sami Sparber Axios" type="rss" xmlUrl="https://www.google.com/alerts/feeds/09511781838648137995/7638044656958937081" />
+      <outline text="Alert: Sheridan Wall The Real Deal" title="Alert: Sheridan Wall The Real Deal" type="rss" xmlUrl="https://www.google.com/alerts/feeds/09511781838648137995/9228385291740998566" />
+      <outline text="Alert: Stefanos Chen Nyt" title="Alert: Stefanos Chen Nyt" type="rss" xmlUrl="https://www.google.com/alerts/feeds/09511781838648137995/9228385291740995882" />
+      <outline text="Alert: Veronica Dagher Wsj" title="Alert: Veronica Dagher Wsj" type="rss" xmlUrl="https://www.google.com/alerts/feeds/09511781838648137995/17565110720223042283" />
+      <outline text="Alert: Nicole Friedman Wsj" title="Alert: Nicole Friedman Wsj" type="rss" xmlUrl="https://www.google.com/alerts/feeds/09511781838648137995/18374370813615612484" />
     </outline>
   </body>
 </opml>
