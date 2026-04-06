@@ -281,6 +281,34 @@ COMPETITOR_SUBSTACKS = [
     ("Tracy Alloway", "https://tracyalloway.substack.com/feed"),
     ("Ernie Tedeschi", "https://ernietedeschi.substack.com/feed"),
     ("Jason Furman", "https://jasonfurman.substack.com/feed"),
+    ("Ethan Mollick - One Useful Thing", "https://www.oneusefulthing.org/feed"),
+    # Housing/Urbanism
+    ("Jerusalem Demsas", "https://www.theatlantic.com/feed/author/jerusalem-demsas/"),
+    # AI
+    ("Ben Thompson - Stratechery", "https://stratechery.com/feed"),
+    ("Zvi Mowshowitz", "https://thezvi.substack.com/feed"),
+    ("Simon Willison", "https://simonwillison.net/atom/everything/"),
+    # Economics/Demographics
+    ("Matt Clancy - New Things Under the Sun", "https://mattsclancy.substack.com/feed"),
+    ("Lyman Stone", "https://lymanstone.substack.com/feed"),
+    ("Derek Thompson", "https://derekthompson.substack.com/feed"),
+    ("Ezra Klein", "https://www.nytimes.com/svc/collections/v1/publish/www.nytimes.com/column/ezra-klein/rss.xml"),
+    ("Lenny Rachitsky", "https://www.lennysnewsletter.com/feed"),
+    ("Tangle", "https://www.readtangle.com/feed"),
+    ("Paul Goldsmith-Pinkham", "https://paulgp.substack.com/feed"),
+    ("Heather Cox Richardson", "https://heathercoxrichardson.substack.com/feed"),
+    ("Cameron Murray", "https://fresheconomicthinking.substack.com/feed"),
+    ("Not Boring", "https://www.notboring.co/feed"),
+    ("David Pierce", "https://www.theverge.com/authors/david-pierce/rss"),
+    ("Ryan Avent", "https://ryanavent.substack.com/feed"),
+    ("Mike DelPrete", "https://mikedp.substack.com/feed"),
+    ("Alexander Kustov", "https://alexanderkustov.substack.com/feed"),
+    ("Sarah O'Connor - FT", "https://www.ft.com/sarah-o-connor?format=rss"),
+    ("Shadow Price Macro (Robin Brooks)", "https://robinjbrooks.substack.com/feed"),
+    ("Maximum New York", "https://maximumnewyork.substack.com/feed"),
+    ("Nominal News", "https://nominalnews.substack.com/feed"),
+    ("L.A. Reported", "https://lareported.substack.com/feed"),
+    ("Hugh Clarke - A Thread of Order", "https://hughclarke.substack.com/feed"),
 ]
 
 # ── Bluesky configuration ────────────────────────────────────────────────────
@@ -419,6 +447,8 @@ TWITTER_VIP_ACCOUNTS = [
     "trq212",          # Thariq — Claude/Anthropic
     "scottlincicome",  # Scott Lincicome — trade/econ/housing
     "aarmlovi",         # Alex Armlovich — housing
+    "lymanstoneky",     # Lyman Stone — demographics
+    "greg_ip",          # Greg Ip — WSJ economics
     "michael_wiebe",    # Michael Wiebe
     "kaerdmann",        # Kevin Erdmann — housing
     "mnolangray",       # M Nolan Gray — housing/zoning
@@ -518,6 +548,10 @@ INSTITUTIONAL_SENDER_ALLOWLIST = [
     "nber",
     "census.gov", "bls.gov",
     "brookings",
+    "atlantafed", "atlanta fed",
+    "prakash loungani",
+    "the argument",
+    "crain",
 ]
 
 JOURNAL_FEED_PATTERNS = [
