@@ -100,12 +100,6 @@ def extract_from_url(url: str) -> dict:
             cleaned.append(line)
         text = '\n'.join(cleaned).strip()
 
-        # Trim to reasonable length for TTS (~60 min max at ~150 wpm)
-        max_words = 12000
-        words = text.split()
-        if len(words) > max_words:
-            text = ' '.join(words[:max_words]) + "\n\n[Article truncated for audio.]"
-
         return {"title": title, "text": text, "url": url}
 
     except Exception as e:

@@ -235,6 +235,114 @@ def _extract_via_chrome(url: str) -> dict:
         return {"title": "", "text": "", "url": url, "error": str(e)}
 
 
+def _extract_via_archive(url: str) -> dict:
+    """Last-resort extraction via archive.ph cached version.
+
+    Uses Chrome CDP to search archive.ph (which blocks automated HTTP requests)
+    and then loads the cached page to extract the full article text.
+    Only used when both HTTP and Chrome CDP direct extraction fail.
+    """
+    try:
+        import json, time
+        import httpx
+        import websocket
+
+        CDP = "http://localhost:9222"
+
+        # Check if Chrome debug is available
+        try:
+            httpx.get(f"{CDP}/json/version", timeout=3)
+        except Exception:
+            logger.warning("  Chrome debug port not available for archive.ph")
+            return {"title": "", "text": "", "url": url, "error": "Chrome debug not running"}
+
+        # Step 1: Search archive.ph for cached versions of this URL
+        search_url = f"https://archive.ph/{url}"
+        logger.info(f"  Searching archive.ph via Chrome: {search_url}")
+
+        resp = httpx.put(f"{CDP}/json/new?{search_url}", timeout=15)
+        tab = resp.json()
+        ws_url = tab.get("webSocketDebuggerUrl", "")
+        tab_id = tab.get("id", "")
+
+        if not ws_url:
+            return {"title": "", "text": "", "url": url, "error": "No WebSocket URL from CDP"}
+
+        time.sleep(12)
+
+        # Find the link to the newest archived version
+        ws = websocket.create_connection(ws_url)
+        cmd = {"id": 1, "method": "Runtime.evaluate", "params": {
+            "expression": """(function(){
+                var links = document.querySelectorAll('a[href*="archive.ph/"]');
+                for (var i = 0; i < links.length; i++) {
+                    var href = links[i].href;
+                    // Match archive.ph/XXXXX (short hash links to archived pages)
+                    if (href.match(/archive\\.ph\\/[A-Za-z0-9]{4,6}$/)) {
+                        return href;
+                    }
+                }
+                return '';
+            })()""",
+            "returnByValue": True
+        }}
+        ws.send(json.dumps(cmd))
+        result = json.loads(ws.recv())
+        archive_url = result.get("result", {}).get("result", {}).get("value", "")
+        ws.close()
+
+        # Close search tab
+        httpx.get(f"{CDP}/json/close/{tab_id}", timeout=5)
+
+        if not archive_url:
+            logger.info("  No archived version found on archive.ph")
+            return {"title": "", "text": "", "url": url, "error": "No archived version found"}
+
+        logger.info(f"  Found archived version: {archive_url}")
+
+        # Step 2: Load the archived page and extract article text
+        time.sleep(2)
+        resp2 = httpx.put(f"{CDP}/json/new?{archive_url}", timeout=15)
+        tab2 = resp2.json()
+        ws_url2 = tab2.get("webSocketDebuggerUrl", "")
+        tab_id2 = tab2.get("id", "")
+
+        if not ws_url2:
+            return {"title": "", "text": "", "url": url, "error": "No WebSocket URL for archive page"}
+
+        time.sleep(12)
+
+        ws2 = websocket.create_connection(ws_url2)
+        cmd2 = {"id": 1, "method": "Runtime.evaluate", "params": {
+            "expression": """(function(){
+                var a = document.querySelector('article') || document.querySelector('[role="main"]');
+                var title = document.title;
+                var text = a ? a.innerText : document.body.innerText;
+                return JSON.stringify({title: title, text: text});
+            })()""",
+            "returnByValue": True
+        }}
+        ws2.send(json.dumps(cmd2))
+        result2 = json.loads(ws2.recv())
+        raw = result2.get("result", {}).get("result", {}).get("value", "{}")
+        data = json.loads(raw)
+        ws2.close()
+
+        httpx.get(f"{CDP}/json/close/{tab_id2}", timeout=5)
+
+        title = data.get("title", "")
+        text = data.get("text", "")
+
+        if text and len(text.split()) > 50:
+            logger.info(f"  archive.ph extraction succeeded: {len(text.split())} words")
+            return {"title": title, "text": text, "url": url}
+        return {"title": "", "text": "", "url": url, "error": "archive.ph returned too little text"}
+
+    except Exception as e:
+        logger.warning(f"  archive.ph extraction failed: {e}")
+        return {"title": "", "text": "", "url": url, "error": str(e)}
+
+
 def process_all():
     """Process all pending queue items."""
     pending = get_pending()
@@ -260,17 +368,28 @@ def process_all():
             else:
                 # Extract text from URL
                 extracted = extract_from_url(url)
-                if extracted.get("error") or not extracted.get("text"):
-                    # Fallback: try Chrome browser extraction for paywalled sites
-                    logger.info(f"  HTTP extraction failed, trying Chrome...")
+                # Minimum word count to consider extraction successful
+                MIN_WORDS = 300
+
+                if extracted.get("error") or len(extracted.get("text", "").split()) < MIN_WORDS:
+                    # Fallback 1: try Chrome browser extraction for paywalled sites
+                    logger.info(f"  HTTP extraction insufficient ({len(extracted.get('text', '').split())} words), trying Chrome...")
                     chrome_text = _extract_via_chrome(url)
-                    if chrome_text and len(chrome_text.get("text", "")) > 100:
+                    if chrome_text and len(chrome_text.get("text", "").split()) >= MIN_WORDS:
                         extracted = chrome_text
                         logger.info(f"  Chrome extraction succeeded: {len(extracted['text'].split())} words")
                     else:
-                        mark_error(item_id, extracted.get("error", "No text extracted"))
-                        logger.warning(f"  Extraction failed: {extracted.get('error', 'empty')}")
-                        continue
+                        # Fallback 2: try archive.ph for cached version
+                        chrome_words = len(chrome_text.get("text", "").split()) if chrome_text else 0
+                        logger.info(f"  Chrome extraction insufficient ({chrome_words} words), trying archive.ph...")
+                        archive_text = _extract_via_archive(url)
+                        if archive_text and len(archive_text.get("text", "").split()) >= MIN_WORDS:
+                            extracted = archive_text
+                            logger.info(f"  archive.ph succeeded: {len(extracted['text'].split())} words")
+                        else:
+                            mark_error(item_id, extracted.get("error", "No text extracted"))
+                            logger.warning(f"  All extraction methods failed: {extracted.get('error', 'empty')}")
+                            continue
                 title = extracted["title"] or title
                 text = extracted["text"]
                 logger.info(f"  Extracted: '{title[:50]}' ({len(text.split())} words)")

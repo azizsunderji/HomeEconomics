@@ -255,7 +255,15 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
         from collections import defaultdict as _defaultdict
         grouped_headlines = _defaultdict(list)
         for item in headlines:
-            grouped_headlines[item.get("source", "News")].append(item)
+            source = item.get("source", "News")
+            # Consolidate all Google Alert feeds under a single "Alerts" group
+            # and prefix the headline with the reporter's name
+            if source.startswith("Alert: "):
+                reporter_name = source[len("Alert: "):]
+                item = dict(item)  # copy to avoid mutating original
+                item["headline"] = f"{reporter_name}: {item.get('headline', '')}"
+                source = "Alerts"
+            grouped_headlines[source].append(item)
         # Sort groups alphabetically by source name
         grouped_headlines = dict(sorted(grouped_headlines.items()))
 
