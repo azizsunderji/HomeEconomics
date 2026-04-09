@@ -157,6 +157,7 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
     starred_emails = briefing.get("_starred_emails", [])
     press_mentions = briefing.get("_press_mentions", [])
     twitter_roundup = briefing.get("twitter_roundup", [])
+    ai_roundup = briefing.get("_ai_roundup", [])
     collection_errors = briefing.get("_collection_errors", [])
     apify_spend_cents = briefing.get("_apify_spend_cents", 0)
 
@@ -316,36 +317,56 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
 
         html += _spacer(20)
 
-    # ── TWITTER ROUNDUP ──
-    if twitter_roundup:
-        html += _section_heading("Twitter Roundup")
+    # ── AI ROUNDUP ──
+    if ai_roundup:
+        html += _section_heading(f"AI Roundup ({len(ai_roundup)})")
         html += _spacer(14)
 
-        # Group tweets by author
-        from collections import OrderedDict as _OrderedDict
-        tw_by_author = _OrderedDict()
-        for voice in twitter_roundup[:40]:
+        for voice in ai_roundup:
             author = voice.get("author", "")
-            tw_by_author.setdefault(author, []).append(voice)
+            summary = voice.get("summary", voice.get("take", ""))
+            tweet_count = voice.get("tweet_count", 1)
 
-        for author_name, tweets in tw_by_author.items():
-            # Author header
-            first_url = tweets[0].get("url", "")
-            author_esc = _esc(author_name)
-            author_html = f'<a href="{first_url}" target="_blank" style="color: #0BB4FF; text-decoration: none; font-weight: 600;">{author_esc}</a>' if first_url else f'<span style="font-weight: 600;">{author_esc}</span>'
+            author_esc = _esc(author)
+            handle = author.lstrip("@")
+            author_html = f'<a href="https://x.com/{handle}" target="_blank" style="color: #0BB4FF; text-decoration: none; font-weight: 600;">{author_esc}</a>'
+            count_html = f' <span style="color: #aaa; font-size: 12px;">({tweet_count} tweets)</span>' if tweet_count > 1 else ''
+
+            summary_html = _md_links(summary)
 
             html += f"""<table width="100%" cellpadding="0" cellspacing="0"><tr>
-<td style="font-size: 15px; padding: 8px 0 2px 0;">{author_html}</td>
-</tr></table>
+<td style="padding: 8px 0 10px 0; border-bottom: 1px solid #f0f0f0;">
+  <div>{author_html}{count_html}</div>
+  <div style="font-size: 15px; color: #555; line-height: 1.5; margin-top: 4px;">{summary_html}</div>
+</td></tr></table>
 """
-            for tweet in tweets:
-                url = tweet.get("url", "")
-                take = _esc(tweet.get("take", ""))
-                take_link = f'<a href="{url}" target="_blank" style="color: #555; text-decoration: none;">{take}</a>' if url else f'<span style="color: #555;">{take}</span>'
+        html += _spacer(24)
 
-                html += f"""<table width="100%" cellpadding="0" cellspacing="0"><tr>
-<td style="font-size: 15px; padding: 2px 0 2px 12px; border-bottom: 1px solid #f0f0f0; line-height: 1.45;">
-  {take_link}
+    # ── TWITTER ROUNDUP ──
+    if twitter_roundup:
+        html += _section_heading(f"Twitter Roundup ({len(twitter_roundup)})")
+        html += _spacer(14)
+
+        for voice in twitter_roundup[:30]:
+            author = voice.get("author", "")
+            # New format: paragraph summary with inline markdown links
+            summary = voice.get("summary", voice.get("take", ""))
+            tweet_count = voice.get("tweet_count", 1)
+            url = voice.get("url", "")
+
+            author_esc = _esc(author)
+            # Link author name to twitter profile
+            handle = author.lstrip("@")
+            author_html = f'<a href="https://x.com/{handle}" target="_blank" style="color: #0BB4FF; text-decoration: none; font-weight: 600;">{author_esc}</a>'
+            count_html = f' <span style="color: #aaa; font-size: 12px;">({tweet_count} tweets)</span>' if tweet_count > 1 else ''
+
+            # Convert markdown links in summary to HTML
+            summary_html = _md_links(summary)
+
+            html += f"""<table width="100%" cellpadding="0" cellspacing="0"><tr>
+<td style="padding: 8px 0 10px 0; border-bottom: 1px solid #f0f0f0;">
+  <div>{author_html}{count_html}</div>
+  <div style="font-size: 15px; color: #555; line-height: 1.5; margin-top: 4px;">{summary_html}</div>
 </td></tr></table>
 """
         html += _spacer(24)

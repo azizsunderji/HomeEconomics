@@ -398,8 +398,37 @@ def process_all():
             cleaned = _clean_and_extract(text, title_hint=title)
             title = cleaned.get("title") or title
             author_from_text = cleaned.get("author", "")
-            if cleaned.get("publication"):
-                author_from_text = f"{author_from_text} from {cleaned['publication']}" if author_from_text else cleaned["publication"]
+            publication = cleaned.get("publication", "")
+
+            # Infer publication from URL if Haiku couldn't find it
+            if not publication and url:
+                from urllib.parse import urlparse
+                domain = urlparse(url).netloc.lower().replace("www.", "")
+                DOMAIN_TO_PUB = {
+                    "ft.com": "The Financial Times",
+                    "nytimes.com": "The New York Times",
+                    "wsj.com": "The Wall Street Journal",
+                    "economist.com": "The Economist",
+                    "newyorker.com": "The New Yorker",
+                    "washingtonpost.com": "The Washington Post",
+                    "bloomberg.com": "Bloomberg",
+                    "theatlantic.com": "The Atlantic",
+                    "vox.com": "Vox",
+                    "theverge.com": "The Verge",
+                    "wired.com": "Wired",
+                    "reuters.com": "Reuters",
+                    "theguardian.com": "The Guardian",
+                    "latimes.com": "The Los Angeles Times",
+                    "politico.com": "Politico",
+                    "axios.com": "Axios",
+                    "semafor.com": "Semafor",
+                    "paulgraham.com": "Paul Graham",
+                    "archive.ph": "",  # don't attribute to archive
+                }
+                publication = DOMAIN_TO_PUB.get(domain, "")
+
+            if publication:
+                author_from_text = f"{author_from_text} from {publication}" if author_from_text else publication
             body_text_raw = cleaned.get("body", text)
 
             # Generate a spoken intro with Claude

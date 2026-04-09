@@ -398,9 +398,8 @@ def _validate_briefing_urls(briefing: dict, conn: sqlite3.Connection) -> dict:
     for i, take in enumerate(briefing.get("substacker_takes", [])):
         if "url" in take:
             take["url"] = validate_url(take["url"], f"substacker_takes[{i}]")
-    for i, item in enumerate(briefing.get("twitter_roundup", [])):
-        if "url" in item:
-            item["url"] = validate_url(item["url"], f"twitter_roundup[{i}]")
+    # twitter_roundup URLs are now inline markdown links in the summary field
+    # — no top-level URL to validate
 
     briefing["_url_audit"] = audit
     total = audit["verified"] + audit["corrected"] + audit["stripped"]
@@ -454,8 +453,8 @@ Return a JSON object:
   "twitter_roundup": [
     {
       "author": "@handle",
-      "take": "1-2 sentence summary of their specific point or argument",
-      "url": "tweet URL"
+      "summary": "2-4 sentence paragraph summarizing this account's activity over the last 24 hours. Cover all their substantive tweets/threads. Use inline markdown links like [argued that rates won't fall](tweet_url) for each tweet referenced. This should read as a mini-briefing on what this person has been saying.",
+      "tweet_count": 3
     }
   ],
 
@@ -507,14 +506,14 @@ Return a JSON object:
 
 11. SKIP IRRELEVANT NOISE. Do not feature: Nigerian/international housing stories, memes about landlords, generic "economy is rigged" venting, partisan political rants with no economic substance.
 
-11b. PER-PERSON CAP: No single person should appear in more than 2 conversation themes. If someone (e.g., Nick Timiraos) is involved in 4 different threads, pick the 2 most substantive and leave the rest. Spread the spotlight across different voices. The reader wants a diverse range of perspectives, not one person's feed.
+11b. PER-PERSON CAP: No single person should appear in more than 2 conversation themes. If someone is involved in 4 different threads, pick the 2 most substantive and leave the rest. Spread the spotlight across different voices. The reader wants a diverse range of perspectives, not one person's feed.
 
-12. TWITTER ROUNDUP: Feature 20-30 individual economist/analyst voices in the twitter_roundup section. This is a quick-scan section so the reader can see what specific people are saying. CRITICAL RULES:
-    a. Do NOT include any tweet or voice you already covered in conversation_themes. If @jasonfurman's thread was featured as a conversation theme, do NOT put him in the twitter roundup too. Use the roundup to surface DIFFERENT voices and takes that didn't make it into the themes.
-    b. Include a DIVERSE range of voices — aim for 20+ DIFFERENT handles. Do not over-index on any 2-3 accounts (e.g., do not feature the same person in multiple entries). Spread across different perspectives and expertise areas.
-    c. Each entry should name the author (@handle), summarize their specific take in 1-2 sentences, and include the tweet URL.
-    d. Prioritize: contrarian views, data-backed claims, novel arguments, and lesser-known voices the reader might not follow.
-    e. You can include more than one tweet per person if they made multiple substantive points on different topics.
+12. TWITTER ROUNDUP: Summarize each active account's 24-hour activity as a short paragraph. CRITICAL RULES:
+    a. Do NOT include any voice you already covered in conversation_themes.
+    b. ONE entry per account. The "summary" field should be a 2-4 sentence paragraph covering ALL their substantive tweets from the last 24h, with inline markdown links [text](url) to each individual tweet referenced.
+    c. Include tweet_count (number of substantive tweets summarized).
+    d. Aim for 15-25 different accounts. Prioritize accounts with multiple tweets or threads — single low-engagement tweets can be skipped.
+    e. Prioritize: contrarian views, data-backed claims, novel arguments, housing/AI/demographics focus.
 
 13. WRITING STYLE: Be direct and factual. NO AI slop. Avoid these patterns:
     - "People aren't arguing X; they're watching Y" — just state what they're arguing
@@ -715,76 +714,127 @@ Generate the daily briefing JSON. LEAD WITH CONVERSATION — what are people deb
 
         # === POST-PROCESSING: Fix common Sonnet omissions ===
 
-        # 1. Deduplicate twitter_roundup — one entry per author
+        # 1. Deduplicate twitter_roundup and split out AI Roundup accounts
+        try:
+            from config import AI_ROUNDUP_ACCOUNTS
+            ai_handles = {f"@{h.lower()}" for h in AI_ROUNDUP_ACCOUNTS}
+        except ImportError:
+            ai_handles = set()
+
         roundup = briefing.get("twitter_roundup", [])
         if roundup:
             seen_authors = set()
             deduped = []
+            ai_roundup = []
             for entry in roundup:
                 author = (entry.get("author") or "").lower().strip()
                 if author and author not in seen_authors:
                     seen_authors.add(author)
-                    deduped.append(entry)
+                    if author in ai_handles:
+                        ai_roundup.append(entry)
+                    else:
+                        deduped.append(entry)
+            briefing["_ai_roundup"] = ai_roundup
             if len(deduped) < len(roundup):
                 logger.info(f"Twitter roundup deduped: {len(roundup)} → {len(deduped)} entries")
             briefing["twitter_roundup"] = deduped
 
-        # 1b. Ensure VIP accounts have ALL their tweets in the roundup
+        # 1b. Ensure VIP accounts appear in roundup — group their tweets into summaries
         try:
             from config import TWITTER_VIP_ACCOUNTS
             vip_handles = {f"@{h.lower()}" for h in TWITTER_VIP_ACCOUNTS}
-            roundup_urls = {e.get("url", "") for e in briefing.get("twitter_roundup", [])}
-            vip_added = 0
+            roundup_authors = {(e.get("author") or "").lower().strip() for e in briefing.get("twitter_roundup", [])}
+
+            # Collect VIP tweets not already in roundup
+            vip_tweets_by_author = {}
             for item in relevant_items:
                 if item.get("source") != "twitter":
                     continue
                 author = (item.get("author") or "").lower().strip()
-                if author not in vip_handles:
+                if author not in vip_handles or author in roundup_authors:
                     continue
-                if item.get("url", "") in roundup_urls:
-                    continue
-                body = (item.get("body") or "")[:150]
-                briefing.setdefault("twitter_roundup", []).append({
-                    "author": item.get("author", "").strip(),
-                    "take": body if body else item.get("title", "")[:150],
-                    "url": item.get("url", ""),
-                })
-                roundup_urls.add(item.get("url", ""))
-                vip_added += 1
+                vip_tweets_by_author.setdefault(author, []).append(item)
+
+            vip_added = 0
+            ai_roundup_authors = {(e.get("author") or "").lower().strip() for e in briefing.get("_ai_roundup", [])}
+            for author_key, tweets in vip_tweets_by_author.items():
+                display_author = tweets[0].get("author", "").strip()
+                if not display_author.startswith("@"):
+                    display_author = f"@{display_author}"
+                # Build summary from tweet bodies with links
+                parts = []
+                for t in tweets[:5]:
+                    body = (t.get("body") or t.get("title", ""))[:150]
+                    url = t.get("url", "")
+                    if url and body:
+                        parts.append(f"[{body}]({url})")
+                    elif body:
+                        parts.append(body)
+                summary = ". ".join(parts) if parts else ""
+                if summary:
+                    entry = {
+                        "author": display_author,
+                        "summary": summary,
+                        "tweet_count": len(tweets),
+                    }
+                    # Route to AI roundup or main roundup
+                    if author_key in ai_handles and author_key not in ai_roundup_authors:
+                        briefing.setdefault("_ai_roundup", []).append(entry)
+                    else:
+                        briefing.setdefault("twitter_roundup", []).append(entry)
+                    vip_added += 1
             if vip_added:
-                logger.info(f"VIP tweets added to roundup: {vip_added}")
+                logger.info(f"VIP accounts added to roundup: {vip_added}")
         except ImportError:
             pass
 
-        # 2. Supplement twitter_roundup if Sonnet returned fewer than 20
+        # 2. Supplement twitter_roundup if Sonnet returned fewer than 15 accounts
         roundup_authors = {(e.get("author") or "").lower().strip() for e in briefing.get("twitter_roundup", [])}
         theme_urls = set()
         for theme in briefing.get("conversation_themes", []):
             for p in theme.get("platforms", []):
                 if p.get("url"):
                     theme_urls.add(p["url"])
-        if len(briefing.get("twitter_roundup", [])) < 20:
-            twitter_supplement = [
-                i for i in relevant_items
-                if i.get("source") == "twitter"
-                and (i.get("relevance_score") or 0) >= 40
-                and (i.get("author") or "").lower().strip() not in roundup_authors
-                and i.get("url", "") not in theme_urls
-            ]
-            twitter_supplement.sort(key=lambda x: -(x.get("relevance_score") or 0))
-            for item in twitter_supplement:
+        if len(briefing.get("twitter_roundup", [])) < 15:
+            # Group supplemental tweets by author
+            supplement_by_author = {}
+            for item in relevant_items:
+                if item.get("source") != "twitter":
+                    continue
+                if (item.get("relevance_score") or 0) < 40:
+                    continue
                 author = (item.get("author") or "").strip()
                 author_key = author.lower()
                 if author_key in roundup_authors:
                     continue
-                roundup_authors.add(author_key)
-                body = (item.get("body") or "")[:150]
-                briefing.setdefault("twitter_roundup", []).append({
-                    "author": author if author.startswith("@") else f"@{author}",
-                    "take": body if body else item.get("title", "")[:150],
-                    "url": item.get("url", ""),
-                })
-                if len(briefing["twitter_roundup"]) >= 30:
+                if item.get("url", "") in theme_urls:
+                    continue
+                supplement_by_author.setdefault(author_key, []).append(item)
+
+            # Sort by total relevance score
+            sorted_authors = sorted(supplement_by_author.items(),
+                                    key=lambda x: -sum(i.get("relevance_score", 0) for i in x[1]))
+            for author_key, tweets in sorted_authors:
+                display_author = tweets[0].get("author", "").strip()
+                if not display_author.startswith("@"):
+                    display_author = f"@{display_author}"
+                parts = []
+                for t in tweets[:5]:
+                    body = (t.get("body") or t.get("title", ""))[:150]
+                    url = t.get("url", "")
+                    if url and body:
+                        parts.append(f"[{body}]({url})")
+                    elif body:
+                        parts.append(body)
+                summary = ". ".join(parts)
+                if summary:
+                    roundup_authors.add(author_key)
+                    briefing.setdefault("twitter_roundup", []).append({
+                        "author": display_author,
+                        "summary": summary,
+                        "tweet_count": len(tweets),
+                    })
+                if len(briefing["twitter_roundup"]) >= 25:
                     break
 
         # Validate all URLs against the database

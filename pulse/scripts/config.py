@@ -307,6 +307,7 @@ COMPETITOR_SUBSTACKS = [
     ("Maximum New York", "https://maximumnewyork.substack.com/feed"),
     ("Nominal News", "https://nominalnews.substack.com/feed"),
     ("L.A. Reported", "https://lareported.substack.com/feed"),
+    ("Casey Newton (Platformer)", "https://www.platformer.news/rss/"),
     ("Hugh Clarke - A Thread of Order", "https://hughclarke.substack.com/feed"),
 ]
 
@@ -363,52 +364,30 @@ HN_KEYWORDS = [
 TWITTER_SEARCH_QUERIES = []  # No discovery queries — account tracking provides full coverage
 
 TWITTER_ACCOUNTS = [
-    # Full follow list — economists, housing analysts, journalists, policy voices
-    "_brianpotter", "aaronAcarr", "aaronsojourner", "abcampbell",
-    "AFineBlogger", "AGampel1", "AlecStapp", "amandafung",
-    "americanhousing", "andrewrsorkin", "annastansbury", "arindube",
-    "arpitrage", "ArthurKolchak", "BasilHalperin",
-    "bcheungz", "ben_moll", "besttrousers", "biancoresearch",
-    "BillMcBride4", "Birdyword", "bobbyfijan", "BobKnakal",
-    "boes_", "brendanwhitsitt", "Brian_J_Berger", "BruceEHansen",
-    "ByKyleCampbell", "calculatedrisk", "CandaceETaylor",
-    "CarolWalshReal1", "CathieDWood", "cepr_org", "ChrisANeilson",
-    "Claudia_Sahm", "ClausVistesen", "commobserver",
-    "ConorSen", "cremieuxrecueil", "dandolfa", "darioperkins",
-    "DavidBeckworth", "DavidFBrand", "DiMartinoBooth", "DKThomp",
-    "dmlevitt", "DominicFrisby", "donweinland", "DrTCJ",
-    "DSORennie", "economeager", "Economesteter",
-    "economics", "EconTalker", "EconUCL", "EdwardGLuce",
-    "elerianm", "eraborsky",
-    "ErnestTedeschi", "fed_speak", "FedericoHuneeus", "florianederer",
-    "FlorinBilbiie", "FullStackEcon", "fwred", "gandhisahil",
-    "Geiger_Capital", "GRechMacro", "HannoLustig",
-    "hiromichimizuno", "hitsamty", "HomeLoanBill", "instrumenthull",
-    "IvanWerning", "jasaborsky", "jasonfurman", "jburnmurdoch",
-    "JedKolko", "jenniferdoleac", "JFischetti", "jfjimenoserrano",
-    "jmwooldridge", "JoeMLyman", "johanknorberg", "JohnHCochrane",
-    "jonathanmiller", "jondr44", "JonSteinsson", "JosephPolitano",
-    "JustinWolfers", "keegan_tweets", "KiraboJackson", "LanceRLambert",
-    "LawrenceLepard", "leadlagreport", "LevyAntoine", "Lingling_Wei",
-    "LizAnnSonders", "LoganMohtashami", "loud_socialist", "LucaFornaro3",
-    "LynAldenContact", "M_McDonough", "MacroAlf", "MarcGoldwein",
-    "mark_dow", "markets", "MarkusEconomist", "mateosfo",
-    "matthewclifford", "mattkahn1966", "mattyglesias", "maxdubler",
-    "MichaelMOTTCM", "ModeledBehavior", "moorehn", "MoreBirths",
-    "MTabarrok", "NateSilver538", "nberpubs", "NewsLambert",
-    "nfergus", "NickTimiraos", "Noahpinion", "ojblanchard1",
-    "p_ferragu", "palladiummag", "pedrohcgs", "PeterSchiff",
-    "Ph_Aghion", "PradyuPrasad", "ProfJAParker", "profstonge",
-    "R2Rsquared", "RaoulGMI", "RayDalio", "RenMacLLC",
-    "RickPalaciosJr", "RickRieder", "rileymeik", "robin_j_brooks",
-    "robinhanson", "rvitoria", "RyanLEllis", "S_Stantcheva",
-    "saumjha", "shehzadhqazi", "skorusARK",
-    "slatestarcodex", "stat_sherpa", "stevecuozzo", "SteveRattner",
-    "suani_pilau", "TashaARK", "tashecon",
+    # Housing analysts & journalists
+    "_brianpotter", "aaronAcarr", "abcampbell", "AlecStapp", "amandafung",
+    "americanhousing", "arpitrage", "BillMcBride4", "BobKnakal",
+    "brendanwhitsitt", "ByKyleCampbell", "calculatedrisk", "CandaceETaylor",
+    "CarolWalshReal1", "commobserver",
+    "ConorSen", "cremieuxrecueil", "DavidFBrand", "DKThomp",
+    "dmlevitt", "donweinland",
+    "FullStackEcon", "gandhisahil",
+    "HomeLoanBill", "jasonfurman", "jburnmurdoch",
+    "JedKolko", "jonathanmiller", "JosephPolitano",
+    "keegan_tweets", "LanceRLambert",
+    "LoganMohtashami", "MarcGoldwein",
+    "mattkahn1966", "mattyglesias",
+    "ModeledBehavior", "moorehn", "MoreBirths",
+    "MTabarrok", "NateSilver538", "nberpubs",
+    "nfergus", "Noahpinion",
+    "palladiummag", "profstonge",
+    "R2Rsquared", "RickPalaciosJr", "rileymeik", "robin_j_brooks",
+    "robinhanson", "S_Stantcheva",
+    "slatestarcodex", "stevecuozzo",
     "TenantBloc", "TheStalwart", "trdny", "trq212",
     "UrbanDigs", "urbanistvc",
-    "wintonARK", "wwwojtekk", "xurbanxcowboyx", "YaleEconomics",
-    "YIMBYLAND", "ZouhairABH",
+    "xurbanxcowboyx",
+    "YIMBYLAND",
     # Individual voices requested
     "ezraklein", "jabornesworth",
     # VIP accounts (also in TWITTER_VIP_ACCOUNTS)
@@ -420,12 +399,25 @@ TWITTER_ACCOUNTS = [
     "mnolangray",
     "jayparsons",
     "mikefellman",
-    "AlecStapp",
     "josephpolitano",
     "pyradius",
     "TheStalwart",
     "ConorSen",
     "producercities",
+    # AI Roundup accounts (also in AI_ROUNDUP_ACCOUNTS below)
+    "claudeai", "felixrieseberg", "bcherny", "CaseyNewton", "kevinroose",
+]
+
+# AI Roundup accounts: shown in a separate "AI Roundup" section in the email.
+# These accounts are EXCLUDED from the main Twitter Roundup to avoid duplication.
+AI_ROUNDUP_ACCOUNTS = [
+    "trq212",          # Thariq — Claude/Anthropic
+    "claudeai",        # Claude AI official
+    "felixrieseberg",  # Felix Rieseberg — Anthropic
+    "bcherny",         # Boris Cherny — Anthropic
+    "emollick",        # Ethan Mollick — AI + work
+    "CaseyNewton",     # Casey Newton — Platformer, AI/tech
+    "kevinroose",      # Kevin Roose — NYT AI/tech
 ]
 
 TWITTER_MIN_LIKES = 5    # Low threshold — these are curated voices, not keyword search
