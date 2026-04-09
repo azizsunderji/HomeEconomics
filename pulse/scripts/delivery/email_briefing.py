@@ -21,14 +21,35 @@ logger = logging.getLogger(__name__)
 
 
 def _esc(text: str) -> str:
-    """Escape HTML entities."""
+    """Escape HTML entities, handling already-encoded input."""
+    import html as _html
+    # First unescape any existing entities to avoid double-encoding
+    # (RSS feeds often deliver titles with &amp; already encoded)
+    text = _html.unescape(str(text))
     return (
-        str(text)
+        text
         .replace("&", "&amp;")
         .replace("<", "&lt;")
         .replace(">", "&gt;")
         .replace('"', "&quot;")
     )
+
+
+def _md_links(text: str) -> str:
+    """Convert markdown links [text](url) to HTML <a> tags, escape the rest."""
+    import re
+    # Split text around markdown links, preserving them
+    parts = re.split(r'(\[[^\]]+\]\([^)]+\))', str(text))
+    result = []
+    for part in parts:
+        m = re.match(r'\[([^\]]+)\]\(([^)]+)\)', part)
+        if m:
+            link_text = _esc(m.group(1))
+            url = m.group(2)
+            result.append(f'<a href="{url}" target="_blank" style="color: #0BB4FF; text-decoration: none;">{link_text}</a>')
+        else:
+            result.append(_esc(part))
+    return ''.join(result)
 
 
 def _format_number(n) -> str:
@@ -240,7 +261,7 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
     {_heat_badge(heat)}
     <span style="font-size: 16px; font-weight: 600; margin-left: 6px; line-height: 1.3;">{_esc(theme.get('theme', ''))}</span>
   </div>
-  <div style="font-size: 15px; color: #555; line-height: 1.5;">{_esc(theme.get('summary', ''))}</div>
+  <div style="font-size: 15px; color: #555; line-height: 1.5;">{_md_links(theme.get('summary', ''))}</div>
   {platform_html}
   {trigger_html}
   {topics_html}
@@ -297,16 +318,31 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
         html += _section_heading("Twitter Roundup")
         html += _spacer(14)
 
+        # Group tweets by author
+        from collections import OrderedDict as _OrderedDict
+        tw_by_author = _OrderedDict()
         for voice in twitter_roundup[:40]:
-            url = voice.get("url", "")
-            author = _esc(voice.get("author", ""))
-            take = _esc(voice.get("take", ""))
+            author = voice.get("author", "")
+            tw_by_author.setdefault(author, []).append(voice)
 
-            author_html = f'<a href="{url}" target="_blank" style="color: #0BB4FF; text-decoration: none; font-weight: 600;">{author}</a>' if url else f'<span style="font-weight: 600;">{author}</span>'
+        for author_name, tweets in tw_by_author.items():
+            # Author header
+            first_url = tweets[0].get("url", "")
+            author_esc = _esc(author_name)
+            author_html = f'<a href="{first_url}" target="_blank" style="color: #0BB4FF; text-decoration: none; font-weight: 600;">{author_esc}</a>' if first_url else f'<span style="font-weight: 600;">{author_esc}</span>'
 
             html += f"""<table width="100%" cellpadding="0" cellspacing="0"><tr>
-<td style="font-size: 15px; padding: 5px 0; border-bottom: 1px solid #f0f0f0; line-height: 1.45;">
-  {author_html} <span style="color: #555;">{take}</span>
+<td style="font-size: 15px; padding: 8px 0 2px 0;">{author_html}</td>
+</tr></table>
+"""
+            for tweet in tweets:
+                url = tweet.get("url", "")
+                take = _esc(tweet.get("take", ""))
+                take_link = f'<a href="{url}" target="_blank" style="color: #555; text-decoration: none;">{take}</a>' if url else f'<span style="color: #555;">{take}</span>'
+
+                html += f"""<table width="100%" cellpadding="0" cellspacing="0"><tr>
+<td style="font-size: 15px; padding: 2px 0 2px 12px; border-bottom: 1px solid #f0f0f0; line-height: 1.45;">
+  {take_link}
 </td></tr></table>
 """
         html += _spacer(24)

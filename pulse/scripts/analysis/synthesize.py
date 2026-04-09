@@ -440,7 +440,7 @@ Return a JSON object:
   "conversation_themes": [
     {
       "theme": "Short label (5-8 words max)",
-      "summary": "Factual summary of who said what and where they disagree. Lead with the specific claims, data, or arguments — not meta-commentary about the conversation. BAD: 'People are watching to see if rates stabilize.' GOOD: 'Timiraos reported breakeven job growth fell to -3k/month; Tedeschi says this predates Iran and reflects structural hiring weakness; Sen pushes back citing weather effects.' No narrativizing. No filler. Just the substance.",
+      "summary": "Factual summary with inline markdown links. When you mention a specific tweet, paper, article, or Substack post, link the relevant phrase using [text](url). Example: '[Conor Sen argues](https://twitter.com/ConorSen/status/123) that housing starts will rebound, while an [NBER working paper](https://nber.org/papers/w12345) finds national labs generate regional development through knowledge spillovers.' Lead with specific claims, data, or arguments. No meta-commentary, no filler.",
       "platforms": [
         {"name": "twitter", "reply_count": 89, "sentiment": "mixed", "url": "..."},
         {"name": "bluesky", "reply_count": 12, "sentiment": "bullish", "url": "..."}

@@ -173,23 +173,28 @@ def cmd_daily(args):
 
         logger.info(f"OPML: {len(headline_feed_names)} headline feeds, {len(journal_feed_names)} journal feeds")
 
-        # --- Journal articles (collected in last 24h, published in last 3 days, deduped) ---
+        # --- Journal articles (collected in last 24h, published in last 24h, deduped) ---
         cutoff_24h = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
-        cutoff_3d = (datetime.now(timezone.utc) - timedelta(days=3)).isoformat()
         all_rss_24h_journals = conn.execute(
             "SELECT * FROM items WHERE source = 'rss' AND collected_at >= ? ORDER BY collected_at DESC",
             (cutoff_24h,),
         ).fetchall()
         journal_items = []
         seen_journal_titles = set()
+        journal_per_feed = {}  # cap per journal to prevent TOC dumps
+        MAX_PER_JOURNAL = 30  # no per-journal cap
         for row in all_rss_24h_journals:
             item = dict(row)
             feed = item.get("feed_name", "")
             if feed not in journal_feed_names:
                 continue
-            # Only include papers published in the last 3 days
+            # Only include papers published in the last 24 hours
             published = item.get("published_at", "")
-            if published and published < cutoff_3d:
+            if published and published < cutoff_24h:
+                continue
+            # Cap per journal — prevents entire TOC dumps from flooding the section
+            journal_per_feed[feed] = journal_per_feed.get(feed, 0) + 1
+            if journal_per_feed[feed] > MAX_PER_JOURNAL:
                 continue
             title = item.get("title", "")
             title_key = title[:80].lower().strip()

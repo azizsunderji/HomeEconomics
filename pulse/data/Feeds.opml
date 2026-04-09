@@ -117,8 +117,6 @@
       <outline type="rss" text="Gothamist: New York City Local News, Food, Arts &amp; Events" htmlUrl="https://gothamist.com/staff/david-brand" xmlUrl="https://rss.app/feeds/8q4JaNc99LWhqdjx.xml" title="Gothamist: New York City Local News, Food, Arts &amp; Events" />
       <outline text="Data Is Plural" type="rss" htmlUrl="https://www.data-is-plural.com" title="Data Is Plural" xmlUrl="https://www.data-is-plural.com/feed.xml" />
       <outline text="Eye On Housing" title="Eye On Housing" type="rss" xmlUrl="https://eyeonhousing.org/feed/" htmlUrl="https://eyeonhousing.org" />
-      <outline text="Bloomberg Economics" title="Bloomberg Economics" type="rss" xmlUrl="https://feeds.bloomberg.com/economics/news.rss" htmlUrl="https://www.bloomberg.com/economics" />
-      <outline text="Bloomberg Industries" title="Bloomberg Industries" type="rss" xmlUrl="https://feeds.bloomberg.com/industries/news.rss" htmlUrl="https://www.bloomberg.com/industries" />
       <outline text="Bloomberg Markets" title="Bloomberg Markets" type="rss" xmlUrl="https://feeds.bloomberg.com/markets/news.rss" htmlUrl="https://www.bloomberg.com/markets" />
       <outline text="Bloomberg Wealth" title="Bloomberg Wealth" type="rss" xmlUrl="https://feeds.bloomberg.com/wealth/news.rss" htmlUrl="https://www.bloomberg.com/wealth" />
       <outline text="WaPo Business" title="WaPo Business" type="rss" xmlUrl="https://feeds.washingtonpost.com/rss/business" htmlUrl="https://www.washingtonpost.com/business" />
@@ -130,6 +128,7 @@
       <outline text="Census Economic Indicators" title="Census Economic Indicators" type="rss" xmlUrl="https://www.census.gov/economic-indicators/indicator.xml" htmlUrl="https://www.census.gov" />
       <outline text="Federal Reserve Press Releases" title="Federal Reserve Press Releases" type="rss" xmlUrl="https://www.federalreserve.gov/feeds/press_all.xml" htmlUrl="https://www.federalreserve.gov" />
       <outline text="Freddie Mac Blog" title="Freddie Mac Blog" type="rss" xmlUrl="https://www.freddiemac.com/blog/feed" htmlUrl="https://www.freddiemac.com/blog" />
+      <outline text="FT Alphaville" title="FT Alphaville" type="rss" xmlUrl="https://www.ft.com/alphaville?format=rss" htmlUrl="https://www.ft.com/alphaville" />
       <outline text="FT Global Economy" title="FT Global Economy" type="rss" xmlUrl="https://www.ft.com/global-economy?format=rss" htmlUrl="https://www.ft.com/global-economy" />
       <outline text="FT John Burn-Murdoch" title="FT John Burn-Murdoch" type="rss" xmlUrl="https://www.ft.com/john-burn-murdoch?format=rss" htmlUrl="https://www.ft.com/john-burn-murdoch" />
       <outline text="FT Markets" title="FT Markets" type="rss" xmlUrl="https://www.ft.com/markets?format=rss" htmlUrl="https://www.ft.com/markets" />

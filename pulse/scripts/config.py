@@ -272,7 +272,6 @@ COMPETITOR_SUBSTACKS = [
     ("Lance Lambert - ResiClub", "https://www.resiclub.com/feed"),
     ("Joe Weisenthal - TheStalwart", "https://www.thestalwart.com/feed"),
     ("The Kobeissi Letter", "https://thekobeissiletter.substack.com/feed"),
-    ("Nick Timiraos", "https://nicktimiraos.substack.com/feed"),
     ("Full Stack Economics", "https://fullstackeconomics.com/feed"),
     ("Employ America", "https://employamerica.substack.com/feed"),
     ("Matthew Klein - The Overshoot", "https://theovershoot.co/feed"),
@@ -319,7 +318,6 @@ BLUESKY_ACCOUNTS = [
     "calculatedrisk.bsky.social",       # Bill McBride — housing data
     "loganmohtashami.bsky.social",      # Logan Mohtashami — housing wire
     "conorsen.bsky.social",             # Conor Sen — housing/macro
-    "nicktimiraos.bsky.social",         # Nick Timiraos — WSJ Fed/rates
     "mattyglesias.bsky.social",         # Matt Yglesias — housing policy
     "jasonfurman.bsky.social",          # Jason Furman — macro/policy
     "apricitas.bsky.social",            # Joseph Politano — econ data
@@ -407,7 +405,7 @@ TWITTER_ACCOUNTS = [
     "robinhanson", "rvitoria", "RyanLEllis", "S_Stantcheva",
     "saumjha", "shehzadhqazi", "skorusARK",
     "slatestarcodex", "stat_sherpa", "stevecuozzo", "SteveRattner",
-    "suani_pilau", "TashaARK", "tashecon", "TaviCosta",
+    "suani_pilau", "TashaARK", "tashecon",
     "TenantBloc", "TheStalwart", "trdny", "trq212",
     "UrbanDigs", "urbanistvc",
     "wintonARK", "wwwojtekk", "xurbanxcowboyx", "YaleEconomics",
