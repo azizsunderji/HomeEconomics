@@ -23,9 +23,12 @@ logger = logging.getLogger(__name__)
 def _esc(text: str) -> str:
     """Escape HTML entities, handling already-encoded input."""
     import html as _html
+    import re as _re
     # First unescape any existing entities to avoid double-encoding
     # (RSS feeds often deliver titles with &amp; already encoded)
     text = _html.unescape(str(text))
+    # Strip any HTML tags (Google Alerts feeds include <b>...</b> in titles)
+    text = _re.sub(r'<[^>]+>', '', text)
     return (
         text
         .replace("&", "&amp;")

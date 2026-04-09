@@ -79,28 +79,16 @@ def _base_convert(token: str, charset_in: str, charset_out: str) -> str:
 def _thread_id_to_gmail_url(thread_id_hex: str) -> str:
     """Convert a Gmail API hex thread ID to a working Gmail web URL.
 
-    The new Gmail interface (post-2018) uses an encoded token format (FMfcg...)
-    rather than raw hex IDs. The encoding is:
-      1. Convert hex thread ID to decimal
-      2. Build string "f:<decimal>"
-      3. Base64-encode that string
-      4. Convert from standard base64 alphabet to Gmail's vowel-less alphabet
+    Uses the raw hex thread ID directly in the URL fragment, which Gmail
+    resolves to the correct thread. The FMfcg-encoded format was unreliable.
     """
-    decimal_id = int(thread_id_hex, 16)
-    plaintext = f"f:{decimal_id}"
-    b64 = b64encode(plaintext.encode("utf-8")).decode("utf-8").rstrip("=")
-    token = _base_convert(b64, _B64_CHARSET, _GMAIL_CHARSET)
-    return f"https://mail.google.com/mail/#all/{token}"
+    return f"https://mail.google.com/mail/#all/{thread_id_hex}"
 
 
 def _thread_id_to_gmail_url_for_account(thread_id_hex: str, email_address: str) -> str:
     """Convert a Gmail API hex thread ID to a working Gmail web URL for a specific account."""
-    decimal_id = int(thread_id_hex, 16)
-    plaintext = f"f:{decimal_id}"
-    b64 = b64encode(plaintext.encode("utf-8")).decode("utf-8").rstrip("=")
-    token = _base_convert(b64, _B64_CHARSET, _GMAIL_CHARSET)
     encoded_email = email_address.replace("@", "%40")
-    return f"https://mail.google.com/mail/u/?authuser={encoded_email}#all/{token}"
+    return f"https://mail.google.com/mail/u/?authuser={encoded_email}#all/{thread_id_hex}"
 
 
 def _refresh_access_token(token_data: dict) -> Optional[str]:

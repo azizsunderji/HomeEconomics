@@ -324,7 +324,6 @@ BLUESKY_ACCOUNTS = [
     # Bluesky-primary voices (NOT on Twitter list — unique signal)
     "jennyschuetz.bsky.social",         # Jenny Schuetz — Arnold Ventures VP of Housing
     "markzandi.bsky.social",            # Mark Zandi — Moody's chief economist
-    "hatethegamebook.com",              # Daryl Fairweather — Redfin chief economist
     "deanbaker13.bsky.social",          # Dean Baker — CEPR, called the housing bubble
     "jerusalem.bsky.social",            # Jerusalem Demsas — The Atlantic, housing/urbanism
     "mikesimonsen.bsky.social",         # Mike Simonsen — Altos Research/Compass
