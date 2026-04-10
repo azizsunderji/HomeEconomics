@@ -590,28 +590,46 @@ def send_email(
     if theme_count <= 1:
         subject = f"Pulse: {top_theme} | {date}"
 
-    try:
-        resp = httpx.post(
-            "https://api.resend.com/emails",
-            headers={
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json",
-            },
-            json={
-                "from": EMAIL_FROM,
-                "to": [to],
-                "subject": subject,
-                "html": html,
-            },
-            timeout=30,
-        )
-        resp.raise_for_status()
-        logger.info(f"Email sent successfully: {subject}")
-        return True
+    # Retry up to 3 times on transient failures (network, 4xx, 5xx)
+    import time as _time
+    last_error = None
+    for attempt in range(3):
+        try:
+            resp = httpx.post(
+                "https://api.resend.com/emails",
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "from": EMAIL_FROM,
+                    "to": [to],
+                    "subject": subject,
+                    "html": html,
+                },
+                timeout=30,
+            )
+            if resp.status_code == 200:
+                logger.info(f"Email sent successfully: {subject}")
+                return True
+            # Log the response body so we can see Resend's actual error
+            logger.warning(
+                f"Resend returned {resp.status_code} on attempt {attempt + 1}/3: "
+                f"{resp.text[:500]}"
+            )
+            last_error = f"HTTP {resp.status_code}: {resp.text[:200]}"
+            # Don't retry on auth errors — they won't resolve
+            if resp.status_code in (401, 403):
+                break
+        except Exception as e:
+            logger.warning(f"Email send attempt {attempt + 1}/3 failed: {e}")
+            last_error = str(e)
 
-    except Exception as e:
-        logger.error(f"Failed to send email: {e}")
-        return False
+        if attempt < 2:
+            _time.sleep(5 * (attempt + 1))  # 5s, then 10s backoff
+
+    logger.error(f"Failed to send email after 3 attempts: {last_error}")
+    return False
 
 
 if __name__ == "__main__":
