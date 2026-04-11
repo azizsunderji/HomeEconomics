@@ -158,6 +158,9 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
     press_mentions = briefing.get("_press_mentions", [])
     twitter_roundup = briefing.get("twitter_roundup", [])
     ai_roundup = briefing.get("_ai_roundup", [])
+    ai_newsletters = briefing.get("_ai_newsletters", [])
+    ai_substacks = briefing.get("_ai_substacks", [])
+    ai_brief = briefing.get("ai_brief", "")
     collection_errors = briefing.get("_collection_errors", [])
     apify_spend_cents = briefing.get("_apify_spend_cents", 0)
 
@@ -228,6 +231,24 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
 """
         html += _spacer(24)
 
+    # ── FRONT PAGES (NYT and FT screenshots) ──
+    # Captured locally on the home machine and uploaded to Bluehost before
+    # the Pulse run. See pulse/capture_frontpages.py.
+    html += _section_heading("On the Front Pages")
+    html += _spacer(14)
+    html += f"""<table width="100%" cellpadding="0" cellspacing="0"><tr>
+<td style="padding: 0 0 12px 0;">
+  <div style="font-size: 12px; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px;">The New York Times</div>
+  <a href="https://www.nytimes.com" target="_blank"><img src="https://home-economics.us/pulse-screenshots/nyt.jpg" alt="NYT front page" width="600" style="width: 100%; max-width: 600px; height: auto; border: 1px solid #e0e0e0; border-radius: 4px; display: block;"/></a>
+</td></tr></table>
+<table width="100%" cellpadding="0" cellspacing="0"><tr>
+<td style="padding: 0 0 12px 0;">
+  <div style="font-size: 12px; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px;">Financial Times</div>
+  <a href="https://www.ft.com" target="_blank"><img src="https://home-economics.us/pulse-screenshots/ft.jpg" alt="FT front page" width="600" style="width: 100%; max-width: 600px; height: auto; border: 1px solid #e0e0e0; border-radius: 4px; display: block;"/></a>
+</td></tr></table>
+"""
+    html += _spacer(24)
+
     # ── CONVERSATION THEMES (main section ~60% of email) ──
     if themes:
         html += _section_heading("Conversation Themes")
@@ -288,6 +309,13 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
                 item = dict(item)  # copy to avoid mutating original
                 item["headline"] = f"{reporter_name}: {item.get('headline', '')}"
                 source = "Alerts"
+            # Consolidate all Economist sections under a single "Economist" group
+            # and prefix the headline with the section name
+            elif source.startswith("Economist: "):
+                section_name = source[len("Economist: "):]
+                item = dict(item)
+                item["headline"] = f"{section_name}: {item.get('headline', '')}"
+                source = "Economist"
             grouped_headlines[source].append(item)
         # Sort groups alphabetically by source name
         grouped_headlines = dict(sorted(grouped_headlines.items()))
@@ -317,27 +345,14 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
 
         html += _spacer(20)
 
-    # ── AI ROUNDUP ──
-    if ai_roundup:
-        html += _section_heading(f"AI Roundup ({len(ai_roundup)})")
+    # ── AI SECTION — single synthesized paragraph with inline links ──
+    if ai_brief and ai_brief.strip():
+        html += _section_heading("AI")
         html += _spacer(14)
-
-        for voice in ai_roundup:
-            author = voice.get("author", "")
-            summary = voice.get("summary", voice.get("take", ""))
-            tweet_count = voice.get("tweet_count", 1)
-
-            author_esc = _esc(author)
-            handle = author.lstrip("@")
-            author_html = f'<a href="https://x.com/{handle}" target="_blank" style="color: #0BB4FF; text-decoration: none; font-weight: 600;">{author_esc}</a>'
-            count_html = f' <span style="color: #aaa; font-size: 12px;">({tweet_count} tweets)</span>' if tweet_count > 1 else ''
-
-            summary_html = _md_links(summary)
-
-            html += f"""<table width="100%" cellpadding="0" cellspacing="0"><tr>
-<td style="padding: 8px 0 10px 0; border-bottom: 1px solid #f0f0f0;">
-  <div>{author_html}{count_html}</div>
-  <div style="font-size: 15px; color: #555; line-height: 1.5; margin-top: 4px;">{summary_html}</div>
+        ai_brief_html = _md_links(ai_brief)
+        html += f"""<table width="100%" cellpadding="0" cellspacing="0"><tr>
+<td style="padding: 8px 0 14px 0; font-size: 15px; color: #3D3733; line-height: 1.6;">
+{ai_brief_html}
 </td></tr></table>
 """
         html += _spacer(24)

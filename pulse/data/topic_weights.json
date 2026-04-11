@@ -1,0 +1,518 @@
+{
+  "version": "1.0",
+  "description": "Topic taxonomy with weights (0-100). Higher weight = higher priority in Pulse. Based on revealed preferences from homeeconomics.substack.com.",
+  "tiers": {
+    "core": {
+      "label": "Core",
+      "description": "Always feature these. Dominate the briefing.",
+      "default_weight": 100
+    },
+    "adjacent": {
+      "label": "Adjacent",
+      "description": "Highly relevant \u2014 feature regularly.",
+      "default_weight": 75
+    },
+    "occasional": {
+      "label": "Occasional",
+      "description": "Include when interesting, not a focus.",
+      "default_weight": 50
+    },
+    "excluded": {
+      "label": "Excluded",
+      "description": "Avoid unless they tie back to a core topic.",
+      "default_weight": 15
+    }
+  },
+  "topics": {
+    "housing_prices": {
+      "label": "Housing Prices",
+      "description": "Home price data, indices, forecasts, regional patterns, undervalued markets.",
+      "tier": "core",
+      "weight": 80,
+      "keywords": [
+        "home price",
+        "house price",
+        "median price",
+        "HPI",
+        "ZHVI",
+        "case-shiller",
+        "price growth",
+        "appreciation",
+        "price cut"
+      ],
+      "examples": [
+        "WSJ: 'Home prices fell in 18 of 20 Case-Shiller cities, biggest drop since 2012'",
+        "@LoganMohtashami: 'Existing home sales just posted the weakest March since 1995. Affordability remains the binding constraint.'",
+        "Resiclub newsletter: 'Zillow now forecasts -1.8% national home price growth in 2026, down from +2.4% last month'"
+      ]
+    },
+    "housing_geography": {
+      "label": "Housing Geography",
+      "description": "Metro-by-metro analysis, suburbs vs cities, regional booms (Sun Belt, Atlanta, Bay Area, NYC, Florida, etc.).",
+      "tier": "core",
+      "weight": 90,
+      "keywords": [
+        "austin",
+        "atlanta",
+        "miami",
+        "phoenix",
+        "tampa",
+        "nashville",
+        "denver",
+        "sun belt",
+        "metro area",
+        "suburb"
+      ],
+      "examples": [
+        "Bloomberg CityLab: 'Why Phoenix exurbs are growing four times faster than the urban core'",
+        "@JedKolko: 'Austin home prices down 12% from peak, but inventory still 3x pre-COVID. The boom's hangover.'",
+        "NYT: 'Tampa lost more residents than it gained for the first time since 2018'"
+      ]
+    },
+    "housing_inventory": {
+      "label": "Housing Inventory & Supply",
+      "description": "Inventory levels, listings, days on market, months of supply, supply dynamics.",
+      "tier": "core",
+      "weight": 80,
+      "keywords": [
+        "inventory",
+        "listings",
+        "active listings",
+        "months supply",
+        "housing supply",
+        "days on market",
+        "DOM",
+        "for sale"
+      ],
+      "examples": [
+        "@calculatedrisk: 'Active listings now 32% above 2019 levels nationally. Florida and Texas up 60%+.'",
+        "Redfin: 'Months of supply hits 5.2 in Austin, highest since 2011'",
+        "WSJ: 'For the first time in three years, more sellers are cutting prices than raising them'"
+      ]
+    },
+    "mortgage_rates": {
+      "label": "Mortgage Rates & Lock-in",
+      "description": "Mortgage rates, lock-in effect, refinancing, rate impacts on the housing market.",
+      "tier": "core",
+      "weight": 80,
+      "keywords": [
+        "mortgage rate",
+        "30-year",
+        "15-year",
+        "rate lock",
+        "refi",
+        "refinance",
+        "lock-in",
+        "buy down",
+        "ARM",
+        "fixed rate"
+      ],
+      "examples": [
+        "Bloomberg: '30-year mortgage drops to 5.95%, lowest since October'",
+        "@LoganMohtashami: 'Below 6% is the magic level. We're seeing purchase apps tick up for the first time in months.'",
+        "MBA: 'Refinance applications surge 18% week-over-week as rates dip'"
+      ]
+    },
+    "affordability": {
+      "label": "Affordability & Buyer Math",
+      "description": "Price-to-income, rent burden, who can afford, buy vs rent calculations, first-time buyer math.",
+      "tier": "core",
+      "weight": 90,
+      "keywords": [
+        "affordability",
+        "price to income",
+        "rent burden",
+        "cost burden",
+        "first time buyer",
+        "priced out",
+        "downpayment",
+        "buy or rent"
+      ],
+      "examples": [
+        "Harvard JCHS: '22.6 million renter households are cost-burdened \u2014 a record'",
+        "@arpitrage: 'Median home in SF requires household income of $360K to qualify. Median household income is $130K.'",
+        "Zillow: 'Income required to afford a typical US home has nearly doubled since 2020'"
+      ]
+    },
+    "homeownership_demographics": {
+      "label": "Homeownership & Demographics",
+      "description": "Generational gaps in homeownership, millennials, first-time buyers, household formation, family dynamics around housing.",
+      "tier": "core",
+      "weight": 100,
+      "keywords": [
+        "millennial",
+        "gen z",
+        "boomer",
+        "first time",
+        "homeownership rate",
+        "household formation",
+        "delayed homeownership",
+        "marriage",
+        "family formation"
+      ],
+      "examples": [
+        "NAR: 'Median age of first-time homebuyer hits 38, up from 31 in 2010'",
+        "@kaerdmann: 'Millennials own 25% of US housing wealth despite being 22% of the population. The gap is closing faster than people think.'",
+        "Pew Research: 'Share of Americans 25-34 living with parents at 18%, highest since 1940'"
+      ]
+    },
+    "construction_supply": {
+      "label": "Construction & Building",
+      "description": "Housing starts, permits, builder activity, construction employment as a leading indicator.",
+      "tier": "core",
+      "weight": 75,
+      "keywords": [
+        "housing starts",
+        "permits",
+        "new construction",
+        "builder",
+        "homebuilder",
+        "new home sales",
+        "completions",
+        "architects"
+      ],
+      "examples": [
+        "Census: 'Housing starts fell 7.2% in March to a 1.32M annual pace'",
+        "AIA: 'Architecture Billings Index drops to 44.5 \u2014 six straight months of contraction'",
+        "@RickPalaciosJr: 'New home sales in Texas down 18% YoY. Builders are pulling back hard.'"
+      ]
+    },
+    "immigration_housing": {
+      "label": "Immigration & Housing",
+      "description": "Immigration's effect on housing demand, labor supply for construction, demographic effects.",
+      "tier": "core",
+      "weight": 95,
+      "keywords": [
+        "immigration",
+        "immigrant",
+        "deportation",
+        "undocumented",
+        "visa",
+        "border",
+        "asylum",
+        "foreign-born"
+      ],
+      "examples": [
+        "FT: 'Trump deportation push will hit construction labor force hardest, builders warn'",
+        "@aarmlovi: 'Half of US construction workforce is immigrant. Cut immigration, cut housing supply.'",
+        "Brookings: 'Without immigration, US household formation would have been negative in 2025'"
+      ]
+    },
+    "ai_and_housing": {
+      "label": "AI \u00d7 Housing",
+      "description": "Where AI intersects housing: tech worker geography, AI-driven demand, AI in real estate.",
+      "tier": "core",
+      "weight": 95,
+      "keywords": [
+        "silicon valley housing",
+        "ai housing",
+        "tech worker",
+        "remote work",
+        "ai real estate"
+      ],
+      "examples": [
+        "Bloomberg: 'AI hiring boom drives Bay Area rents up 12% year-over-year'",
+        "@JedKolko: 'AI engineer salaries are pushing median Bay Area home prices past $2M for the first time'",
+        "TechCrunch: 'Anthropic, OpenAI, and xAI account for 40% of new SF leases above $5M'"
+      ]
+    },
+    "happiness_wellbeing": {
+      "label": "Happiness & Wellbeing",
+      "description": "Happiness research, social outcomes, anglosphere unhappiness, wellbeing trends, cultural shifts.",
+      "tier": "core",
+      "weight": 95,
+      "keywords": [
+        "happiness",
+        "wellbeing",
+        "loneliness",
+        "social trust",
+        "anglosphere",
+        "miserable",
+        "satisfaction",
+        "flourishing"
+      ],
+      "examples": [
+        "World Happiness Report: 'US falls to 24th, lowest ever. Young Americans drag the average down.'",
+        "@cremieuxrecueil: 'The collapse in self-reported happiness among under-30s is now the biggest cohort effect in postwar data.'",
+        "NYT: 'Loneliness epidemic gets worse: half of young Americans report feeling lonely most days'"
+      ]
+    },
+    "housing_policy": {
+      "label": "Housing Policy & YIMBY",
+      "description": "Zoning, YIMBY/NIMBY, rent control, public housing, ADUs, upzoning, housing politics.",
+      "tier": "adjacent",
+      "weight": 90,
+      "keywords": [
+        "zoning",
+        "yimby",
+        "nimby",
+        "rent control",
+        "rent freeze",
+        "section 8",
+        "public housing",
+        "lihtc",
+        "adu",
+        "upzoning",
+        "housing policy"
+      ],
+      "examples": [
+        "@AlecStapp: 'Texas just passed the most ambitious upzoning bill of any red state. Statewide ADU legalization, parking minimums abolished.'",
+        "Vox: 'Why Zohran Mamdani's rent freeze is dividing NYC progressives'",
+        "Bloomberg: 'California's SB 9 has produced 200 ADUs in three years. Critics call it a failure.'"
+      ]
+    },
+    "ai_general": {
+      "label": "AI General",
+      "description": "AI tools, AI industry developments, AI productivity, model releases.",
+      "tier": "adjacent",
+      "weight": 90,
+      "keywords": [
+        "claude",
+        "anthropic",
+        "openai",
+        "gpt",
+        "llm",
+        "ai tool",
+        "ai model",
+        "machine learning",
+        "agentic"
+      ],
+      "examples": [
+        "@emollick: 'Claude 4.5 Sonnet just hit 92% on SWE-bench. The capability gains keep accelerating.'",
+        "Stratechery: 'Anthropic's 1M context window changes the unit economics of code generation'",
+        "@simonw: 'OpenAI shipped a new agentic mode. It's the first one that doesn't immediately fall over on real tasks.'"
+      ]
+    },
+    "tech_geography": {
+      "label": "Tech Geography",
+      "description": "Where tech jobs are, Silicon Valley dominance, tech hiring/firing by metro, hubs vs satellites.",
+      "tier": "adjacent",
+      "weight": 90,
+      "keywords": [
+        "silicon valley",
+        "tech hub",
+        "tech job",
+        "tech layoff",
+        "tech hiring",
+        "tech worker",
+        "engineer geography",
+        "h1b"
+      ],
+      "examples": [
+        "Apricitas Economics: 'California's tech share fell to 16%, lowest since 2013. Texas and Florida are absorbing the displacement.'",
+        "SignalFire: 'Bay Area now hosts 65% of all AI engineers \u2014 up from 52% pre-ChatGPT'",
+        "WSJ: 'Tech layoffs hit 50,000 in Q1, mostly concentrated in San Francisco and Seattle'"
+      ]
+    },
+    "cities_urbanism": {
+      "label": "Cities & Urbanism",
+      "description": "City policy, transit, urban form, walkability, downtown revitalization.",
+      "tier": "adjacent",
+      "weight": 100,
+      "keywords": [
+        "urbanism",
+        "urban",
+        "transit",
+        "walkable",
+        "downtown",
+        "city policy",
+        "transportation",
+        "density"
+      ],
+      "examples": [
+        "@mnolangray: 'Atlanta added 200 miles of bike lanes in five years. The transformation is real.'",
+        "CityLab: 'Phoenix light rail expansion stalls as ridership flatlines'",
+        "Strong Towns: 'The hidden cost of one-way streets in mid-sized American cities'"
+      ]
+    },
+    "demographics_general": {
+      "label": "Demographics & Migration",
+      "description": "Birth rates, household formation, internal migration, population trends.",
+      "tier": "adjacent",
+      "weight": 100,
+      "keywords": [
+        "birth rate",
+        "fertility",
+        "population growth",
+        "domestic migration",
+        "moving",
+        "exodus",
+        "inflow",
+        "outflow",
+        "demographic"
+      ],
+      "examples": [
+        "@lymanstoneky: 'US fertility hit 1.62 in 2025 \u2014 a new record low. Marriage rates explain ~70% of the variance.'",
+        "Census: 'Domestic migration to Sun Belt slows for second consecutive year'",
+        "Pew: 'Population growth in 2025 was 0.4%, lowest since 1937 outside of pandemic years'"
+      ]
+    },
+    "commercial_real_estate": {
+      "label": "Commercial Real Estate",
+      "description": "Office, multifamily, CRE markets, return-to-office.",
+      "tier": "occasional",
+      "weight": 60,
+      "keywords": [
+        "commercial real estate",
+        "cre",
+        "office vacancy",
+        "multifamily",
+        "retail space",
+        "industrial",
+        "cap rate",
+        "return to office",
+        "rto"
+      ],
+      "examples": [
+        "WSJ: 'San Francisco office vacancy hits 35%, the highest of any major US city'",
+        "@jayparsons: 'Multifamily delinquencies climbing in Sun Belt \u2014 early warning sign for the asset class'",
+        "Bloomberg: 'Manhattan office-to-residential conversions slow as construction costs surge'"
+      ]
+    },
+    "climate_insurance": {
+      "label": "Climate & Insurance",
+      "description": "Property insurance crisis, climate risk to housing, natural disasters.",
+      "tier": "occasional",
+      "weight": 65,
+      "keywords": [
+        "insurance",
+        "flood insurance",
+        "wildfire",
+        "climate risk",
+        "natural disaster",
+        "hurricane",
+        "fema",
+        "uninsurable"
+      ],
+      "examples": [
+        "NYT: 'Florida insurance market in crisis as State Farm exits'",
+        "First Street Foundation: '12 million homes face wildfire risk not reflected in insurance pricing'",
+        "WSJ: 'FEMA flood maps expand by 40% in Southeast \u2014 hidden insurance shock for millions'"
+      ]
+    },
+    "cultural_lifestyle": {
+      "label": "Cultural & Lifestyle",
+      "description": "Lifestyle commentary, time use, cultural shifts, dual-career families.",
+      "tier": "occasional",
+      "weight": 95,
+      "keywords": [
+        "time use",
+        "lifestyle",
+        "leisure",
+        "remote work culture",
+        "wfh",
+        "two earner",
+        "screen time",
+        "social media"
+      ],
+      "examples": [
+        "Atlantic: 'The collapse of the second job \u2014 and what it means for two-earner families'",
+        "@DKThomp: 'Americans now spend an average 7.5 hours/day on screens. Up 50% in a decade.'",
+        "Vox: 'Why working from home killed business casual'"
+      ]
+    },
+    "politics_housing": {
+      "label": "Politics & Housing",
+      "description": "Housing politics, voter dynamics on housing, election housing positions.",
+      "tier": "occasional",
+      "weight": 95,
+      "keywords": [
+        "housing voter",
+        "yimby politics",
+        "housing election",
+        "zohran",
+        "housing platform"
+      ],
+      "examples": [
+        "Politico: 'Housing affordability dominates the 2026 NYC mayoral race'",
+        "@AlecStapp: 'YIMBYs went 8-for-10 in last week's state legislative races. The movement is winning.'",
+        "FiveThirtyEight: 'Voters under 35 say housing is their top issue, ahead of inflation and immigration'"
+      ]
+    },
+    "pure_fed_macro": {
+      "label": "Pure Fed / Macro / Inflation / Jobs",
+      "description": "Fed policy, FOMC, inflation reports (CPI/PCE/PPI), jobs reports, payrolls, unemployment, GDP, retail sales \u2014 UNLESS explicitly tied to housing implications.",
+      "tier": "excluded",
+      "weight": 40,
+      "keywords": [
+        "fomc",
+        "powell",
+        "cpi",
+        "pce",
+        "ppi",
+        "payrolls",
+        "jobs report",
+        "unemployment rate",
+        "jolts",
+        "gdp",
+        "retail sales",
+        "ism",
+        "consumer sentiment"
+      ],
+      "examples": [
+        "Reuters: 'March CPI rises 3.2% YoY, beating consensus'",
+        "@NickTimiraos: 'Powell's testimony today suggests the Fed is in no rush to cut rates'",
+        "BLS: 'Nonfarm payrolls add 215K in March, unemployment rate ticks up to 4.1%'"
+      ]
+    },
+    "markets_finance": {
+      "label": "Markets & Finance",
+      "description": "Stock markets, bond yields, dollar moves, market commentary, broader finance.",
+      "tier": "excluded",
+      "weight": 40,
+      "keywords": [
+        "stock market",
+        "bond yield",
+        "dollar",
+        "vix",
+        "spx",
+        "treasuries",
+        "credit spread"
+      ],
+      "examples": [
+        "CNBC: 'S&P 500 closes at record high, up 0.8%'",
+        "@LizAnnSonders: '10-year Treasury yield breaks below 4% for first time since November'",
+        "Bloomberg: 'Dollar index falls to 6-month low as traders price in Fed cuts'"
+      ]
+    },
+    "international": {
+      "label": "International (non-US)",
+      "description": "Non-US housing markets, international economic news (UK, Canada, Europe, Asia).",
+      "tier": "excluded",
+      "weight": 75,
+      "keywords": [
+        "uk housing",
+        "london housing",
+        "canada housing",
+        "toronto",
+        "europe housing",
+        "china property",
+        "australia housing"
+      ],
+      "examples": [
+        "FT: 'UK house prices fall for fourth consecutive month'",
+        "Reuters: 'China property crisis deepens as Country Garden reports record loss'",
+        "Globe and Mail: 'Toronto real estate sales plunge 22% as buyers stay sidelined'"
+      ]
+    },
+    "tech_general": {
+      "label": "Tech General (non-AI, non-housing)",
+      "description": "Generic tech news that doesn't connect to AI or housing or labor geography.",
+      "tier": "excluded",
+      "weight": 40,
+      "keywords": [
+        "startup",
+        "venture capital",
+        "iphone",
+        "apple",
+        "meta",
+        "tech news"
+      ],
+      "examples": [
+        "The Verge: 'Apple unveils new iPhone Pro with redesigned camera system'",
+        "TechCrunch: 'Meta's Q1 earnings beat expectations, ad revenue up 14%'",
+        "Bloomberg: 'Tesla recalls 1M vehicles to fix software bug'"
+      ]
+    }
+  }
+}

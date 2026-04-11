@@ -467,6 +467,8 @@ Return a JSON object:
     }
   ],
 
+  "ai_brief": "ONE coherent 4-6 sentence paragraph summarizing today's most interesting AI-related developments across Twitter, newsletters, and substacks. Pull from ALL AI sources: the Twitter accounts in AI_ROUNDUP_ACCOUNTS (@trq212, @claudeai, @felixrieseberg, @bcherny, @emollick, @CaseyNewton, @kevinroose), AI substacks (Understanding AI, One Useful Thing, Stratechery, Zvi, Simon Willison, SemiAnalysis, Dwarkesh, Import AI/Jack Clark, Platformer), and AI newsletter emails (Superhuman, The Neuron, FT's AI Shift by John Burn-Murdoch). Use inline markdown links [text](url) for EVERY claim — link the specific phrase to the original source. Lead with the most substantive development (model release, research finding, industry shift), then cover secondary items. Write it as flowing prose, not bullet points. Example: '[Anthropic released](url) their new Mythos model with unprecedented cybersecurity capabilities, prompting [Zvi to argue](url) it represents a meaningful shift toward autonomous systems. Meanwhile, [Ethan Mollick noted](url) that GPT-5 reasoning traces are getting more sophisticated...'",
+
   "stats_summary": {
     "total_items_analyzed": N,
     "conversation_items": N,
@@ -477,16 +479,42 @@ Return a JSON object:
 
 ## Rules
 
-1. TOPIC PRIORITIES (in order of importance to the reader):
-   a. HOUSING: market dynamics, prices, inventory, construction, zoning, development, urbanism, mortgage rates as they affect housing. This is the #1 priority.
-   b. AI & TECHNOLOGY: how AI affects work, real estate, cities, and business.
-   c. DEMOGRAPHICS & GEOGRAPHY: migration, household formation, population trends — especially as they relate to housing.
-   d. GENERAL BUSINESS: interesting business stories, startups, industry trends.
-   e. POLITICS: political developments, especially housing policy.
+1. TOPIC PRIORITIES (driven by user-defined weights — see pulse/data/topic_weights.json):
 
-   DEPRIORITIZE: Fed policy for its own sake, jobs reports, inflation data, stock market commentary — UNLESS they directly connect to housing. A theme about "the March jobs report was weak" is low priority. A theme about "weak jobs data could push mortgage rates down, reopening the housing market" is high priority.
+   The user has assigned priority weights (0-100) to ~23 topics. The classifier has already used these weights to score each item. Items with the highest weights should dominate the briefing.
 
-   Do NOT lead with pure macro/Fed/inflation themes. Lead with housing.
+   TOP PRIORITY (weight 90+) — feature these prominently:
+   - homeownership_demographics (100): generational gaps, first-time buyers, household formation, family dynamics
+   - cities_urbanism (100): city policy, transit, walkability, urban form
+   - demographics_general (100): birth rates, fertility, internal migration, population trends
+   - immigration_housing (95): immigration effects on housing demand and labor
+   - ai_and_housing (95): tech worker geography, AI-driven housing demand
+   - happiness_wellbeing (95): happiness research, social outcomes, anglosphere unhappiness
+   - cultural_lifestyle (95): time use, lifestyle commentary, dual-career families
+   - politics_housing (95): housing politics, voter dynamics
+   - housing_geography (90): metro-by-metro analysis, suburbs vs cities, regional patterns
+   - affordability (90): price-to-income, rent burden, buy vs rent math
+   - housing_policy (90): zoning, YIMBY, rent control
+   - ai_general (90): AI tools, model releases, AI industry
+   - tech_geography (90): where tech jobs are, tech hiring/firing by metro
+
+   SECONDARY (weight 70-89) — include regularly:
+   - housing_prices (80), housing_inventory (80), mortgage_rates (80)
+   - construction_supply (75), international (75)
+
+   OCCASIONAL (weight 50-69) — include if interesting:
+   - climate_insurance (65), commercial_real_estate (60)
+
+   LOW PRIORITY (weight 40-49) — include sparingly, only if exceptional:
+   - pure_fed_macro (40): Jobs reports, CPI/PCE, Fed policy — only if explicitly tied to housing
+   - markets_finance (40): Stock markets, bonds — only if a real housing story
+   - tech_general (40): Generic tech news
+
+   How to use these weights:
+   - Lead with topics weighted 95+
+   - When in doubt, prefer the higher-weighted topic
+   - Items already classified with relevance scores reflecting these weights — items above 70 should dominate
+   - For pure_fed_macro / markets_finance items: only include if the framing is explicitly about HOUSING implications. Generic Fed speeches, jobs reports, and inflation prints should be EXCLUDED unless the item ties them to housing market dynamics.
 
 2. QUOTE REAL PEOPLE BY NAME. "Claudia Sahm argues the labor market is weakening faster than the Fed acknowledges" is useful. "Users are panicking" is not. Focus on substantive discussions, not populist venting.
 
@@ -523,7 +551,9 @@ Return a JSON object:
     - Any sentence that could apply to any topic on any day is filler. Delete it.
     - Write like a wire service, not a podcast host. Facts and attributions only.
 
-14. ALL SECTIONS ARE MANDATORY. Your JSON output MUST include ALL of these keys with populated arrays: conversation_themes, twitter_roundup, substacker_takes. If you omit any section, the briefing is broken. substacker_takes should include a take for EVERY Substack newsletter provided — summarize all of them, not just a few.
+14. ALL SECTIONS ARE MANDATORY. Your JSON output MUST include ALL of these keys: conversation_themes, twitter_roundup, substacker_takes, ai_brief. If you omit any section, the briefing is broken. substacker_takes should include a take for EVERY Substack newsletter provided — summarize all of them, not just a few.
+
+15. AI_BRIEF: Scan the input for ALL AI-related content — tweets from @trq212, @claudeai, @felixrieseberg, @bcherny, @emollick, @CaseyNewton, @kevinroose; substack posts from Understanding AI, One Useful Thing, Stratechery, Zvi, Simon Willison, SemiAnalysis, Dwarkesh, Import AI, Platformer; and emails from Superhuman, The Neuron, FT AI Shift. Synthesize into ONE coherent paragraph (4-6 sentences) with inline markdown links to each source. Do NOT duplicate content that's in conversation_themes — the ai_brief is for AI-specific items that wouldn't make it into a main theme.
 
 """
 
@@ -755,6 +785,22 @@ Generate the daily briefing JSON. LEAD WITH CONVERSATION — what are people deb
                     continue
                 vip_tweets_by_author.setdefault(author, []).append(item)
 
+            def _clean_tweet_body(text: str, max_len: int = 140) -> str:
+                """Strip t.co URLs, newlines, and truncate for use as link text."""
+                import re as _re
+                if not text:
+                    return ""
+                # Remove t.co URLs (full or truncated)
+                text = _re.sub(r'https?://t\.co/\S*', '', text)
+                # Remove any remaining bare URLs
+                text = _re.sub(r'https?://\S+', '', text)
+                # Collapse whitespace
+                text = _re.sub(r'\s+', ' ', text).strip()
+                # Truncate cleanly at word boundary
+                if len(text) > max_len:
+                    text = text[:max_len].rsplit(' ', 1)[0] + '…'
+                return text
+
             vip_added = 0
             ai_roundup_authors = {(e.get("author") or "").lower().strip() for e in briefing.get("_ai_roundup", [])}
             for author_key, tweets in vip_tweets_by_author.items():
@@ -764,13 +810,13 @@ Generate the daily briefing JSON. LEAD WITH CONVERSATION — what are people deb
                 # Build summary from tweet bodies with links
                 parts = []
                 for t in tweets[:5]:
-                    body = (t.get("body") or t.get("title", ""))[:150]
+                    body = _clean_tweet_body(t.get("body") or t.get("title", ""))
                     url = t.get("url", "")
                     if url and body:
                         parts.append(f"[{body}]({url})")
                     elif body:
                         parts.append(body)
-                summary = ". ".join(parts) if parts else ""
+                summary = " ".join(parts) if parts else ""
                 if summary:
                     entry = {
                         "author": display_author,
@@ -820,13 +866,13 @@ Generate the daily briefing JSON. LEAD WITH CONVERSATION — what are people deb
                     display_author = f"@{display_author}"
                 parts = []
                 for t in tweets[:5]:
-                    body = (t.get("body") or t.get("title", ""))[:150]
+                    body = _clean_tweet_body(t.get("body") or t.get("title", ""))
                     url = t.get("url", "")
                     if url and body:
                         parts.append(f"[{body}]({url})")
                     elif body:
                         parts.append(body)
-                summary = ". ".join(parts)
+                summary = " ".join(parts)
                 if summary:
                     roundup_authors.add(author_key)
                     briefing.setdefault("twitter_roundup", []).append({
@@ -839,6 +885,25 @@ Generate the daily briefing JSON. LEAD WITH CONVERSATION — what are people deb
 
         # Validate all URLs against the database
         briefing = _validate_briefing_urls(briefing, conn)
+
+        # Split AI-related substacker takes into the unified AI section
+        try:
+            from config import AI_SUBSTACK_AUTHORS
+            ai_authors_lc = [a.lower() for a in AI_SUBSTACK_AUTHORS]
+            ai_substacks = []
+            remaining_substacks = []
+            for take in briefing.get("substacker_takes", []):
+                author = (take.get("author") or "").lower()
+                if any(a in author for a in ai_authors_lc):
+                    ai_substacks.append(take)
+                else:
+                    remaining_substacks.append(take)
+            briefing["substacker_takes"] = remaining_substacks
+            briefing["_ai_substacks"] = ai_substacks
+            if ai_substacks:
+                logger.info(f"AI substacks routed to AI section: {len(ai_substacks)}")
+        except ImportError:
+            briefing["_ai_substacks"] = []
 
         # Inject the human-readable source breakdown
         if "stats_summary" not in briefing:

@@ -17,11 +17,11 @@ import json
 import logging
 import os
 import sqlite3
+from pathlib import Path
 from typing import Optional
 
 import anthropic
 
-from config import TOPICS
 from store import get_db, get_unclassified, update_classification, update_conversation_classification
 
 logger = logging.getLogger(__name__)
@@ -30,33 +30,56 @@ MODEL = "claude-haiku-4-5-20251001"
 MAX_BATCH_SIZE = 20  # Items per API call (batched in prompt)
 
 
-def _build_taxonomy_text() -> str:
-    """Build a compact topic taxonomy for the prompt."""
+def _load_topic_weights() -> dict:
+    """Load the topic taxonomy with user-defined weights from JSON."""
+    path = Path(__file__).parent.parent.parent / "data" / "topic_weights.json"
+    with open(path) as f:
+        return json.load(f)
+
+
+def _build_taxonomy_text(weights_data: dict) -> str:
+    """Build a compact topic taxonomy for the prompt, with weights and examples."""
     lines = []
-    for key, info in TOPICS.items():
-        keywords = ", ".join(info["keywords"][:5])
-        lines.append(f"- {key}: {info['label']} (e.g., {keywords})")
+    # Sort topics by weight descending so highest priority comes first
+    topics = sorted(weights_data["topics"].items(), key=lambda x: -x[1]["weight"])
+    for key, info in topics:
+        weight = info["weight"]
+        label = info["label"]
+        desc = info["description"]
+        keywords = ", ".join(info.get("keywords", [])[:6])
+        examples = info.get("examples", [])
+        ex_text = " | ".join(examples[:2]) if examples else ""
+        lines.append(
+            f'- {key} (weight={weight}, {info["tier"]}): {label}\n'
+            f'    {desc}\n'
+            f'    Keywords: {keywords}\n'
+            f'    Examples: {ex_text}'
+        )
     return "\n".join(lines)
 
 
-SYSTEM_PROMPT = f"""You are a content classifier for a housing/economics data journalism newsletter called "Home Economics."
+_WEIGHTS = _load_topic_weights()
+_TAXONOMY_TEXT = _build_taxonomy_text(_WEIGHTS)
+
+
+SYSTEM_PROMPT = f"""You are a content classifier for a housing/AI/demographics newsletter called "Home Economics."
 
 Your job: classify each item with topic tags, relevance, entities, statistics, sentiment, content type, conversation signal, and verifiable claims.
 
-## Topic Taxonomy
-{_build_taxonomy_text()}
+## Topic Taxonomy (sorted by user priority weight)
+Each topic has a weight (0-100) reflecting how much the user cares about it. Higher weight = more important to feature.
 
-## Scoring Guidelines
-- Relevance (0-100): This newsletter covers the UNITED STATES housing market and economy.
-  - 90-100: Directly about US housing market data, prices, rates, inventory
-  - 80-89: US housing policy, zoning, affordability analysis, mortgage industry
-  - 70-79: US macroeconomics that affects housing: Fed policy, tariffs, inflation, employment, GDP, fiscal policy, immigration policy
-  - 60-69: Broader US economic analysis by economists/analysts (even if not directly about housing — if an economist known for macro work is commenting on the economy, it's relevant)
-  - 50-59: General US economic trends, labor market, demographics, consumer sentiment
-  - 30-49: Loosely related (general finance, international economics with US implications)
-  - 0-29: Not relevant (tech, entertainment, sports, unrelated)
-  - IMPORTANT: Content about non-US housing markets (Nigeria, UK, Ireland, India, etc.) scores 0-10 regardless of topic match. We ONLY cover the US market. Look for clues: naira (₦), pounds (£), non-US place names (Lagos, Lekki, Dublin, Mumbai), non-US political figures, pidgin English, Yoruba names, etc.
-  - IMPORTANT: Tweets/posts from known economists (Jason Furman, Arpit Gupta, Justin Wolfers, Claudia Sahm, Paul Krugman, etc.) about US economic policy should score 60+ even if they don't mention housing directly. These are the intellectual conversations our readers care about.
+{_TAXONOMY_TEXT}
+
+## Scoring Rules
+- relevance_score: Identify the item's PRIMARY topic from the taxonomy above and use that topic's WEIGHT as the base relevance score.
+  - If the item is a strong, specific match for the topic: use the weight directly.
+  - If the item only loosely matches: subtract 10-20 from the weight.
+  - If the item is exceptionally substantive (data, novel argument, contrarian view): add 5-10.
+  - Cap at 0-100.
+- topics: List 1-3 topic keys from the taxonomy that match. Always include the primary one first.
+- IMPORTANT: Content about non-US housing markets gets primary topic "international" (weight 75). Look for clues: non-US place names, non-US currency, etc.
+- IMPORTANT: Pure jobs reports, inflation prints, Fed speeches, GDP, retail sales score with primary topic "pure_fed_macro" (weight 40) — UNLESS the item is explicitly framed around housing implications, in which case the primary topic should be the relevant housing topic.
 
 - Sentiment:
   - "bullish" = positive for housing/economy (prices rising, rates falling, strong growth)
