@@ -105,9 +105,7 @@
       <outline type="rss" htmlUrl="https://www.economist.com/gulliver" title="Economist: Gulliver" xmlUrl="https://www.economist.com/gulliver/rss.xml" text="Economist: Gulliver" />
       <outline xmlUrl="https://rss.app/feeds/dyOmestbKGqbPYfU.xml" text="Housing policy in America" type="rss" htmlUrl="https://www.vox.com/housing" title="Housing policy in America" />
       <outline xmlUrl="https://www.latimes.com/business/realestate/rss2.0.xml" title="LA Times Real Estate" htmlUrl="https://www.latimes.com" type="rss" text="LA Times Real Estate" />
-      <outline title="RealPage, Inc. | LinkedIn" htmlUrl="https://www.linkedin.com/company/realpage/" text="RealPage, Inc. | LinkedIn" type="rss" xmlUrl="https://rss.app/feeds/P689RzBUbeuINsDv.xml" />
       <outline text="Multifamily Talks" xmlUrl="https://www.realpage.com/podcasts-rss/apple/multifamily-talks/" type="rss" htmlUrl="https://www.realpage.com/podcasts/" title="Multifamily Talks" />
-      <outline title="John Burns Research and Consulting | LinkedIn" text="John Burns Research and Consulting | LinkedIn" xmlUrl="https://rss.app/feeds/94he2j6jTPUNzUX7.xml" type="rss" htmlUrl="https://www.linkedin.com/company/john-burns-research-and-consulting/" />
       <outline type="rss" title="CityLab - Bloomberg" htmlUrl="https://www.bloomberg.com/citylab" xmlUrl="https://rss.app/feeds/NzVJgO8blctrL5Dk.xml" text="CityLab - Bloomberg" />
       <outline type="rss" title="City Journal" xmlUrl="https://feeds.feedburner.com/city-journal" htmlUrl="https://www.city-journal.org" text="City Journal" />
       <outline htmlUrl="https://www.edwardconard.com/?s=&amp;topic_filter%5B%5D=Housing" xmlUrl="https://rss.app/feeds/10oRHV2Q2ni83b3V.xml" type="rss" title="Edward Conard — Housing" text="Edward Conard — Housing" />
@@ -119,11 +117,8 @@
       <outline text="Eye On Housing" title="Eye On Housing" type="rss" xmlUrl="https://eyeonhousing.org/feed/" htmlUrl="https://eyeonhousing.org" />
       <outline text="Bloomberg Markets" title="Bloomberg Markets" type="rss" xmlUrl="https://feeds.bloomberg.com/markets/news.rss" htmlUrl="https://www.bloomberg.com/markets" />
       <outline text="Bloomberg Wealth" title="Bloomberg Wealth" type="rss" xmlUrl="https://feeds.bloomberg.com/wealth/news.rss" htmlUrl="https://www.bloomberg.com/wealth" />
-      <outline text="WaPo Business" title="WaPo Business" type="rss" xmlUrl="https://feeds.washingtonpost.com/rss/business" htmlUrl="https://www.washingtonpost.com/business" />
-      <outline text="WaPo Economy" title="WaPo Economy" type="rss" xmlUrl="https://feeds.washingtonpost.com/rss/business/economy" htmlUrl="https://www.washingtonpost.com/business/economy" />
       <outline text="NYT The Upshot" title="NYT The Upshot" type="rss" xmlUrl="https://rss.nytimes.com/services/xml/rss/nyt/Upshot.xml" htmlUrl="https://www.nytimes.com/section/upshot" />
       <outline text="CNBC Real Estate" title="CNBC Real Estate" type="rss" xmlUrl="https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&amp;id=10000115" htmlUrl="https://www.cnbc.com/real-estate/" />
-      <outline text="CNBC Economy" title="CNBC Economy" type="rss" xmlUrl="https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&amp;id=20910258" htmlUrl="https://www.cnbc.com/economy/" />
       <outline text="Brookings Institution" title="Brookings Institution" type="rss" xmlUrl="https://www.brookings.edu/feed/" htmlUrl="https://www.brookings.edu" />
       <outline text="Census Economic Indicators" title="Census Economic Indicators" type="rss" xmlUrl="https://www.census.gov/economic-indicators/indicator.xml" htmlUrl="https://www.census.gov" />
       <outline text="Federal Reserve Press Releases" title="Federal Reserve Press Releases" type="rss" xmlUrl="https://www.federalreserve.gov/feeds/press_all.xml" htmlUrl="https://www.federalreserve.gov" />
