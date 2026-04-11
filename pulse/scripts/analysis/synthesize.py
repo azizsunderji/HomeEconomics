@@ -841,22 +841,68 @@ Generate the daily briefing JSON. LEAD WITH CONVERSATION — what are people deb
                     text = text[:max_len].rsplit(' ', 1)[0] + '…'
                 return text
 
-            def _build_fallback_summary(tweets: list) -> str:
-                """Build a summary for VIP/supplement fallback.
+            def _haiku_summarize_tweets(author: str, tweets: list) -> str:
+                """Use Haiku to produce a prose summary of an account's tweets.
 
-                Shows each tweet body as plain text followed by a short
-                '[tweet →](url)' link. Avoids wrapping the entire raw tweet
-                body as link text, which produces giant blue blocks.
+                Matches the style of the Sonnet-generated twitter_roundup entries:
+                flowing prose with short action-verb inline markdown links to
+                each source tweet.
                 """
-                parts = []
-                for t in tweets[:4]:
-                    body = _clean_tweet_body(t.get("body") or t.get("title", ""), max_len=180)
-                    url = t.get("url", "")
-                    if body and url:
-                        parts.append(f"{body} [→]({url})")
-                    elif body:
-                        parts.append(body)
-                return " ".join(parts)
+                import anthropic as _anthropic
+                try:
+                    # Build tweet list for the prompt
+                    tweet_lines = []
+                    for i, t in enumerate(tweets[:8], 1):
+                        body = _clean_tweet_body(
+                            t.get("body") or t.get("title", ""), max_len=280
+                        )
+                        url = t.get("url", "")
+                        if body:
+                            tweet_lines.append(f"[{i}] {body} (url: {url})")
+
+                    if not tweet_lines:
+                        return ""
+
+                    tweets_text = "\n".join(tweet_lines)
+                    prompt = (
+                        f"Summarize {author}'s Twitter activity over the last 24 hours as a short flowing "
+                        f"paragraph (3-5 sentences). Paraphrase — do NOT quote tweets verbatim. "
+                        f"Use inline markdown links [text](url) where the linked text is a SHORT action verb "
+                        f"or phrase (1-4 words) like 'argued', 'noted that', 'shared', 'pushed back', "
+                        f"'highlighted', 'reported that'. Do NOT wrap long sentences as link text. "
+                        f"Start with the author's last name (no '@'). Be direct and factual.\n\n"
+                        f"Example style: \"Lincicome [reported](url1) Whirlpool paid $300M in tariffs. "
+                        f"He [noted](url2) $4 gasoline looks here to stay, and [shared](url3) his WSJ op-ed "
+                        f"on the WTO.\"\n\n"
+                        f"Account: {author}\nTweets:\n{tweets_text}\n\n"
+                        f"Return ONLY the paragraph, no preamble."
+                    )
+
+                    haiku_client = _anthropic.Anthropic()
+                    resp = haiku_client.messages.create(
+                        model="claude-haiku-4-5-20251001",
+                        max_tokens=400,
+                        messages=[{"role": "user", "content": prompt}],
+                    )
+                    return resp.content[0].text.strip()
+                except Exception as e:
+                    logger.warning(f"Haiku fallback summary failed for {author}: {e}")
+                    # Last-resort plain text fallback
+                    parts = []
+                    for t in tweets[:4]:
+                        body = _clean_tweet_body(
+                            t.get("body") or t.get("title", ""), max_len=140
+                        )
+                        url = t.get("url", "")
+                        if body and url:
+                            parts.append(f"{body} [→]({url})")
+                        elif body:
+                            parts.append(body)
+                    return " ".join(parts)
+
+            def _build_fallback_summary(tweets: list, author: str = "") -> str:
+                """Produce a prose summary for VIP/supplement fallback via Haiku."""
+                return _haiku_summarize_tweets(author, tweets)
 
             vip_added = 0
             ai_roundup_authors = {(e.get("author") or "").lower().strip() for e in briefing.get("_ai_roundup", [])}
@@ -865,7 +911,7 @@ Generate the daily briefing JSON. LEAD WITH CONVERSATION — what are people deb
                 if not display_author.startswith("@"):
                     display_author = f"@{display_author}"
                 # Build summary: plain-text bodies with small [→] link per tweet
-                summary = _build_fallback_summary(tweets)
+                summary = _build_fallback_summary(tweets, display_author)
                 if summary:
                     entry = {
                         "author": display_author,
@@ -913,7 +959,7 @@ Generate the daily briefing JSON. LEAD WITH CONVERSATION — what are people deb
                 display_author = tweets[0].get("author", "").strip()
                 if not display_author.startswith("@"):
                     display_author = f"@{display_author}"
-                summary = _build_fallback_summary(tweets)
+                summary = _build_fallback_summary(tweets, display_author)
                 if summary:
                     roundup_authors.add(author_key)
                     briefing.setdefault("twitter_roundup", []).append({
