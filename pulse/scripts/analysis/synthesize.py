@@ -453,7 +453,7 @@ Return a JSON object:
   "twitter_roundup": [
     {
       "author": "@handle",
-      "summary": "2-4 sentence paragraph summarizing this account's activity over the last 24 hours. Cover all their substantive tweets/threads. Use inline markdown links like [argued that rates won't fall](tweet_url) for each tweet referenced. This should read as a mini-briefing on what this person has been saying.",
+      "summary": "2-4 sentence paragraph PARAPHRASING this account's activity over the last 24 hours. Use inline markdown links like '[argued that rates won't fall](tweet_url)' where you link a SHORT phrase (3-8 words) to each tweet. CRITICAL: Do NOT wrap the entire raw tweet body as link text. Do NOT include t.co URLs anywhere — strip them. Do NOT just paste the tweet text verbatim. Write a real paraphrased summary in your own words, with inline links to the source tweets. Example GOOD: 'Parsons [argued multifamily delinquencies are climbing](url1) and [questioned whether the Sun Belt boom has ended](url2).' Example BAD: '[Multifamily delinquencies are climbing in the Sun Belt this is a worrying trend https://t.co/abc123](url)'.",
       "tweet_count": 3
     }
   ],
@@ -743,6 +743,46 @@ Generate the daily briefing JSON. LEAD WITH CONVERSATION — what are people deb
                     raise e  # Re-raise the original error
 
         # === POST-PROCESSING: Fix common Sonnet omissions ===
+
+        def _clean_summary_text(text: str) -> str:
+            """Clean t.co URLs and excess whitespace from a Twitter summary string.
+
+            Sonnet sometimes wraps raw tweet bodies as link text, so we strip
+            t.co URLs from inside the link text while preserving the markdown
+            link structure.
+            """
+            import re as _re
+            if not text:
+                return text
+            # Replace t.co URLs and bare URLs INSIDE link text only ([...]) — leave
+            # the URL part of links (...) untouched.
+            def _strip_in_link_text(match):
+                link_text = match.group(1)
+                url = match.group(2)
+                # Strip t.co URLs from the link text
+                cleaned = _re.sub(r'https?://t\.co/\S*', '', link_text)
+                # Strip truncated URLs at end (e.g. "https://t")
+                cleaned = _re.sub(r'https?://[^\s\]]*$', '', cleaned)
+                # Collapse whitespace and trim
+                cleaned = _re.sub(r'\s+', ' ', cleaned).strip()
+                return f'[{cleaned}]({url})'
+            text = _re.sub(r'\[([^\]]+)\]\(([^)]+)\)', _strip_in_link_text, text)
+            # Also strip any t.co URLs that appear OUTSIDE of links (rare)
+            # Use a careful approach: split on links, clean the non-link parts
+            parts = _re.split(r'(\[[^\]]+\]\([^)]+\))', text)
+            for i in range(len(parts)):
+                if not (parts[i].startswith('[') and '](' in parts[i]):
+                    parts[i] = _re.sub(r'https?://t\.co/\S*', '', parts[i])
+                    parts[i] = _re.sub(r'\s+', ' ', parts[i])
+            text = ''.join(parts).strip()
+            # Replace ". " separator (old format) with " " for cleaner reading
+            text = _re.sub(r'\)\.\s*\[', ') [', text)
+            return text
+
+        # 0. Clean twitter_roundup summaries (strip t.co URLs from link text)
+        for entry in briefing.get("twitter_roundup", []):
+            if "summary" in entry:
+                entry["summary"] = _clean_summary_text(entry["summary"])
 
         # 1. Deduplicate twitter_roundup and split out AI Roundup accounts
         try:
