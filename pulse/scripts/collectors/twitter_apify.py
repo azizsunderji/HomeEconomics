@@ -15,7 +15,7 @@ import os
 import logging
 import sqlite3
 import time
-from datetime import datetime, timezone, date
+from datetime import datetime, timezone, date, timedelta
 from pathlib import Path
 
 import httpx
@@ -273,14 +273,35 @@ def collect(
         if likes < min_likes:
             continue
 
-        # Parse date
+        # Parse date — Apify actors use different field names over time
         published = None
-        created_at = tweet.get("createdAt", "")
-        if created_at:
+        for field in ("createdAt", "created_at", "timeParsed", "timestamp", "date", "tweetedAt"):
+            created_at = tweet.get(field, "")
+            if not created_at:
+                continue
             try:
-                published = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
-            except ValueError:
-                pass
+                if isinstance(created_at, (int, float)):
+                    # Unix timestamp (seconds or ms)
+                    ts = created_at / 1000 if created_at > 1e12 else created_at
+                    published = datetime.fromtimestamp(ts, tz=timezone.utc)
+                else:
+                    # ISO string or Twitter's "Tue Apr 11 14:30:00 +0000 2026" format
+                    s = str(created_at).replace("Z", "+00:00")
+                    try:
+                        published = datetime.fromisoformat(s)
+                    except ValueError:
+                        # Try Twitter's legacy format
+                        published = datetime.strptime(s, "%a %b %d %H:%M:%S %z %Y")
+                break
+            except (ValueError, TypeError):
+                continue
+
+        # Skip tweets older than 48 hours — prevents old tweets from polluting
+        # today's briefing when the Apify scraper pulls an account's history.
+        if published is not None:
+            age = datetime.now(timezone.utc) - published
+            if age > timedelta(hours=48):
+                continue
 
         author = tweet.get("author", {})
         username = author.get("userName", "") if isinstance(author, dict) else str(author)

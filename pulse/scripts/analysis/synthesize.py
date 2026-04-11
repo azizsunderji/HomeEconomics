@@ -643,7 +643,21 @@ def generate_daily_briefing(
         f"{len(convergence)} convergence topics"
     )
 
-    user_content = f"""## Today's Collected Items — {len(all_items)} total, {len(relevant_items)} above relevance threshold, {len(conversation_items)} with active conversation
+    # Build handle → real name map for Sonnet
+    try:
+        from config import TWITTER_REAL_NAMES
+        names_text = "\n".join(
+            f"  @{h}: {name}" for h, name in sorted(TWITTER_REAL_NAMES.items())
+        )
+    except ImportError:
+        names_text = ""
+
+    user_content = f"""## Twitter Handle → Real Name map
+Use these real names in twitter_roundup summaries. For any handle NOT in this list, use the @handle directly — do NOT guess a real name.
+
+{names_text}
+
+## Today's Collected Items — {len(all_items)} total, {len(relevant_items)} above relevance threshold, {len(conversation_items)} with active conversation
 
 {_format_items_for_conversation(relevant_items, limit=150)}
 
@@ -791,22 +805,54 @@ Generate the daily briefing JSON. LEAD WITH CONVERSATION — what are people deb
         except ImportError:
             ai_handles = set()
 
+        # Build the set of URLs already used in conversation themes — these
+        # should NOT appear again in the twitter roundup.
+        theme_urls = set()
+        theme_handles = set()  # normalized handles used in theme platform entries
+        import re as _re_theme
+        for theme in briefing.get("conversation_themes", []):
+            for p in theme.get("platforms", []):
+                u = p.get("url", "")
+                if u:
+                    theme_urls.add(u)
+            # Also scan the summary markdown for twitter URLs and handles
+            summary = theme.get("summary", "") or ""
+            for m in _re_theme.finditer(r'https?://(?:twitter\.com|x\.com)/(\w+)/status/(\d+)', summary):
+                handle, status_id = m.group(1), m.group(2)
+                theme_urls.add(f"https://twitter.com/{handle}/status/{status_id}")
+                theme_urls.add(f"https://x.com/{handle}/status/{status_id}")
+                theme_handles.add(handle.lower())
+
         roundup = briefing.get("twitter_roundup", [])
         if roundup:
             seen_authors = set()
             deduped = []
             ai_roundup = []
+            skipped_theme_dup = 0
             for entry in roundup:
-                author = (entry.get("author") or "").lower().strip()
-                if author and author not in seen_authors:
-                    seen_authors.add(author)
-                    if author in ai_handles:
-                        ai_roundup.append(entry)
-                    else:
-                        deduped.append(entry)
+                author = (entry.get("author") or "").lower().strip().lstrip("@")
+                if not author:
+                    continue
+                if author in seen_authors:
+                    continue
+                # Skip if this account is already featured in a conversation theme
+                if author in theme_handles:
+                    skipped_theme_dup += 1
+                    continue
+                # Check if any URL in the summary is already in a theme
+                summary_text = entry.get("summary", "") or ""
+                entry_urls = set(_re_theme.findall(r'https?://(?:twitter\.com|x\.com)/\w+/status/\d+', summary_text))
+                if entry_urls and entry_urls.issubset(theme_urls):
+                    skipped_theme_dup += 1
+                    continue
+                seen_authors.add(author)
+                if f"@{author}" in ai_handles or author in {h.lstrip("@") for h in ai_handles}:
+                    ai_roundup.append(entry)
+                else:
+                    deduped.append(entry)
             briefing["_ai_roundup"] = ai_roundup
-            if len(deduped) < len(roundup):
-                logger.info(f"Twitter roundup deduped: {len(roundup)} → {len(deduped)} entries")
+            if skipped_theme_dup:
+                logger.info(f"Twitter roundup: skipped {skipped_theme_dup} entries already in conversation themes")
             briefing["twitter_roundup"] = deduped
 
         # 1b. Ensure VIP accounts appear in roundup — group their tweets into summaries
@@ -863,18 +909,28 @@ Generate the daily briefing JSON. LEAD WITH CONVERSATION — what are people deb
                     if not tweet_lines:
                         return ""
 
+                    # Resolve real name from config map
+                    handle = author.lstrip("@").lower()
+                    try:
+                        from config import TWITTER_REAL_NAMES
+                        real_name = TWITTER_REAL_NAMES.get(handle, "")
+                    except ImportError:
+                        real_name = ""
+                    display = real_name if real_name else author
+
                     tweets_text = "\n".join(tweet_lines)
                     prompt = (
-                        f"Summarize {author}'s Twitter activity over the last 24 hours as a short flowing "
+                        f"Summarize {display}'s Twitter activity over the last 24 hours as a short flowing "
                         f"paragraph (3-5 sentences). Paraphrase — do NOT quote tweets verbatim. "
                         f"Use inline markdown links [text](url) where the linked text is a SHORT action verb "
                         f"or phrase (1-4 words) like 'argued', 'noted that', 'shared', 'pushed back', "
                         f"'highlighted', 'reported that'. Do NOT wrap long sentences as link text. "
-                        f"Start with the author's last name (no '@'). Be direct and factual.\n\n"
+                        f"Start with '{display.split()[-1] if real_name else display}' (no '@'). Be direct and factual. "
+                        f"Do NOT invent a real name — use exactly '{display}'.\n\n"
                         f"Example style: \"Lincicome [reported](url1) Whirlpool paid $300M in tariffs. "
                         f"He [noted](url2) $4 gasoline looks here to stay, and [shared](url3) his WSJ op-ed "
                         f"on the WTO.\"\n\n"
-                        f"Account: {author}\nTweets:\n{tweets_text}\n\n"
+                        f"Account: {display} ({author})\nTweets:\n{tweets_text}\n\n"
                         f"Return ONLY the paragraph, no preamble."
                     )
 

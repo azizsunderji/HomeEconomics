@@ -308,6 +308,13 @@ COMPETITOR_SUBSTACKS = [
     ("Nominal News", "https://nominalnews.substack.com/feed"),
     ("L.A. Reported", "https://lareported.substack.com/feed"),
     ("Casey Newton (Platformer)", "https://www.platformer.news/rss/"),
+    ("Paul Krugman", "https://paulkrugman.substack.com/feed"),
+    ("Jonathan Miller - Miller Samuel", "https://www.millersamuel.com/feed/"),
+    ("The Argument", "https://www.theargumentmag.com/feed"),
+    ("Understanding AI (Tim Lee)", "https://www.understandingai.org/feed"),
+    ("SemiAnalysis (Dylan Patel)", "https://www.semianalysis.com/feed"),
+    ("Dwarkesh Patel", "https://www.dwarkesh.com/feed"),
+    ("Jack Clark - Import AI", "https://importai.substack.com/feed"),
     ("Hugh Clarke - A Thread of Order", "https://hughclarke.substack.com/feed"),
 ]
 
@@ -419,6 +426,86 @@ AI_ROUNDUP_ACCOUNTS = [
     "CaseyNewton",     # Casey Newton — Platformer, AI/tech
     "kevinroose",      # Kevin Roose — NYT AI/tech
 ]
+
+# Twitter handle → real name map. Used to prevent Sonnet from inventing
+# wrong names (e.g. calling @aarmlovi "Lubock"). If a handle isn't in
+# this map, use the @handle directly in the summary.
+TWITTER_REAL_NAMES = {
+    "arpitrage": "Arpit Gupta",
+    "emollick": "Ethan Mollick",
+    "jasonfurman": "Jason Furman",
+    "cremieuxrecueil": "Cremieux",
+    "phfloor": "Pierre",
+    "trq212": "Thariq",
+    "scottlincicome": "Scott Lincicome",
+    "aarmlovi": "Alex Armlovich",
+    "lymanstoneky": "Lyman Stone",
+    "greg_ip": "Greg Ip",
+    "michael_wiebe": "Michael Wiebe",
+    "kaerdmann": "Kevin Erdmann",
+    "mnolangray": "M Nolan Gray",
+    "jayparsons": "Jay Parsons",
+    "mikefellman": "Mike Fellman",
+    "alecstapp": "Alec Stapp",
+    "josephpolitano": "Joseph Politano",
+    "thestalwart": "Joe Weisenthal",
+    "conorsen": "Conor Sen",
+    "producercities": "Producer Cities",
+    "claudeai": "Claude",
+    "felixrieseberg": "Felix Rieseberg",
+    "bcherny": "Boris Cherny",
+    "caseynewton": "Casey Newton",
+    "kevinroose": "Kevin Roose",
+    "_brianpotter": "Brian Potter",
+    "abcampbell": "AB Campbell",
+    "amandafung": "Amanda Fung",
+    "americanhousing": "American Housing",
+    "billmcbride4": "Bill McBride (Calculated Risk)",
+    "bobknakal": "Bob Knakal",
+    "bykylecampbell": "Kyle Campbell",
+    "calculatedrisk": "Calculated Risk",
+    "candaceetaylor": "Candace Taylor",
+    "carolwalshreal1": "Carol Walsh",
+    "conorsen": "Conor Sen",
+    "davidfbrand": "David Brand",
+    "dkthomp": "Derek Thompson",
+    "donweinland": "Don Weinland",
+    "fullstackecon": "Full Stack Economics",
+    "gandhisahil": "Sahil Gandhi",
+    "homeloanbill": "Bill (HomeLoanBill)",
+    "jburnmurdoch": "John Burn-Murdoch",
+    "jedkolko": "Jed Kolko",
+    "jonathanmiller": "Jonathan Miller",
+    "loganmohtashami": "Logan Mohtashami",
+    "marcgoldwein": "Marc Goldwein",
+    "mattkahn1966": "Matt Kahn",
+    "mattyglesias": "Matt Yglesias",
+    "modeledbehavior": "Adam Ozimek",
+    "moorehn": "Heidi Moore",
+    "morebirths": "More Births",
+    "mtabarrok": "Maxwell Tabarrok",
+    "natesilver538": "Nate Silver",
+    "nfergus": "Niall Ferguson",
+    "noahpinion": "Noah Smith",
+    "palladiummag": "Palladium Magazine",
+    "profstonge": "Prof Stonge",
+    "rickpalaciosjr": "Rick Palacios Jr",
+    "rileymeik": "Riley Meik",
+    "robin_j_brooks": "Robin Brooks",
+    "robinhanson": "Robin Hanson",
+    "s_stantcheva": "Stefanie Stantcheva",
+    "slatestarcodex": "Scott Alexander",
+    "stevecuozzo": "Steve Cuozzo",
+    "tenantbloc": "Tenant Bloc",
+    "thestalwart": "Joe Weisenthal",
+    "trdny": "The Real Deal",
+    "urbandigs": "UrbanDigs",
+    "urbanistvc": "Urbanist VC",
+    "xurbanxcowboyx": "Urban Cowboy",
+    "yimbyland": "YIMBYland",
+    "ezraklein": "Ezra Klein",
+    "jabornesworth": "Jabor Nesworth",
+}
 
 TWITTER_MIN_LIKES = 5    # Low threshold — these are curated voices, not keyword search
 TWITTER_MAX_PER_QUERY = 60  # Per batch; more results = better coverage of quiet accounts
@@ -537,8 +624,37 @@ INSTITUTIONAL_SENDER_ALLOWLIST = [
     "brookings",
     "atlantafed", "atlanta fed",
     "prakash loungani",
-    "the argument",
     "crain",
+    # Added 2026-04-10
+    "capital economics",
+    "missing middle", "missingmiddle",
+    "hbr.org", "harvard business review",
+    "jay parsons", "jayparsons",
+    "calculatedrisk", "calculated risk",
+    "jchs.harvard", "joint center for housing",
+    "urban.org", "urban institute",
+]
+
+# Gmail senders that should route to the unified AI section
+GMAIL_AI_HEADLINE_SENDERS = [
+    "superhuman",
+    "theneurondaily", "the neuron",
+    "platformer",
+    "john burn-murdoch", "the ai shift",
+]
+
+# Substack authors whose posts should route to the unified AI section
+# (matched against the 'author' field in substacker_takes)
+AI_SUBSTACK_AUTHORS = [
+    "understanding ai", "tim lee",
+    "ethan mollick", "one useful thing",
+    "ben thompson", "stratechery",
+    "zvi",
+    "simon willison",
+    "casey newton", "platformer",
+    "semianalysis", "dylan patel",
+    "dwarkesh",
+    "jack clark", "import ai",
 ]
 
 JOURNAL_FEED_PATTERNS = [
