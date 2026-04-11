@@ -826,7 +826,7 @@ Generate the daily briefing JSON. LEAD WITH CONVERSATION — what are people deb
                 vip_tweets_by_author.setdefault(author, []).append(item)
 
             def _clean_tweet_body(text: str, max_len: int = 140) -> str:
-                """Strip t.co URLs, newlines, and truncate for use as link text."""
+                """Strip t.co URLs, newlines, and truncate for plain-text display."""
                 import re as _re
                 if not text:
                     return ""
@@ -841,22 +841,31 @@ Generate the daily briefing JSON. LEAD WITH CONVERSATION — what are people deb
                     text = text[:max_len].rsplit(' ', 1)[0] + '…'
                 return text
 
+            def _build_fallback_summary(tweets: list) -> str:
+                """Build a summary for VIP/supplement fallback.
+
+                Shows each tweet body as plain text followed by a short
+                '[tweet →](url)' link. Avoids wrapping the entire raw tweet
+                body as link text, which produces giant blue blocks.
+                """
+                parts = []
+                for t in tweets[:4]:
+                    body = _clean_tweet_body(t.get("body") or t.get("title", ""), max_len=180)
+                    url = t.get("url", "")
+                    if body and url:
+                        parts.append(f"{body} [→]({url})")
+                    elif body:
+                        parts.append(body)
+                return " ".join(parts)
+
             vip_added = 0
             ai_roundup_authors = {(e.get("author") or "").lower().strip() for e in briefing.get("_ai_roundup", [])}
             for author_key, tweets in vip_tweets_by_author.items():
                 display_author = tweets[0].get("author", "").strip()
                 if not display_author.startswith("@"):
                     display_author = f"@{display_author}"
-                # Build summary from tweet bodies with links
-                parts = []
-                for t in tweets[:5]:
-                    body = _clean_tweet_body(t.get("body") or t.get("title", ""))
-                    url = t.get("url", "")
-                    if url and body:
-                        parts.append(f"[{body}]({url})")
-                    elif body:
-                        parts.append(body)
-                summary = " ".join(parts) if parts else ""
+                # Build summary: plain-text bodies with small [→] link per tweet
+                summary = _build_fallback_summary(tweets)
                 if summary:
                     entry = {
                         "author": display_author,
@@ -904,15 +913,7 @@ Generate the daily briefing JSON. LEAD WITH CONVERSATION — what are people deb
                 display_author = tweets[0].get("author", "").strip()
                 if not display_author.startswith("@"):
                     display_author = f"@{display_author}"
-                parts = []
-                for t in tweets[:5]:
-                    body = _clean_tweet_body(t.get("body") or t.get("title", ""))
-                    url = t.get("url", "")
-                    if url and body:
-                        parts.append(f"[{body}]({url})")
-                    elif body:
-                        parts.append(body)
-                summary = " ".join(parts)
+                summary = _build_fallback_summary(tweets)
                 if summary:
                     roundup_authors.add(author_key)
                     briefing.setdefault("twitter_roundup", []).append({
