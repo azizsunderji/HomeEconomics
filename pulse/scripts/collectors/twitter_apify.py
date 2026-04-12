@@ -222,14 +222,12 @@ def collect(
     if queries:
         all_batches.append((queries, max_per_query))
 
-    # Account batches of 30 — moderate size balances cost vs diversity
-    # Each run has a fixed overhead (~$0.16), so fewer runs saves money
-    BATCH_SIZE = 30
+    # ALL accounts in ONE batch — minimizes Apify actor runs (the expensive part).
+    # The scraper returns top tweets by engagement, so high-signal accounts
+    # naturally dominate. Low-engagement accounts get squeezed out, which is fine.
     if accounts:
-        for i in range(0, len(accounts), BATCH_SIZE):
-            batch = accounts[i:i + BATCH_SIZE]
-            account_terms = [f"from:{a}" for a in batch]
-            all_batches.append((account_terms, max_per_query))
+        account_terms = [f"from:{a}" for a in accounts]
+        all_batches.append((account_terms, max_per_query))
 
     raw_tweets = []
     for batch_terms, batch_max in all_batches:
@@ -240,28 +238,16 @@ def collect(
         raw_tweets.extend(batch_results)
         logger.info(f"  Batch [{batch_terms[0][:40]}{'...' if len(batch_terms) > 1 else ''}]: {len(batch_results)} raw tweets")
 
-    # Diversity sweep: find accounts that got zero tweets, re-query them
-    # in a single follow-up batch to ensure every voice has a chance
-    if accounts and _check_budget():
+    # Log coverage stats (no diversity sweep — too costly for marginal benefit)
+    if accounts:
         covered_authors = set()
         for tweet in raw_tweets:
-            author = tweet.get("author", {})
-            username = (author.get("userName", "") if isinstance(author, dict) else str(author)).lower()
+            author_obj = tweet.get("author", {})
+            username = (author_obj.get("userName", "") if isinstance(author_obj, dict) else str(author_obj)).lower()
             covered_authors.add(username)
-
         missed = [a for a in accounts if a.lower() not in covered_authors]
         if missed:
-            logger.info(f"Diversity sweep: {len(missed)} accounts had zero tweets, re-querying")
-            # Run missed accounts in batches too, in case there are many
-            SWEEP_BATCH = 50
-            for i in range(0, len(missed), SWEEP_BATCH):
-                if not _check_budget():
-                    break
-                sweep_batch = missed[i:i + SWEEP_BATCH]
-                sweep_terms = [f"from:{a}" for a in sweep_batch]
-                sweep_results = _run_actor(sweep_terms, max_tweets=len(sweep_batch) * 2)
-                raw_tweets.extend(sweep_results)
-                logger.info(f"  Sweep batch: {len(sweep_results)} tweets from {len(sweep_batch)} missed accounts")
+            logger.info(f"Accounts with no tweets in this batch: {len(missed)} of {len(accounts)} ({', '.join(missed[:10])}{'...' if len(missed) > 10 else ''})")
 
     for tweet in raw_tweets:
         tweet_id = tweet.get("id", "")

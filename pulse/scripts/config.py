@@ -509,7 +509,7 @@ TWITTER_REAL_NAMES = {
 
 TWITTER_MIN_LIKES = 5    # Low threshold — these are curated voices, not keyword search
 TWITTER_MAX_PER_QUERY = 60  # Per batch; more results = better coverage of quiet accounts
-TWITTER_DAILY_BUDGET_CENTS = 400  # $4/day max Apify spend (6 batches + sweep × $0.16 × 2 runs/day)
+TWITTER_DAILY_BUDGET_CENTS = 200  # $2/day max Apify spend (1 batch, no sweep)
 
 # VIP Twitter accounts: ALL tweets from these accounts in the last 24h are included
 # in the Twitter roundup, regardless of engagement score or relevance.
