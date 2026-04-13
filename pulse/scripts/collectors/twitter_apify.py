@@ -229,12 +229,15 @@ def collect(
     if queries:
         all_batches.append((queries, max_per_query))
 
-    # ALL accounts in ONE batch — minimizes Apify actor runs (the expensive part).
-    # The scraper returns top tweets by engagement, so high-signal accounts
-    # naturally dominate. Low-engagement accounts get squeezed out, which is fine.
+    # Split accounts into batches of ~25. One giant batch squeezes out most
+    # accounts (Twitter returns max ~60 results per query). Three smaller
+    # batches give much better coverage while staying under budget.
+    BATCH_SIZE = 25
     if accounts:
-        account_terms = [f"from:{a}" for a in accounts]
-        all_batches.append((account_terms, max_per_query))
+        for i in range(0, len(accounts), BATCH_SIZE):
+            batch = accounts[i:i + BATCH_SIZE]
+            account_terms = [f"from:{a}" for a in batch]
+            all_batches.append((account_terms, max_per_query))
 
     raw_tweets = []
     for batch_terms, batch_max in all_batches:
