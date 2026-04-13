@@ -108,15 +108,8 @@ def _run_actor(search_terms: list[str], max_tweets: int = 50) -> list[dict]:
     actor_api_id = ACTOR_ID.replace("/", "~")
     url = f"{APIFY_BASE}/acts/{actor_api_id}/runs"
 
-    # Append since_time (UNIX timestamp) to each search term to scope to
-    # the last 24 hours. Twitter broke since/until date strings; UNIX
-    # timestamps via since_time: inline in the query still work.
-    # This ensures we get recent tweets and avoids stale content.
-    since_ts = int((datetime.now(timezone.utc) - timedelta(hours=24)).timestamp())
-    scoped_terms = [f"{term} since_time:{since_ts}" for term in search_terms]
-
     payload = {
-        "searchTerms": scoped_terms,
+        "searchTerms": search_terms,
         "maxItems": max_tweets,
         "filter": "Top",
     }
@@ -229,15 +222,12 @@ def collect(
     if queries:
         all_batches.append((queries, max_per_query))
 
-    # Split accounts into batches of ~25. One giant batch squeezes out most
-    # accounts (Twitter returns max ~60 results per query). Three smaller
-    # batches give much better coverage while staying under budget.
-    BATCH_SIZE = 25
+    # ALL accounts in ONE batch — minimizes Apify actor runs (the expensive part).
+    # The scraper returns top tweets by engagement, so high-signal accounts
+    # naturally dominate. Freshness is handled by the post-collection 48h age filter.
     if accounts:
-        for i in range(0, len(accounts), BATCH_SIZE):
-            batch = accounts[i:i + BATCH_SIZE]
-            account_terms = [f"from:{a}" for a in batch]
-            all_batches.append((account_terms, max_per_query))
+        account_terms = [f"from:{a}" for a in accounts]
+        all_batches.append((account_terms, max_per_query))
 
     raw_tweets = []
     for batch_terms, batch_max in all_batches:
