@@ -108,8 +108,15 @@ def _run_actor(search_terms: list[str], max_tweets: int = 50) -> list[dict]:
     actor_api_id = ACTOR_ID.replace("/", "~")
     url = f"{APIFY_BASE}/acts/{actor_api_id}/runs"
 
+    # Append since_time (UNIX timestamp) to each search term to scope to
+    # the last 24 hours. Twitter broke since/until date strings; UNIX
+    # timestamps via since_time: inline in the query still work.
+    # This ensures we get recent tweets and avoids stale content.
+    since_ts = int((datetime.now(timezone.utc) - timedelta(hours=24)).timestamp())
+    scoped_terms = [f"{term} since_time:{since_ts}" for term in search_terms]
+
     payload = {
-        "searchTerms": search_terms,
+        "searchTerms": scoped_terms,
         "maxItems": max_tweets,
         "filter": "Top",
     }
