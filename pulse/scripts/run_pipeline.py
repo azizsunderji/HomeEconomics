@@ -229,6 +229,19 @@ def cmd_daily(args):
             # Skip boilerplate
             if any(junk in title_key for junk in ["sign up for", "subscribe to", "newsletter"]):
                 continue
+            # Skip single-company stories from Bloomberg/markets feeds
+            # (earnings, stock moves, deals — not macro or housing relevant)
+            if feed in ("Bloomberg Markets", "Bloomberg Wealth"):
+                import re as _re_hl
+                company_junk = [
+                    r'\b(shares?|stock)\s+(rise|fall|drop|surge|tumble|slip|gain)',
+                    r'\b(earnings|revenue|profit)\s+(beat|miss|top|exceed)',
+                    r'\bIPO\b', r'\bacquisition\b', r'\bmerger\b',
+                    r'\braises?\s+\$', r'\bvaluation\b',
+                    r'\bCEO\b.*\b(step|resign|appoint|hire)',
+                ]
+                if any(_re_hl.search(p, title, _re_hl.IGNORECASE) for p in company_junk):
+                    continue
             seen_headline_titles.add(title_key)
             headline_items.append({
                 "source": feed,
@@ -245,7 +258,8 @@ def cmd_daily(args):
     # Inject institutional emails + Gmail newsletters (routed to separate sections)
     try:
         from config import (GMAIL_JUNK_SENDER_PATTERNS, GMAIL_JUNK_TITLE_PATTERNS,
-                          INSTITUTIONAL_SENDER_ALLOWLIST, GMAIL_NEWSLETTER_SENDERS)
+                          INSTITUTIONAL_SENDER_ALLOWLIST, GMAIL_NEWSLETTER_SENDERS,
+                          GMAIL_AI_HEADLINE_SENDERS)
         import re as _re
         cutoff_36h = (datetime.now(timezone.utc) - timedelta(hours=36)).isoformat()
         all_gmail = conn.execute(
@@ -254,6 +268,7 @@ def cmd_daily(args):
         ).fetchall()
         institutional_items = []
         gmail_newsletter_items = []
+        ai_newsletter_items = []  # for the unified AI section
         for row in all_gmail:
             item = dict(row)
             sender = (item.get("author", "") or "").lower()
@@ -277,19 +292,24 @@ def cmd_daily(args):
                 "title": item.get("title", ""),
                 "url": item.get("url", ""),
             }
+            # Route: AI newsletter senders → AI section (highest priority)
+            if any(p in sender or p in display_name.lower() for p in GMAIL_AI_HEADLINE_SENDERS):
+                ai_newsletter_items.append(entry)
             # Route: newsletter senders → newsletters section
-            if any(p in sender for p in GMAIL_NEWSLETTER_SENDERS):
+            elif any(p in sender for p in GMAIL_NEWSLETTER_SENDERS):
                 gmail_newsletter_items.append(entry)
             # Route: institutional allowlist → institutional signal
             elif any(p in sender or p in display_name.lower() for p in INSTITUTIONAL_SENDER_ALLOWLIST):
                 institutional_items.append(entry)
         briefing["_institutional_emails"] = institutional_items
         briefing["_gmail_newsletters"] = gmail_newsletter_items
-        logger.info(f"Institutional emails: {len(institutional_items)}, Gmail newsletters: {len(gmail_newsletter_items)}")
+        briefing["_ai_newsletters"] = ai_newsletter_items
+        logger.info(f"Institutional emails: {len(institutional_items)}, Gmail newsletters: {len(gmail_newsletter_items)}, AI newsletters: {len(ai_newsletter_items)}")
     except Exception as e:
         logger.warning(f"Institutional email injection failed: {e}")
         briefing["_institutional_emails"] = []
         briefing["_gmail_newsletters"] = []
+        briefing["_ai_newsletters"] = []
 
     # NOTE: Headlines and journal articles are now injected above (OPML-driven block)
 
