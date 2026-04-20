@@ -346,15 +346,7 @@ BLUESKY_ACCOUNTS = [
 ]
 
 # Secondary: search terms (only works with auth)
-BLUESKY_SEARCH_TERMS = [
-    "housing market",
-    "mortgage rates",
-    "home prices",
-    "rent crisis",
-    "housing affordability",
-    "housing bubble",
-    "#housingmarket",
-]
+BLUESKY_SEARCH_TERMS = []
 
 BLUESKY_MAX_PER_QUERY = 30
 
