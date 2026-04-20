@@ -524,7 +524,7 @@ Return a JSON object:
 
 5. SUBSTACKER TAKES MUST COME FROM SUBSTACK NEWSLETTERS ONLY. The substacker_takes section is EXCLUSIVELY for items from the "Substack Newsletters" section above. Do NOT include Twitter commentators or any other source. Use the URL provided with each Substack item (even if it's a redirect link). For each take, summarize their specific ARGUMENT — not just the topic. "Erdmann argues builders are underbuilding relative to population growth" is good. "Erdmann wrote about housing supply" is not. IMPORTANT: Include a take for EVERY Substack newsletter provided. Do not cherry-pick — summarize all of them.
 
-6. CONVERSATION THEMES: 3-6 themes max. Each must have platform evidence. At least 2 themes should involve economist/analyst voices.
+6. CONVERSATION THEMES: 8-12 themes. Each must have platform evidence. At least 2 themes should involve economist/analyst voices.
 
 8. ONE TOPIC PER THEME. Do NOT group unrelated threads or voices into one theme just to reduce count. If Winton ARK is talking about AI and photography employment, and Arindube is making a separate argument about AI asset valuations, those are TWO separate themes — not one. Only group threads together when they are genuinely part of the SAME conversation (people replying to each other, referencing each other's points). Three separate people talking about three separate things on the same broad topic is NOT one theme.
 
@@ -534,7 +534,7 @@ Return a JSON object:
 
 11. SKIP IRRELEVANT NOISE. Do not feature: Nigerian/international housing stories, memes about landlords, generic "economy is rigged" venting, partisan political rants with no economic substance.
 
-11b. PER-PERSON CAP: No single person should appear in more than 2 conversation themes. If someone is involved in 4 different threads, pick the 2 most substantive and leave the rest. Spread the spotlight across different voices. The reader wants a diverse range of perspectives, not one person's feed.
+11b. PER-PERSON CAP: No single person should appear in more than 1 conversation theme. If someone is involved in multiple threads, pick the single most substantive one. Spread the spotlight across different voices — the reader wants diverse perspectives, not one person's feed. If you find yourself featuring the same name twice, cut one.
 
 12. TWITTER ROUNDUP: Summarize each active account's 24-hour activity as a short paragraph. CRITICAL RULES:
     a. Do NOT include any voice you already covered in conversation_themes.
