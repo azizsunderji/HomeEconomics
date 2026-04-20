@@ -316,16 +316,12 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
                 item = dict(item)
                 item["headline"] = f"{section_name}: {item.get('headline', '')}"
                 source = "Economist"
-            # Consolidate FT and Bloomberg front-line feeds into one group.
-            # Bloomberg Markets/Wealth and FT Front Page/Global Economy/Markets
-            # are redundant enough that a single 'FT / Bloomberg' bucket is cleaner.
-            elif source in (
-                "Bloomberg Markets", "Bloomberg Wealth",
-                "FT Front Page", "FT Global Economy", "FT Markets",
-            ):
-                item = dict(item)
-                item["headline"] = f"{source}: {item.get('headline', '')}"
-                source = "FT / Bloomberg"
+            # Drop Bloomberg Markets/Wealth — too noisy, not housing-relevant enough
+            elif source in ("Bloomberg Markets", "Bloomberg Wealth"):
+                continue
+            # Group all FT feeds under a single "Financial Times" heading (no section prefix)
+            elif source in ("FT Front Page", "FT Global Economy", "FT Markets"):
+                source = "Financial Times"
             grouped_headlines[source].append(item)
         # Sort groups alphabetically by source name
         grouped_headlines = dict(sorted(grouped_headlines.items()))
