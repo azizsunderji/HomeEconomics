@@ -1,16 +1,16 @@
 """Twitter/X collector via Apify.
 
-Uses the Apify Twitter Scraper actor to search for tweets.
-Conversation-oriented: prioritizes tweets with replies and debate.
+Scrapes the Pulse Twitter List timeline (all accounts @AzizSunderji follows).
+Uses apidojo/twitter-list-scraper for organic feed coverage including retweets
+and cross-account conversations — much better than per-account batching.
 Requires APIFY_API_KEY env var.
-Budget-tracked: defaults to $1/day max (TWITTER_DAILY_BUDGET_CENTS).
+Budget-tracked: defaults to $2/day max (TWITTER_DAILY_BUDGET_CENTS).
 Budget persists in pulse.db (synced via rclone) so it works across
 multiple GitHub Actions runs.
 """
 
 from __future__ import annotations
 
-import json
 import os
 import logging
 import sqlite3
@@ -22,16 +22,17 @@ import httpx
 
 from collectors import PulseItem
 from config import (
-    TWITTER_SEARCH_QUERIES, TWITTER_ACCOUNTS, TWITTER_MIN_LIKES,
-    TWITTER_MAX_PER_QUERY, TWITTER_DAILY_BUDGET_CENTS,
+    TWITTER_MIN_LIKES,
+    TWITTER_DAILY_BUDGET_CENTS,
 )
 
 logger = logging.getLogger(__name__)
 
 APIFY_BASE = "https://api.apify.com/v2"
-# Using apidojo/twitter-scraper-lite — "Twitter Scraper Unlimited: No Limits"
-# Pay-per-event pricing, works on Apify Starter plan
-ACTOR_ID = "apidojo/twitter-scraper-lite"
+ACTOR_ID = "apidojo/twitter-list-scraper"
+# Twitter List "Pulse" — mirrors @AzizSunderji's follows (~1900 accounts)
+PULSE_LIST_ID = "2046263290972582212"
+LIST_MAX_ITEMS = 800  # ~$0.32/day at $0.0004/tweet
 
 # DB path for budget tracking (same DB as pulse data, synced via rclone)
 _DB_PATH = Path(__file__).parent.parent.parent / "data" / "pulse.db"
@@ -94,8 +95,8 @@ def _record_spend(cents: int) -> None:
         logger.warning(f"Budget record failed: {e}")
 
 
-def _run_actor(search_terms: list[str], max_tweets: int = 50) -> list[dict]:
-    """Run the Apify Twitter scraper actor and wait for results."""
+def _run_actor(list_id: str = PULSE_LIST_ID, max_items: int = LIST_MAX_ITEMS) -> list[dict]:
+    """Run the Apify twitter-list-scraper actor and wait for results."""
     api_key = os.environ.get("APIFY_API_KEY", "")
     if not api_key:
         logger.warning("APIFY_API_KEY not set — skipping Twitter collection")
@@ -104,22 +105,18 @@ def _run_actor(search_terms: list[str], max_tweets: int = 50) -> list[dict]:
     if not _check_budget():
         return []
 
-    # Apify API uses ~ separator for actor IDs (not /)
     actor_api_id = ACTOR_ID.replace("/", "~")
     url = f"{APIFY_BASE}/acts/{actor_api_id}/runs"
-
+    headers = {"Authorization": f"Bearer {api_key}"}
     payload = {
-        "searchTerms": search_terms,
-        "maxItems": max_tweets,
-        "filter": "Top",
+        "listId": list_id,
+        "maxItems": max_items,
     }
 
-    headers = {"Authorization": f"Bearer {api_key}"}
-
-    # Start the actor run (wait up to 3 minutes for completion)
+    # Wait up to 5 minutes — 800 tweets takes longer than 60 per-account tweets
     resp = httpx.post(
-        f"{url}?waitForFinish=180",
-        json=payload, headers=headers, timeout=210,
+        f"{url}?waitForFinish=300",
+        json=payload, headers=headers, timeout=330,
     )
     resp.raise_for_status()
     run_data = resp.json().get("data", {})
@@ -130,20 +127,9 @@ def _run_actor(search_terms: list[str], max_tweets: int = 50) -> list[dict]:
         logger.error("Failed to start Apify actor run")
         return []
 
-    # Check for plan limitation message
-    status_message = run_data.get("statusMessage", "")
-    if "Free Plan" in status_message or "paid plan" in status_message.lower():
-        logger.warning(
-            f"Apify Twitter scraping requires a paid plan. "
-            f"Message: {status_message[:200]}. "
-            f"Upgrade at https://apify.com/pricing or use X API Pay-Per-Use instead."
-        )
-        return []
-
     if status not in ("SUCCEEDED",):
-        # If waitForFinish didn't complete, poll
         status_resp = None
-        for _ in range(30):
+        for _ in range(60):
             status_resp = httpx.get(
                 f"{APIFY_BASE}/actor-runs/{run_id}",
                 headers=headers, timeout=15,
@@ -154,7 +140,7 @@ def _run_actor(search_terms: list[str], max_tweets: int = 50) -> list[dict]:
             elif status in ("FAILED", "ABORTED", "TIMED-OUT"):
                 logger.error(f"Apify run {run_id} ended with status: {status}")
                 return []
-            time.sleep(5)
+            time.sleep(10)
         else:
             logger.error(f"Apify run {run_id} timed out")
             return []
@@ -162,17 +148,14 @@ def _run_actor(search_terms: list[str], max_tweets: int = 50) -> list[dict]:
     else:
         final_run_data = run_data
 
-    # Record spend — Apify returns cost at top level as "usageTotalUsd"
     cost_usd = final_run_data.get("usageTotalUsd", 0) or 0
     if cost_usd == 0:
-        # Fallback: check nested usage dict (older API versions)
         usage = final_run_data.get("usage") or {}
         cost_usd = usage.get("totalCostUsd", 0) or 0
     if cost_usd == 0:
-        cost_usd = 0.16  # Conservative fallback based on observed per-run cost
+        cost_usd = 0.32  # ~$0.0004 × 800 tweets
     _record_spend(int(cost_usd * 100))
 
-    # Fetch results
     dataset_id = final_run_data.get("defaultDatasetId")
     if not dataset_id:
         logger.error("No dataset ID in Apify run response")
@@ -180,29 +163,26 @@ def _run_actor(search_terms: list[str], max_tweets: int = 50) -> list[dict]:
 
     results_resp = httpx.get(
         f"{APIFY_BASE}/datasets/{dataset_id}/items",
-        headers=headers, timeout=30,
+        headers=headers, timeout=60,
     )
     results_resp.raise_for_status()
     results = results_resp.json()
-
-    # Filter out noResults sentinel items
     results = [r for r in results if not r.get("noResults")]
+    logger.info(f"Apify list scraper returned {len(results)} raw tweets from list {list_id}")
     return results
 
 
 def collect(
-    queries: list[str] | None = None,
-    accounts: list[str] | None = None,
+    list_id: str = PULSE_LIST_ID,
+    max_items: int = LIST_MAX_ITEMS,
     min_likes: int = TWITTER_MIN_LIKES,
-    max_per_query: int = TWITTER_MAX_PER_QUERY,
 ) -> list[PulseItem]:
-    """Collect recent tweets matching housing/economics queries.
+    """Collect recent tweets from the Pulse Twitter List timeline.
 
+    Scrapes the organic list feed — includes retweets and cross-account
+    conversations, giving much better coverage than per-account batching.
     Returns list of PulseItem objects.
     """
-    queries = queries or TWITTER_SEARCH_QUERIES
-    accounts = accounts or TWITTER_ACCOUNTS
-
     api_key = os.environ.get("APIFY_API_KEY", "")
     if not api_key:
         raise RuntimeError("APIFY_API_KEY not set — Twitter collection skipped entirely")
@@ -213,41 +193,10 @@ def collect(
             f"Increase TWITTER_DAILY_BUDGET_CENTS in config.py or wait until tomorrow."
         )
 
+    raw_tweets = _run_actor(list_id=list_id, max_items=max_items)
+
     items = []
     seen_ids = set()
-
-    all_batches = []
-
-    # Discovery queries (if any — currently empty, account tracking is primary)
-    if queries:
-        all_batches.append((queries, max_per_query))
-
-    # ALL accounts in ONE batch — minimizes Apify actor runs (the expensive part).
-    # The scraper returns top tweets by engagement, so high-signal accounts
-    # naturally dominate. Freshness is handled by the post-collection 48h age filter.
-    if accounts:
-        account_terms = [f"from:{a}" for a in accounts]
-        all_batches.append((account_terms, max_per_query))
-
-    raw_tweets = []
-    for batch_terms, batch_max in all_batches:
-        if not _check_budget():
-            logger.warning("Budget exhausted mid-collection — stopping")
-            break
-        batch_results = _run_actor(batch_terms, max_tweets=batch_max)
-        raw_tweets.extend(batch_results)
-        logger.info(f"  Batch [{batch_terms[0][:40]}{'...' if len(batch_terms) > 1 else ''}]: {len(batch_results)} raw tweets")
-
-    # Log coverage stats (no diversity sweep — too costly for marginal benefit)
-    if accounts:
-        covered_authors = set()
-        for tweet in raw_tweets:
-            author_obj = tweet.get("author", {})
-            username = (author_obj.get("userName", "") if isinstance(author_obj, dict) else str(author_obj)).lower()
-            covered_authors.add(username)
-        missed = [a for a in accounts if a.lower() not in covered_authors]
-        if missed:
-            logger.info(f"Accounts with no tweets in this batch: {len(missed)} of {len(accounts)} ({', '.join(missed[:10])}{'...' if len(missed) > 10 else ''})")
 
     for tweet in raw_tweets:
         tweet_id = tweet.get("id", "")
