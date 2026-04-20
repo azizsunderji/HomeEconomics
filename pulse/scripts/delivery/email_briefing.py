@@ -363,33 +363,19 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
 """
         html += _spacer(24)
 
-    # ── TWITTER ROUNDUP ──
+    # ── TWITTER ROUNDUP — flat bullet list, one line per account ──
     if twitter_roundup:
-        html += _section_heading(f"Twitter Roundup ({len(twitter_roundup)})")
-        html += _spacer(14)
-
+        html += _section_heading(f"Also on Twitter ({len(twitter_roundup)})")
+        html += _spacer(10)
+        html += '<table width="100%" cellpadding="0" cellspacing="0"><tr><td style="padding: 4px 0 14px 0;">'
         for voice in twitter_roundup[:30]:
             author = voice.get("author", "")
-            # New format: paragraph summary with inline markdown links
             summary = voice.get("summary", voice.get("take", ""))
-            tweet_count = voice.get("tweet_count", 1)
-            url = voice.get("url", "")
-
-            author_esc = _esc(author)
-            # Link author name to twitter profile
             handle = author.lstrip("@")
-            author_html = f'<a href="https://x.com/{handle}" target="_blank" style="color: #0BB4FF; text-decoration: none; font-weight: 600;">{author_esc}</a>'
-            count_html = f' <span style="color: #aaa; font-size: 12px;">({tweet_count} tweets)</span>' if tweet_count > 1 else ''
-
-            # Convert markdown links in summary to HTML
+            author_html = f'<a href="https://x.com/{handle}" target="_blank" style="color: #0BB4FF; text-decoration: none; font-weight: 600;">{_esc(author)}</a>'
             summary_html = _md_links(summary)
-
-            html += f"""<table width="100%" cellpadding="0" cellspacing="0"><tr>
-<td style="padding: 8px 0 10px 0; border-bottom: 1px solid #f0f0f0;">
-  <div>{author_html}{count_html}</div>
-  <div style="font-size: 15px; color: #555; line-height: 1.5; margin-top: 4px;">{summary_html}</div>
-</td></tr></table>
-"""
+            html += f'<div style="font-size: 14px; color: #555; line-height: 1.6; padding: 2px 0;">• {author_html} — {summary_html}</div>\n'
+        html += '</td></tr></table>'
         html += _spacer(24)
 
     # ── NEWSLETTERS (all Sonnet-summarized: Substack + Gmail newsletters, grouped by author) ──
