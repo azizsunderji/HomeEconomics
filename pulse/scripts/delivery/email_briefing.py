@@ -484,7 +484,11 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
 """
             for item in articles:
                 url = item.get("url", "")
-                title_text = _esc(item.get('title', ''))
+                raw_title = item.get('title', '')
+                # Strip NBER-style " -- by Author1, Author2" author suffixes
+                if ' -- by ' in raw_title:
+                    raw_title = raw_title[:raw_title.index(' -- by ')].strip()
+                title_text = _esc(raw_title)
                 if url:
                     title_link = f'<a href="{url}" target="_blank" style="color: #3D3733; text-decoration: none;">{title_text}</a>'
                 else:
