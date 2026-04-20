@@ -453,8 +453,7 @@ Return a JSON object:
   "twitter_roundup": [
     {
       "author": "@handle",
-      "summary": "2-4 sentence paragraph PARAPHRASING this account's activity over the last 24 hours. Use inline markdown links like '[argued that rates won't fall](tweet_url)' where you link a SHORT phrase (3-8 words) to each tweet. CRITICAL: Do NOT wrap the entire raw tweet body as link text. Do NOT include t.co URLs anywhere — strip them. Do NOT just paste the tweet text verbatim. Write a real paraphrased summary in your own words, with inline links to the source tweets. Example GOOD: 'Parsons [argued multifamily delinquencies are climbing](url1) and [questioned whether the Sun Belt boom has ended](url2).' Example BAD: '[Multifamily delinquencies are climbing in the Sun Belt this is a worrying trend https://t.co/abc123](url)'.",
-      "tweet_count": 3
+      "summary": "ONE sentence (max 20 words) naming the key point, with ONE inline markdown link [short phrase](tweet_url) to the most notable tweet. No t.co URLs. Example: '[argued rent growth is bottoming out](url)' or '[posted new inventory data showing 8-month supply](url)'."
     }
   ],
 
@@ -536,12 +535,11 @@ Return a JSON object:
 
 11b. PER-PERSON CAP: No single person should appear in more than 1 conversation theme. If someone is involved in multiple threads, pick the single most substantive one. Spread the spotlight across different voices — the reader wants diverse perspectives, not one person's feed. If you find yourself featuring the same name twice, cut one.
 
-12. TWITTER ROUNDUP: Summarize each active account's 24-hour activity as a short paragraph. CRITICAL RULES:
-    a. Do NOT include any voice you already covered in conversation_themes.
-    b. ONE entry per account. The "summary" field should be a 2-4 sentence paragraph covering ALL their substantive tweets from the last 24h, with inline markdown links [text](url) to each individual tweet referenced.
-    c. Include tweet_count (number of substantive tweets summarized).
-    d. Aim for 15-25 different accounts. Prioritize accounts with multiple tweets or threads — single low-engagement tweets can be skipped.
-    e. Prioritize: contrarian views, data-backed claims, novel arguments, housing/AI/demographics focus.
+12. TWITTER ROUNDUP: A scannable bullet list of accounts that had something notable but did NOT appear in conversation_themes. CRITICAL RULES:
+    a. Do NOT include any voice you already covered in conversation_themes — this section is strictly the overflow.
+    b. ONE entry per account. The "summary" field is ONE sentence (max 20 words) with ONE inline markdown link [short phrase](tweet_url) to their most notable tweet. No paragraphs.
+    c. Aim for 15-25 accounts. Skip anyone with nothing notable — do not pad with low-signal tweets.
+    d. Prioritize: contrarian views, data-backed claims, novel arguments, housing/AI/demographics focus.
 
 13. WRITING STYLE: Be direct and factual. NO AI slop. Avoid these patterns:
     - "People aren't arguing X; they're watching Y" — just state what they're arguing
