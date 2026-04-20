@@ -379,6 +379,215 @@ def cmd_daily(args):
     }
 
 
+def cmd_synthesize(args):
+    """Synthesize + email only — no collection. Assumes DB is already populated and enriched."""
+    conn = get_db()
+    logger.info("=== PULSE SYNTHESIZE + EMAIL ===")
+    start = time.time()
+    pipeline_errors = []
+
+    # Synthesize
+    logger.info("Phase 4: Synthesis")
+    from analysis.synthesize import generate_daily_briefing
+    briefing = generate_daily_briefing(conn)
+
+    if "error" in briefing:
+        logger.error(f"Synthesis failed: {briefing['error']}")
+        return briefing
+
+    # Inject starred emails
+    try:
+        from collectors.gmail_starred import get_starred_emails
+        briefing["_starred_emails"] = get_starred_emails()
+    except Exception as e:
+        logger.warning(f"Starred emails failed: {e}")
+        briefing["_starred_emails"] = []
+
+    # Inject headlines and journal articles
+    try:
+        from datetime import timedelta
+        from collectors.rss_feeds import parse_opml, DEFAULT_OPML_PATH
+
+        opml_feeds = parse_opml(DEFAULT_OPML_PATH)
+        journal_feed_names = {f["title"] for f in opml_feeds if f.get("priority") == "journal"}
+        headline_feed_names = {f["title"] for f in opml_feeds if f.get("folder") in ("HighPriority", "Housing Reporters")}
+
+        cutoff_24h = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
+        all_rss_24h = conn.execute(
+            "SELECT * FROM items WHERE source IN ('rss', 'google_news') AND collected_at >= ? ORDER BY collected_at DESC",
+            (cutoff_24h,),
+        ).fetchall()
+
+        # Journal articles
+        journal_items = []
+        seen_journal_titles = set()
+        journal_per_feed = {}
+        for row in all_rss_24h:
+            item = dict(row)
+            feed = item.get("feed_name", "")
+            if feed not in journal_feed_names:
+                continue
+            published = item.get("published_at", "")
+            if published and published < cutoff_24h:
+                continue
+            journal_per_feed[feed] = journal_per_feed.get(feed, 0) + 1
+            if journal_per_feed[feed] > 30:
+                continue
+            title = item.get("title", "")
+            title_key = title[:80].lower().strip()
+            if title_key in seen_journal_titles:
+                continue
+            seen_journal_titles.add(title_key)
+            journal_items.append({
+                "journal": feed.replace("ScienceDirect Publication: ", "").replace("ScienceDirect: ", ""),
+                "title": title,
+                "url": item.get("url", ""),
+            })
+        briefing["_journal_articles"] = journal_items[:30]
+
+        # Headlines
+        headline_items = []
+        seen_headline_titles = set()
+        import re as _re_hl
+        for row in all_rss_24h:
+            item = dict(row)
+            feed = item.get("feed_name", "")
+            if feed not in headline_feed_names:
+                continue
+            title = item.get("title", "")
+            title_key = title[:50].lower().strip()
+            if title_key in seen_headline_titles:
+                continue
+            if any(junk in title_key for junk in ["sign up for", "subscribe to", "newsletter"]):
+                continue
+            if feed in ("Bloomberg Markets", "Bloomberg Wealth"):
+                company_junk = [
+                    r'\b(shares?|stock)\s+(rise|fall|drop|surge|tumble|slip|gain)',
+                    r'\b(earnings|revenue|profit)\s+(beat|miss|top|exceed)',
+                    r'\bIPO\b', r'\bacquisition\b', r'\bmerger\b',
+                    r'\braises?\s+\$', r'\bvaluation\b',
+                    r'\bCEO\b.*\b(step|resign|appoint|hire)',
+                ]
+                if any(_re_hl.search(p, title, _re_hl.IGNORECASE) for p in company_junk):
+                    continue
+            seen_headline_titles.add(title_key)
+            headline_items.append({
+                "source": feed,
+                "headline": title,
+                "url": item.get("url", "") or "",
+            })
+        briefing["_headlines"] = headline_items
+        logger.info(f"Headlines: {len(headline_items)}, Journal articles: {len(journal_items)}")
+    except Exception as e:
+        logger.warning(f"Headlines/journal injection failed: {e}")
+        briefing.setdefault("_journal_articles", [])
+        briefing.setdefault("_headlines", [])
+
+    # Inject institutional emails + Gmail newsletters
+    try:
+        from config import (GMAIL_JUNK_SENDER_PATTERNS, GMAIL_JUNK_TITLE_PATTERNS,
+                          INSTITUTIONAL_SENDER_ALLOWLIST, GMAIL_NEWSLETTER_SENDERS,
+                          GMAIL_AI_HEADLINE_SENDERS)
+        import re as _re
+        from datetime import timedelta
+        cutoff_36h = (datetime.now(timezone.utc) - timedelta(hours=36)).isoformat()
+        all_gmail = conn.execute(
+            "SELECT * FROM items WHERE source = 'gmail' AND collected_at >= ? ORDER BY collected_at DESC",
+            (cutoff_36h,),
+        ).fetchall()
+        institutional_items = []
+        gmail_newsletter_items = []
+        ai_newsletter_items = []
+        for row in all_gmail:
+            item = dict(row)
+            sender = (item.get("author", "") or "").lower()
+            title = (item.get("title", "") or "").lower()
+            if any(p in sender for p in GMAIL_JUNK_SENDER_PATTERNS):
+                continue
+            if any(p in title for p in GMAIL_JUNK_TITLE_PATTERNS):
+                continue
+            if any(p in title for p in ["early view alert", "table of contents alert"]):
+                continue
+            raw_author = item.get("author", "")
+            match = _re.match(r'"?([^"<]+)"?\s*<', raw_author)
+            display_name = match.group(1).strip() if match else raw_author.split("<")[0].strip() or raw_author
+            entry = {
+                "source": display_name, "author": display_name,
+                "headline": item.get("title", ""), "title": item.get("title", ""),
+                "url": item.get("url", ""),
+            }
+            if any(p in sender or p in display_name.lower() for p in GMAIL_AI_HEADLINE_SENDERS):
+                ai_newsletter_items.append(entry)
+            elif any(p in sender for p in GMAIL_NEWSLETTER_SENDERS):
+                gmail_newsletter_items.append(entry)
+            elif any(p in sender or p in display_name.lower() for p in INSTITUTIONAL_SENDER_ALLOWLIST):
+                institutional_items.append(entry)
+        briefing["_institutional_emails"] = institutional_items
+        briefing["_gmail_newsletters"] = gmail_newsletter_items
+        briefing["_ai_newsletters"] = ai_newsletter_items
+    except Exception as e:
+        logger.warning(f"Institutional email injection failed: {e}")
+        briefing["_institutional_emails"] = []
+        briefing["_gmail_newsletters"] = []
+        briefing["_ai_newsletters"] = []
+
+    # Inject press mentions
+    try:
+        from collectors.press_mentions import get_press_mentions
+        briefing["_press_mentions"] = get_press_mentions()
+    except Exception as e:
+        logger.warning(f"Press mentions failed: {e}")
+        briefing["_press_mentions"] = []
+
+    briefing["_apify_spend_cents"] = get_apify_spend_today(conn)
+
+    existing_errors = briefing.get("_collection_errors", [])
+    for err_msg in pipeline_errors:
+        existing_errors.append({"source": "pipeline", "error": err_msg, "time": ""})
+    if existing_errors:
+        briefing["_collection_errors"] = existing_errors
+
+    # Email
+    logger.info("Phase 5: Email delivery")
+    from delivery.email_briefing import send_email
+    email_sent = send_email(briefing)
+
+    if email_sent and "_briefing_id" in briefing:
+        mark_briefing_emailed(conn, briefing["_briefing_id"])
+
+    # Notion push
+    try:
+        from delivery.notion_queue import push_all_unpushed
+        pushed = push_all_unpushed()
+    except Exception as e:
+        logger.warning(f"Notion push skipped: {e}")
+        pushed = 0
+
+    # Convergence alerts
+    try:
+        from analysis.convergence import compute_convergence
+        from delivery.pushover_alert import check_and_alert
+        convergence = compute_convergence(conn, hours=6)
+        alerts = check_and_alert(convergence)
+    except Exception as e:
+        logger.warning(f"Alert check skipped: {e}")
+        alerts = 0
+
+    elapsed = time.time() - start
+    logger.info(
+        f"Synthesize complete in {elapsed:.0f}s — "
+        f"email={'sent' if email_sent else 'FAILED'}, "
+        f"{pushed} stories to Notion"
+    )
+    return {
+        "briefing": briefing,
+        "email_sent": email_sent,
+        "notion_pushed": pushed,
+        "alerts_sent": alerts,
+        "elapsed_seconds": round(elapsed),
+    }
+
+
 def cmd_weekly(args):
     """Weekly contrarian analysis (Sunday mornings)."""
     conn = get_db()
@@ -457,6 +666,7 @@ def main():
     for name, func in [
         ("collect", cmd_collect),
         ("daily", cmd_daily),
+        ("synthesize", cmd_synthesize),
         ("weekly", cmd_weekly),
         ("collect-only", cmd_collect_only),
         ("classify-only", cmd_classify_only),
@@ -464,7 +674,7 @@ def main():
     ]:
         sub = subparsers.add_parser(name)
         sub.set_defaults(func=func)
-        if name not in ("classify-only", "weekly"):
+        if name not in ("classify-only", "weekly", "synthesize"):
             sub.add_argument(
                 "--sources", nargs="*",
                 help="Specific sources to collect from (default: all)"
