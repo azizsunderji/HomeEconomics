@@ -33,67 +33,37 @@ logger = logging.getLogger(__name__)
 
 MODEL = "claude-sonnet-4-5-20250929"
 
-# Source quality tiers — INVERTED for conversation pivot
-# Tier 1: Organic conversation (the gold)
-# Tier 5: Commodity news (context only)
+# Two-tier system:
+# Tier 1: All current conversation and journalism — competes equally for themes
+#   Twitter, Bluesky, HN, Substacks, RSS feeds, Google News, newspapers
+# Tier 2: Institutional research — only pulled in if the finding is directly newsworthy
+#   Goldman, AEI, Fed, NBER, BLS, Census data releases
 SOURCE_TIERS = {
-    # Tier 1: Organic conversation
     "hackernews": 1, "twitter": 1, "bluesky": 1,
-    # Tier 2: Peer analysis (Substacks)
-    "substack": 2,
-    # Tier 3: Institutional research (from Gmail)
-    "goldman_sachs": 3, "gs_macro": 3, "fed": 3, "newyorkfed": 3,
-    "aei": 3, "bls.gov": 3, "census.gov": 3, "fhfa": 3,
-    "freddiemac": 3, "fanniemae": 3, "nber": 3,
-    # Tier 4: Quality journalism opinion pieces
-    "ft": 4, "nyt": 4, "wsj": 4, "bloomberg": 4, "economist": 4,
-    "reuters": 4, "daily_shot": 4,
-    "housingwire": 4, "inman": 4, "nar": 4, "realtor": 4,
-    # Tier 5: Commodity news
-    "google_news": 5, "rss": 5,
+    "substack": 1, "google_news": 1, "rss": 1, "gmail": 1,
 }
+
+_INSTITUTIONAL_SIGNALS = [
+    "goldman", "gs macro", "edward pinto", "aei housing", "aeihousing",
+    "federal reserve", "newyorkfed", "bls.gov", "census.gov", "fhfa",
+    "freddiemac", "fanniemae", "nber",
+]
 
 
 def _get_source_tier(item: dict) -> int:
-    """Determine source tier for an item (conversation-first hierarchy)."""
+    """Determine source tier. Tier 1 = all journalism/conversation. Tier 2 = institutional research only."""
     source = (item.get("source") or "").lower()
     author = (item.get("author") or "").lower()
     feed = (item.get("feed_name") or "").lower()
 
-    # Conversation sources always Tier 1
-    if source in ("hackernews", "twitter", "bluesky"):
-        return 1
-
-    # Substacks = Tier 2
-    if source == "substack":
+    # Institutional research → Tier 2 (pull in only if directly newsworthy)
+    if any(k in author or k in feed for k in _INSTITUTIONAL_SIGNALS):
+        return 2
+    if source == "gmail" and any(k in author for k in _INSTITUTIONAL_SIGNALS):
         return 2
 
-    # Gmail items — check sender for institutional
-    if source == "gmail":
-        if any(k in author for k in ["goldman", "gs macro", "pinto", "aei", "fed", "bls", "census"]):
-            return 3
-        if any(k in author for k in ["ft@", "financial times", "daily shot", "bloomberg"]):
-            return 4
-        return 3
-
-    # Institutional from RSS
-    if any(k in author or k in feed for k in ["goldman", "gs macro"]):
-        return 3
-    if any(k in author or k in feed for k in ["edward pinto", "aei housing", "aeihousing"]):
-        return 3
-
-    # Quality journalism from RSS
-    if any(k in author or k in feed for k in [
-        "financial times", "ft.com", "unhedged", "new york times", "nytimes",
-        "bloomberg", "wsj", "wall street", "economist"
-    ]):
-        return 4
-    if any(k in feed for k in ["housingwire", "inman"]):
-        return 4
-    if item.get("feed_priority") == "journal":
-        return 4
-
-    return SOURCE_TIERS.get(source, 5)
+    # Everything else: social media, newsletters, journalism, RSS → Tier 1
+    return 1
 
 
 def _get_source_display_name(item: dict) -> str:
@@ -131,7 +101,7 @@ def _format_items_for_conversation(items: list[dict], limit: int = 150) -> str:
         item["_tier"] = _get_source_tier(item)
         item["_source_display"] = _get_source_display_name(item)
 
-    # Sort: conversation first, then by engagement within each tier
+    # Sort: by engagement signal within each tier
     sorted_items = sorted(items, key=lambda x: (
         x["_tier"],
         -(x.get("conversation_signal") or 0),
@@ -140,11 +110,8 @@ def _format_items_for_conversation(items: list[dict], limit: int = 150) -> str:
     ))
 
     tier_names = {
-        1: "CONVERSATION — Twitter economists, Bluesky, HN debates",
-        2: "SUBSTACKER TAKES — Peer Analysis (FEATURE THESE PROMINENTLY, 3-5 minimum)",
-        3: "INSTITUTIONAL SIGNAL — AEI, Goldman, Fed, ResiClub, Global Housing Watch (FEATURE KEY FINDINGS)",
-        4: "JOURNALISM — Opinion & Analysis",
-        5: "NEWS HEADLINES — Google News results for the headlines section",
+        1: "ALL SOURCES — Twitter, Bluesky, HN, Substacks, Newspapers, RSS (all compete equally for themes)",
+        2: "INSTITUTIONAL RESEARCH — Goldman, AEI, Fed, NBER, BLS, Census (include only if directly newsworthy)",
     }
 
     by_tier = defaultdict(list)
@@ -167,16 +134,13 @@ def _format_items_for_conversation(items: list[dict], limit: int = 150) -> str:
             stats = item.get("extracted_stats", "[]")
             if isinstance(stats, str):
                 stats = json.loads(stats)
-            claims = item.get("verifiable_claims", "[]")
-            if isinstance(claims, str):
-                try:
-                    claims = json.loads(claims)
-                except (json.JSONDecodeError, TypeError):
-                    claims = []
 
-            if tier == 1:
-                # Conversation items: full body + comments (600 chars)
-                body_preview = (item.get("body") or "")[:600]
+            source = (item.get("source") or "").lower()
+            body = item.get("body") or ""
+
+            if source in ("twitter", "bluesky", "hackernews"):
+                # Social: full body (tweets are short) + engagement stats
+                body_preview = body[:600]
                 lines.append(
                     f"  [{item.get('conversation_signal', '?'):>3} conv | {item.get('num_comments', 0)} comments | "
                     f"score {item.get('score', 0)}] {item['_source_display']}: "
@@ -185,39 +149,14 @@ def _format_items_for_conversation(items: list[dict], limit: int = 150) -> str:
                     f"       URL: {item.get('url', '')}\n"
                     f"       {body_preview}"
                 )
-            elif tier == 2:
-                # Substacker takes: 300 char preview to capture their argument
-                body_preview = (item.get("body") or "")[:300]
-                lines.append(
-                    f"  {item['_source_display']}: {item['title'][:200]}\n"
-                    f"       URL: {item.get('url', '')}\n"
-                    f"       Preview: {body_preview}"
-                )
-            elif tier == 3:
-                # Institutional: title + URL + body preview + key stats
-                # These contain valuable analysis from AEI, Goldman, ResiClub, etc.
-                body_preview = (item.get("body") or "")[:400]
-                lines.append(
-                    f"  {item['_source_display']}: {item['title'][:200]}\n"
-                    f"       URL: {item.get('url', '')}\n"
-                    f"       Preview: {body_preview}"
-                    f"{' | Stats: ' + '; '.join(stats[:2]) if stats else ''}"
-                )
-            elif tier == 4:
-                # Quality journalism: title + body preview for headline summaries
-                body_preview = (item.get("body") or "")[:300]
-                lines.append(
-                    f"  {item['_source_display']}: {item['title'][:200]}\n"
-                    f"       URL: {item.get('url', '')}\n"
-                    f"       Preview: {body_preview}"
-                )
             else:
-                # News headlines (Tier 5): title + short preview
-                body_preview = (item.get("body") or "")[:200]
+                # Newsletters, newspapers, RSS — body up to 600 chars (enriched articles will have full text)
+                body_preview = body[:600]
                 lines.append(
-                    f"  {item['_source_display']}: {item['title'][:200]} "
-                    f"[URL: {item.get('url', '')}]"
-                    f"{chr(10) + '       Preview: ' + body_preview if body_preview else ''}"
+                    f"  {item['_source_display']}: {item['title'][:200]}\n"
+                    f"       URL: {item.get('url', '')}\n"
+                    f"       {body_preview}"
+                    f"{' | Stats: ' + '; '.join(stats[:2]) if stats and tier == 2 else ''}"
                 )
             count += 1
 
@@ -411,21 +350,13 @@ def _validate_briefing_urls(briefing: dict, conn: sqlite3.Connection) -> dict:
 
 SYSTEM_PROMPT = """You are the conversation intelligence system for "Home Economics," a data journalism newsletter about the US housing market and economy by Aziz Sunderji.
 
-Your job: surface what SMART PEOPLE are DEBATING, ARGUING ABOUT, and REACTING TO — not what news headlines say, and not populist doomposting. The editor can scan newspapers himself. What he can't easily see is the intellectual conversation among economists, housing analysts, and policy thinkers on Twitter, Bluesky, in Substacks, and on Hacker News.
+Your job: surface what SMART PEOPLE are DEBATING, ARGUING ABOUT, and REACTING TO. This includes Twitter/Bluesky debates, Substack arguments, newspaper investigations, and HN discussions — ALL sources compete equally as theme material. A major NYT investigation is just as valid a theme anchor as a Twitter debate. What matters is whether something is substantive and interesting, not which platform it came from.
 
-CRITICAL: Quality over volume. A thread from Arpit Gupta, Jason Furman, or Claudia Sahm with 40 thoughtful replies is FAR more valuable than anonymous comments saying "economy is rigged." Prioritize:
-1. Economist/analyst debates on Twitter and Bluesky (even if reply counts are modest)
-2. Substacker arguments and newsletter analysis
-3. Institutional research and data releases
-4. Thoughtful HN discussions
-5. Populist sentiment only if it reveals genuine trends (NOT just rage-bait)
+CRITICAL: Quality over volume. A thread from Arpit Gupta, Jason Furman, or Claudia Sahm with 40 thoughtful replies is FAR more valuable than anonymous comments saying "economy is rigged." Prioritize substantive discussions over populist venting.
 
-You receive items from multiple platforms, ranked by INTELLECTUAL value:
-- Tier 1 (PRIMARY): Economist/analyst conversation — Twitter debates among economists, HN discussions, Bluesky
-- Tier 2: Substacker analysis — peer newsletters with specific arguments
-- Tier 3: Institutional research — Goldman, AEI, Fed (from email)
-- Tier 4: Quality journalism — opinion pieces with specific arguments
-- Tier 5: News headlines — Google News + RSS feeds (use for the headlines section)
+You receive items in two tiers:
+- Tier 1 (ALL SOURCES — compete equally for themes): Twitter/Bluesky/HN, Substack newsletters, newspaper articles (NYT, WSJ, FT, Bloomberg, Reuters), RSS feeds, Google News. Any of these can anchor a theme independently.
+- Tier 2 (INSTITUTIONAL RESEARCH — only if directly newsworthy): Goldman Sachs reports, AEI research, Fed releases, NBER papers, BLS/Census data. Include only when the specific finding is the news.
 
 ## Output Format
 
@@ -517,7 +448,7 @@ Return a JSON object:
 
 2. QUOTE REAL PEOPLE BY NAME. "Claudia Sahm argues the labor market is weakening faster than the Fed acknowledges" is useful. "Users are panicking" is not. Focus on substantive discussions, not populist venting.
 
-3. NEWS IN CONVERSATION THEMES. If mainstream media articles spark genuine debate among economists on Twitter/Bluesky, include that debate as a conversation theme. But do NOT include news articles that aren't generating conversation.
+3. NEWS IN CONVERSATION THEMES. Newspaper articles, RSS feeds, and journalism can anchor themes independently — a major NYT investigation or WSJ exclusive does NOT need to be generating Twitter/Bluesky conversation to appear as a theme. Include it if the story is substantive and interesting on its own merits. That said, if the same story is also sparking economist debate on social media, fold both together as one theme.
 
 4. REAL URLS ONLY. Every source must include the actual URL from the collected items. Never fabricate URLs.
 
