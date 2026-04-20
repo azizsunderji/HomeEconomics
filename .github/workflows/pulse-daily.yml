@@ -2,7 +2,7 @@ name: Pulse Daily Briefing
 
 on:
   schedule:
-    - cron: "30 10 * * *"  # 5:30am EST / 6:30am EDT
+    - cron: "0 9 * * *"  # 5:30am EST / 6:30am EDT
   workflow_dispatch:
 
 jobs:
@@ -84,7 +84,7 @@ jobs:
 
       - name: Run daily pipeline
         working-directory: pulse/scripts
-        run: python run_pipeline.py daily
+        run: python run_pipeline.py collect
 
       - name: Sync DB back to Dropbox
         if: always()
