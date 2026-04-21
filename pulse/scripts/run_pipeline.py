@@ -261,10 +261,10 @@ def cmd_daily(args):
                           INSTITUTIONAL_SENDER_ALLOWLIST, GMAIL_NEWSLETTER_SENDERS,
                           GMAIL_AI_HEADLINE_SENDERS)
         import re as _re
-        cutoff_36h = (datetime.now(timezone.utc) - timedelta(hours=36)).isoformat()
+        cutoff_24h_gmail = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
         all_gmail = conn.execute(
             "SELECT * FROM items WHERE source = 'gmail' AND collected_at >= ? ORDER BY collected_at DESC",
-            (cutoff_36h,),
+            (cutoff_24h_gmail,),
         ).fetchall()
         institutional_items = []
         gmail_newsletter_items = []
@@ -490,10 +490,10 @@ def cmd_synthesize(args):
                           GMAIL_AI_HEADLINE_SENDERS)
         import re as _re
         from datetime import timedelta
-        cutoff_36h = (datetime.now(timezone.utc) - timedelta(hours=36)).isoformat()
+        cutoff_24h_gmail = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
         all_gmail = conn.execute(
             "SELECT * FROM items WHERE source = 'gmail' AND collected_at >= ? ORDER BY collected_at DESC",
-            (cutoff_36h,),
+            (cutoff_24h_gmail,),
         ).fetchall()
         institutional_items = []
         gmail_newsletter_items = []
