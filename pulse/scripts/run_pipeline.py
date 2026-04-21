@@ -564,9 +564,23 @@ def cmd_synthesize(args):
                 gmail_newsletter_items.append(entry)
             elif any(p in sender or p in display_name.lower() for p in INSTITUTIONAL_SENDER_ALLOWLIST):
                 institutional_items.append(entry)
-        briefing["_institutional_emails"] = institutional_items
-        briefing["_gmail_newsletters"] = gmail_newsletter_items
-        briefing["_ai_newsletters"] = ai_newsletter_items
+
+        # Dedupe by (source, title): the user has two Gmail accounts and many
+        # newsletters arrive at both, producing identical duplicate entries.
+        def _dedupe(items):
+            seen = set()
+            out = []
+            for x in items:
+                key = ((x.get("source") or "").lower(), (x.get("title") or "").strip().lower())
+                if key in seen:
+                    continue
+                seen.add(key)
+                out.append(x)
+            return out
+
+        briefing["_institutional_emails"] = _dedupe(institutional_items)
+        briefing["_gmail_newsletters"] = _dedupe(gmail_newsletter_items)
+        briefing["_ai_newsletters"] = _dedupe(ai_newsletter_items)
     except Exception as e:
         logger.warning(f"Institutional email injection failed: {e}")
         briefing["_institutional_emails"] = []
