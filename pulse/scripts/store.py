@@ -416,6 +416,17 @@ def mark_briefing_emailed(conn: sqlite3.Connection, briefing_id: int) -> None:
     conn.commit()
 
 
+def update_briefing_content(conn: sqlite3.Connection, briefing_id: int, content: dict) -> None:
+    """Update the stored JSON for an existing briefing so post-synthesis
+    injections (headlines, institutional emails, newsletters, etc.) are
+    persisted — not just what the LLM generated."""
+    conn.execute(
+        "UPDATE briefings SET content_json = ? WHERE id = ?",
+        (json.dumps(content), briefing_id),
+    )
+    conn.commit()
+
+
 # ── Stats ─────────────────────────────────────────────────────────────────────
 
 def get_apify_spend_today(conn: sqlite3.Connection) -> int:
