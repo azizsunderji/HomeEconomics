@@ -37,10 +37,26 @@ def _load_topic_weights() -> dict:
         return json.load(f)
 
 
+def _strip_attribution(example: str) -> str:
+    """Remove @handles and "Source:" prefixes so the classifier doesn't learn
+    to elevate specific accounts. We want it to match on content, not authorship."""
+    import re as _re
+    # Drop leading attribution (e.g., "@mnolangray: 'text'" or "Bloomberg: 'text'")
+    # Keep only the quoted content.
+    m = _re.match(r"^\s*(?:@[A-Za-z0-9_]+|[A-Z][A-Za-z .&/]+):\s*(.+)$", example)
+    if m:
+        return m.group(1).strip().strip("'\"")
+    return example.strip().strip("'\"")
+
+
 def _build_taxonomy_text(weights_data: dict) -> str:
-    """Build a compact topic taxonomy for the prompt, with weights and examples."""
+    """Build a compact topic taxonomy for the prompt, with weights and examples.
+
+    Examples are stripped of @handles and source names so the classifier scores
+    on content patterns alone — otherwise any example-cited account gets an
+    implicit boost whenever it posts on-topic content.
+    """
     lines = []
-    # Sort topics by weight descending so highest priority comes first
     topics = sorted(weights_data["topics"].items(), key=lambda x: -x[1]["weight"])
     for key, info in topics:
         weight = info["weight"]
@@ -48,12 +64,13 @@ def _build_taxonomy_text(weights_data: dict) -> str:
         desc = info["description"]
         keywords = ", ".join(info.get("keywords", [])[:6])
         examples = info.get("examples", [])
-        ex_text = " | ".join(examples[:2]) if examples else ""
+        stripped = [_strip_attribution(e) for e in examples[:2]]
+        ex_text = " | ".join(s for s in stripped if s)
         lines.append(
             f'- {key} (weight={weight}, {info["tier"]}): {label}\n'
             f'    {desc}\n'
             f'    Keywords: {keywords}\n'
-            f'    Examples: {ex_text}'
+            f'    Example content: {ex_text}'
         )
     return "\n".join(lines)
 
