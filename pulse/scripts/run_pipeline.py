@@ -114,11 +114,10 @@ def cmd_collect(args):
         failures = [p for p in health_problems if p["severity"] == "FAILURE"]
         if failures:
             try:
-                from delivery.pushover_alert import send_alert
-                send_alert(
-                    title=f"Pulse collection broken ({len(failures)} failure(s))",
-                    message=format_report(failures),
-                    priority=1,
+                from delivery.email_alert import send_alert_email
+                send_alert_email(
+                    subject=f"Pulse collection broken ({len(failures)} failure(s))",
+                    body=format_report(failures),
                 )
             except Exception as e:
                 logger.error(f"Failed to send health alert: {e}")
@@ -419,11 +418,10 @@ def cmd_synthesize(args):
         failures = [p for p in health_problems if p["severity"] == "FAILURE"]
         if failures:
             try:
-                from delivery.pushover_alert import send_alert
-                send_alert(
-                    title=f"Pulse pipeline broken ({len(failures)} failure(s))",
-                    message=format_report(failures),
-                    priority=1,  # bypass quiet hours
+                from delivery.email_alert import send_alert_email
+                send_alert_email(
+                    subject=f"Pulse pipeline broken ({len(failures)} failure(s))",
+                    body=format_report(failures),
                 )
             except Exception as e:
                 logger.error(f"Failed to send health alert: {e}")
