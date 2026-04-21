@@ -228,7 +228,7 @@ def _update_db(conn: sqlite3.Connection, enriched: dict[str, str]) -> int:
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--hours", type=int, default=36)
-    parser.add_argument("--limit", type=int, default=60)
+    parser.add_argument("--limit", type=int, default=150)
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
 
