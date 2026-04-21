@@ -261,9 +261,10 @@ def get_items_since(
     articles collected late dominating the briefing.
     """
     cutoff = (datetime.now(timezone.utc) - timedelta(hours=hours)).isoformat()
-    # Google News can surface articles published days ago (still "current" in GN ranking),
-    # so we use a 7-day published_at window for GN instead of the tight hours window.
-    gn_cutoff = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
+    # Google News RSS articles often have published_at 2-3 days old (published Wed,
+    # collected Fri). Use a 3-day window so recent articles aren't excluded, while
+    # still filtering out genuinely stale content.
+    gn_cutoff = (datetime.now(timezone.utc) - timedelta(days=3)).isoformat()
     query = """SELECT * FROM items
         WHERE classified_at IS NOT NULL
         AND (
