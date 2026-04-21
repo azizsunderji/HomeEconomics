@@ -359,7 +359,7 @@ CRITICAL: Quality over volume. A thread from Arpit Gupta, Jason Furman, or Claud
 
 You receive items in two tiers:
 - Tier 1 (ALL SOURCES — compete equally for themes): Twitter/Bluesky/HN, Substack newsletters, newspaper articles (NYT, WSJ, FT, Bloomberg, Reuters), RSS feeds, Google News. Any of these can anchor a theme independently.
-- Tier 2 (INSTITUTIONAL RESEARCH — only if directly newsworthy): Goldman Sachs reports, AEI research, Fed releases, NBER papers, BLS/Census data. Include only when the specific finding is the news.
+- Tier 2 (INSTITUTIONAL RESEARCH — very high bar): Goldman Sachs reports, AEI research, Fed releases, NBER papers, BLS/Census data, academic journal articles. A routine journal paper about housing does NOT qualify as a theme just because it's about housing. Only include if: (a) economists on social media are actively discussing this specific paper today, OR (b) it's a major data release (jobs report, CPI, etc.) that is driving market reaction. A ScienceDirect paper about rent control or migration published last week is NOT a theme.
 
 ## Output Format
 
@@ -458,6 +458,8 @@ Return a JSON object:
 5. SUBSTACKER TAKES MUST COME FROM SUBSTACK NEWSLETTERS ONLY. The substacker_takes section is EXCLUSIVELY for items from the "Substack Newsletters" section above. Do NOT include Twitter commentators or any other source. Use the URL provided with each Substack item (even if it's a redirect link). For each take, summarize their specific ARGUMENT — not just the topic. "Erdmann argues builders are underbuilding relative to population growth" is good. "Erdmann wrote about housing supply" is not. IMPORTANT: Include a take for EVERY Substack newsletter provided. Do not cherry-pick — summarize all of them.
 
 6. CONVERSATION THEMES: 8-12 themes. Each must have platform evidence. At least 2 themes should involve economist/analyst voices.
+
+7. SINGLE TWEETS DO NOT MAKE THEMES. A lone tweet asking a question, making an observation, or endorsing someone else's argument is NOT a conversation theme — put it in twitter_roundup instead. For Twitter or Bluesky to anchor a theme, you need at least one of: (a) multiple accounts engaging with the same question, (b) the tweet is responding to or commenting on a concrete news story or data release, or (c) the tweet itself has substantial replies/engagement. "Conor Sen asks what Silicon Valley's best macro call was" is twitter_roundup material. "Multiple economists debate whether remote work suppresses wages" is a theme. When in doubt: if you can describe it as "[Person] says/asks/argues [thing]" with no other voices, it's roundup, not a theme.
 
 8. ONE TOPIC PER THEME. Do NOT group unrelated threads or voices into one theme just to reduce count. If Winton ARK is talking about AI and photography employment, and Arindube is making a separate argument about AI asset valuations, those are TWO separate themes — not one. Only group threads together when they are genuinely part of the SAME conversation (people replying to each other, referencing each other's points). Three separate people talking about three separate things on the same broad topic is NOT one theme.
 
