@@ -153,9 +153,6 @@
       <outline text="ScienceDirect Publication: Cities" htmlUrl="https://www.sciencedirect.com/journal/cities" xmlUrl="https://rss.sciencedirect.com/publication/science/02642751" type="rss" title="ScienceDirect Publication: Cities" />
       <outline text="NBER New Working Papers" title="NBER New Working Papers" type="rss" xmlUrl="https://www.nber.org/rss/new.xml" htmlUrl="https://www.nber.org" />
     </outline>
-    <outline text="Twitter" title="Twitter">
-      <outline type="rss" htmlUrl="https://x.com/i/lists/1663911929352470530" text="Twitter List: @AzizSunderji/Real Estate / X" xmlUrl="https://rss.app/feeds/RvuauwvTPgMS5mTW.xml" title="Twitter List: @AzizSunderji/Real Estate / X" />
-    </outline>
     <outline text="Housing Reporters" title="Housing Reporters">
       <outline text="Alert: Craig Karmin Wsj" title="Alert: Craig Karmin Wsj" type="rss" xmlUrl="https://www.google.com/alerts/feeds/09511781838648137995/3763469762738633076" />
       <outline text="Alert: Chen Zhao Redfin" title="Alert: Chen Zhao Redfin" type="rss" xmlUrl="https://www.google.com/alerts/feeds/09511781838648137995/2148550949003206044" />
