@@ -253,16 +253,21 @@ def get_items_since(
     hours: int = 24,
     min_relevance: Optional[int] = None,
 ) -> list[dict]:
-    """Get classified items published in the last N hours.
+    """Get classified items from the last N hours.
 
-    Uses published_at when available, falls back to collected_at.
-    This ensures stale articles collected late don't dominate the briefing.
+    For google_news, uses collected_at — GN can surface articles published days
+    ago, so published_at would exclude nearly everything. For all other sources,
+    uses published_at when available (falls back to collected_at) to avoid stale
+    articles collected late dominating the briefing.
     """
     cutoff = (datetime.now(timezone.utc) - timedelta(hours=hours)).isoformat()
     query = """SELECT * FROM items
         WHERE classified_at IS NOT NULL
-        AND COALESCE(NULLIF(published_at, ''), collected_at) >= ?"""
-    params: list = [cutoff]
+        AND (
+            (source = 'google_news' AND collected_at >= ?)
+            OR (source != 'google_news' AND COALESCE(NULLIF(published_at, ''), collected_at) >= ?)
+        )"""
+    params: list = [cutoff, cutoff]
 
     if min_relevance is not None:
         query += " AND relevance_score >= ?"
