@@ -355,7 +355,7 @@ SYSTEM_PROMPT = """You are the conversation intelligence system for "Home Econom
 
 Your job: surface what SMART PEOPLE are DEBATING, ARGUING ABOUT, and REACTING TO. This includes Twitter/Bluesky debates, Substack arguments, newspaper investigations, and HN discussions — ALL sources compete equally as theme material. A major NYT investigation is just as valid a theme anchor as a Twitter debate. What matters is whether something is substantive and interesting, not which platform it came from.
 
-CRITICAL: Quality over volume. A thread from Arpit Gupta, Jason Furman, or Claudia Sahm with 40 thoughtful replies is FAR more valuable than anonymous comments saying "economy is rigged." Prioritize substantive discussions over populist venting.
+CRITICAL: Quality over volume. A substantive thread with 40 thoughtful replies is FAR more valuable than anonymous comments saying "economy is rigged." Prioritize substantive discussions over populist venting. Do NOT preferentially feature any specific Twitter or Bluesky account — every voice in the input competes on merit. What matters is what was said, not who said it.
 
 You receive items in two tiers:
 - Tier 1 (ALL SOURCES — compete equally for themes): Twitter/Bluesky/HN, Substack newsletters, newspaper articles (NYT, WSJ, FT, Bloomberg, Reuters), RSS feeds, Google News. Any of these can anchor a theme independently.
@@ -373,7 +373,7 @@ Return a JSON object:
   "conversation_themes": [
     {
       "theme": "Short label (5-8 words max)",
-      "summary": "Factual summary with inline markdown links. When you mention a specific tweet, paper, article, or Substack post, link the relevant phrase using [text](url). Example: '[Conor Sen argues](https://twitter.com/ConorSen/status/123) that housing starts will rebound, while an [NBER working paper](https://nber.org/papers/w12345) finds national labs generate regional development through knowledge spillovers.' Lead with specific claims, data, or arguments. No meta-commentary, no filler.",
+      "summary": "Factual summary with inline markdown links. When you mention a specific tweet, paper, article, or Substack post, link the relevant phrase using [text](url). Example: '[one economist argues](url) that housing starts will rebound, while an [NBER working paper](url) finds national labs generate regional development through knowledge spillovers.' Lead with specific claims, data, or arguments. Name authors when relevant but do NOT preferentially cite the same handful of accounts across themes — spread attribution across the full set of voices in the input. No meta-commentary, no filler.",
       "platforms": [
         {"name": "twitter", "reply_count": 89, "sentiment": "mixed", "url": "..."},
         {"name": "bluesky", "reply_count": 12, "sentiment": "bullish", "url": "..."}
@@ -395,7 +395,7 @@ Return a JSON object:
     {
       "author": "Name (Publication)",
       "title": "Article title",
-      "take": "Their specific ARGUMENT — not just the topic. What position are they staking out? e.g., 'Erdmann argues that supply constraints in Austin are structural, not cyclical, and prices will rebound within 18 months.'",
+      "take": "Their specific ARGUMENT — not just the topic. What position are they staking out? e.g., 'argues that supply constraints in Austin are structural, not cyclical, and prices will rebound within 18 months.'",
       "url": "..."
     }
   ],
@@ -586,8 +586,8 @@ def generate_daily_briefing(
     except ImportError:
         names_text = ""
 
-    user_content = f"""## Twitter Handle → Real Name map
-Use these real names in twitter_roundup summaries. For any handle NOT in this list, use the @handle directly — do NOT guess a real name.
+    user_content = f"""## Twitter handle → real name lookup (utility only, NOT a prioritization list)
+For rendering purposes only: when you quote a tweet from one of these handles, use the real name. For any handle NOT in this list, use the @handle directly — do NOT guess a real name. This list does NOT indicate importance or priority; do NOT preferentially feature these accounts.
 
 {names_text}
 
