@@ -261,13 +261,16 @@ def get_items_since(
     articles collected late dominating the briefing.
     """
     cutoff = (datetime.now(timezone.utc) - timedelta(hours=hours)).isoformat()
+    # Google News can surface articles published days ago (still "current" in GN ranking),
+    # so we use a 7-day published_at window for GN instead of the tight hours window.
+    gn_cutoff = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
     query = """SELECT * FROM items
         WHERE classified_at IS NOT NULL
         AND (
-            (source = 'google_news' AND collected_at >= ?)
+            (source = 'google_news' AND COALESCE(NULLIF(published_at, ''), collected_at) >= ?)
             OR (source != 'google_news' AND COALESCE(NULLIF(published_at, ''), collected_at) >= ?)
         )"""
-    params: list = [cutoff, cutoff]
+    params: list = [gn_cutoff, cutoff]
 
     if min_relevance is not None:
         query += " AND relevance_score >= ?"
