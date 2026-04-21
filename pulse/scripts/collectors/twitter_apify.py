@@ -32,7 +32,7 @@ APIFY_BASE = "https://api.apify.com/v2"
 ACTOR_ID = "apidojo/twitter-list-scraper"
 # Twitter List "Pulse" — mirrors @AzizSunderji's follows (~1900 accounts)
 PULSE_LIST_ID = "2046263290972582212"
-LIST_MAX_ITEMS = 800  # ~$0.32/day at $0.0004/tweet
+LIST_MAX_ITEMS = 3000  # ~$1.20/day at $0.0004/tweet — covers a full 24h of ~970 accounts
 
 # DB path for budget tracking (same DB as pulse data, synced via rclone)
 _DB_PATH = Path(__file__).parent.parent.parent / "data" / "pulse.db"
