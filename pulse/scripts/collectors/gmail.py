@@ -348,9 +348,14 @@ def collect(
 
     whitelist = sender_whitelist or GMAIL_SENDER_WHITELIST
 
-    # Build Gmail search query — pull everything, filter by whitelist after fetching headers
+    # Build Gmail search query — pull everything, filter by whitelist after fetching headers.
+    # Do NOT exclude -category:promotions: Gmail auto-categorizes most institutional
+    # newsletters (Urban Institute, Capital Economics, The Neuron, Superhuman, many
+    # Substacks) as Promotions. Excluding that category silently drops our most valuable
+    # signal. The post-fetch INSTITUTIONAL_SENDER_ALLOWLIST / GMAIL_NEWSLETTER_SENDERS
+    # / GMAIL_AI_HEADLINE_SENDERS already filter to wanted senders.
     after_date = (datetime.now(timezone.utc) - timedelta(hours=hours_back)).strftime("%Y/%m/%d")
-    query = f"after:{after_date} in:anywhere -category:social -category:promotions -category:forums"
+    query = f"after:{after_date} in:anywhere -category:social -category:forums"
 
     items = []
 
