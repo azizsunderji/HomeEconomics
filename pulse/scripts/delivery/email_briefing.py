@@ -152,6 +152,7 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
     themes = briefing.get("conversation_themes", [])
     substacker = briefing.get("substacker_takes", [])
     institutional = briefing.get("_institutional_emails", []) or briefing.get("institutional_signal", [])
+    gmail_newsletters = briefing.get("_gmail_newsletters", [])
     headlines = briefing.get("_headlines", [])
     journal_articles = briefing.get("_journal_articles", [])
     starred_emails = briefing.get("_starred_emails", [])
@@ -447,6 +448,22 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
                 headline = _esc(item.get('headline', ''))
                 link = f'<a href="{url}" target="_blank" style="color: #0BB4FF; text-decoration: none;">{headline}</a>' if url else headline
                 html += f"""<table width="100%" cellpadding="0" cellspacing="0"><tr>
+<td style="font-size: 15px; padding: 4px 0; border-bottom: 1px solid #f0f0f0;">
+  <span style="font-weight: 600; color: #888;">{_esc(source_name)}</span>: {link}
+</td></tr></table>
+"""
+        html += _spacer(28)
+
+    # ── GMAIL NEWSLETTERS (Katie Martin/Unhedged, Brandon Donnelly, Bloomberg) ──
+    if gmail_newsletters:
+        html += _section_heading(f"Newsletters ({len(gmail_newsletters)})")
+        html += _spacer(10)
+        for item in gmail_newsletters:
+            source_name = item.get("source") or item.get("author", "Newsletter")
+            url = item.get("url", "")
+            headline = _esc(item.get("headline") or item.get("title", ""))
+            link = f'<a href="{url}" target="_blank" style="color: #0BB4FF; text-decoration: none;">{headline}</a>' if url else headline
+            html += f"""<table width="100%" cellpadding="0" cellspacing="0"><tr>
 <td style="font-size: 15px; padding: 4px 0; border-bottom: 1px solid #f0f0f0;">
   <span style="font-weight: 600; color: #888;">{_esc(source_name)}</span>: {link}
 </td></tr></table>
