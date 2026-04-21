@@ -105,6 +105,24 @@ def cmd_collect(args):
     elapsed = time.time() - start
     logger.info(f"Pipeline complete in {elapsed:.0f}s — {classified} items classified, {len(arc_summary)} topics tracked")
 
+    # Pipeline health check — alert immediately if collection broke,
+    # so we don't wait until 7am synthesis to notice.
+    from analysis.pipeline_health import check_health, format_report
+    health_problems = check_health(conn)
+    if health_problems:
+        logger.warning("=== PIPELINE HEALTH ===\n" + format_report(health_problems))
+        failures = [p for p in health_problems if p["severity"] == "FAILURE"]
+        if failures:
+            try:
+                from delivery.pushover_alert import send_alert
+                send_alert(
+                    title=f"Pulse collection broken ({len(failures)} failure(s))",
+                    message=format_report(failures),
+                    priority=1,
+                )
+            except Exception as e:
+                logger.error(f"Failed to send health alert: {e}")
+
     return {
         "collection": collection_results,
         "classified": classified,
@@ -385,6 +403,24 @@ def cmd_synthesize(args):
     logger.info("=== PULSE SYNTHESIZE + EMAIL ===")
     start = time.time()
     pipeline_errors = []
+
+    # Pipeline health check — alert loudly on upstream breakage rather than
+    # shipping a silently-degraded briefing.
+    from analysis.pipeline_health import check_health, format_report
+    health_problems = check_health(conn)
+    if health_problems:
+        logger.warning("=== PIPELINE HEALTH ===\n" + format_report(health_problems))
+        failures = [p for p in health_problems if p["severity"] == "FAILURE"]
+        if failures:
+            try:
+                from delivery.pushover_alert import send_alert
+                send_alert(
+                    title=f"Pulse pipeline broken ({len(failures)} failure(s))",
+                    message=format_report(failures),
+                    priority=1,  # bypass quiet hours
+                )
+            except Exception as e:
+                logger.error(f"Failed to send health alert: {e}")
 
     # Synthesize
     logger.info("Phase 4: Synthesis")
