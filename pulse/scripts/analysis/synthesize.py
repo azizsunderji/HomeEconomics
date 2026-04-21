@@ -501,7 +501,7 @@ def generate_daily_briefing(
     client = client or anthropic.Anthropic()
 
     # Gather all inputs
-    all_items = get_items_since(conn, hours=36, min_relevance=0)
+    all_items = get_items_since(conn, hours=24, min_relevance=0)
     # All hand-curated sources (Twitter, Bluesky, RSS) use a low threshold —
     # these are hand-picked accounts/feeds so even off-topic items are worth seeing.
     # Google News and other bulk sources use a higher threshold.
@@ -510,10 +510,10 @@ def generate_daily_briefing(
         i for i in all_items
         if (i.get("relevance_score") or 0) >= (10 if i.get("source") in curated_sources else 30)
     ]
-    convergence = compute_convergence(conn, hours=36)
+    convergence = compute_convergence(conn, hours=24)
     shifts = detect_narrative_shifts(conn)
-    organic = detect_organic_conversations(conn, hours=36)
-    stats = get_collection_stats(conn, hours=36)
+    organic = detect_organic_conversations(conn, hours=24)
+    stats = get_collection_stats(conn, hours=24)
 
     # Source breakdown with human-readable names
     source_display_counts = Counter()
@@ -524,7 +524,7 @@ def generate_daily_briefing(
     conversation_items = [i for i in all_items if (i.get("conversation_signal") or 0) >= 30]
 
     # Get collection errors for transparency
-    collection_errors = get_recent_collection_errors(conn, hours=36)
+    collection_errors = get_recent_collection_errors(conn, hours=24)
 
     # Substacker items (from RSS feeds + Gmail-detected Substack newsletters)
     # Dedupe by title, exclude user's own posts
