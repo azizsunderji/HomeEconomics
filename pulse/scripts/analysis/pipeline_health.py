@@ -70,22 +70,37 @@ def check_health(conn: sqlite3.Connection) -> list[dict]:
 
     # ── STAGE 1b: Gmail OAuth token health ──────────────────────────────
     # Google expires refresh tokens for Testing-mode External apps with
-    # sensitive scopes (gmail.modify) after 7 days. Proactively check each
-    # token so we get alerted BEFORE the next collection fails silently.
+    # sensitive scopes (gmail.modify) after 7 days. Proactively check:
+    #  (a) each token can still refresh right now
+    #  (b) the token is approaching its 7-day expiry (warn at 5 days)
     import os, json as _json
+    from pathlib import Path as _Path
+    from datetime import datetime as _dt, timezone as _tz
     try:
         import httpx
         tokens_raw = os.environ.get("GMAIL_TOKENS", "")
+        # Load per-client issue timestamps (recorded by gmail_auth.py)
+        stamp_path = _Path(__file__).parent.parent.parent / "data" / "gmail_token_issued.json"
+        issued = {}
+        if stamp_path.exists():
+            try:
+                issued = _json.loads(stamp_path.read_text())
+            except Exception:
+                issued = {}
+
         if tokens_raw:
             tokens = _json.loads(tokens_raw)
             if not isinstance(tokens, list):
                 tokens = [tokens]
+            now = _dt.now(_tz.utc)
             for i, t in enumerate(tokens):
+                cid = t["client_id"]
+                # (a) live refresh test
                 try:
                     r = httpx.post(
                         "https://oauth2.googleapis.com/token",
                         data={
-                            "client_id": t["client_id"],
+                            "client_id": cid,
                             "client_secret": t["client_secret"],
                             "refresh_token": t["refresh_token"],
                             "grant_type": "refresh_token",
@@ -98,17 +113,41 @@ def check_health(conn: sqlite3.Connection) -> list[dict]:
                             "severity": "FAILURE",
                             "stage": "gmail-auth",
                             "message": (
-                                f"Gmail token {i} refresh failed ({err}). "
-                                f"Re-run gmail_auth.py to get a new refresh token "
-                                f"(Testing-mode apps expire every 7 days)."
+                                f"Gmail token {i} ({cid[:20]}...) refresh FAILED ({err}). "
+                                f"Run: python3 pulse/scripts/gmail_auth.py — then update "
+                                f"GMAIL_TOKENS in ~/.zprofile AND in GitHub Secrets."
                             ),
                         })
+                        continue
                 except Exception as e:
                     problems.append({
                         "severity": "WARNING",
                         "stage": "gmail-auth",
                         "message": f"Gmail token {i} check failed: {e}",
                     })
+                    continue
+
+                # (b) proactive expiry warning at 5 days (only for tokens flagged as expiring)
+                meta = issued.get(cid, {})
+                if meta.get("expires"):
+                    try:
+                        issue_ts = _dt.fromisoformat(meta["issued_at"])
+                        age_days = (now - issue_ts).total_seconds() / 86400
+                        lifetime_days = meta.get("expires_after_days", 7)
+                        days_left = lifetime_days - age_days
+                        if days_left <= 2:  # 5+ days old → warn
+                            problems.append({
+                                "severity": "FAILURE",
+                                "stage": "gmail-auth",
+                                "message": (
+                                    f"Gmail token {i} ({meta.get('account','?')}) "
+                                    f"expires in {days_left:.1f} days. "
+                                    f"Re-auth soon: `python3 pulse/scripts/gmail_auth.py`, "
+                                    f"then update GMAIL_TOKENS in ~/.zprofile AND GitHub Secrets."
+                                ),
+                            })
+                    except Exception:
+                        pass
     except Exception as e:
         logger.warning(f"Gmail token health check skipped: {e}")
 
