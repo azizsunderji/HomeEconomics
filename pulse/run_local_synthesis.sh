@@ -23,7 +23,7 @@ rclone copy "dropbox:Home Economics/Data/Pulse/pulse.db" "$DATA_DIR/" \
 # Enrich article text using playwright + Chrome cookies
 echo "--- Enriching articles ---"
 cd "$PULSE_DIR"
-$PYTHON enrich_articles.py --hours 36 --limit 60
+$PYTHON enrich_articles.py --hours 24 --limit 60
 
 # Run synthesis + email
 echo "--- Running synthesis ---"
