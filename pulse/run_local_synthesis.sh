@@ -28,7 +28,7 @@ $PYTHON run_pipeline.py classify-only
 # Enrich article text using playwright + Chrome cookies
 echo "--- Enriching articles ---"
 cd "$PULSE_DIR"
-$PYTHON enrich_articles.py --hours 24 --limit 60
+$PYTHON enrich_articles.py --hours 24 --limit 150
 
 # Run synthesis + email
 echo "--- Running synthesis ---"
