@@ -63,10 +63,13 @@ def _get_items_to_enrich(conn: sqlite3.Connection, hours: int, limit: int) -> li
     rows = conn.execute("""
         SELECT id, url, title, body, source, feed_name, relevance_score
         FROM items
-        WHERE source IN ('rss', 'google_news')
+        WHERE source = 'rss'
           AND collected_at >= ?
           AND url != ''
           AND url NOT LIKE 'https://t.co/%'
+          AND url NOT LIKE 'https://x.com/%'
+          AND url NOT LIKE 'https://news.google.com/%'
+          AND platform_tags NOT LIKE '%Journals%'
         ORDER BY COALESCE(relevance_score, 0) DESC
         LIMIT ?
     """, (cutoff, limit)).fetchall()
@@ -163,7 +166,7 @@ async def _enrich_batch(items: list[dict], dry_run: bool = False) -> dict[str, s
 
             parsed = urlparse(url)
             domain = parsed.netloc.lower().lstrip("www.")
-            if any(skip in domain for skip in SKIP_DOMAINS):
+            if any(domain == skip or domain.endswith("." + skip) for skip in SKIP_DOMAINS):
                 logger.info(f"  SKIP {domain}: {title}")
                 continue
 
