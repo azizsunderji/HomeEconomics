@@ -104,36 +104,59 @@ def _format_items_for_conversation(items: list[dict], limit: int = 150) -> str:
         item["_tier"] = _get_source_tier(item)
         item["_source_display"] = _get_source_display_name(item)
 
-    # Sort: by engagement signal within each tier
-    sorted_items = sorted(items, key=lambda x: (
-        x["_tier"],
-        -(x.get("conversation_signal") or 0),
-        -(x.get("num_comments") or 0),
-        -(x.get("score") or 0),
-    ))
-
     tier_names = {
         1: "ALL SOURCES — Twitter, Bluesky, HN, Substacks, Newspapers, RSS (all compete equally for themes)",
         2: "INSTITUTIONAL RESEARCH — Goldman, AEI, Fed, NBER, BLS, Census (include only if directly newsworthy)",
     }
 
-    # Cap per-author contribution for social sources so a prolific on-topic
-    # account can't dominate synthesis regardless of how much they post.
-    # Non-social sources (newspapers, substacks) aren't capped — each article
-    # is distinct content, not a stream of one person's posts.
+    # Reserved per-source slots: prevent Twitter volume from drowning out
+    # newspapers/newsletters/RSS. Each source competes by relevance_score
+    # within its own slot allocation, then all are merged into the synthesis
+    # prompt. The Tier 2 (institutional) items get their own small slot.
     MAX_PER_AUTHOR_SOCIAL = 2
-    by_tier = defaultdict(list)
+    SOURCE_SLOTS = {
+        "twitter":    50,
+        "rss":        45,
+        "substack":   15,
+        "gmail":      15,
+        "bluesky":    15,
+        "hackernews": 10,
+    }
+    TIER2_SLOTS = 15  # institutional research (journals, think tanks)
+
+    def _sort_by_relevance(pool):
+        return sorted(pool, key=lambda x: -(x.get("relevance_score") or 0))
+
+    # First: allocate per-source slots for Tier 1
     author_counts: dict[str, int] = {}
-    for item in sorted_items:
-        src = (item.get("source") or "").lower()
-        if src in ("twitter", "bluesky"):
-            author = (item.get("author") or "").lower().strip()
-            if author:
-                n = author_counts.get(author, 0)
-                if n >= MAX_PER_AUTHOR_SOCIAL:
-                    continue
-                author_counts[author] = n + 1
+    chosen: list[dict] = []
+    for src, cap in SOURCE_SLOTS.items():
+        pool = [i for i in items if i["_tier"] == 1 and (i.get("source") or "").lower() == src]
+        taken = 0
+        for item in _sort_by_relevance(pool):
+            if src in ("twitter", "bluesky"):
+                author = (item.get("author") or "").lower().strip()
+                if author:
+                    n = author_counts.get(author, 0)
+                    if n >= MAX_PER_AUTHOR_SOCIAL:
+                        continue
+                    author_counts[author] = n + 1
+            chosen.append(item)
+            taken += 1
+            if taken >= cap:
+                break
+
+    # Tier 2 — institutional research gets its own allocation
+    tier2_pool = [i for i in items if i["_tier"] == 2]
+    chosen += _sort_by_relevance(tier2_pool)[:TIER2_SLOTS]
+
+    # Rebuild by_tier using our reserved selection (preserves output format)
+    by_tier = defaultdict(list)
+    for item in chosen:
         by_tier[item["_tier"]].append(item)
+    # Within each tier, order displayed items by relevance
+    for tier in by_tier:
+        by_tier[tier].sort(key=lambda x: -(x.get("relevance_score") or 0))
 
     lines = []
     count = 0
@@ -471,7 +494,7 @@ Return a JSON object:
 
 5. SUBSTACKER TAKES MUST COME FROM SUBSTACK NEWSLETTERS ONLY. The substacker_takes section is EXCLUSIVELY for items from the "Substack Newsletters" section above. Do NOT include Twitter commentators or any other source. Use the URL provided with each Substack item (even if it's a redirect link). For each take, summarize their specific ARGUMENT — not just the topic. "Erdmann argues builders are underbuilding relative to population growth" is good. "Erdmann wrote about housing supply" is not. IMPORTANT: Include a take for EVERY Substack newsletter provided. Do not cherry-pick — summarize all of them.
 
-6. CONVERSATION THEMES: 8-12 themes. Each must have platform evidence. At least 2 themes should involve economist/analyst voices.
+6. CONVERSATION THEMES: 8-12 themes. Each must have platform evidence. At least 2 themes should involve economist/analyst voices. SOURCE DIVERSITY IS MANDATORY: at least 4 of the themes must be ANCHORED by non-social sources — newspaper articles (NYT, WSJ, FT, Bloomberg, Reuters, Economist), substack essays, institutional research, or RSS journalism. "Anchored by" means the theme is driven BY that article/essay as the primary voice, with social commentary folded in as secondary reaction. Do NOT let Twitter/Bluesky saturate the themes — this briefing integrates online debate WITH offline authoritative journalism, and the reader expects to see BOTH. If the top 4 themes are all [twitter], you are doing it wrong. Label platforms accurately: use "rss" or "substack" or the newspaper name when that's the anchor.
 
 7. SINGLE TWEETS DO NOT MAKE THEMES. A lone tweet asking a question, making an observation, or endorsing someone else's argument is NOT a conversation theme — put it in twitter_roundup instead. For Twitter or Bluesky to anchor a theme, you need at least one of: (a) multiple accounts engaging with the same question, (b) the tweet is responding to or commenting on a concrete news story or data release, or (c) the tweet itself has substantial replies/engagement. "Conor Sen asks what Silicon Valley's best macro call was" is twitter_roundup material. "Multiple economists debate whether remote work suppresses wages" is a theme. When in doubt: if you can describe it as "[Person] says/asks/argues [thing]" with no other voices, it's roundup, not a theme.
 
