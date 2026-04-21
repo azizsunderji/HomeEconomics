@@ -109,18 +109,44 @@ def _format_items_for_conversation(items: list[dict], limit: int = 150) -> str:
         2: "INSTITUTIONAL RESEARCH — Goldman, AEI, Fed, NBER, BLS, Census (include only if directly newsworthy)",
     }
 
-    # Single ranking criterion across ALL sources: relevance_score.
-    # A newspaper article and a tweet are judged by the same number — no
-    # structural bias toward either. The per-author cap only applies to
-    # social (Twitter/Bluesky) so one prolific poster can't crowd out peers.
+    # Single ranking criterion: relevance_score. But reserve slots so
+    # substantive long-form content (enriched newspaper articles, newsletters,
+    # substacks with real body text) gets guaranteed representation alongside
+    # the many shorter tweets. A tweet "competing" with a 5000-char article on
+    # equal terms loses because tweets feel complete while truncated articles
+    # feel incomplete — so Sonnet picks tweets. The reserve fixes that.
     MAX_PER_AUTHOR_SOCIAL = 2
+    LONGFORM_RESERVED_SLOTS = 60  # guaranteed seats for long-form with real body
+    LONGFORM_MIN_BODY = 1500      # chars — "real body" threshold
+    LONGFORM_SOURCES = {"rss", "substack", "gmail"}
+
     sorted_items = sorted(items, key=lambda x: (
         x["_tier"],
         -(x.get("relevance_score") or 0),
     ))
+
+    # Phase 1: fill reserved seats from enriched long-form items, top-relevance first
+    reserved_ids = set()
     by_tier = defaultdict(list)
+    longform_taken = 0
+    for item in sorted_items:
+        if item["_tier"] != 1 or longform_taken >= LONGFORM_RESERVED_SLOTS:
+            continue
+        src = (item.get("source") or "").lower()
+        if src not in LONGFORM_SOURCES:
+            continue
+        body_len = len(item.get("body") or "")
+        if body_len < LONGFORM_MIN_BODY:
+            continue
+        by_tier[1].append(item)
+        reserved_ids.add(id(item))
+        longform_taken += 1
+
+    # Phase 2: fill remaining slots by pure relevance, with per-author cap on social
     author_counts: dict[str, int] = {}
     for item in sorted_items:
+        if id(item) in reserved_ids:
+            continue
         src = (item.get("source") or "").lower()
         if src in ("twitter", "bluesky"):
             author = (item.get("author") or "").lower().strip()
@@ -152,7 +178,7 @@ def _format_items_for_conversation(items: list[dict], limit: int = 150) -> str:
             body = item.get("body") or ""
 
             if source in ("twitter", "bluesky", "hackernews"):
-                # Social: full body (tweets are short) + engagement stats
+                # Social: 600 chars covers the full tweet/post in almost all cases
                 body_preview = body[:600]
                 lines.append(
                     f"  [{item.get('conversation_signal', '?'):>3} conv | {item.get('num_comments', 0)} comments | "
@@ -163,8 +189,10 @@ def _format_items_for_conversation(items: list[dict], limit: int = 150) -> str:
                     f"       {body_preview}"
                 )
             else:
-                # Newsletters, newspapers, RSS — body up to 600 chars (enriched articles will have full text)
-                body_preview = body[:600]
+                # Long-form sources (newspapers, substacks, gmail newsletters):
+                # give the LLM 3000 chars of content — enough for the substantive
+                # middle of an article, not just the lede.
+                body_preview = body[:3000]
                 lines.append(
                     f"  {item['_source_display']}: {item['title'][:200]}\n"
                     f"       URL: {item.get('url', '')}\n"
