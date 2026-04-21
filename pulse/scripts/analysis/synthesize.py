@@ -117,8 +117,22 @@ def _format_items_for_conversation(items: list[dict], limit: int = 150) -> str:
         2: "INSTITUTIONAL RESEARCH — Goldman, AEI, Fed, NBER, BLS, Census (include only if directly newsworthy)",
     }
 
+    # Cap per-author contribution for social sources so a prolific on-topic
+    # account can't dominate synthesis regardless of how much they post.
+    # Non-social sources (newspapers, substacks) aren't capped — each article
+    # is distinct content, not a stream of one person's posts.
+    MAX_PER_AUTHOR_SOCIAL = 2
     by_tier = defaultdict(list)
+    author_counts: dict[str, int] = {}
     for item in sorted_items:
+        src = (item.get("source") or "").lower()
+        if src in ("twitter", "bluesky"):
+            author = (item.get("author") or "").lower().strip()
+            if author:
+                n = author_counts.get(author, 0)
+                if n >= MAX_PER_AUTHOR_SOCIAL:
+                    continue
+                author_counts[author] = n + 1
         by_tier[item["_tier"]].append(item)
 
     lines = []
@@ -577,21 +591,8 @@ def generate_daily_briefing(
         f"{len(convergence)} convergence topics"
     )
 
-    # Build handle → real name map for Sonnet
-    try:
-        from config import TWITTER_REAL_NAMES
-        names_text = "\n".join(
-            f"  @{h}: {name}" for h, name in sorted(TWITTER_REAL_NAMES.items())
-        )
-    except ImportError:
-        names_text = ""
-
-    user_content = f"""## Twitter handle → real name lookup (utility only, NOT a prioritization list)
-For rendering purposes only: when you quote a tweet from one of these handles, use the real name. For any handle NOT in this list, use the @handle directly — do NOT guess a real name. This list does NOT indicate importance or priority; do NOT preferentially feature these accounts.
-
-{names_text}
-
-## Today's Collected Items — {len(all_items)} total, {len(relevant_items)} above relevance threshold, {len(conversation_items)} with active conversation
+    user_content = f"""## Today's Collected Items — {len(all_items)} total, {len(relevant_items)} above relevance threshold, {len(conversation_items)} with active conversation
+When citing a tweet or Bluesky post, use the @handle exactly as it appears — do NOT translate to a real name or guess who the person is.
 
 {_format_items_for_conversation(relevant_items, limit=150)}
 
@@ -793,13 +794,7 @@ Generate the daily briefing JSON. LEAD WITH CONVERSATION — what are people deb
             """Haiku prose summary for supplement entries."""
             import re as _re2
             import anthropic as _anthropic2
-            handle = author.lstrip("@").lower()
-            try:
-                from config import TWITTER_REAL_NAMES
-                real_name = TWITTER_REAL_NAMES.get(handle, "")
-            except ImportError:
-                real_name = ""
-            display = real_name if real_name else author
+            display = author  # Always show the raw @handle — no name translation
             tweet_lines = []
             for i, t in enumerate(tweets[:8], 1):
                 body = t.get("body") or t.get("title", "")
