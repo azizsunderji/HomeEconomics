@@ -87,6 +87,24 @@ def collect(
 
     logger.info(f"Parsed {len(feeds)} feeds from OPML")
 
+    # Strip tracking/position query params so the SAME article in multiple feed
+    # slots (WSJ's lead_pos1..5, utm_*, ref, etc.) dedupes to one item.
+    from urllib.parse import urlsplit, urlunsplit, parse_qsl, urlencode
+
+    def _canonical_url(u: str) -> str:
+        try:
+            parts = urlsplit(u)
+            kept = [
+                (k, v) for k, v in parse_qsl(parts.query, keep_blank_values=False)
+                if not (
+                    k.lower().startswith(("utm_", "mc_", "fbclid", "gclid", "ref"))
+                    or k.lower() in {"mod", "source", "campaign_id", "share", "share_id"}
+                )
+            ]
+            return urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(kept), ""))
+        except Exception:
+            return u
+
     for feed_info in feeds:
         try:
             parsed = feedparser.parse(feed_info["url"])
@@ -97,7 +115,8 @@ def collect(
 
             count = 0
             for entry in parsed.entries[:max_per_feed]:
-                url = entry.get("link", "")
+                raw_url = entry.get("link", "")
+                url = _canonical_url(raw_url)
                 if not url or url in seen_urls:
                     continue
 
