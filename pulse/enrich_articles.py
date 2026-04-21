@@ -57,7 +57,7 @@ def _get_db() -> sqlite3.Connection:
 
 
 def _get_items_to_enrich(conn: sqlite3.Connection, hours: int, limit: int) -> list[dict]:
-    """Find recent RSS/news items with thin body text."""
+    """Find recent RSS/news items to enrich with full article text."""
     from datetime import datetime, timezone, timedelta
     cutoff = (datetime.now(timezone.utc) - timedelta(hours=hours)).isoformat()
     rows = conn.execute("""
@@ -65,12 +65,11 @@ def _get_items_to_enrich(conn: sqlite3.Connection, hours: int, limit: int) -> li
         FROM items
         WHERE source IN ('rss', 'google_news')
           AND collected_at >= ?
-          AND (body IS NULL OR length(body) < ?)
           AND url != ''
           AND url NOT LIKE 'https://t.co/%'
         ORDER BY COALESCE(relevance_score, 0) DESC
         LIMIT ?
-    """, (cutoff, MIN_BODY_LEN, limit)).fetchall()
+    """, (cutoff, limit)).fetchall()
     return [dict(r) for r in rows]
 
 
