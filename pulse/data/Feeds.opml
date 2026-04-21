@@ -135,6 +135,11 @@
       <outline text="Keeping Current Matters" title="Keeping Current Matters" type="rss" xmlUrl="https://www.keepingcurrentmatters.com/feed/" htmlUrl="https://www.keepingcurrentmatters.com" />
       <outline text="NotoriousROB" title="NotoriousROB" type="rss" xmlUrl="https://www.notoriousrob.com/rss/" htmlUrl="https://www.notoriousrob.com" />
       <outline text="Realtor.com News" title="Realtor.com News" type="rss" xmlUrl="https://www.realtor.com/news/feed/" htmlUrl="https://www.realtor.com/news/" />
+      <outline text="Real Estate" title="Real Estate" type="rss" xmlUrl="https://rss.app/feeds/coPfwn4ipqsFw9dR.xml" htmlUrl="https://rss.app" />
+      <outline text="Real Estate" title="Real Estate" type="rss" xmlUrl="https://rss.app/feeds/D2sIzHq8eVxkkyhj.xml" htmlUrl="https://rss.app" />
+      <outline text="RealPage, Inc. | LinkedIn" title="RealPage, Inc. | LinkedIn" type="rss" xmlUrl="https://rss.app/feeds/P689RzBUbeuINsDv.xml" htmlUrl="https://rss.app" />
+      <outline text="John Burns Research and Consulting | LinkedIn" title="John Burns Research and Consulting | LinkedIn" type="rss" xmlUrl="https://rss.app/feeds/94he2j6jTPUNzUX7.xml" htmlUrl="https://rss.app" />
+      <outline text="Ethan Mollick (@emollick) / Twitter" title="Ethan Mollick (@emollick) / Twitter" type="rss" xmlUrl="https://rss.app/feeds/JNkkMEjSySIAH64k.xml" htmlUrl="https://rss.app" />
     </outline>
     <outline title="Journals" text="Journals">
       <outline type="rss" xmlUrl="https://www.tandfonline.com/feed/rss/rjer20" htmlUrl="https://www.tandfonline.com/loi/rjer20?af=R" text="Journal of Real Estate Research" title="Journal of Real Estate Research" />
