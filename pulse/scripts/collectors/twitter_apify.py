@@ -109,7 +109,7 @@ def _run_actor(list_id: str = PULSE_LIST_ID, max_items: int = LIST_MAX_ITEMS) ->
     url = f"{APIFY_BASE}/acts/{actor_api_id}/runs"
     headers = {"Authorization": f"Bearer {api_key}"}
     payload = {
-        "listId": list_id,
+        "listIds": [list_id],
         "maxItems": max_items,
     }
 
