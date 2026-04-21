@@ -458,32 +458,35 @@ def cmd_synthesize(args):
             (cutoff_24h,),
         ).fetchall()
 
-        # Journal articles
+        # Journal articles — academic journals publish monthly/quarterly, so
+        # a date-based window misses most of them. Instead: show each
+        # configured journal's N most recent papers, regardless of age.
+        # This guarantees every journal gets representation.
         journal_items = []
         seen_journal_titles = set()
-        journal_per_feed = {}
-        for row in all_rss_24h:
-            item = dict(row)
-            feed = item.get("feed_name", "")
-            if feed not in journal_feed_names:
-                continue
-            published = item.get("published_at", "")
-            if published and published < cutoff_24h:
-                continue
-            journal_per_feed[feed] = journal_per_feed.get(feed, 0) + 1
-            if journal_per_feed[feed] > 30:
-                continue
-            title = item.get("title", "")
-            title_key = title[:80].lower().strip()
-            if title_key in seen_journal_titles:
-                continue
-            seen_journal_titles.add(title_key)
-            journal_items.append({
-                "journal": feed.replace("ScienceDirect Publication: ", "").replace("ScienceDirect: ", ""),
-                "title": title,
-                "url": item.get("url", ""),
-            })
-        briefing["_journal_articles"] = journal_items[:30]
+        PER_JOURNAL_N = 4
+        for feed in sorted(journal_feed_names):
+            rows = conn.execute(
+                "SELECT * FROM items WHERE source = 'rss' AND feed_name = ? ORDER BY collected_at DESC LIMIT ?",
+                (feed, PER_JOURNAL_N * 2),  # extra headroom for dedup
+            ).fetchall()
+            added_for_feed = 0
+            for row in rows:
+                if added_for_feed >= PER_JOURNAL_N:
+                    break
+                item = dict(row)
+                title = item.get("title", "")
+                title_key = title[:80].lower().strip()
+                if title_key in seen_journal_titles:
+                    continue
+                seen_journal_titles.add(title_key)
+                journal_items.append({
+                    "journal": feed.replace("ScienceDirect Publication: ", "").replace("ScienceDirect: ", ""),
+                    "title": title,
+                    "url": item.get("url", ""),
+                })
+                added_for_feed += 1
+        briefing["_journal_articles"] = journal_items
 
         # Headlines
         headline_items = []
