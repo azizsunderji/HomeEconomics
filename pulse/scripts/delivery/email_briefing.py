@@ -234,18 +234,20 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
 
     # ── FRONT PAGES (NYT and FT screenshots) ──
     # Captured locally on the home machine and uploaded to Bluehost before
-    # the Pulse run. See pulse/capture_frontpages.py.
+    # the Pulse run. Append cache-buster query so Gmail's image proxy
+    # refetches each day (server sends 1-year cache-control).
+    _cb = datetime.now(timezone.utc).strftime("%Y%m%d%H")
     html += _section_heading("On the Front Pages")
     html += _spacer(14)
     html += f"""<table width="100%" cellpadding="0" cellspacing="0"><tr>
 <td style="padding: 0 0 12px 0;">
   <div style="font-size: 12px; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px;">The New York Times</div>
-  <a href="https://www.nytimes.com" target="_blank"><img src="https://home-economics.us/pulse-screenshots/nyt.jpg" alt="NYT front page" width="600" style="width: 100%; max-width: 600px; height: auto; border: 1px solid #e0e0e0; border-radius: 4px; display: block;"/></a>
+  <a href="https://www.nytimes.com" target="_blank"><img src="https://home-economics.us/pulse-screenshots/nyt.jpg?v={_cb}" alt="NYT front page" width="600" style="width: 100%; max-width: 600px; height: auto; border: 1px solid #e0e0e0; border-radius: 4px; display: block;"/></a>
 </td></tr></table>
 <table width="100%" cellpadding="0" cellspacing="0"><tr>
 <td style="padding: 0 0 12px 0;">
   <div style="font-size: 12px; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px;">Financial Times</div>
-  <a href="https://www.ft.com" target="_blank"><img src="https://home-economics.us/pulse-screenshots/ft.jpg" alt="FT front page" width="600" style="width: 100%; max-width: 600px; height: auto; border: 1px solid #e0e0e0; border-radius: 4px; display: block;"/></a>
+  <a href="https://www.ft.com" target="_blank"><img src="https://home-economics.us/pulse-screenshots/ft.jpg?v={_cb}" alt="FT front page" width="600" style="width: 100%; max-width: 600px; height: auto; border: 1px solid #e0e0e0; border-radius: 4px; display: block;"/></a>
 </td></tr></table>
 """
     html += _spacer(24)
