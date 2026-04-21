@@ -349,6 +349,12 @@ def cmd_daily(args):
     if existing_errors:
         briefing["_collection_errors"] = existing_errors
 
+    # Persist the FULL briefing (with all post-synthesis injections) to DB
+    # so audits later match what was actually emailed.
+    if "_briefing_id" in briefing:
+        from store import update_briefing_content
+        update_briefing_content(conn, briefing["_briefing_id"], briefing)
+
     # Email
     logger.info("Phase 5: Email delivery")
     from delivery.email_briefing import send_email
@@ -582,6 +588,12 @@ def cmd_synthesize(args):
         existing_errors.append({"source": "pipeline", "error": err_msg, "time": ""})
     if existing_errors:
         briefing["_collection_errors"] = existing_errors
+
+    # Persist the FULL briefing (with all post-synthesis injections) to DB
+    # so audits later match what was actually emailed.
+    if "_briefing_id" in briefing:
+        from store import update_briefing_content
+        update_briefing_content(conn, briefing["_briefing_id"], briefing)
 
     # Email
     logger.info("Phase 5: Email delivery")
