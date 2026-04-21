@@ -68,6 +68,50 @@ def check_health(conn: sqlite3.Connection) -> list[dict]:
                 ),
             })
 
+    # ── STAGE 1b: Gmail OAuth token health ──────────────────────────────
+    # Google expires refresh tokens for Testing-mode External apps with
+    # sensitive scopes (gmail.modify) after 7 days. Proactively check each
+    # token so we get alerted BEFORE the next collection fails silently.
+    import os, json as _json
+    try:
+        import httpx
+        tokens_raw = os.environ.get("GMAIL_TOKENS", "")
+        if tokens_raw:
+            tokens = _json.loads(tokens_raw)
+            if not isinstance(tokens, list):
+                tokens = [tokens]
+            for i, t in enumerate(tokens):
+                try:
+                    r = httpx.post(
+                        "https://oauth2.googleapis.com/token",
+                        data={
+                            "client_id": t["client_id"],
+                            "client_secret": t["client_secret"],
+                            "refresh_token": t["refresh_token"],
+                            "grant_type": "refresh_token",
+                        },
+                        timeout=10,
+                    )
+                    if r.status_code != 200:
+                        err = r.json().get("error", "unknown")
+                        problems.append({
+                            "severity": "FAILURE",
+                            "stage": "gmail-auth",
+                            "message": (
+                                f"Gmail token {i} refresh failed ({err}). "
+                                f"Re-run gmail_auth.py to get a new refresh token "
+                                f"(Testing-mode apps expire every 7 days)."
+                            ),
+                        })
+                except Exception as e:
+                    problems.append({
+                        "severity": "WARNING",
+                        "stage": "gmail-auth",
+                        "message": f"Gmail token {i} check failed: {e}",
+                    })
+    except Exception as e:
+        logger.warning(f"Gmail token health check skipped: {e}")
+
     # ── STAGE 2: Collection errors in collection_runs ──────────────────
     err_rows = conn.execute(
         """SELECT source, error, started_at
