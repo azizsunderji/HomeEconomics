@@ -386,8 +386,8 @@ GMAIL_JUNK_SENDER_PATTERNS = [
     "calendar-notification", "google.com/calendar", "calendly.com",
     "noreply", "no-reply", "donotreply", "notifications@",
     "buildinglink.com", "notify@",
-    "theneurondaily.com", "joinsuperhuman.ai", "harkaudio.com",
-    "theverge.com", "thecity.nyc",
+    "harkaudio.com",
+    "thecity.nyc",
     "amazon.com", "uber.com", "doordash.com",
     "linkedin.com", "facebook.com",
 ]
