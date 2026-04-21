@@ -47,6 +47,9 @@ _INSTITUTIONAL_SIGNALS = [
     "goldman", "gs macro", "edward pinto", "aei housing", "aeihousing",
     "federal reserve", "newyorkfed", "bls.gov", "census.gov", "fhfa",
     "freddiemac", "fanniemae", "nber",
+    # Academic journals — research papers, not today's news
+    "sciencedirect", "journal of housing", "journal of urban", "journal of real estate",
+    "tandfonline", "wiley: real estate", "springer", "journal of the american planning",
 ]
 
 
@@ -499,10 +502,10 @@ def generate_daily_briefing(
 
     # Gather all inputs
     all_items = get_items_since(conn, hours=36, min_relevance=0)
-    # Curated sources (Twitter, Bluesky) get a lower threshold since they come
-    # from hand-picked accounts — even off-topic tweets from economists are worth seeing.
-    # Other sources (RSS, Google News) use the standard threshold.
-    curated_sources = {"twitter", "bluesky"}
+    # All hand-curated sources (Twitter, Bluesky, RSS) use a low threshold —
+    # these are hand-picked accounts/feeds so even off-topic items are worth seeing.
+    # Google News and other bulk sources use a higher threshold.
+    curated_sources = {"twitter", "bluesky", "rss", "substack", "gmail"}
     relevant_items = [
         i for i in all_items
         if (i.get("relevance_score") or 0) >= (10 if i.get("source") in curated_sources else 30)
