@@ -63,7 +63,7 @@ auth_url = "https://accounts.google.com/o/oauth2/v2/auth?" + urlencode({
     "client_id": CLIENT_ID,
     "redirect_uri": REDIRECT_URI,
     "response_type": "code",
-    "scope": "https://www.googleapis.com/auth/gmail.readonly",
+    "scope": "https://www.googleapis.com/auth/gmail.modify",
     "access_type": "offline",
     "prompt": "consent",
 })
@@ -106,6 +106,29 @@ gmail_token = json.dumps({
     "client_secret": CLIENT_SECRET,
     "refresh_token": refresh_token,
 })
+
+# Record issue timestamp so pipeline_health can warn before expiry.
+# Testing-mode External apps with sensitive scopes die 7 days after issue.
+try:
+    from datetime import datetime, timezone
+    from pathlib import Path
+    stamp_path = Path(__file__).parent.parent / "data" / "gmail_token_issued.json"
+    stamp_path.parent.mkdir(parents=True, exist_ok=True)
+    existing = {}
+    if stamp_path.exists():
+        try:
+            existing = json.loads(stamp_path.read_text())
+        except Exception:
+            existing = {}
+    existing[CLIENT_ID] = {
+        "issued_at": datetime.now(timezone.utc).isoformat(),
+        "expires": True,
+        "expires_after_days": 7,
+    }
+    stamp_path.write_text(json.dumps(existing, indent=2))
+    print(f"Recorded issue timestamp to {stamp_path}")
+except Exception as e:
+    print(f"Note: could not record issue timestamp: {e}")
 
 print()
 print("=" * 60)
