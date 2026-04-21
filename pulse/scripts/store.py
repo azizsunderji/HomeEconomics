@@ -253,25 +253,12 @@ def get_items_since(
     hours: int = 24,
     min_relevance: Optional[int] = None,
 ) -> list[dict]:
-    """Get classified items from the last N hours.
-
-    For google_news, uses collected_at — GN can surface articles published days
-    ago, so published_at would exclude nearly everything. For all other sources,
-    uses published_at when available (falls back to collected_at) to avoid stale
-    articles collected late dominating the briefing.
-    """
+    """Get classified items from the last N hours."""
     cutoff = (datetime.now(timezone.utc) - timedelta(hours=hours)).isoformat()
-    # Google News RSS articles often have published_at 2-3 days old (published Wed,
-    # collected Fri). Use a 3-day window so recent articles aren't excluded, while
-    # still filtering out genuinely stale content.
-    gn_cutoff = (datetime.now(timezone.utc) - timedelta(days=3)).isoformat()
     query = """SELECT * FROM items
         WHERE classified_at IS NOT NULL
-        AND (
-            (source = 'google_news' AND COALESCE(NULLIF(published_at, ''), collected_at) >= ?)
-            OR (source != 'google_news' AND COALESCE(NULLIF(published_at, ''), collected_at) >= ?)
-        )"""
-    params: list = [gn_cutoff, cutoff]
+        AND COALESCE(NULLIF(published_at, ''), collected_at) >= ?"""
+    params: list = [cutoff]
 
     if min_relevance is not None:
         query += " AND relevance_score >= ?"
