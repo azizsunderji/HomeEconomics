@@ -789,6 +789,42 @@ Generate the daily briefing JSON. LEAD WITH CONVERSATION — what are people deb
                 logger.info(f"Twitter roundup: skipped {skipped_theme_dup} entries already in conversation themes")
             briefing["twitter_roundup"] = deduped
 
+        def _build_fallback_summary(tweets: list, author: str = "") -> str:
+            """Haiku prose summary for supplement entries."""
+            import re as _re2
+            import anthropic as _anthropic2
+            handle = author.lstrip("@").lower()
+            try:
+                from config import TWITTER_REAL_NAMES
+                real_name = TWITTER_REAL_NAMES.get(handle, "")
+            except ImportError:
+                real_name = ""
+            display = real_name if real_name else author
+            tweet_lines = []
+            for i, t in enumerate(tweets[:8], 1):
+                body = t.get("body") or t.get("title", "")
+                body = _re2.sub(r'https?://t\.co/\S*', '', body)
+                body = _re2.sub(r'https?://\S+', '', body)
+                body = _re2.sub(r'\s+', ' ', body).strip()[:280]
+                if body:
+                    tweet_lines.append(f"[{i}] {body} (url: {t.get('url','')})")
+            if not tweet_lines:
+                return ""
+            try:
+                resp = _anthropic2.Anthropic().messages.create(
+                    model="claude-haiku-4-5-20251001",
+                    max_tokens=300,
+                    messages=[{"role": "user", "content": (
+                        f"Summarize {display}'s tweets as a short flowing paragraph (2-4 sentences). "
+                        f"Use inline markdown links [text](url) with short verb phrases. "
+                        f"Start with the last name or handle. Return only the paragraph.\n\n"
+                        f"Tweets:\n" + "\n".join(tweet_lines)
+                    )}],
+                )
+                return resp.content[0].text.strip()
+            except Exception:
+                return " ".join(f"{t.get('title','')[:100]}" for t in tweets[:2])
+
         # 2. Supplement twitter_roundup if Sonnet returned fewer than 15 accounts
         roundup_authors = {(e.get("author") or "").lower().strip() for e in briefing.get("twitter_roundup", [])}
         theme_urls = set()
