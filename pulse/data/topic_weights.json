@@ -241,7 +241,7 @@
       "label": "Housing Policy & YIMBY",
       "description": "Zoning, YIMBY/NIMBY, rent control, public housing, ADUs, upzoning, housing politics.",
       "tier": "adjacent",
-      "weight": 90,
+      "weight": 75,
       "keywords": [
         "zoning",
         "yimby",
