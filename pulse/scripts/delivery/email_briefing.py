@@ -498,12 +498,20 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
                     title_link = f'<a href="{url}" target="_blank" style="color: #3D3733; text-decoration: none;">{title_text}</a>'
                 else:
                     title_link = title_text
-                html += f"""<table width="100%" cellpadding="0" cellspacing="0"><tr>
-<td style="font-size: 15px; padding: 2px 0; line-height: 1.45;">
-  {title_link}
+                abstract = item.get("abstract", "") or ""
+                abstract_html = ""
+                if abstract:
+                    abstract_html = f"""<table width="100%" cellpadding="0" cellspacing="0"><tr>
+<td style="font-size: 13px; padding: 2px 0 6px 0; color: #666; line-height: 1.5;">
+  {_esc(abstract)}
 </td></tr></table>
 """
-            html += _spacer(4)
+                html += f"""<table width="100%" cellpadding="0" cellspacing="0"><tr>
+<td style="font-size: 15px; padding: 2px 0; line-height: 1.45; font-weight: 600;">
+  {title_link}
+</td></tr></table>
+{abstract_html}"""
+            html += _spacer(8)
 
         html += _spacer(20)
 
