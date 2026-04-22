@@ -30,6 +30,11 @@ echo "--- Enriching articles ---"
 cd "$PULSE_DIR"
 $PYTHON enrich_articles.py --hours 24 --limit 150
 
+# Fetch abstracts for today's 5 rotated journal papers (non-NBER journals
+# don't ship abstracts in RSS so we fetch their pages directly)
+echo "--- Fetching journal abstracts ---"
+$PYTHON fetch_journal_abstracts.py
+
 # Run synthesis + email
 echo "--- Running synthesis ---"
 cd "$SCRIPTS_DIR"
