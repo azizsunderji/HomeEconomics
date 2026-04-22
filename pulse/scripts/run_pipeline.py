@@ -540,6 +540,7 @@ def cmd_synthesize(args):
                 "source": feed,
                 "headline": clean_title,
                 "url": item.get("url", "") or "",
+                "relevance_score": item.get("relevance_score") or 0,
             })
         briefing["_headlines"] = headline_items
         logger.info(f"Headlines: {len(headline_items)}, Journal articles: {len(journal_items)}")
@@ -576,10 +577,22 @@ def cmd_synthesize(args):
             raw_author = item.get("author", "")
             match = _re.match(r'"?([^"<]+)"?\s*<', raw_author)
             display_name = match.group(1).strip() if match else raw_author.split("<")[0].strip() or raw_author
+            # Prefer the Gmail thread URL (takes you to the actual email) over
+            # any URL the collector tried to extract from the email body — for
+            # newsletter/institutional emails, the "primary URL" is often a
+            # signature link to the sender's firm, not the email content itself.
+            gmail_url = ""
+            try:
+                eng_raw = item.get("engagement_raw") or ""
+                if eng_raw:
+                    import json as _json
+                    gmail_url = _json.loads(eng_raw).get("gmail_url", "") or ""
+            except Exception:
+                pass
             entry = {
                 "source": display_name, "author": display_name,
                 "headline": item.get("title", ""), "title": item.get("title", ""),
-                "url": item.get("url", ""),
+                "url": gmail_url or item.get("url", ""),
             }
             if any(p in sender or p in display_name.lower() for p in GMAIL_AI_HEADLINE_SENDERS):
                 ai_newsletter_items.append(entry)
