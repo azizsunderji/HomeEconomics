@@ -458,34 +458,52 @@ def cmd_synthesize(args):
             (cutoff_24h,),
         ).fetchall()
 
-        # Journal articles — academic journals publish monthly/quarterly, so
-        # a date-based window misses most of them. Instead: show each
-        # configured journal's N most recent papers, regardless of age.
-        # This guarantees every journal gets representation.
+        # Journal articles — build a pool of everything from the last 30 days
+        # across all journal feeds, then rotate through it: each day shows 5
+        # papers deterministically based on the date, so over a month the
+        # reader sees the whole pool without repeats on the same day.
+        cutoff_30d = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
+        rows_30d = conn.execute(
+            "SELECT * FROM items WHERE source = 'rss' AND feed_name IN ({}) AND collected_at >= ? ORDER BY feed_name, collected_at DESC".format(
+                ",".join(["?"] * len(journal_feed_names))
+            ),
+            list(journal_feed_names) + [cutoff_30d],
+        ).fetchall()
+
+        # Dedup by title across the full pool
+        pool = []
+        seen_titles = set()
+        for row in rows_30d:
+            item = dict(row)
+            title_key = (item.get("title") or "")[:80].lower().strip()
+            if not title_key or title_key in seen_titles:
+                continue
+            seen_titles.add(title_key)
+            pool.append(item)
+        # Stable ordering so rotation is deterministic
+        pool.sort(key=lambda x: (x.get("title") or "").lower())
+
+        # Rotation: day_index * 5 % N, picking 5 contiguous from sorted pool
+        day_idx = datetime.now(timezone.utc).toordinal()
         journal_items = []
-        seen_journal_titles = set()
-        PER_JOURNAL_N = 4
-        for feed in sorted(journal_feed_names):
-            rows = conn.execute(
-                "SELECT * FROM items WHERE source = 'rss' AND feed_name = ? ORDER BY collected_at DESC LIMIT ?",
-                (feed, PER_JOURNAL_N * 2),  # extra headroom for dedup
-            ).fetchall()
-            added_for_feed = 0
-            for row in rows:
-                if added_for_feed >= PER_JOURNAL_N:
-                    break
-                item = dict(row)
-                title = item.get("title", "")
-                title_key = title[:80].lower().strip()
-                if title_key in seen_journal_titles:
-                    continue
-                seen_journal_titles.add(title_key)
+        if pool:
+            start = (day_idx * 5) % len(pool)
+            for i in range(5):
+                item = pool[(start + i) % len(pool)]
+                feed = item.get("feed_name", "")
+                # Try to get an abstract — NBER puts it in body; others only
+                # have metadata in RSS, so show whatever body we have.
+                import re as _re_j
+                body = item.get("body", "") or ""
+                body = _re_j.sub(r"Publication date:.*?Author\(s\):[^\n]*", "", body).strip()
+                body = _re_j.sub(r"Volume \d+, Issue \d+.*?\.\s*$", "", body).strip()
+                abstract = body[:1500] if len(body) > 80 else ""
                 journal_items.append({
                     "journal": feed.replace("ScienceDirect Publication: ", "").replace("ScienceDirect: ", ""),
-                    "title": title,
+                    "title": item.get("title", ""),
                     "url": item.get("url", ""),
+                    "abstract": abstract,
                 })
-                added_for_feed += 1
         briefing["_journal_articles"] = journal_items
 
         # Headlines
@@ -514,9 +532,13 @@ def cmd_synthesize(args):
                 if any(_re_hl.search(p, title, _re_hl.IGNORECASE) for p in company_junk):
                     continue
             seen_headline_titles.add(title_key)
+            # Strip "News | " prefix common to CoStar and some other feeds
+            clean_title = title
+            if clean_title.lower().startswith("news | "):
+                clean_title = clean_title[7:]
             headline_items.append({
                 "source": feed,
-                "headline": title,
+                "headline": clean_title,
                 "url": item.get("url", "") or "",
             })
         briefing["_headlines"] = headline_items
