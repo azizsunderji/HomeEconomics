@@ -888,19 +888,18 @@ Generate the daily briefing JSON. LEAD WITH CONVERSATION — what are people deb
         # Validate all URLs against the database
         briefing = _validate_briefing_urls(briefing, conn)
 
-        # Split AI-related substacker takes into the unified AI section
+        # Copy AI-related substacker takes into the unified AI section.
+        # They also remain in the main substacker_takes list so the reader
+        # sees AI-newsletter writers in both places.
         try:
             from config import AI_SUBSTACK_AUTHORS
             ai_authors_lc = [a.lower() for a in AI_SUBSTACK_AUTHORS]
             ai_substacks = []
-            remaining_substacks = []
             for take in briefing.get("substacker_takes", []):
                 author = (take.get("author") or "").lower()
                 if any(a in author for a in ai_authors_lc):
                     ai_substacks.append(take)
-                else:
-                    remaining_substacks.append(take)
-            briefing["substacker_takes"] = remaining_substacks
+            # substacker_takes stays unchanged — dual presence is intentional
             briefing["_ai_substacks"] = ai_substacks
             if ai_substacks:
                 logger.info(f"AI substacks routed to AI section: {len(ai_substacks)}")
