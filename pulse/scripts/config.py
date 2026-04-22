@@ -488,6 +488,7 @@ AI_SUBSTACK_AUTHORS = [
     "ben thompson", "stratechery",
     "zvi",
     "simon willison",
+    "casey newton", "platformer",
     "semianalysis", "dylan patel",
     "dwarkesh",
     "jack clark", "import ai",
