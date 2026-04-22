@@ -154,43 +154,103 @@ def _clean(s: str) -> str:
     return s[:2000]
 
 
-async def _fetch_abstracts(papers: list[dict], dry_run: bool = False) -> dict[str, str]:
-    results: dict[str, str] = {}
-    async with async_playwright() as p:
-        browser = await p.chromium.launch(
-            headless=True, channel="chrome",
-            args=["--no-sandbox", "--disable-blink-features=AutomationControlled"],
+def _extract_doi(url: str) -> str | None:
+    """Pull a DOI out of common journal URL patterns."""
+    m = re.search(r'/doi/(?:full/|abs/)?(10\.\d+/[^\?#\s]+)', url)
+    if m:
+        return m.group(1).rstrip("/")
+    m = re.search(r'(10\.\d+/[^\?#\s]+)', url)
+    if m:
+        return m.group(1).rstrip("/")
+    return None
+
+
+def _fetch_abstract_by_doi(doi: str, http_client: "httpx.Client") -> str:
+    """Try Semantic Scholar first, then CrossRef. Returns empty string if neither has it."""
+    try:
+        r = http_client.get(
+            f"https://api.semanticscholar.org/graph/v1/paper/DOI:{doi}",
+            params={"fields": "abstract"},
+            timeout=15,
         )
-        for paper in papers:
-            url = paper["url"]
-            title = (paper.get("title") or "")[:60]
-            # Skip if we already have a decent abstract stored
-            if len(paper.get("body") or "") > MIN_ABSTRACT_LEN:
-                logger.info(f"  CACHED {title}")
+        if r.status_code == 200:
+            abstract = (r.json().get("abstract") or "").strip()
+            if len(abstract) > MIN_ABSTRACT_LEN:
+                return abstract[:2000]
+    except Exception:
+        pass
+    try:
+        r = http_client.get(
+            f"https://api.crossref.org/works/{doi}",
+            timeout=15,
+        )
+        if r.status_code == 200:
+            abstract_xml = r.json().get("message", {}).get("abstract", "") or ""
+            # CrossRef abstracts are wrapped in <jats:p> tags
+            abstract = re.sub(r"<[^>]+>", " ", abstract_xml)
+            abstract = re.sub(r"\s+", " ", abstract).strip()
+            if len(abstract) > MIN_ABSTRACT_LEN:
+                return abstract[:2000]
+    except Exception:
+        pass
+    return ""
+
+
+async def _fetch_abstracts(papers: list[dict], dry_run: bool = False) -> dict[str, str]:
+    import httpx
+    results: dict[str, str] = {}
+    http = httpx.Client(headers={"User-Agent": "Pulse Briefing <aziz@home-economics.us>"})
+
+    # Pass 1: DOI-based API lookup (no browser needed — fast, polite)
+    remaining = []
+    for paper in papers:
+        title = (paper.get("title") or "")[:60]
+        if len(paper.get("body") or "") > MIN_ABSTRACT_LEN:
+            logger.info(f"  CACHED {title}")
+            continue
+        doi = _extract_doi(paper["url"])
+        if doi:
+            abstract = _fetch_abstract_by_doi(doi, http)
+            if abstract:
+                results[paper["id"]] = abstract
+                logger.info(f"  API ({len(abstract)}c via DOI {doi}) {title}")
                 continue
-            try:
-                cookies = _get_cookies(url)
-                ctx = await browser.new_context(
-                    user_agent=("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-                                "AppleWebKit/537.36 (KHTML, like Gecko) "
-                                "Chrome/147.0.0.0 Safari/537.36"),
-                )
-                if cookies:
-                    await ctx.add_cookies(cookies)
-                page = await ctx.new_page()
-                await page.goto(url, wait_until="domcontentloaded", timeout=25000)
-                await page.wait_for_timeout(1500)
-                html = await page.content()
-                await ctx.close()
-                abstract = _extract_abstract(html)
-                if abstract:
-                    results[paper["id"]] = abstract
-                    logger.info(f"  OK ({len(abstract)}c) {title}")
-                else:
-                    logger.info(f"  NO-ABS {title}")
-            except Exception as e:
-                logger.warning(f"  FAIL {title}: {e}")
-        await browser.close()
+        remaining.append(paper)
+
+    # Pass 2: for papers with no DOI or APIs returned nothing, try the full
+    # browser page fetch as a last resort.
+    if remaining:
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(
+                headless=True, channel="chrome",
+                args=["--no-sandbox", "--disable-blink-features=AutomationControlled"],
+            )
+            for paper in remaining:
+                url = paper["url"]
+                title = (paper.get("title") or "")[:60]
+                try:
+                    cookies = _get_cookies(url)
+                    ctx = await browser.new_context(
+                        user_agent=("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                                    "Chrome/147.0.0.0 Safari/537.36"),
+                    )
+                    if cookies:
+                        await ctx.add_cookies(cookies)
+                    page = await ctx.new_page()
+                    await page.goto(url, wait_until="domcontentloaded", timeout=25000)
+                    await page.wait_for_timeout(1500)
+                    html = await page.content()
+                    await ctx.close()
+                    abstract = _extract_abstract(html)
+                    if abstract:
+                        results[paper["id"]] = abstract
+                        logger.info(f"  BROWSER ({len(abstract)}c) {title}")
+                    else:
+                        logger.info(f"  NO-ABS {title}")
+                except Exception as e:
+                    logger.warning(f"  FAIL {title}: {e}")
+            await browser.close()
     return results
 
 
