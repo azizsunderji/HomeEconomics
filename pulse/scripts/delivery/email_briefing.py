@@ -299,55 +299,48 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
 
         html += _spacer(10)
 
-    # ── HEADLINES (grouped by source, all items from OPML) ──
+    # ── HEADLINES (single ranked list by relevance, source in brackets) ──
     if headlines:
-        from collections import defaultdict as _defaultdict
-        grouped_headlines = _defaultdict(list)
+        # Preprocess: consolidate a few multi-feed sources and drop the noisy ones
+        processed = []
         for item in headlines:
             source = item.get("source", "News")
-            # Consolidate all Google Alert feeds under a single "Alerts" group
-            # and prefix the headline with the reporter's name
+            item = dict(item)  # don't mutate upstream
             if source.startswith("Alert: "):
                 reporter_name = source[len("Alert: "):]
-                item = dict(item)  # copy to avoid mutating original
                 item["headline"] = f"{reporter_name}: {item.get('headline', '')}"
                 source = "Alerts"
-            # Consolidate all Economist sections under a single "Economist" group
-            # and prefix the headline with the section name
             elif source.startswith("Economist: "):
                 section_name = source[len("Economist: "):]
-                item = dict(item)
                 item["headline"] = f"{section_name}: {item.get('headline', '')}"
                 source = "Economist"
-            # Drop Bloomberg Markets/Wealth — too noisy, not housing-relevant enough
             elif source in ("Bloomberg Markets", "Bloomberg Wealth"):
-                continue
-            # Group all FT feeds under a single "Financial Times" heading (no section prefix)
+                continue  # drop — not housing-relevant enough
             elif source in ("FT Front Page", "FT Global Economy", "FT Markets"):
                 source = "Financial Times"
-            grouped_headlines[source].append(item)
-        # Sort groups alphabetically by source name
-        grouped_headlines = dict(sorted(grouped_headlines.items()))
+            item["source"] = source
+            processed.append(item)
 
-        html += _section_heading(f"Headlines ({len(headlines)})")
+        # Sort by relevance_score (desc), tiebreak by position
+        processed.sort(key=lambda x: -(x.get("relevance_score") or 0))
+
+        html += _section_heading(f"Headlines ({len(processed)})")
         html += _spacer(10)
 
-        for source_name, articles in grouped_headlines.items():
+        for idx, item in enumerate(processed):
+            url = item.get("url", "")
+            headline_text = _esc(item.get('headline', ''))
+            source_name = _esc(item.get('source', 'News'))
+            if url:
+                headline_link = f'<a href="{url}" target="_blank" style="color: #3D3733; text-decoration: none;">{headline_text}</a>'
+                source_link = f'<a href="{url}" target="_blank" style="color: #0BB4FF; text-decoration: none;">[{source_name}]</a>'
+            else:
+                headline_link = headline_text
+                source_link = f'<span style="color: #888;">[{source_name}]</span>'
+            bg = "#f9faf7" if idx % 2 == 0 else "#ffffff"
             html += f"""<table width="100%" cellpadding="0" cellspacing="0"><tr>
-<td style="font-size: 14px; font-weight: 600; color: #0BB4FF; padding: 12px 0 6px 0; border-bottom: 1px solid #e0e0e0;">{_esc(source_name)}</td>
-</tr></table>
-"""
-            for idx, item in enumerate(articles):
-                url = item.get("url", "")
-                headline_text = _esc(item.get('headline', ''))
-                if url:
-                    headline_link = f'<a href="{url}" target="_blank" style="color: #3D3733; text-decoration: none;">{headline_text}</a>'
-                else:
-                    headline_link = headline_text
-                bg = "#f9faf7" if idx % 2 == 0 else "#ffffff"
-                html += f"""<table width="100%" cellpadding="0" cellspacing="0"><tr>
 <td style="font-size: 15px; padding: 8px 12px; line-height: 1.5; background: {bg};">
-  {headline_link}
+  {headline_link} <span style="font-size: 13px;">{source_link}</span>
 </td></tr></table>
 """
             html += _spacer(8)
@@ -367,7 +360,11 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
         html += _spacer(24)
 
     # ── TWITTER ROUNDUP — flat bullet list, one line per account ──
+    # Author handle links to the actual tweet (extracted from the summary's
+    # first markdown link). Summary text is shown as plain text — no inline
+    # links cluttering the prose.
     if twitter_roundup:
+        import re as _re_tw
         html += _section_heading(f"Also on Twitter ({len(twitter_roundup)})")
         html += _spacer(10)
         html += '<table width="100%" cellpadding="0" cellspacing="0"><tr><td style="padding: 4px 0 14px 0;">'
@@ -375,8 +372,13 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
             author = voice.get("author", "")
             summary = voice.get("summary", voice.get("take", ""))
             handle = author.lstrip("@")
-            author_html = f'<a href="https://x.com/{handle}" target="_blank" style="color: #0BB4FF; text-decoration: none; font-weight: 600;">{_esc(author)}</a>'
-            summary_html = _md_links(summary)
+            # Pull the first markdown-link URL from the summary; that's the tweet URL
+            m = _re_tw.search(r'\[[^\]]+\]\(([^)]+)\)', summary)
+            tweet_url = m.group(1) if m else f"https://x.com/{handle}"
+            author_html = f'<a href="{tweet_url}" target="_blank" style="color: #0BB4FF; text-decoration: none; font-weight: 600;">{_esc(author)}</a>'
+            # Strip markdown links from the summary: keep just the bracketed text
+            plain_summary = _re_tw.sub(r'\[([^\]]+)\]\([^)]+\)', r'\1', summary)
+            summary_html = _esc(plain_summary)
             html += f'<div style="font-size: 14px; color: #555; line-height: 1.6; padding: 2px 0;">• {author_html} — {summary_html}</div>\n'
         html += '</td></tr></table>'
         html += _spacer(24)
