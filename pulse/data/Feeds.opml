@@ -18,7 +18,6 @@
     <outline title="Inman" htmlUrl="https://www.inman.com" type="rss" xmlUrl="https://www.inman.com/feed" text="Inman" />
     <outline text="NAR Economists Outlook" xmlUrl="http://feeds.feedburner.com/EconomistsOutlook" type="rss" title="NAR Economists Outlook" htmlUrl="https://www.nar.realtor/economists-outlook/feed" />
     <outline title="NAR Culture Scan" type="rss" text="NAR Culture Scan" htmlUrl="https://www.nar.realtor/culture-scan/feed" xmlUrl="https://feeds.feedburner.com/nar/culture-scan" />
-    <outline title="News | Real Estate News &amp; Insights | realtor.com®" htmlUrl="https://www.realtor.com/news/" xmlUrl="https://www.realtor.com/news/feed/rss" text="News | Real Estate News &amp; Insights | realtor.com®" type="rss" />
     <outline title="News Releases | Move, Inc." htmlUrl="https://mediaroom.realtor.com/" xmlUrl="https://mediaroom.realtor.com/news_releases?pagetemplate=rss" type="rss" text="News Releases | Move, Inc." />
     <outline type="rss" title="NotoriousROB" text="NotoriousROB" xmlUrl="https://notoriousrob.com/feed/rss" htmlUrl="https://notoriousrob.com" />
     <outline text="Redfin | Real Estate Tips for Home Buying, Selling &amp; More" title="Redfin | Real Estate Tips for Home Buying, Selling &amp; More" htmlUrl="https://www.redfin.com/blog/" xmlUrl="https://www.redfin.com/blog/feed/" type="rss" />
@@ -132,13 +131,9 @@
       <outline text="FT Property" title="FT Property" type="rss" xmlUrl="https://www.ft.com/property-sector?format=rss" htmlUrl="https://www.ft.com/property-sector" />
       <outline text="FT Front Page" title="FT Front Page" type="rss" xmlUrl="https://www.ft.com/rss/home/uk" htmlUrl="https://www.ft.com" />
       <outline text="FT US Economy" title="FT US Economy" type="rss" xmlUrl="https://www.ft.com/us-economy?format=rss" htmlUrl="https://www.ft.com/us-economy" />
-      <outline text="Keeping Current Matters" title="Keeping Current Matters" type="rss" xmlUrl="https://www.keepingcurrentmatters.com/feed/" htmlUrl="https://www.keepingcurrentmatters.com" />
       <outline text="NotoriousROB" title="NotoriousROB" type="rss" xmlUrl="https://www.notoriousrob.com/rss/" htmlUrl="https://www.notoriousrob.com" />
-      <outline text="Realtor.com News" title="Realtor.com News" type="rss" xmlUrl="https://www.realtor.com/news/feed/" htmlUrl="https://www.realtor.com/news/" />
       <outline text="WSJ Real Estate" title="WSJ Real Estate" type="rss" xmlUrl="https://rss.app/feeds/aXSOGgfvuL2dZjWn.xml" htmlUrl="https://www.wsj.com/real-estate" />
-      <outline text="RealPage, Inc. | LinkedIn" title="RealPage, Inc. | LinkedIn" type="rss" xmlUrl="https://rss.app/feeds/P689RzBUbeuINsDv.xml" htmlUrl="https://rss.app" />
       <outline text="John Burns Research and Consulting | LinkedIn" title="John Burns Research and Consulting | LinkedIn" type="rss" xmlUrl="https://rss.app/feeds/94he2j6jTPUNzUX7.xml" htmlUrl="https://rss.app" />
-      <outline text="Ethan Mollick (@emollick) / Twitter" title="Ethan Mollick (@emollick) / Twitter" type="rss" xmlUrl="https://rss.app/feeds/JNkkMEjSySIAH64k.xml" htmlUrl="https://rss.app" />
     </outline>
     <outline title="Journals" text="Journals">
       <outline type="rss" xmlUrl="https://www.tandfonline.com/feed/rss/rjer20" htmlUrl="https://www.tandfonline.com/loi/rjer20?af=R" text="Journal of Real Estate Research" title="Journal of Real Estate Research" />
