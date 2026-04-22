@@ -165,8 +165,19 @@ def _extract_doi(url: str) -> str | None:
     return None
 
 
+def _rebuild_inverted_index(ai: dict) -> str:
+    """OpenAlex serves abstracts as a position→word inverted index. Reconstruct."""
+    if not ai:
+        return ""
+    words = {}
+    for word, positions in ai.items():
+        for pos in positions:
+            words[pos] = word
+    return " ".join(words[i] for i in sorted(words))
+
+
 def _fetch_abstract_by_doi(doi: str, http_client: "httpx.Client") -> str:
-    """Try Semantic Scholar first, then CrossRef. Returns empty string if neither has it."""
+    """Try Semantic Scholar → OpenAlex → CrossRef. Return empty string if none have it."""
     try:
         r = http_client.get(
             f"https://api.semanticscholar.org/graph/v1/paper/DOI:{doi}",
@@ -181,14 +192,54 @@ def _fetch_abstract_by_doi(doi: str, http_client: "httpx.Client") -> str:
         pass
     try:
         r = http_client.get(
+            f"https://api.openalex.org/works/https://doi.org/{doi}",
+            timeout=15,
+        )
+        if r.status_code == 200:
+            abstract = _rebuild_inverted_index(r.json().get("abstract_inverted_index") or {}).strip()
+            if len(abstract) > MIN_ABSTRACT_LEN:
+                return abstract[:2000]
+    except Exception:
+        pass
+    try:
+        r = http_client.get(
             f"https://api.crossref.org/works/{doi}",
             timeout=15,
         )
         if r.status_code == 200:
             abstract_xml = r.json().get("message", {}).get("abstract", "") or ""
-            # CrossRef abstracts are wrapped in <jats:p> tags
             abstract = re.sub(r"<[^>]+>", " ", abstract_xml)
             abstract = re.sub(r"\s+", " ", abstract).strip()
+            if len(abstract) > MIN_ABSTRACT_LEN:
+                return abstract[:2000]
+    except Exception:
+        pass
+    return ""
+
+
+def _fetch_abstract_by_title(title: str, http_client: "httpx.Client") -> str:
+    """Last-resort: search OpenAlex by title. Works for ScienceDirect papers
+    that don't have a DOI in their URL. Returns empty string if nothing found
+    or no abstract available."""
+    try:
+        r = http_client.get(
+            "https://api.openalex.org/works",
+            params={"search": title[:150], "per-page": 1},
+            timeout=15,
+        )
+        if r.status_code == 200:
+            results = r.json().get("results") or []
+            if not results:
+                return ""
+            # Verify title match — search can return tangentially related papers
+            found_title = (results[0].get("title") or "").lower()
+            query_title = title.lower()
+            # Require substantial overlap to avoid false-positive matches
+            if found_title[:40] not in query_title and query_title[:40] not in found_title:
+                return ""
+            abstract = _rebuild_inverted_index(
+                results[0].get("abstract_inverted_index") or {}
+            ).strip()
             if len(abstract) > MIN_ABSTRACT_LEN:
                 return abstract[:2000]
     except Exception:
@@ -201,20 +252,33 @@ async def _fetch_abstracts(papers: list[dict], dry_run: bool = False) -> dict[st
     results: dict[str, str] = {}
     http = httpx.Client(headers={"User-Agent": "Pulse Briefing <aziz@home-economics.us>"})
 
-    # Pass 1: DOI-based API lookup (no browser needed — fast, polite)
+    # Pass 1: DOI-based API lookup, then OpenAlex title search as fallback
+    # (both skip the browser — fast and polite)
     remaining = []
     for paper in papers:
-        title = (paper.get("title") or "")[:60]
+        title_short = (paper.get("title") or "")[:60]
         if len(paper.get("body") or "") > MIN_ABSTRACT_LEN:
-            logger.info(f"  CACHED {title}")
+            logger.info(f"  CACHED {title_short}")
             continue
+        # Strip HTML from title (Cities feed puts <em> tags in titles)
+        clean_title = re.sub(r"<[^>]+>", "", paper.get("title") or "").strip()
+
         doi = _extract_doi(paper["url"])
         if doi:
             abstract = _fetch_abstract_by_doi(doi, http)
             if abstract:
                 results[paper["id"]] = abstract
-                logger.info(f"  API ({len(abstract)}c via DOI {doi}) {title}")
+                logger.info(f"  DOI-API ({len(abstract)}c via {doi}) {title_short}")
                 continue
+
+        # No DOI or DOI lookup failed — try title search on OpenAlex
+        if clean_title:
+            abstract = _fetch_abstract_by_title(clean_title, http)
+            if abstract:
+                results[paper["id"]] = abstract
+                logger.info(f"  TITLE-API ({len(abstract)}c) {title_short}")
+                continue
+
         remaining.append(paper)
 
     # Pass 2: for papers with no DOI or APIs returned nothing, try the full
