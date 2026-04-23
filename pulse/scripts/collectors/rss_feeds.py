@@ -6,6 +6,7 @@ Uses feedparser for RSS/Atom parsing.
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
@@ -138,7 +139,13 @@ def collect(
 
                 item = PulseItem(
                     source="rss",
-                    source_id=f"rss_{hash(url) & 0xFFFFFFFF:08x}",
+                    # MD5-based source_id is deterministic across runs. Python's
+                    # built-in hash() is randomized per-process (GitHub Actions
+                    # spins up a fresh interpreter every run), producing a
+                    # different ID for the same URL each day — which silently
+                    # bypassed the UNIQUE constraint and created thousands of
+                    # duplicate rows of the same articles.
+                    source_id=f"rss_{hashlib.md5(url.encode()).hexdigest()[:12]}",
                     url=url,
                     title=entry.get("title", "").strip(),
                     body=body,
