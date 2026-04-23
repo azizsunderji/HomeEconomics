@@ -5,6 +5,7 @@ Fetches RSS feeds from a curated list of economics/housing Substacks.
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import time
 from datetime import datetime, timezone
@@ -71,7 +72,10 @@ def collect(
 
                 item = PulseItem(
                     source="substack",
-                    source_id=f"sub_{hash(url) & 0xFFFFFFFF:08x}",
+                    # Deterministic MD5 — Python's hash() is randomized per-process
+                    # and was producing different source_ids for the same URL each
+                    # run, silently bypassing UNIQUE dedup and creating duplicates.
+                    source_id=f"sub_{hashlib.md5(url.encode()).hexdigest()[:12]}",
                     url=url,
                     title=entry.get("title", "").strip(),
                     body=body,
