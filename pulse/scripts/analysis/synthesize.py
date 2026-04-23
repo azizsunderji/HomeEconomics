@@ -660,6 +660,7 @@ Generate the daily briefing JSON. LEAD WITH CONVERSATION — what are people deb
 
         if final.stop_reason == "max_tokens":
             logger.warning(f"Response truncated at max_tokens ({len(response_text)} chars).")
+        logger.info(f"Synthesis response: {len(response_text)} chars, stop_reason={final.stop_reason}")
 
         # Handle markdown code blocks
         if response_text.startswith("```"):
@@ -695,16 +696,21 @@ Generate the daily briefing JSON. LEAD WITH CONVERSATION — what are people deb
                 briefing = json.loads(repaired)
                 logger.info("JSON repair succeeded (bracket closing)")
             except json.JSONDecodeError:
-                logger.warning("Bracket repair failed, asking Haiku to fix JSON...")
+                logger.warning("Bracket repair failed, asking Sonnet to fix JSON...")
+                # Critical: use Sonnet (not Haiku) with a big token budget — the full
+                # response is ~30-40K chars and Haiku's 16K limit truncated content,
+                # silently losing substacker_takes, _ai_substacks, and ai_brief.
                 try:
                     fix_resp = client.messages.create(
-                        model="claude-haiku-4-5-20251001",
-                        max_tokens=16384,
+                        model=MODEL,  # same Sonnet model for capacity
+                        max_tokens=32768,
                         messages=[{"role": "user", "content": (
                             "The following JSON has a syntax error. Fix ONLY the JSON syntax "
-                            "(escape quotes, close brackets, fix commas) without changing any content. "
+                            "(escape quotes, close brackets, fix commas) without changing, "
+                            "dropping, or truncating ANY content. Every section and item "
+                            "in the original must be preserved exactly. "
                             "Return ONLY the fixed JSON, no explanation.\n\n"
-                            + response_text[:14000]
+                            + response_text
                         )}],
                     )
                     fixed_text = fix_resp.content[0].text.strip()
@@ -715,7 +721,10 @@ Generate the daily briefing JSON. LEAD WITH CONVERSATION — what are people deb
                         if "```" in fixed_text:
                             fixed_text = fixed_text[:fixed_text.index("```")]
                     briefing = json.loads(fixed_text.strip())
-                    logger.info("JSON repair succeeded (Haiku fix)")
+                    logger.info(
+                        f"JSON repair succeeded (Sonnet fix: "
+                        f"{len(response_text)} → {len(fixed_text)} chars)"
+                    )
                 except Exception as fix_err:
                     logger.error(f"JSON repair also failed: {fix_err}")
                     raise e  # Re-raise the original error
