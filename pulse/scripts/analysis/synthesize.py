@@ -493,6 +493,11 @@ Return a JSON object:
 
 4. REAL URLS ONLY. Every source must include the actual URL from the collected items. Never fabricate URLs.
 
+4b. CITATION ANCHOR MUST MATCH URL. When you write "[ENTITY did/said/projects/argues X](url)", the URL must point to that entity's own post, paper, or tweet — not to a secondary source that happens to mention the entity. If you only have the secondary source (e.g., you read about Urban Institute's research in a Slow Boring essay), either:
+  (a) attribute it honestly: "[per Slow Boring](secondary-url), the Urban Institute projects X" so the link's target matches what the link says, OR
+  (b) drop the attribution entirely: "rental restrictions would disrupt 72,000 units/year" with no byline
+What you MUST NOT do: "[The Urban Institute projects X](slow-boring-url)" — that makes the reader think they're clicking through to Urban Institute when they're really going to Slow Boring. This is a form of misattribution. Every anchor text + URL pairing must be internally consistent.
+
 5. SUBSTACKER TAKES MUST COME FROM SUBSTACK NEWSLETTERS ONLY. The substacker_takes section is EXCLUSIVELY for items from the "Substack Newsletters" section above. Do NOT include Twitter commentators or any other source. Use the URL provided with each Substack item (even if it's a redirect link). For each take, summarize their specific ARGUMENT — not just the topic. "Erdmann argues builders are underbuilding relative to population growth" is good. "Erdmann wrote about housing supply" is not. IMPORTANT: Include a take for EVERY Substack newsletter provided. Do not cherry-pick — summarize all of them.
 
 6. THEMES: 8-12 themes. These are the most substantive stories of the day — they can be news articles, data releases, newsletter essays, social-media debates, or any combination. This is NOT a "what's trending on social media" section; it's the day's most interesting content regardless of platform. Label each theme's anchor platforms accurately: use "rss" or "substack" or the newspaper name when that's the anchor, "twitter" or "bluesky" when those anchor it. At least 2 themes should involve economist/analyst voices.
