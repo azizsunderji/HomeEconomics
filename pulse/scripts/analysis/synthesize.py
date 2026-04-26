@@ -93,7 +93,7 @@ def _get_source_display_name(item: dict) -> str:
     return source.title()
 
 
-def _format_items_for_conversation(items: list[dict], limit: int = 150) -> str:
+def _format_items_for_conversation(items: list[dict], limit: int = 250) -> str:
     """Format items for the conversation-focused synthesis prompt.
 
     Conversation items get full treatment (body + comments).
@@ -115,7 +115,7 @@ def _format_items_for_conversation(items: list[dict], limit: int = 150) -> str:
     # the many shorter tweets. A tweet "competing" with a 5000-char article on
     # equal terms loses because tweets feel complete while truncated articles
     # feel incomplete — so Sonnet picks tweets. The reserve fixes that.
-    MAX_PER_AUTHOR_SOCIAL = 2
+    MAX_PER_AUTHOR_SOCIAL = 1  # one slot per unique person — diversifies the pool fed to Sonnet
     LONGFORM_RESERVED_SLOTS = 60  # guaranteed seats for long-form with real body
     LONGFORM_MIN_BODY = 1500      # chars — "real body" threshold
     LONGFORM_SOURCES = {"rss", "substack", "gmail"}
@@ -142,19 +142,30 @@ def _format_items_for_conversation(items: list[dict], limit: int = 150) -> str:
         reserved_ids.add(id(item))
         longform_taken += 1
 
-    # Phase 2: fill remaining slots by pure relevance, with per-author cap on social
+    # Phase 2: fill remaining slots by pure relevance, with per-author cap on social.
+    # Normalize the author key across platforms — @mnolangray on Twitter and
+    # @mnolangray.bsky.social on Bluesky are the same person and shouldn't both
+    # get separate slots.
+    def _author_key(item):
+        a = (item.get("author") or "").lower().strip().lstrip("@")
+        # Strip platform suffixes so cross-platform handles collapse
+        for suffix in (".bsky.social", ".bsky", "@twitter", "@x"):
+            if a.endswith(suffix):
+                a = a[: -len(suffix)]
+        return a
+
     author_counts: dict[str, int] = {}
     for item in sorted_items:
         if id(item) in reserved_ids:
             continue
         src = (item.get("source") or "").lower()
         if src in ("twitter", "bluesky"):
-            author = (item.get("author") or "").lower().strip()
-            if author:
-                n = author_counts.get(author, 0)
+            akey = _author_key(item)
+            if akey:
+                n = author_counts.get(akey, 0)
                 if n >= MAX_PER_AUTHOR_SOCIAL:
                     continue
-                author_counts[author] = n + 1
+                author_counts[akey] = n + 1
         by_tier[item["_tier"]].append(item)
 
     lines = []
@@ -623,7 +634,7 @@ def generate_daily_briefing(
     user_content = f"""## Today's Collected Items — {len(all_items)} total, {len(relevant_items)} above relevance threshold, {len(conversation_items)} with active conversation
 When citing a tweet or Bluesky post, use the @handle exactly as it appears — do NOT translate to a real name or guess who the person is.
 
-{_format_items_for_conversation(relevant_items, limit=150)}
+{_format_items_for_conversation(relevant_items, limit=250)}
 
 ## Newsletters — SUBSTACKER TAKES (use ONLY these for the substacker_takes section)
 These are newsletter articles (Substack + email newsletters). Populate substacker_takes from this list. Use the URL provided with each item. Summarize EVERY one.
