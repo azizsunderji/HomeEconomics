@@ -113,7 +113,7 @@ def _run_actor(list_id: str = PULSE_LIST_ID, max_items: int = LIST_MAX_ITEMS) ->
         "maxItems": max_items,
     }
 
-    # Wait up to 5 minutes — 800 tweets takes longer than 60 per-account tweets
+    # Wait up to 5 minutes via the API's blocking endpoint, then fall back to polling
     resp = httpx.post(
         f"{url}?waitForFinish=300",
         json=payload, headers=headers, timeout=330,
@@ -128,8 +128,11 @@ def _run_actor(list_id: str = PULSE_LIST_ID, max_items: int = LIST_MAX_ITEMS) ->
         return []
 
     if status not in ("SUCCEEDED",):
+        # Poll up to 25 minutes — a full 3000-tweet scrape can take 15+ minutes
+        # and we'd rather wait than abandon a still-running scrape and re-spend
+        # the budget tomorrow.
         status_resp = None
-        for _ in range(60):
+        for _ in range(150):  # 150 × 10s = 25 min
             status_resp = httpx.get(
                 f"{APIFY_BASE}/actor-runs/{run_id}",
                 headers=headers, timeout=15,
@@ -142,7 +145,7 @@ def _run_actor(list_id: str = PULSE_LIST_ID, max_items: int = LIST_MAX_ITEMS) ->
                 return []
             time.sleep(10)
         else:
-            logger.error(f"Apify run {run_id} timed out")
+            logger.error(f"Apify run {run_id} did not finish within 25-min poll window")
             return []
         final_run_data = status_resp.json().get("data", {})
     else:
