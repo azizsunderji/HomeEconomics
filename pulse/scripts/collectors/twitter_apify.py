@@ -24,6 +24,7 @@ from collectors import PulseItem
 from config import (
     TWITTER_MIN_LIKES,
     TWITTER_DAILY_BUDGET_CENTS,
+    TWITTER_AUTHOR_BLOCKLIST,
 )
 
 logger = logging.getLogger(__name__)
@@ -131,13 +132,27 @@ def _run_actor(list_id: str = PULSE_LIST_ID, max_items: int = LIST_MAX_ITEMS) ->
         # Poll up to 25 minutes — a full 3000-tweet scrape can take 15+ minutes
         # and we'd rather wait than abandon a still-running scrape and re-spend
         # the budget tomorrow.
+        # Tolerate transient 5xx / non-JSON responses from Apify (e.g. 502 from
+        # their CDN) — a single bad poll shouldn't kill the whole run.
         status_resp = None
+        last_good = None
         for _ in range(150):  # 150 × 10s = 25 min
-            status_resp = httpx.get(
-                f"{APIFY_BASE}/actor-runs/{run_id}",
-                headers=headers, timeout=15,
-            )
-            status = status_resp.json().get("data", {}).get("status")
+            try:
+                status_resp = httpx.get(
+                    f"{APIFY_BASE}/actor-runs/{run_id}",
+                    headers=headers, timeout=15,
+                )
+                if status_resp.status_code >= 500:
+                    logger.warning(f"Apify poll got {status_resp.status_code}, retrying")
+                    time.sleep(10)
+                    continue
+                payload = status_resp.json().get("data", {})
+                last_good = payload
+                status = payload.get("status")
+            except (httpx.HTTPError, ValueError) as e:
+                logger.warning(f"Apify poll transient error: {e}")
+                time.sleep(10)
+                continue
             if status == "SUCCEEDED":
                 break
             elif status in ("FAILED", "ABORTED", "TIMED-OUT"):
@@ -147,7 +162,7 @@ def _run_actor(list_id: str = PULSE_LIST_ID, max_items: int = LIST_MAX_ITEMS) ->
         else:
             logger.error(f"Apify run {run_id} did not finish within 25-min poll window")
             return []
-        final_run_data = status_resp.json().get("data", {})
+        final_run_data = last_good or {}
     else:
         final_run_data = run_data
 
@@ -243,6 +258,9 @@ def collect(
 
         author = tweet.get("author", {})
         username = author.get("userName", "") if isinstance(author, dict) else str(author)
+
+        if username and username.lower() in {h.lower() for h in TWITTER_AUTHOR_BLOCKLIST}:
+            continue
 
         reply_count = tweet.get("replyCount", 0) or 0
 
