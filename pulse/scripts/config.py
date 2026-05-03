@@ -156,9 +156,9 @@ COMPETITOR_SUBSTACKS = [
     ("Ben Thompson - Stratechery", "https://stratechery.com/feed"),
     ("Zvi Mowshowitz", "https://thezvi.substack.com/feed"),
     ("Simon Willison", "https://simonwillison.net/atom/everything/"),
+    ("Jasmine Sun", "https://jasmi.news/feed"),
     # Economics/Demographics
     ("Matt Clancy - New Things Under the Sun", "https://mattsclancy.substack.com/feed"),
-    ("Lyman Stone", "https://lymanstone.substack.com/feed"),
     ("Derek Thompson", "https://derekthompson.substack.com/feed"),
     ("Ezra Klein", "https://www.nytimes.com/svc/collections/v1/publish/www.nytimes.com/column/ezra-klein/rss.xml"),
     ("Lenny Rachitsky", "https://www.lennysnewsletter.com/feed"),
@@ -276,6 +276,12 @@ TWITTER_ACCOUNTS = [
     "claudeai", "felixrieseberg", "bcherny", "CaseyNewton", "kevinroose",
 ]
 
+# Authors whose tweets should never reach the briefing, regardless of engagement.
+# Match is case-insensitive against the username (without @).
+TWITTER_AUTHOR_BLOCKLIST = {
+    "lymanstoneky",
+}
+
 # AI Roundup accounts: shown in a separate "AI Roundup" section in the email.
 # These accounts are EXCLUDED from the main Twitter Roundup to avoid duplication.
 AI_ROUNDUP_ACCOUNTS = [
@@ -300,7 +306,6 @@ TWITTER_REAL_NAMES = {
     "trq212": "Thariq",
     "scottlincicome": "Scott Lincicome",
     "aarmlovi": "Alex Armlovich",
-    "lymanstoneky": "Lyman Stone",
     "greg_ip": "Greg Ip",
     "michael_wiebe": "Michael Wiebe",
     "kaerdmann": "Kevin Erdmann",
@@ -317,6 +322,7 @@ TWITTER_REAL_NAMES = {
     "bcherny": "Boris Cherny",
     "caseynewton": "Casey Newton",
     "kevinroose": "Kevin Roose",
+    "jasminewsun": "Jasmine Sun",
     "_brianpotter": "Brian Potter",
     "abcampbell": "AB Campbell",
     "amandafung": "Amanda Fung",
