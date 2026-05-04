@@ -129,14 +129,14 @@ def _run_actor(list_id: str = PULSE_LIST_ID, max_items: int = LIST_MAX_ITEMS) ->
         return []
 
     if status not in ("SUCCEEDED",):
-        # Poll up to 25 minutes — a full 3000-tweet scrape can take 15+ minutes
-        # and we'd rather wait than abandon a still-running scrape and re-spend
-        # the budget tomorrow.
+        # Poll up to 40 minutes. We've observed the actor take up to ~27 min
+        # in the wild for 3000-tweet scrapes — 25 min was too tight and the
+        # poll abandoned a still-running actor by 23 seconds on 2026-05-04.
         # Tolerate transient 5xx / non-JSON responses from Apify (e.g. 502 from
         # their CDN) — a single bad poll shouldn't kill the whole run.
         status_resp = None
         last_good = None
-        for _ in range(150):  # 150 × 10s = 25 min
+        for _ in range(240):  # 240 × 10s = 40 min
             try:
                 status_resp = httpx.get(
                     f"{APIFY_BASE}/actor-runs/{run_id}",
@@ -160,8 +160,24 @@ def _run_actor(list_id: str = PULSE_LIST_ID, max_items: int = LIST_MAX_ITEMS) ->
                 return []
             time.sleep(10)
         else:
-            logger.error(f"Apify run {run_id} did not finish within 25-min poll window")
-            return []
+            # Poll window expired but actor may finish moments later — give it
+            # one final 60-second wait + status check before abandoning.
+            logger.warning(f"Apify run {run_id} hit 40-min poll limit; final check")
+            time.sleep(60)
+            try:
+                final = httpx.get(
+                    f"{APIFY_BASE}/actor-runs/{run_id}",
+                    headers=headers, timeout=15,
+                ).json().get("data", {})
+                if final.get("status") == "SUCCEEDED":
+                    logger.info(f"Apify run {run_id} finished after final wait")
+                    last_good = final
+                else:
+                    logger.error(f"Apify run {run_id} did not finish (final status: {final.get('status')})")
+                    return []
+            except Exception as e:
+                logger.error(f"Apify run {run_id} final check failed: {e}")
+                return []
         final_run_data = last_good or {}
     else:
         final_run_data = run_data
