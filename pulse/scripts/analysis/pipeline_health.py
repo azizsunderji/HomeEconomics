@@ -127,7 +127,8 @@ def check_health(conn: sqlite3.Connection) -> list[dict]:
                     })
                     continue
 
-                # (b) proactive expiry warning at 5 days (only for tokens flagged as expiring)
+                # (b) proactive expiry warning when within 48 hours
+                # of the 7-day testing-mode token expiry
                 meta = issued.get(cid, {})
                 if meta.get("expires"):
                     try:
@@ -135,7 +136,7 @@ def check_health(conn: sqlite3.Connection) -> list[dict]:
                         age_days = (now - issue_ts).total_seconds() / 86400
                         lifetime_days = meta.get("expires_after_days", 7)
                         days_left = lifetime_days - age_days
-                        if days_left <= 2:  # 5+ days old → warn
+                        if days_left < 2:  # < 48h remaining → warn
                             problems.append({
                                 "severity": "FAILURE",
                                 "stage": "gmail-auth",
