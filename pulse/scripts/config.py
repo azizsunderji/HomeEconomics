@@ -172,6 +172,7 @@ COMPETITOR_SUBSTACKS = [
     ("Mike DelPrete", "https://mikedp.substack.com/feed"),
     ("Alexander Kustov", "https://alexanderkustov.substack.com/feed"),
     ("Sarah O'Connor - FT", "https://www.ft.com/sarah-o-connor?format=rss"),
+    ("Jonathan Levin - Bloomberg Opinion", "https://www.bloomberg.com/authors/APdpbRfjZ5g/jonathan-levin.rss"),
     ("Shadow Price Macro (Robin Brooks)", "https://robinjbrooks.substack.com/feed"),
     ("Maximum New York", "https://maximumnewyork.substack.com/feed"),
     ("Nominal News", "https://nominalnews.substack.com/feed"),
