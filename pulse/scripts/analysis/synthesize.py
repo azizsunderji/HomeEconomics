@@ -509,7 +509,7 @@ Return a JSON object:
   (b) drop the attribution entirely: "rental restrictions would disrupt 72,000 units/year" with no byline
 What you MUST NOT do: "[The Urban Institute projects X](slow-boring-url)" — that makes the reader think they're clicking through to Urban Institute when they're really going to Slow Boring. This is a form of misattribution. Every anchor text + URL pairing must be internally consistent.
 
-5. SUBSTACKER TAKES MUST COME FROM SUBSTACK NEWSLETTERS ONLY. The substacker_takes section is EXCLUSIVELY for items from the "Substack Newsletters" section above. Do NOT include Twitter commentators or any other source. Use the URL provided with each Substack item (even if it's a redirect link). For each take, summarize their specific ARGUMENT — not just the topic. "Erdmann argues builders are underbuilding relative to population growth" is good. "Erdmann wrote about housing supply" is not. IMPORTANT: Include a take for EVERY Substack newsletter provided. Do not cherry-pick — summarize all of them.
+5. SUBSTACKER TAKES COME FROM THE PROVIDED NEWSLETTER/COLUMNIST SECTION. The substacker_takes section is EXCLUSIVELY for items from the "Newsletters" section above (which now includes Substack newsletters, Gmail newsletters, AND single-author RSS columnists like Jonathan Levin or Sarah O'Connor). Do NOT include Twitter commentators or generic news headlines. Use the URL provided with each item (even if it's a redirect link). For each take, summarize their specific ARGUMENT — not just the topic. "Erdmann argues builders are underbuilding relative to population growth" is good. "Erdmann wrote about housing supply" is not. IMPORTANT: Include a take for EVERY newsletter/columnist item provided. Do not cherry-pick — summarize all of them.
 
 6. THEMES: 8-12 themes. These are the most substantive stories of the day — they can be news articles, data releases, newsletter essays, social-media debates, or any combination. This is NOT a "what's trending on social media" section; it's the day's most interesting content regardless of platform. Label each theme's anchor platforms accurately: use "rss" or "substack" or the newspaper name when that's the anchor, "twitter" or "bluesky" when those anchor it. At least 2 themes should involve economist/analyst voices.
 
@@ -582,33 +582,58 @@ def generate_daily_briefing(
     # Get collection errors for transparency
     collection_errors = get_recent_collection_errors(conn, hours=24)
 
-    # Substacker items (from RSS feeds + Gmail-detected Substack newsletters)
-    # Dedupe by title, exclude user's own posts
+    # Substacker / columnist items: any source where an individual writer is
+    # making an argument worth summarizing. Three sources qualify:
+    #   1. source = substack (COMPETITOR_SUBSTACKS)
+    #   2. source = gmail with sender in GMAIL_NEWSLETTER_SENDERS
+    #   3. source = rss with feed_name shaped like a single-author column
+    #      (e.g. "Jonathan Levin - Bloomberg Opinion Columnist") — but NOT
+    #      academic journals or general news/aggregator feeds
     substacker_items = []
     seen_titles = set()
+    JUNK_TITLE_PATTERNS = (
+        "subscriber", "unsubscription", "payment receipt",
+        "discussion thread", "open thread", "sunday thread",
+        "saturday discussion", "chat thread", "mailbag",
+    )
+
+    def _is_columnist_feed(feed_name: str) -> bool:
+        """Heuristic: feed name matches 'Author Name - Publication' pattern."""
+        if " - " not in feed_name:
+            return False
+        name_part = feed_name.split(" - ")[0].strip()
+        words = name_part.split()
+        # Need at least first + last name, both capitalized
+        if len(words) < 2:
+            return False
+        return all(w and w[0].isupper() for w in words[:3])
+
     for i in all_items:
-        if i["source"] != "substack":
+        src = i.get("source")
+        if src not in ("substack", "gmail", "rss"):
             continue
         author_lower = (i.get("author") or "").lower()
         if "aziz" in author_lower or "home-economics" in author_lower:
             continue
         title_lower = (i.get("title") or "").strip().lower()
-        if any(p in title_lower for p in ["subscriber", "unsubscription", "payment receipt", "discussion thread", "open thread", "sunday thread", "saturday discussion", "chat thread", "mailbag"]):
+        if any(p in title_lower for p in JUNK_TITLE_PATTERNS):
             continue
-        title_key = title_lower[:60]
-        if title_key in seen_titles:
-            continue
-        seen_titles.add(title_key)
-        substacker_items.append(i)
-    # Also include Gmail newsletter senders (Brandon Donnelly, FT Unhedged, etc.)
-    from config import GMAIL_NEWSLETTER_SENDERS
-    for i in all_items:
-        if i.get("source") != "gmail":
-            continue
-        sender = (i.get("author") or "").lower()
-        if not any(p in sender for p in GMAIL_NEWSLETTER_SENDERS):
-            continue
-        title_lower = (i.get("title") or "").strip().lower()
+
+        # Source-specific qualification
+        if src == "substack":
+            pass  # always include (these are curated competitor substacks)
+        elif src == "gmail":
+            from config import GMAIL_NEWSLETTER_SENDERS
+            sender = (i.get("author") or "").lower()
+            if not any(p in sender for p in GMAIL_NEWSLETTER_SENDERS):
+                continue
+        elif src == "rss":
+            if i.get("feed_priority") == "journal":
+                continue  # academic papers aren't "takes"
+            feed_name = (i.get("feed_name") or "").strip()
+            if not _is_columnist_feed(feed_name):
+                continue
+
         title_key = title_lower[:60]
         if title_key in seen_titles:
             continue
