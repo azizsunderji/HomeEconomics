@@ -86,9 +86,15 @@ def _thread_id_to_gmail_url(thread_id_hex: str) -> str:
 
 
 def _thread_id_to_gmail_url_for_account(thread_id_hex: str, email_address: str) -> str:
-    """Convert a Gmail API hex thread ID to a working Gmail web URL for a specific account."""
+    """Convert a Gmail API hex thread ID to a working Gmail web URL for a specific account.
+
+    The "/u/" path segment without a numeric account index is malformed and
+    Gmail falls back to the inbox view. Using "/u/0/" with the authuser query
+    param routes correctly to the specified account regardless of which slot
+    it occupies in the user's signed-in accounts list.
+    """
     encoded_email = email_address.replace("@", "%40")
-    return f"https://mail.google.com/mail/u/?authuser={encoded_email}#all/{thread_id_hex}"
+    return f"https://mail.google.com/mail/u/0/?authuser={encoded_email}#all/{thread_id_hex}"
 
 
 def _refresh_access_token(token_data: dict) -> Optional[str]:
