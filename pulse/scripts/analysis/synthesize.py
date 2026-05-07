@@ -92,7 +92,7 @@ def _get_source_display_name(item: dict) -> str:
     return source.title()
 
 
-def _format_items_for_conversation(items: list[dict], limit: int = 250) -> str:
+def _format_items_for_conversation(items: list[dict], limit: int = 350) -> str:
     """Format items for the conversation-focused synthesis prompt.
 
     Conversation items get full treatment (body + comments).
@@ -104,8 +104,7 @@ def _format_items_for_conversation(items: list[dict], limit: int = 250) -> str:
         item["_source_display"] = _get_source_display_name(item)
 
     tier_names = {
-        1: "ALL SOURCES — Twitter, Bluesky, HN, Substacks, Newspapers, RSS (all compete equally for themes)",
-        2: "INSTITUTIONAL RESEARCH — Goldman, AEI, Fed, NBER, BLS, Census (include only if directly newsworthy)",
+        1: "ALL SOURCES — Twitter, Bluesky, HackerNews, Substacks, Gmail (incl. institutional research), Newspapers, RSS (all compete equally for themes)",
     }
 
     # Single ranking criterion: relevance_score. But reserve slots so
@@ -545,7 +544,7 @@ What you MUST NOT do: "[The Urban Institute projects X](slow-boring-url)" — th
 
 11b. PER-PERSON CAP: No single person should appear in more than 1 theme. If someone is involved in multiple threads, pick the single most substantive one. Spread the spotlight across different voices — the reader wants diverse perspectives, not one person's feed. If you find yourself featuring the same name twice, cut one.
 
-12. TWITTER ROUNDUP: A scannable bullet list of accounts that had something notable but did NOT appear in conversation_themes. CRITICAL RULES:
+12. TWITTER/BLUESKY ROUNDUP: A scannable bullet list of accounts (from EITHER Twitter or Bluesky) that had something notable but did NOT appear in conversation_themes. CRITICAL RULES:
     a. Do NOT include any voice you already covered in conversation_themes — this section is strictly the overflow.
     b. ONE entry per account. The "summary" field is ONE sentence (max 20 words) with ONE inline markdown link [short phrase](tweet_url) to their most notable tweet. No paragraphs.
     c. Aim for 15-25 accounts. Skip anyone with nothing notable — do not pad with low-signal tweets.
@@ -581,7 +580,10 @@ def generate_daily_briefing(
     # All hand-curated sources (Twitter, Bluesky, RSS) use a low threshold —
     # these are hand-picked accounts/feeds so even off-topic items are worth seeing.
     # Google News and other bulk sources use a higher threshold.
-    curated_sources = {"twitter", "bluesky", "rss", "substack", "gmail"}
+    # hackernews items are community-curated by upvotes; treat them like any other
+    # curated source with a low (10) relevance threshold rather than the bulk-source
+    # 30-bar that was filtering most of HN out
+    curated_sources = {"twitter", "bluesky", "rss", "substack", "gmail", "hackernews"}
     relevant_items = [
         i for i in all_items
         if (i.get("relevance_score") or 0) >= (10 if i.get("source") in curated_sources else 30)
@@ -679,7 +681,7 @@ def generate_daily_briefing(
     user_content = f"""## Today's Collected Items — {len(all_items)} total, {len(relevant_items)} above relevance threshold, {len(conversation_items)} with active conversation
 When citing a tweet or Bluesky post, use the @handle exactly as it appears — do NOT translate to a real name or guess who the person is.
 
-{_format_items_for_conversation(relevant_items, limit=250)}
+{_format_items_for_conversation(relevant_items, limit=350)}
 
 ## Newsletters — SUBSTACKER TAKES (use ONLY these for the substacker_takes section)
 These are newsletter articles (Substack + email newsletters). Populate substacker_takes from this list. Use the URL provided with each item. Summarize EVERY one.
