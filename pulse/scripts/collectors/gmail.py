@@ -19,7 +19,10 @@ from typing import Optional
 import httpx
 
 from collectors import PulseItem
-from config import GMAIL_SENDER_WHITELIST, GMAIL_LABELS, GMAIL_MAX_RESULTS
+from config import (
+    GMAIL_SENDER_WHITELIST, GMAIL_LABELS, GMAIL_MAX_RESULTS,
+    GMAIL_JUNK_SENDER_PATTERNS, GMAIL_JUNK_TITLE_PATTERNS,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -386,6 +389,19 @@ def collect(
                     sender_lower = (sender or "").lower()
                     if whitelist and not any(w.lower() in sender_lower for w in whitelist):
                         skipped_whitelist += 1
+                        continue
+
+                    # Filter known junk senders/titles at collection time so they
+                    # don't eat slots in the GMAIL_MAX_RESULTS cap, don't waste
+                    # Haiku classification tokens, and don't bloat the DB. The
+                    # synthesizer applies the same filter later, but by then the
+                    # damage is done — high-volume junk (statuspage, calendar,
+                    # github notifications) was crowding out institutional
+                    # senders from the collection cap.
+                    title_lower = (subject or "").lower()
+                    if any(p in sender_lower for p in GMAIL_JUNK_SENDER_PATTERNS):
+                        continue
+                    if any(p in title_lower for p in GMAIL_JUNK_TITLE_PATTERNS):
                         continue
 
                     # Parse date
