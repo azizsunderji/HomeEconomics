@@ -107,6 +107,23 @@ gmail_token = json.dumps({
     "refresh_token": refresh_token,
 })
 
+# Fetch the email address of the account that just authorized — so the
+# warning message can name the account, not just print "?".
+account_email = ""
+try:
+    access_token = tokens.get("access_token")
+    if access_token:
+        profile_req = Request(
+            "https://gmail.googleapis.com/gmail/v1/users/me/profile",
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+        profile = json.loads(urlopen(profile_req).read())
+        account_email = profile.get("emailAddress", "")
+        if account_email:
+            print(f"Authorized account: {account_email}")
+except Exception as e:
+    print(f"Note: could not fetch account email: {e}")
+
 # Record issue timestamp so pipeline_health can warn before expiry.
 # Testing-mode External apps with sensitive scopes die 7 days after issue.
 try:
@@ -120,11 +137,14 @@ try:
             existing = json.loads(stamp_path.read_text())
         except Exception:
             existing = {}
-    existing[CLIENT_ID] = {
+    entry = {
         "issued_at": datetime.now(timezone.utc).isoformat(),
         "expires": True,
         "expires_after_days": 7,
     }
+    if account_email:
+        entry["account"] = account_email
+    existing[CLIENT_ID] = entry
     stamp_path.write_text(json.dumps(existing, indent=2))
     print(f"Recorded issue timestamp to {stamp_path}")
 except Exception as e:
