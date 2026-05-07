@@ -54,18 +54,17 @@ _INSTITUTIONAL_SIGNALS = [
 
 
 def _get_source_tier(item: dict) -> int:
-    """Determine source tier. Tier 1 = all journalism/conversation. Tier 2 = institutional research only."""
-    source = (item.get("source") or "").lower()
-    author = (item.get("author") or "").lower()
-    feed = (item.get("feed_name") or "").lower()
+    """Determine source tier.
 
-    # Institutional research → Tier 2 (pull in only if directly newsworthy)
-    if any(k in author or k in feed for k in _INSTITUTIONAL_SIGNALS):
-        return 2
-    if source == "gmail" and any(k in author for k in _INSTITUTIONAL_SIGNALS):
-        return 2
+    All sources are Tier 1 (compete equally for themes). Tier 2 used to demote
+    institutional research as "background only" but that meant Goldman / Fed /
+    Census / Urban Institute / AEI items rarely surfaced in conversation_themes
+    despite being substantive signal. Per user request, those are now eligible
+    to anchor themes the same as any other source.
 
-    # Everything else: social media, newsletters, journalism, RSS → Tier 1
+    The function is kept as a placeholder for future tier logic (e.g. demoting
+    truly off-topic content) but currently returns 1 for everything.
+    """
     return 1
 
 
@@ -119,13 +118,18 @@ def _format_items_for_conversation(items: list[dict], limit: int = 250) -> str:
     LONGFORM_RESERVED_SLOTS = 60  # guaranteed seats for long-form with real body
     LONGFORM_MIN_BODY = 1500      # chars — "real body" threshold
     LONGFORM_SOURCES = {"rss", "substack", "gmail"}
+    EMAIL_RESERVED_SLOTS = 40     # guaranteed seats for gmail items (institutional research,
+                                  # newsletters, columnist emails). Without this, Twitter
+                                  # crowded out gmail in Phase 2 because there are 10x more
+                                  # tweets. User explicitly flagged that emails with relevant
+                                  # content were not reaching the LLM.
 
     sorted_items = sorted(items, key=lambda x: (
         x["_tier"],
         -(x.get("relevance_score") or 0),
     ))
 
-    # Phase 1: fill reserved seats from enriched long-form items, top-relevance first
+    # Phase 1a: fill reserved long-form seats, top-relevance first
     reserved_ids = set()
     by_tier = defaultdict(list)
     longform_taken = 0
@@ -141,6 +145,22 @@ def _format_items_for_conversation(items: list[dict], limit: int = 250) -> str:
         by_tier[1].append(item)
         reserved_ids.add(id(item))
         longform_taken += 1
+
+    # Phase 1b: fill reserved gmail seats, top-relevance first.
+    # This is in addition to the long-form reserve — a long-form gmail item
+    # might already be reserved from Phase 1a, in which case it's skipped
+    # here. The 40 email slots fill with whatever gmail items remain.
+    email_taken = 0
+    for item in sorted_items:
+        if item["_tier"] != 1 or email_taken >= EMAIL_RESERVED_SLOTS:
+            continue
+        if id(item) in reserved_ids:
+            continue
+        if (item.get("source") or "").lower() != "gmail":
+            continue
+        by_tier[1].append(item)
+        reserved_ids.add(id(item))
+        email_taken += 1
 
     # Phase 2: fill remaining slots by pure relevance, with per-author cap on social.
     # Normalize the author key across platforms — @mnolangray on Twitter and
