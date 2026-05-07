@@ -803,9 +803,28 @@ Generate the daily briefing JSON. LEAD WITH CONVERSATION — what are people deb
             return text
 
         # 0. Clean twitter_roundup summaries (strip t.co URLs from link text)
+        # AND enforce the "ONE sentence, max ~30 words" rule — Sonnet routinely
+        # ignores it for high-volume authors (zerohedge, VladTheInflator) and
+        # writes paragraph-length summaries. Truncate at sentence boundary.
+        def _truncate_summary(text: str, max_words: int = 30) -> str:
+            if not text:
+                return text
+            # First sentence boundary
+            m = _re.match(r"([^.!?]+[.!?])", text)
+            if m:
+                first = m.group(1).strip()
+                if len(first.split()) <= max_words:
+                    return first
+            # Hard word cap with ellipsis
+            words = text.split()
+            if len(words) > max_words:
+                return " ".join(words[:max_words]).rstrip(",.;:") + "…"
+            return text
+
         for entry in briefing.get("twitter_roundup", []):
             if "summary" in entry:
                 entry["summary"] = _clean_summary_text(entry["summary"])
+                entry["summary"] = _truncate_summary(entry["summary"])
 
         # 1. Deduplicate twitter_roundup and split out AI Roundup accounts
         try:
