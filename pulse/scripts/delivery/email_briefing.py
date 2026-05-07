@@ -459,8 +459,10 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
         html += _spacer(28)
 
     # ── GMAIL NEWSLETTERS (Katie Martin/Unhedged, Brandon Donnelly, Bloomberg) ──
+    # Raw email-based newsletter list (no LLM summary). Distinct from the
+    # "Newsletters" section above which contains LLM-summarized takes.
     if gmail_newsletters:
-        html += _section_heading(f"Newsletters ({len(gmail_newsletters)})")
+        html += _section_heading(f"Email Newsletters ({len(gmail_newsletters)})")
         html += _spacer(10)
         for item in gmail_newsletters:
             source_name = item.get("source") or item.get("author", "Newsletter")
