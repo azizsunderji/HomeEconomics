@@ -365,7 +365,7 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
     # links cluttering the prose.
     if twitter_roundup:
         import re as _re_tw
-        html += _section_heading(f"Also on Twitter ({len(twitter_roundup)})")
+        html += _section_heading(f"Also on Twitter / Bluesky ({len(twitter_roundup)})")
         html += _spacer(10)
         html += '<table width="100%" cellpadding="0" cellspacing="0"><tr><td style="padding: 4px 0 14px 0;">'
         for voice in twitter_roundup[:30]:
