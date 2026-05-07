@@ -385,7 +385,7 @@ TWITTER_VIP_ACCOUNTS = []  # Removed — all accounts earn placement on merit
 GMAIL_SENDER_WHITELIST = []  # No whitelist — let Haiku classify everything in the inbox
 
 GMAIL_LABELS = ["INBOX"]
-GMAIL_MAX_RESULTS = 50
+GMAIL_MAX_RESULTS = 250  # bumped 2026-05-07: 50 was too tight for high-volume inbox; institutional newsletters (Urban Institute, Thesis Driven, etc.) were getting cut off when daily volume spiked above the cap
 
 # Junk sender patterns for institutional signal filtering (blocklist approach)
 GMAIL_JUNK_SENDER_PATTERNS = [
