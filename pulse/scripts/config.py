@@ -477,6 +477,7 @@ INSTITUTIONAL_SENDER_ALLOWLIST = [
     "calculatedrisk", "calculated risk",
     "jchs.harvard", "joint center for housing",
     "urban.org", "urban institute",
+    "politico",
 ]
 
 # Gmail senders that should route to the unified AI section
