@@ -22,6 +22,8 @@ from collectors import PulseItem
 from config import (
     GMAIL_SENDER_WHITELIST, GMAIL_LABELS, GMAIL_MAX_RESULTS,
     GMAIL_JUNK_SENDER_PATTERNS, GMAIL_JUNK_TITLE_PATTERNS,
+    INSTITUTIONAL_SENDER_ALLOWLIST, GMAIL_NEWSLETTER_SENDERS,
+    GMAIL_AI_HEADLINE_SENDERS,
 )
 
 logger = logging.getLogger(__name__)
@@ -398,11 +400,20 @@ def collect(
                     # damage is done — high-volume junk (statuspage, calendar,
                     # github notifications) was crowding out institutional
                     # senders from the collection cap.
+                    # ALLOWLIST WINS: if the sender is in any "wanted" list,
+                    # never treat as junk (e.g. thecity.nyc matches both junk
+                    # patterns AND institutional allowlist — keep it).
                     title_lower = (subject or "").lower()
-                    if any(p in sender_lower for p in GMAIL_JUNK_SENDER_PATTERNS):
-                        continue
-                    if any(p in title_lower for p in GMAIL_JUNK_TITLE_PATTERNS):
-                        continue
+                    is_allowlisted = (
+                        any(p in sender_lower for p in INSTITUTIONAL_SENDER_ALLOWLIST)
+                        or any(p in sender_lower for p in GMAIL_NEWSLETTER_SENDERS)
+                        or any(p in sender_lower for p in GMAIL_AI_HEADLINE_SENDERS)
+                    )
+                    if not is_allowlisted:
+                        if any(p in sender_lower for p in GMAIL_JUNK_SENDER_PATTERNS):
+                            continue
+                        if any(p in title_lower for p in GMAIL_JUNK_TITLE_PATTERNS):
+                            continue
 
                     # Parse date
                     published = None
