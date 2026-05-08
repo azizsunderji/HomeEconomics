@@ -213,6 +213,7 @@ BLUESKY_ACCOUNTS = [
     "cwhitzman.bsky.social",            # Carolyn Whitzman — U of Toronto housing researcher
     "claesbackman.bsky.social",         # Claes Bäckman — housing/mortgage economist
     "ternerhousing.bsky.social",        # Terner Center — UC Berkeley housing research
+    "resnikoff.bsky.social",            # Ned Resnikoff — California housing/policy writer
 ]
 
 # Secondary: search terms (only works with auth)
