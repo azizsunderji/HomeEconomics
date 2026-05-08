@@ -92,7 +92,7 @@ def _get_source_display_name(item: dict) -> str:
     return source.title()
 
 
-def _format_items_for_conversation(items: list[dict], limit: int = 350) -> str:
+def _format_items_for_conversation(items: list[dict], limit: int = 280) -> str:
     """Format items for the conversation-focused synthesis prompt.
 
     Conversation items get full treatment (body + comments).
@@ -681,7 +681,7 @@ def generate_daily_briefing(
     user_content = f"""## Today's Collected Items — {len(all_items)} total, {len(relevant_items)} above relevance threshold, {len(conversation_items)} with active conversation
 When citing a tweet or Bluesky post, use the @handle exactly as it appears — do NOT translate to a real name or guess who the person is.
 
-{_format_items_for_conversation(relevant_items, limit=350)}
+{_format_items_for_conversation(relevant_items, limit=280)}
 
 ## Newsletters — SUBSTACKER TAKES (use ONLY these for the substacker_takes section)
 These are newsletter articles (Substack + email newsletters). Populate substacker_takes from this list. Use the URL provided with each item. Summarize EVERY one.
@@ -832,7 +832,7 @@ Generate the daily briefing JSON. LEAD WITH CONVERSATION — what are people deb
             if not text:
                 return text
             # First sentence boundary
-            m = _re.match(r"([^.!?]+[.!?])", text)
+            m = re.match(r"([^.!?]+[.!?])", text)
             if m:
                 first = m.group(1).strip()
                 if len(first.split()) <= max_words:
