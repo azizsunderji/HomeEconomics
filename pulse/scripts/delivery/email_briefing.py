@@ -299,10 +299,53 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
 
         html += _spacer(10)
 
-    # Headlines section removed 2026-05-09: news content now folds into the
-    # main News Themes section above, where Sonnet weaves article reporting
-    # alongside social conversation. The standalone headlines list was bloated
-    # and redundant with what themes already cover.
+    # ── REAL ESTATE HEADLINES — housing-tagged subset only ──
+    # The general headlines section was killed 2026-05-09 (now folded into News
+    # Themes). Real Estate Headlines stays as a comprehensive safety net for
+    # housing items that Sonnet didn't lift into a theme. Pure list, no LLM.
+    if headlines:
+        import json as _json
+        HOUSING_TAGS = {
+            "housing", "real estate", "real_estate", "housing_market",
+            "housing_policy", "homebuilding", "construction", "mortgage",
+            "rent", "rental", "rentals", "homeownership", "homebuyer",
+            "homebuyers", "single_family", "multifamily", "urbanism",
+            "zoning", "yimby", "nimby", "land_use", "property",
+        }
+        re_items = []
+        for item in headlines:
+            topics = item.get("topics", "[]")
+            if isinstance(topics, str):
+                try: topics = _json.loads(topics)
+                except Exception: topics = []
+            tag_set = {str(t).lower().replace(" ", "_") for t in (topics or [])}
+            if tag_set & HOUSING_TAGS:
+                re_items.append(item)
+
+        if re_items:
+            re_items.sort(key=lambda x: -(x.get("relevance_score") or 0))
+            html += _section_heading(f"Real Estate Headlines ({len(re_items)})")
+            html += _spacer(10)
+            for idx, item in enumerate(re_items):
+                url = item.get("url", "")
+                headline_text = _esc(item.get('headline', '') or item.get('title', ''))
+                source_name = _esc(item.get('source', 'News'))
+                if source_name in ("FT Front Page", "FT Global Economy", "FT Markets"):
+                    source_name = "Financial Times"
+                if url:
+                    headline_link = f'<a href="{url}" target="_blank" style="color: #3D3733; text-decoration: none;">{headline_text}</a>'
+                    source_link = f'<a href="{url}" target="_blank" style="color: #0BB4FF; text-decoration: none;">[{source_name}]</a>'
+                else:
+                    headline_link = headline_text
+                    source_link = f'<span style="color: #888;">[{source_name}]</span>'
+                bg = "#f9faf7" if idx % 2 == 0 else "#ffffff"
+                html += f"""<table width="100%" cellpadding="0" cellspacing="0"><tr>
+<td style="font-size: 17px; padding: 8px 12px; line-height: 1.5; background: {bg};">
+  {headline_link} <span style="font-size: 15px;">{source_link}</span>
+</td></tr></table>
+"""
+                html += _spacer(8)
+            html += _spacer(20)
 
     # ── AI SECTION — single synthesized paragraph with inline links ──
     if ai_brief and ai_brief.strip():
