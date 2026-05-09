@@ -63,6 +63,36 @@ def _format_number(n) -> str:
         return str(n)
 
 
+def _render_cost_line(apify_cents: float, anthropic_cents: float, by_model: dict) -> str:
+    """Small cost-breakdown line under the header.
+
+    Renders nothing if no costs are tracked. Otherwise shows e.g.:
+        Cost today: Apify $1.20 · Anthropic $4.50 (Sonnet $0.65 · Haiku $3.85) · Total $5.70
+    """
+    if not apify_cents and not anthropic_cents:
+        return ""
+    parts = []
+    if apify_cents:
+        parts.append(f"Apify <strong>${apify_cents / 100:.2f}</strong>")
+    if anthropic_cents:
+        anth_str = f"Anthropic <strong>${anthropic_cents / 100:.2f}</strong>"
+        # Per-model breakdown if we have it
+        sonnet_cents = sum(v.get("cents", 0) for k, v in by_model.items() if "sonnet" in k.lower())
+        haiku_cents = sum(v.get("cents", 0) for k, v in by_model.items() if "haiku" in k.lower())
+        opus_cents = sum(v.get("cents", 0) for k, v in by_model.items() if "opus" in k.lower())
+        sub_parts = []
+        if sonnet_cents: sub_parts.append(f"Sonnet ${sonnet_cents / 100:.2f}")
+        if haiku_cents:  sub_parts.append(f"Haiku ${haiku_cents / 100:.2f}")
+        if opus_cents:   sub_parts.append(f"Opus ${opus_cents / 100:.2f}")
+        if sub_parts:
+            anth_str += f" ({' · '.join(sub_parts)})"
+        parts.append(anth_str)
+    total = (apify_cents + anthropic_cents) / 100
+    parts.append(f"Total <strong>${total:.2f}</strong>")
+    line = " &middot; ".join(parts)
+    return f'<p style="color: #888; font-size: 14px; margin: 4px 0 0 0;">Cost today: {line}</p>'
+
+
 def _heat_badge(level: str) -> str:
     """Render a heat level badge."""
     colors = {
@@ -165,6 +195,17 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
     collection_errors = briefing.get("_collection_errors", [])
     apify_spend_cents = briefing.get("_apify_spend_cents", 0)
 
+    # Today's Anthropic spend (from anthropic_spend table — populated by
+    # record_usage() calls at every messages.create/.stream site).
+    try:
+        from analysis.anthropic_spend import get_spend_cents as _get_anthropic_spend
+        _anth = _get_anthropic_spend()
+        anthropic_total_cents = _anth.get("total_cents", 0)
+        anthropic_by_model = _anth.get("by_model", {})
+    except Exception:
+        anthropic_total_cents = 0
+        anthropic_by_model = {}
+
     top_theme = themes[0]["theme"][:60] if themes else "Daily Conversation"
     theme_count = len(themes)
 
@@ -189,7 +230,8 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
 <table width="100%" cellpadding="0" cellspacing="0"><tr>
 <td style="border-bottom: 3px solid #3D3733; padding-bottom: 12px;">
   <h1 style="font-size: 24px; margin: 0 0 4px 0; color: #3D3733; letter-spacing: -0.5px; font-family: {FONT};">Pulse</h1>
-  <p style="color: #888; font-size: 16px; margin: 0;">{date} &middot; {_format_number(stats.get('total_items_analyzed', 0))} items &middot; {stats.get('conversation_items', 0)} conversations &middot; {stats.get('platforms_active', 0)} platforms{f' &middot; Apify: ${apify_spend_cents / 100:.2f}' if apify_spend_cents else ''}</p>
+  <p style="color: #888; font-size: 16px; margin: 0;">{date} &middot; {_format_number(stats.get('total_items_analyzed', 0))} items &middot; {stats.get('conversation_items', 0)} conversations &middot; {stats.get('platforms_active', 0)} platforms</p>
+  {_render_cost_line(apify_spend_cents, anthropic_total_cents, anthropic_by_model)}
 </td></tr></table>
 """
 

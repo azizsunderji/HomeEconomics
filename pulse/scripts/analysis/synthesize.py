@@ -833,6 +833,11 @@ Generate the daily briefing JSON. LEAD WITH CONVERSATION — what are people deb
                     for text in stream.text_stream:
                         response_text += text
                     final = stream.get_final_message()
+                try:
+                    from analysis.anthropic_spend import record_usage as _rec_usage
+                    _rec_usage(MODEL, final.usage)
+                except Exception:
+                    pass
                 break  # success
             except (_httpx.RemoteProtocolError, _httpx.ReadError, _httpx.ReadTimeout,
                     anthropic.APIConnectionError) as transient:
@@ -907,6 +912,12 @@ Generate the daily briefing JSON. LEAD WITH CONVERSATION — what are people deb
                     ) as fix_stream:
                         for chunk in fix_stream.text_stream:
                             fixed_text += chunk
+                        _fix_final = fix_stream.get_final_message()
+                    try:
+                        from analysis.anthropic_spend import record_usage as _rec_usage
+                        _rec_usage("claude-haiku-4-5-20251001", _fix_final.usage)
+                    except Exception:
+                        pass
                     fixed_text = fixed_text.strip()
                     if fixed_text.startswith("```"):
                         fixed_text = fixed_text.split("```")[1]
@@ -1094,6 +1105,11 @@ Generate the daily briefing JSON. LEAD WITH CONVERSATION — what are people deb
                         f"Tweets:\n" + "\n".join(tweet_lines)
                     )}],
                 )
+                try:
+                    from analysis.anthropic_spend import record_usage as _rec_usage
+                    _rec_usage("claude-haiku-4-5-20251001", resp.usage)
+                except Exception:
+                    pass
                 out = resp.content[0].text.strip()
                 # Reject Haiku hallucinations
                 bad_starts = (

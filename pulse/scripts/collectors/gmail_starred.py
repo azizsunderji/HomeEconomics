@@ -148,6 +148,11 @@ def get_starred_emails(pick: int = 5, pool_size: int = 50) -> list[dict]:
                         f"Snippet: {item['snippet']}"
                     )}],
                 )
+                try:
+                    from analysis.anthropic_spend import record_usage as _rec_usage
+                    _rec_usage("claude-haiku-4-5-20251001", resp.usage)
+                except Exception:
+                    pass
                 item["summary"] = resp.content[0].text.strip()
             except Exception as e:
                 logger.warning(f"Haiku summary failed for '{item['subject'][:40]}': {e}")

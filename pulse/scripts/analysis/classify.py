@@ -176,6 +176,12 @@ def classify_batch(
             messages=[{"role": "user", "content": user_content}],
         )
 
+        try:
+            from analysis.anthropic_spend import record_usage as _rec_usage
+            _rec_usage(MODEL, response.usage)
+        except Exception:
+            pass
+
         # Parse the response
         response_text = response.content[0].text.strip()
 
