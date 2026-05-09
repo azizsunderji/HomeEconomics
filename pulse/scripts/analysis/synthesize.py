@@ -838,14 +838,10 @@ Generate the daily briefing JSON. LEAD WITH CONVERSATION — what are people deb
         # AND enforce the "ONE sentence, max ~30 words" rule — Sonnet routinely
         # ignores it for high-volume authors (zerohedge, VladTheInflator) and
         # writes paragraph-length summaries. Truncate at sentence boundary.
-        def _truncate_summary(text: str, max_words: int = 30) -> str:
+        def _truncate_summary(text: str, max_words: int = 30, max_chars: int = 380) -> str:
             if not text:
                 return text
-            # Don't truncate short entries — most twitter_roundup items are
-            # already a one-liner with a single markdown link. The earlier
-            # naive sentence-boundary split was cutting URLs at the first `.`
-            # inside them (e.g. ".com"), producing broken markdown.
-            if len(text) < 280:
+            if len(text) < 200:
                 return text
             # Mask markdown links so dots inside URLs don't trigger sentence
             # boundaries. Restore them after truncation.
@@ -855,22 +851,25 @@ Generate the daily briefing JSON. LEAD WITH CONVERSATION — what are people deb
                 placeholders.append(m.group(0))
                 return f"\x00LINK{len(placeholders)-1}\x00"
             masked = link_re.sub(_mask, text)
-            # First sentence boundary in masked text
+            # Pick the first sentence (or first-N-words if no boundary found)
             m = re.match(r"([^.!?]+[.!?])", masked)
-            chosen = masked
-            if m:
-                first = m.group(1).strip()
-                if len(first.split()) <= max_words:
-                    chosen = first
-                else:
-                    chosen = " ".join(first.split()[:max_words]).rstrip(",.;:") + "…"
+            if m and len(m.group(1).split()) <= max_words:
+                chosen = m.group(1).strip()
             else:
-                words = masked.split()
-                if len(words) > max_words:
-                    chosen = " ".join(words[:max_words]).rstrip(",.;:") + "…"
+                chosen = " ".join(masked.split()[:max_words]).rstrip(",.;:") + "…"
             # Restore links
             for i, link in enumerate(placeholders):
                 chosen = chosen.replace(f"\x00LINK{i}\x00", link)
+            # Final char hard-cap: even if word count is fine, if expanded
+            # character length is excessive (long markdown URLs), cut at the
+            # last sentence/clause boundary that fits.
+            if len(chosen) > max_chars:
+                # Try to break at a markdown link end "](url)" boundary
+                cut = chosen.rfind(")", 0, max_chars)
+                if cut > max_chars * 0.5:
+                    chosen = chosen[:cut + 1]
+                else:
+                    chosen = chosen[:max_chars].rstrip(",.;: ") + "…"
             return chosen
 
         for entry in briefing.get("twitter_roundup", []):
@@ -953,17 +952,34 @@ Generate the daily briefing JSON. LEAD WITH CONVERSATION — what are people deb
             try:
                 resp = _anthropic2.Anthropic().messages.create(
                     model="claude-haiku-4-5-20251001",
-                    max_tokens=300,
+                    max_tokens=200,
                     messages=[{"role": "user", "content": (
-                        f"Summarize {display}'s tweets as a short flowing paragraph (2-4 sentences). "
-                        f"Use inline markdown links [text](url) with short verb phrases. "
-                        f"Start with the last name or handle. Return only the paragraph.\n\n"
+                        f"The following tweets from {display} are PROVIDED IN FULL BELOW. "
+                        f"Summarize them as ONE short sentence (max 20 words) "
+                        f"with ONE inline markdown link [phrase](tweet_url) to the most "
+                        f"notable tweet. No paragraphs. No meta-commentary. "
+                        f"Do NOT say you can't access Twitter — the content is below.\n\n"
                         f"Tweets:\n" + "\n".join(tweet_lines)
                     )}],
                 )
-                return resp.content[0].text.strip()
+                out = resp.content[0].text.strip()
+                # Reject Haiku hallucinations
+                bad_starts = (
+                    "i don't have access", "i cannot access",
+                    "i'm unable to", "i am unable to",
+                    "to help you", "could you", "please provide",
+                )
+                if any(out.lower().startswith(p) for p in bad_starts):
+                    raise RuntimeError("haiku refusal")
+                return out
             except Exception:
-                return " ".join(f"{t.get('title','')[:100]}" for t in tweets[:2])
+                # Fallback: just the title of the highest-scored tweet with a link
+                top = max(tweets, key=lambda t: t.get("relevance_score") or 0)
+                title = (top.get("title") or "")[:120].strip()
+                url = top.get("url", "")
+                if url and title:
+                    return f"[{title}]({url})"
+                return title or ""
 
         # 2. Supplement twitter_roundup if Sonnet returned fewer than 15 accounts
         roundup_authors = {(e.get("author") or "").lower().strip() for e in briefing.get("twitter_roundup", [])}
@@ -997,6 +1013,8 @@ Generate the daily briefing JSON. LEAD WITH CONVERSATION — what are people deb
                     display_author = f"@{display_author}"
                 summary = _build_fallback_summary(tweets, display_author)
                 if summary:
+                    # Apply same length cap as Sonnet entries get
+                    summary = _truncate_summary(summary)
                     roundup_authors.add(author_key)
                     briefing.setdefault("twitter_roundup", []).append({
                         "author": display_author,
