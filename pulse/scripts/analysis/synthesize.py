@@ -11,6 +11,7 @@ import json
 import logging
 import re
 import sqlite3
+import time
 from collections import Counter, defaultdict
 from datetime import datetime, timezone
 from difflib import SequenceMatcher
@@ -259,8 +260,8 @@ def _format_historical_items(items: list[dict]) -> str:
         except Exception:
             pass
         author = item.get("author") or item.get("feed_name") or item.get("source", "")
-        title = (item.get("title") or "")[:120]
-        body = (item.get("body") or "")[:200].replace("\n", " ").strip()
+        title = (item.get("title") or "")[:90]
+        body = (item.get("body") or "")[:80].replace("\n", " ").strip()
         url = item.get("url", "")
         line = f"  [{label}] {author}: {title}"
         if body and len(body) > 30:
@@ -380,6 +381,51 @@ def _find_best_url_match(url: str, known_urls: set[str], threshold: float = 0.7)
     if best_ratio >= threshold:
         return best_match
     return None
+
+
+_REFUSAL_PATTERNS = re.compile(
+    r"(i (?:don'?t|do not|can'?t|cannot|am unable to)\s+(?:have|access|provide|offer|see|read|view)|"
+    r"(?:the )?(?:full )?(?:email )?(?:content|snippet|preview|article|body)\s+(?:is|isn'?t|is not|seems|appears)\s+"
+    r"(?:cut off|truncated|not visible|incomplete|limited|insufficient|unavailable|missing)|"
+    r"based on (?:the )?(?:limited|partial|truncated|brief|short)\s+(?:preview|snippet|excerpt)|"
+    r"(?:partial|limited)\s+summary|"
+    r"without (?:the |access to )?(?:full|more)\s+(?:content|context|details))",
+    re.IGNORECASE,
+)
+
+
+def _strip_refusal_meta(briefing: dict) -> dict:
+    """Replace any refusal-style meta-narration with a clean title-based fallback.
+
+    Sonnet sometimes hallucinates "I don't have access to the full email content
+    (the snippet is cut off)" when a newsletter body is teaser-only. The reader
+    sees this as broken output. Detect those phrases and fall back to a single
+    neutral sentence drawn from the title.
+    """
+    def _clean(text: str, title: str = "") -> str:
+        if not text or not isinstance(text, str):
+            return text
+        if not _REFUSAL_PATTERNS.search(text):
+            return text
+        if title:
+            t = title.strip().rstrip(".!?")
+            cleaned = f"{t}."
+        else:
+            cleaned = ""
+        logger.warning(f"Stripped refusal meta-narration; fallback: {cleaned[:80]!r}")
+        return cleaned
+
+    for take in briefing.get("substacker_takes", []) or []:
+        take["take"] = _clean(take.get("take", ""), take.get("title", ""))
+    for theme in briefing.get("conversation_themes", []) or []:
+        theme["summary"] = _clean(theme.get("summary", ""), theme.get("theme", ""))
+    if briefing.get("ai_brief"):
+        briefing["ai_brief"] = _clean(briefing["ai_brief"], "")
+    if briefing.get("conversation_pulse"):
+        briefing["conversation_pulse"] = _clean(briefing["conversation_pulse"], "")
+    for entry in briefing.get("twitter_roundup", []) or []:
+        entry["summary"] = _clean(entry.get("summary", ""), "")
+    return briefing
 
 
 def _validate_briefing_urls(briefing: dict, conn: sqlite3.Connection) -> dict:
@@ -566,6 +612,8 @@ What you MUST NOT do: "[The Urban Institute projects X](slow-boring-url)" — th
 
 5. SUBSTACKER TAKES COME FROM THE PROVIDED NEWSLETTER/COLUMNIST SECTION. The substacker_takes section is EXCLUSIVELY for items from the "Newsletters" section above (which now includes Substack newsletters, Gmail newsletters, AND single-author RSS columnists like Jonathan Levin or Sarah O'Connor). Do NOT include Twitter commentators or generic news headlines. Use the URL provided with each item (even if it's a redirect link). For each take, summarize their specific ARGUMENT — not just the topic. "Erdmann argues builders are underbuilding relative to population growth" is good. "Erdmann wrote about housing supply" is not. IMPORTANT: Include a take for EVERY newsletter/columnist item provided. Do not cherry-pick — summarize all of them.
 
+5b. NEVER NARRATE INSUFFICIENT CONTENT. If a newsletter's preview is short or teaser-only, infer the take from the title and any partial body you have, then write a confident one-sentence summary. NEVER write phrases like "I don't have access to the full content", "the snippet is cut off", "based on the limited preview", "I cannot offer specifics", or "partial summary". The reader will see this as broken output. If you genuinely can't infer anything beyond the title, write a single neutral sentence based on the title alone (e.g., "Argues that relationship-building beats AI tools and clever subject lines as the most underrated PR skill for real estate reporters.") — no meta-commentary. This rule applies to substacker_takes, ai_brief, twitter_roundup, and any other section.
+
 6. THEMES: 12-18 themes. These are the most substantive stories of the day. This section ABSORBS what used to be a separate "Headlines" section — so it must comprehensively cover today's news (especially housing/real-estate) AND today's social conversation. Each theme can be:
    - A news story with multiple outlets covering it (weave the actual reporting from the article BODIES, not just headlines, with inline source links to each outlet)
    - A cross-platform debate (multiple voices arguing about something)
@@ -589,7 +637,7 @@ Label each theme's anchor platforms accurately: use "rss" or "substack" or the n
 
 11. SKIP IRRELEVANT NOISE. Do not feature: Nigerian/international housing stories, memes about landlords, generic "economy is rigged" venting, partisan political rants with no economic substance.
 
-11b. PER-PERSON CAP: No single person should appear in more than 1 theme. If someone is involved in multiple threads, pick the single most substantive one. Spread the spotlight across different voices — the reader wants diverse perspectives, not one person's feed. If you find yourself featuring the same name twice, cut one.
+11b. PER-PERSON CAP — STRICTLY ENFORCED. NO SINGLE PERSON OR HANDLE may anchor or be cited as a primary voice in more than ONE conversation_theme. This is non-negotiable, not a soft guideline. Before finalizing the JSON, scan the themes and count how many times each @handle (or named person, e.g. "Jon Brooks", "Conor Sen", "Brad Setser") appears as a citation source. If any name appears in 2+ themes, you MUST move all but the single most substantive one to twitter_roundup (or drop entirely). The reader wants diverse perspectives, not one person's feed. Recent example of what NOT to do: @jonbrooks anchored 3 themes (generational divide, payment math, credit scoring) — that should have been one theme citing him, with the other two demoted to roundup. Spread the spotlight: 12-18 themes should mean 12-18 different anchor voices.
 
 12. TWITTER/BLUESKY ROUNDUP: A scannable bullet list of accounts (from EITHER Twitter or Bluesky) that had something notable but did NOT appear in conversation_themes. CRITICAL RULES:
     a. Do NOT include any voice you already covered in conversation_themes — this section is strictly the overflow.
@@ -718,8 +766,10 @@ def generate_daily_briefing(
     historical_items_full = get_items_since(conn, hours=24*7, min_relevance=20)
     today_ids = {i["id"] for i in all_items}
     historical_items = [i for i in historical_items_full if i["id"] not in today_ids]
-    # Cap at top 400 by relevance (compressed format keeps tokens manageable)
-    historical_items = historical_items[:400]
+    # Cap at top 150 by relevance — combined with 280 today + newsletters + JSON output,
+    # we need to stay well under 200K total (input + output) to leave room for the
+    # 32K-token JSON response. 250 historical hit model_context_window_exceeded.
+    historical_items = historical_items[:150]
     logger.info(f"Historical context: {len(historical_items)} items from past 6 days (compressed format)")
 
     # Log source breakdown for relevant items
@@ -765,16 +815,36 @@ These items are from the prior 6 days, NOT today. Use them to weave the longer a
 Generate the daily briefing JSON. LEAD WITH CONVERSATION — what are people debating, arguing about, reacting to? News is context only."""
 
     try:
-        response_text = ""
-        with client.messages.stream(
-            model=MODEL,
-            max_tokens=32768,
-            system=SYSTEM_PROMPT,
-            messages=[{"role": "user", "content": user_content}],
-        ) as stream:
-            for text in stream.text_stream:
-                response_text += text
-            final = stream.get_final_message()
+        # Retry the streaming call if the connection drops mid-response.
+        # Anthropic's API intermittently closes streams ~5-6 min in (peer-closed
+        # / incomplete chunked read) — without retry, that single transient
+        # failure kills the whole pipeline and the morning email never lands.
+        import httpx as _httpx
+        last_err = None
+        for attempt in range(3):
+            try:
+                response_text = ""
+                with client.messages.stream(
+                    model=MODEL,
+                    max_tokens=32768,
+                    system=SYSTEM_PROMPT,
+                    messages=[{"role": "user", "content": user_content}],
+                ) as stream:
+                    for text in stream.text_stream:
+                        response_text += text
+                    final = stream.get_final_message()
+                break  # success
+            except (_httpx.RemoteProtocolError, _httpx.ReadError, _httpx.ReadTimeout,
+                    anthropic.APIConnectionError) as transient:
+                last_err = transient
+                logger.warning(
+                    f"Sonnet stream attempt {attempt + 1}/3 failed ({type(transient).__name__}: "
+                    f"{str(transient)[:100]}) — retrying"
+                )
+                time.sleep(5 * (attempt + 1))  # 5s, 10s, 15s
+        else:
+            # All retries exhausted
+            raise last_err
 
         response_text = response_text.strip()
 
@@ -816,13 +886,15 @@ Generate the daily briefing JSON. LEAD WITH CONVERSATION — what are people deb
                 briefing = json.loads(repaired)
                 logger.info("JSON repair succeeded (bracket closing)")
             except json.JSONDecodeError:
-                logger.warning("Bracket repair failed, asking Sonnet to fix JSON...")
-                # Critical: use Sonnet (not Haiku) with a big token budget — the full
-                # response is ~30-40K chars and Haiku's 16K limit truncated content,
-                # silently losing substacker_takes, _ai_substacks, and ai_brief.
+                logger.warning("Bracket repair failed, asking Haiku to fix JSON...")
+                # Use Haiku for repair — Sonnet was taking 7+ min and timing out
+                # on streaming (peer-closed). Haiku 4.5 has 200K input context
+                # and 64K output, so a 40K-char fix fits comfortably. Streaming
+                # to be safe on long inputs.
                 try:
-                    fix_resp = client.messages.create(
-                        model=MODEL,  # same Sonnet model for capacity
+                    fixed_text = ""
+                    with client.messages.stream(
+                        model="claude-haiku-4-5-20251001",
                         max_tokens=32768,
                         messages=[{"role": "user", "content": (
                             "The following JSON has a syntax error. Fix ONLY the JSON syntax "
@@ -832,8 +904,10 @@ Generate the daily briefing JSON. LEAD WITH CONVERSATION — what are people deb
                             "Return ONLY the fixed JSON, no explanation.\n\n"
                             + response_text
                         )}],
-                    )
-                    fixed_text = fix_resp.content[0].text.strip()
+                    ) as fix_stream:
+                        for chunk in fix_stream.text_stream:
+                            fixed_text += chunk
+                    fixed_text = fixed_text.strip()
                     if fixed_text.startswith("```"):
                         fixed_text = fixed_text.split("```")[1]
                         if fixed_text.startswith("json"):
@@ -1075,6 +1149,10 @@ Generate the daily briefing JSON. LEAD WITH CONVERSATION — what are people deb
                     })
                 if len(briefing["twitter_roundup"]) >= 25:
                     break
+
+        # Strip refusal-style meta-narration ("I don't have access...") that
+        # Sonnet sometimes produces when a newsletter body is teaser-only.
+        briefing = _strip_refusal_meta(briefing)
 
         # Validate all URLs against the database
         briefing = _validate_briefing_urls(briefing, conn)

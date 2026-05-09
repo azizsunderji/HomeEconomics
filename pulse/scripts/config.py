@@ -376,7 +376,11 @@ TWITTER_REAL_NAMES = {
     "jabornesworth": "Jabor Nesworth",
 }
 
-TWITTER_MIN_LIKES = 5    # Low threshold — these are curated voices, not keyword search
+TWITTER_MIN_LIKES = 1    # Was 5; dropped 2026-05-09 because it filtered out substantive
+                         # low-engagement tweets from specialist accounts (Wiebe-style:
+                         # 3 likes / 481 views from a small qualified audience). The
+                         # downstream relevance classifier (threshold 20) handles noise;
+                         # this pre-filter punished small accounts unnecessarily.
 TWITTER_MAX_PER_QUERY = 60  # Per batch; more results = better coverage of quiet accounts
 TWITTER_DAILY_BUDGET_CENTS = 200  # $2/day max Apify spend (1 batch, no sweep)
 

@@ -182,6 +182,7 @@ def cmd_daily(args):
     #   Twitter folder → ignored here (handled by twitter_apify collector)
     try:
         from datetime import timedelta
+        import re as _re_journal
         from collectors.rss_feeds import parse_opml, DEFAULT_OPML_PATH
 
         opml_feeds = parse_opml(DEFAULT_OPML_PATH)
@@ -191,6 +192,23 @@ def cmd_daily(args):
         logger.info(f"OPML: {len(headline_feed_names)} headline feeds, {len(journal_feed_names)} journal feeds")
 
         # --- Journal articles (collected in last 24h, published in last 24h, deduped) ---
+        # Housing-only filter: NBER + Cities + Planning journals carry lots of
+        # non-housing papers (transport, public finance, education, macro). The
+        # user wants this section to be a housing-topics-only digest, even if
+        # that means a short list. Filter via title keywords (tags too unreliable
+        # — many journal items have empty topics arrays).
+        HOUSING_KEYWORD_RE = _re_journal.compile(
+            r"\b(hous(?:ing|ed?)|mortgage|rent(?:al|er|ing)?s?|"
+            r"home(?:owner|ownership|buyer|builder|building|price|ownership)?|"
+            r"property|properties|real\s*estate|"
+            r"zoning|land[- ]?use|nimby|yimby|"
+            r"residential|neighborhood|neighbourhood|gentrif|suburb|"
+            r"affordab(?:ility|le)|tenant|landlord|eviction|"
+            r"condominium|condo|apartment|multifamily|single[- ]family|"
+            r"urban\s+(?:hous|develop|plan|form|sprawl|renew)|"
+            r"household|homeless)\b",
+            _re_journal.IGNORECASE,
+        )
         cutoff_24h = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
         all_rss_24h_journals = conn.execute(
             "SELECT * FROM items WHERE source = 'rss' AND collected_at >= ? ORDER BY collected_at DESC",
@@ -200,6 +218,7 @@ def cmd_daily(args):
         seen_journal_titles = set()
         journal_per_feed = {}  # cap per journal to prevent TOC dumps
         MAX_PER_JOURNAL = 30  # no per-journal cap
+        skipped_non_housing = 0
         for row in all_rss_24h_journals:
             item = dict(row)
             feed = item.get("feed_name", "")
@@ -209,11 +228,17 @@ def cmd_daily(args):
             published = item.get("published_at", "")
             if published and published < cutoff_24h:
                 continue
+            title = item.get("title", "") or ""
+            body = item.get("body", "") or ""
+            # Housing-relevance filter — title or short body excerpt must match.
+            # NBER especially: most papers are macro/labor/health, not housing.
+            if not (HOUSING_KEYWORD_RE.search(title) or HOUSING_KEYWORD_RE.search(body[:400])):
+                skipped_non_housing += 1
+                continue
             # Cap per journal — prevents entire TOC dumps from flooding the section
             journal_per_feed[feed] = journal_per_feed.get(feed, 0) + 1
             if journal_per_feed[feed] > MAX_PER_JOURNAL:
                 continue
-            title = item.get("title", "")
             title_key = title[:80].lower().strip()
             if title_key in seen_journal_titles:
                 continue
@@ -224,7 +249,10 @@ def cmd_daily(args):
                 "url": item.get("url", ""),
             })
         briefing["_journal_articles"] = journal_items[:30]
-        logger.info(f"Journal articles: {len(journal_items)} unique (capped at 30)")
+        logger.info(
+            f"Journal articles: {len(journal_items)} housing-relevant unique "
+            f"(skipped {skipped_non_housing} non-housing papers)"
+        )
 
         # --- Headlines (24h window, all feeds from OPML except journals/twitter) ---
         cutoff_24h = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
@@ -470,16 +498,44 @@ def cmd_synthesize(args):
             list(journal_feed_names) + [cutoff_30d],
         ).fetchall()
 
+        # Housing-only filter: NBER especially is mostly macro/labor/health,
+        # not housing. Drop journal items whose title and body excerpt don't
+        # mention housing. Tags are too unreliable for academic feeds.
+        import re as _re_journal_filter
+        HOUSING_KEYWORD_RE = _re_journal_filter.compile(
+            r"\b(hous(?:ing|ed?)|mortgage|rent(?:al|er|ing)?s?|"
+            r"home(?:owner|ownership|buyer|builder|building|price|ownership)?|"
+            r"property|properties|real\s*estate|"
+            r"zoning|land[- ]?use|nimby|yimby|"
+            r"residential|neighborhood|neighbourhood|gentrif|suburb|"
+            r"affordab(?:ility|le)|tenant|landlord|eviction|"
+            r"condominium|condo|apartment|multifamily|single[- ]family|"
+            r"urban\s+(?:hous|develop|plan|form|sprawl|renew)|"
+            r"household|homeless)\b",
+            _re_journal_filter.IGNORECASE,
+        )
+
         # Dedup by title across the full pool
         pool = []
         seen_titles = set()
+        skipped_non_housing = 0
         for row in rows_30d:
             item = dict(row)
-            title_key = (item.get("title") or "")[:80].lower().strip()
+            title = item.get("title", "") or ""
+            body = item.get("body", "") or ""
+            # Skip non-housing papers — title or body excerpt must match
+            if not (HOUSING_KEYWORD_RE.search(title) or HOUSING_KEYWORD_RE.search(body[:400])):
+                skipped_non_housing += 1
+                continue
+            title_key = title[:80].lower().strip()
             if not title_key or title_key in seen_titles:
                 continue
             seen_titles.add(title_key)
             pool.append(item)
+        logger.info(
+            f"Journal pool (30d): {len(pool)} housing-relevant papers "
+            f"(skipped {skipped_non_housing} non-housing)"
+        )
         # Stable ordering so rotation is deterministic
         pool.sort(key=lambda x: (x.get("title") or "").lower())
 
