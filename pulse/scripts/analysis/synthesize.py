@@ -964,7 +964,7 @@ Generate the daily briefing JSON. LEAD WITH CONVERSATION — what are people deb
         # AND enforce the "ONE sentence, max ~30 words" rule — Sonnet routinely
         # ignores it for high-volume authors (zerohedge, VladTheInflator) and
         # writes paragraph-length summaries. Truncate at sentence boundary.
-        def _truncate_summary(text: str, max_words: int = 30, max_chars: int = 380) -> str:
+        def _truncate_summary(text: str, max_words: int = 45, max_chars: int = 500) -> str:
             if not text:
                 return text
             if len(text) < 200:
@@ -1078,12 +1078,18 @@ Generate the daily briefing JSON. LEAD WITH CONVERSATION — what are people deb
             try:
                 resp = _anthropic2.Anthropic().messages.create(
                     model="claude-haiku-4-5-20251001",
-                    max_tokens=200,
+                    max_tokens=300,
                     messages=[{"role": "user", "content": (
                         f"The following tweets from {display} are PROVIDED IN FULL BELOW. "
-                        f"Summarize them as ONE short sentence (max 20 words) "
-                        f"with ONE inline markdown link [phrase](tweet_url) to the most "
-                        f"notable tweet. No paragraphs. No meta-commentary. "
+                        f"Write a brief summary (max 35 words) where EACH distinct claim is "
+                        f"its OWN inline markdown link [short phrase](tweet_url). "
+                        f"If the tweets cover 3 different topics, use 3 inline links "
+                        f"(one per topic) — every phrase that summarizes a tweet must be "
+                        f"a markdown link to that specific tweet's URL. "
+                        f"Example: '[on rising rents](url1), [criticized education paths](url2), "
+                        f"and [urged House support](url3).' "
+                        f"If only one tweet, ONE inline link is fine. "
+                        f"No paragraphs. No meta-commentary. "
                         f"Do NOT say you can't access Twitter — the content is below.\n\n"
                         f"Tweets:\n" + "\n".join(tweet_lines)
                     )}],

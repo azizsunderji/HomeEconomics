@@ -376,9 +376,11 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
             m = _re_tw.search(r'\[[^\]]+\]\(([^)]+)\)', summary)
             tweet_url = m.group(1) if m else f"https://x.com/{handle}"
             author_html = f'<a href="{tweet_url}" target="_blank" style="color: #0BB4FF; text-decoration: none; font-weight: 600;">{_esc(author)}</a>'
-            # Strip markdown links from the summary: keep just the bracketed text
-            plain_summary = _re_tw.sub(r'\[([^\]]+)\]\([^)]+\)', r'\1', summary)
-            summary_html = _esc(plain_summary)
+            # Convert inline markdown links [phrase](url) → <a> tags so each
+            # distinct claim links to its specific source tweet. Preserves
+            # the multi-link summaries the Haiku fallback produces (e.g.
+            # "[on rents](url1), [on education](url2), [on House](url3)").
+            summary_html = _md_links(summary)
             html += f'<div style="font-size: 16px; color: #555; line-height: 1.6; padding: 2px 0;">• {author_html} — {summary_html}</div>\n'
         html += '</td></tr></table>'
         html += _spacer(24)
