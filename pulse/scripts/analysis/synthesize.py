@@ -234,6 +234,42 @@ def _format_items_for_conversation(items: list[dict], limit: int = 280) -> str:
     return "\n".join(lines)
 
 
+def _format_historical_items(items: list[dict]) -> str:
+    """Compressed format for historical (past 6 days) context items.
+
+    Each item rendered as one line: relative date, author/handle, snippet, URL.
+    Sonnet uses these to weave the longer arc of a story into today's themes.
+    """
+    if not items:
+        return "No historical context."
+    from datetime import datetime as _dt, timezone as _tz
+    now = _dt.now(_tz.utc)
+    lines = []
+    for item in items:
+        # Compute relative day label
+        ts_str = item.get("published_at") or item.get("collected_at") or ""
+        label = ""
+        try:
+            ts = _dt.fromisoformat(ts_str.replace("Z", "+00:00"))
+            days_ago = (now - ts).days
+            if days_ago == 0: label = "today"
+            elif days_ago == 1: label = "yesterday"
+            elif days_ago < 7: label = ts.strftime("%a")  # Mon, Tue, etc.
+            else: label = f"{days_ago}d ago"
+        except Exception:
+            pass
+        author = item.get("author") or item.get("feed_name") or item.get("source", "")
+        title = (item.get("title") or "")[:120]
+        body = (item.get("body") or "")[:200].replace("\n", " ").strip()
+        url = item.get("url", "")
+        line = f"  [{label}] {author}: {title}"
+        if body and len(body) > 30:
+            line += f" — {body}"
+        line += f"  URL: {url}"
+        lines.append(line)
+    return "\n".join(lines)
+
+
 def _format_substacker_items(items: list[dict]) -> str:
     """Format Substack newsletter items as a dedicated section for the LLM."""
     if not items:
@@ -540,6 +576,7 @@ Coverage rules:
    - Other beats (macro, AI, demographics, politics): include the most substantive 4-8 stories
    - When multiple outlets cover the same news event, ONE theme covers them all with sources linked inline (e.g. "[WSJ](url) and [FT](url) report X, while [Bloomberg](url) emphasizes Y")
    - Use the FULL article body when present in the input (enriched articles have substantial body text — quote specifics, not just topics)
+   - **Weave historical context with explicit time stamps.** When a topic touches something already discussed this week, cite the relevant historical voice from the "Past 6 Days" section with a date stamp: "Tuesday, [Brad Setser argued](url)..." or "earlier this week [Conor Sen warned](url)...". Never use a historical item without a date marker — the reader needs to instantly tell what's fresh vs context. Today's items don't need a date stamp (they're implicitly today).
 Label each theme's anchor platforms accurately: use "rss" or "substack" or the newspaper name when that's the anchor, "twitter" or "bluesky" when those anchor it.
 
 7. SINGLE TWEETS DO NOT MAKE SOCIAL THEMES. A lone tweet asking a question, making an observation, or endorsing someone else's argument is NOT a theme on its own — put it in twitter_roundup instead. (This rule applies to social-anchored themes only. News-anchored themes don't need cross-platform debate; a single substantial article is enough to anchor a theme.) For a Twitter or Bluesky thread to anchor a theme, you need at least one of: (a) multiple accounts engaging with the same question, (b) the tweet is responding to or commenting on a concrete news story or data release, or (c) the tweet itself has substantial replies/engagement.
@@ -675,6 +712,16 @@ def generate_daily_briefing(
     substacker_items.sort(key=lambda x: -(x.get("relevance_score") or 0))
     logger.info(f"Newsletter items: {len(substacker_items)} (Substack RSS + Gmail newsletters, deduped)")
 
+    # Past 6 days of context — items NOT in today's pool, compressed format,
+    # so themes can weave the longer arc ("as Conor Sen argued Tuesday…").
+    # Sonnet doesn't need full bodies — just a title, author, and link.
+    historical_items_full = get_items_since(conn, hours=24*7, min_relevance=20)
+    today_ids = {i["id"] for i in all_items}
+    historical_items = [i for i in historical_items_full if i["id"] not in today_ids]
+    # Cap at top 400 by relevance (compressed format keeps tokens manageable)
+    historical_items = historical_items[:400]
+    logger.info(f"Historical context: {len(historical_items)} items from past 6 days (compressed format)")
+
     # Log source breakdown for relevant items
     relevant_source_counts = Counter(i.get("source", "?") for i in relevant_items)
     logger.info(f"Relevant items by source: {dict(relevant_source_counts.most_common())}")
@@ -697,6 +744,11 @@ When citing a tweet or Bluesky post, use the @handle exactly as it appears — d
 These are newsletter articles (Substack + email newsletters). Populate substacker_takes from this list. Use the URL provided with each item. Summarize EVERY one.
 
 {_format_substacker_items(substacker_items)}
+
+## Past 6 Days — HISTORICAL CONTEXT (week-long arc, NOT today)
+These items are from the prior 6 days, NOT today. Use them to weave the longer arc into today's themes — when today's news touches a topic that's been discussed earlier in the week, cite the relevant historical voice with a clear time stamp ("Tuesday, [Brad Setser](url) warned..."; "earlier this week, [Conor Sen](url) argued..."; "[The FT noted Friday](url)..."). Always make the time-stamp explicit in the prose so the reader knows what's fresh vs context. Do NOT use historical items as the anchor of a theme — today's items must anchor; historical context is connective tissue.
+
+{_format_historical_items(historical_items)}
 
 ## Cross-Platform Convergence (topics appearing on 3+ platforms)
 
