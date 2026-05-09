@@ -831,17 +831,37 @@ Generate the daily briefing JSON. LEAD WITH CONVERSATION — what are people deb
         def _truncate_summary(text: str, max_words: int = 30) -> str:
             if not text:
                 return text
-            # First sentence boundary
-            m = re.match(r"([^.!?]+[.!?])", text)
+            # Don't truncate short entries — most twitter_roundup items are
+            # already a one-liner with a single markdown link. The earlier
+            # naive sentence-boundary split was cutting URLs at the first `.`
+            # inside them (e.g. ".com"), producing broken markdown.
+            if len(text) < 280:
+                return text
+            # Mask markdown links so dots inside URLs don't trigger sentence
+            # boundaries. Restore them after truncation.
+            link_re = re.compile(r"\[[^\]]+\]\([^)]+\)")
+            placeholders = []
+            def _mask(m):
+                placeholders.append(m.group(0))
+                return f"\x00LINK{len(placeholders)-1}\x00"
+            masked = link_re.sub(_mask, text)
+            # First sentence boundary in masked text
+            m = re.match(r"([^.!?]+[.!?])", masked)
+            chosen = masked
             if m:
                 first = m.group(1).strip()
                 if len(first.split()) <= max_words:
-                    return first
-            # Hard word cap with ellipsis
-            words = text.split()
-            if len(words) > max_words:
-                return " ".join(words[:max_words]).rstrip(",.;:") + "…"
-            return text
+                    chosen = first
+                else:
+                    chosen = " ".join(first.split()[:max_words]).rstrip(",.;:") + "…"
+            else:
+                words = masked.split()
+                if len(words) > max_words:
+                    chosen = " ".join(words[:max_words]).rstrip(",.;:") + "…"
+            # Restore links
+            for i, link in enumerate(placeholders):
+                chosen = chosen.replace(f"\x00LINK{i}\x00", link)
+            return chosen
 
         for entry in briefing.get("twitter_roundup", []):
             if "summary" in entry:
