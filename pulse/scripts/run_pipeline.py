@@ -195,18 +195,21 @@ def cmd_daily(args):
         # Housing-only filter: NBER + Cities + Planning journals carry lots of
         # non-housing papers (transport, public finance, education, macro). The
         # user wants this section to be a housing-topics-only digest, even if
-        # that means a short list. Filter via title keywords (tags too unreliable
-        # — many journal items have empty topics arrays).
+        # that means a short list. Title-only check — body matches let through
+        # papers mentioning "household" or "property" generically (e.g. NBER's
+        # "Colonial Monopoly... Exclusive Trading Companies" slipped through
+        # because the abstract contained "households" once).
         HOUSING_KEYWORD_RE = _re_journal.compile(
             r"\b(hous(?:ing|ed?)|mortgage|rent(?:al|er|ing)?s?|"
-            r"home(?:owner|ownership|buyer|builder|building|price|ownership)?|"
-            r"property|properties|real\s*estate|"
+            r"home(?:owner|ownership|buyer|builder|building|price)|"
+            r"real\s*estate|"
             r"zoning|land[- ]?use|nimby|yimby|"
             r"residential|neighborhood|neighbourhood|gentrif|suburb|"
-            r"affordab(?:ility|le)|tenant|landlord|eviction|"
+            r"affordab(?:ility|le)\s+(?:hous|home|rent)|"
+            r"tenant|landlord|eviction|"
             r"condominium|condo|apartment|multifamily|single[- ]family|"
             r"urban\s+(?:hous|develop|plan|form|sprawl|renew)|"
-            r"household|homeless)\b",
+            r"homeless)\b",
             _re_journal.IGNORECASE,
         )
         cutoff_24h = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
@@ -229,10 +232,19 @@ def cmd_daily(args):
             if published and published < cutoff_24h:
                 continue
             title = item.get("title", "") or ""
-            body = item.get("body", "") or ""
-            # Housing-relevance filter — title or short body excerpt must match.
-            # NBER especially: most papers are macro/labor/health, not housing.
-            if not (HOUSING_KEYWORD_RE.search(title) or HOUSING_KEYWORD_RE.search(body[:400])):
+            # Auto-accept items from housing-focused journals; otherwise
+            # require a housing keyword in the title.
+            HOUSING_JOURNAL_NAMES_DAILY = {
+                "Journal of Housing Economics",
+                "Journal of Housing Research",
+                "Housing Studies",
+                "Journal of Real Estate Research",
+                "Wiley: Real Estate Economics: Table of Contents",
+                "Cornell Real Estate Review",
+                "Journal of the American Planning Association",
+                "ScienceDirect Publication: Journal of Housing Economics",
+            }
+            if feed not in HOUSING_JOURNAL_NAMES_DAILY and not HOUSING_KEYWORD_RE.search(title):
                 skipped_non_housing += 1
                 continue
             # Cap per journal — prevents entire TOC dumps from flooding the section
@@ -499,21 +511,39 @@ def cmd_synthesize(args):
         ).fetchall()
 
         # Housing-only filter: NBER especially is mostly macro/labor/health,
-        # not housing. Drop journal items whose title and body excerpt don't
-        # mention housing. Tags are too unreliable for academic feeds.
+        # not housing. The title MUST contain a housing keyword — body-only
+        # matches let through papers that mention "household" or "property"
+        # in passing (e.g. "Colonial Monopoly... Exclusive Trading Companies"
+        # had "households" once in the abstract and slipped through).
         import re as _re_journal_filter
         HOUSING_KEYWORD_RE = _re_journal_filter.compile(
             r"\b(hous(?:ing|ed?)|mortgage|rent(?:al|er|ing)?s?|"
-            r"home(?:owner|ownership|buyer|builder|building|price|ownership)?|"
-            r"property|properties|real\s*estate|"
+            r"home(?:owner|ownership|buyer|builder|building|price)|"
+            r"real\s*estate|"
             r"zoning|land[- ]?use|nimby|yimby|"
             r"residential|neighborhood|neighbourhood|gentrif|suburb|"
-            r"affordab(?:ility|le)|tenant|landlord|eviction|"
+            r"affordab(?:ility|le)\s+(?:hous|home|rent)|"
+            r"tenant|landlord|eviction|"
             r"condominium|condo|apartment|multifamily|single[- ]family|"
             r"urban\s+(?:hous|develop|plan|form|sprawl|renew)|"
-            r"household|homeless)\b",
+            r"homeless)\b",
             _re_journal_filter.IGNORECASE,
         )
+
+        # Journals explicitly about housing/real-estate — auto-accept all
+        # papers regardless of title (e.g. "Determinants of dual agency
+        # transactions" doesn't have housing in the title but is clearly
+        # a housing paper since the journal IS Housing Economics).
+        HOUSING_JOURNAL_NAMES = {
+            "Journal of Housing Economics",
+            "Journal of Housing Research",
+            "Housing Studies",
+            "Journal of Real Estate Research",
+            "Wiley: Real Estate Economics: Table of Contents",
+            "Cornell Real Estate Review",
+            "Journal of the American Planning Association",
+            "ScienceDirect Publication: Journal of Housing Economics",
+        }
 
         # Dedup by title across the full pool
         pool = []
@@ -522,9 +552,10 @@ def cmd_synthesize(args):
         for row in rows_30d:
             item = dict(row)
             title = item.get("title", "") or ""
-            body = item.get("body", "") or ""
-            # Skip non-housing papers — title or body excerpt must match
-            if not (HOUSING_KEYWORD_RE.search(title) or HOUSING_KEYWORD_RE.search(body[:400])):
+            feed = item.get("feed_name", "") or ""
+            # If the journal itself is housing-focused, accept the paper.
+            # Otherwise require a housing keyword in the title (body too liberal).
+            if feed not in HOUSING_JOURNAL_NAMES and not HOUSING_KEYWORD_RE.search(title):
                 skipped_non_housing += 1
                 continue
             title_key = title[:80].lower().strip()
