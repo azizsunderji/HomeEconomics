@@ -425,8 +425,28 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
     if institutional:
         from collections import defaultdict as _defaultdict2
         grouped_inst = _defaultdict2(list)
+        # Normalize publication names so split-feed senders (Capital Economics
+        # - Bonds & Equities, Capital Economics - Global Commercial Property,
+        # etc.) collapse into one bucket per publisher.
+        def _normalize_publisher(src: str) -> str:
+            s = (src or "Email").strip()
+            # Strip "Publisher - Sub-feed" → "Publisher"
+            if " - " in s and any(p in s.lower() for p in (
+                "capital economics", "fed", "federal reserve", "atlanta fed",
+                "boston fed", "newyorkfed", "ny fed", "kansas city fed",
+                "richmond fed", "san francisco fed", "st louis fed",
+                "goldman sachs", "gs ", "morgan stanley", "deutsche bank",
+                "barclays", "citigroup", "ubs", "credit suisse", "wells fargo",
+                "jpmorgan", "bank of america", "bofa", "hsbc",
+                "moodys", "moody", "apollo", "fannie mae", "freddie mac",
+            )):
+                s = s.split(" - ")[0].strip()
+            # Common rename
+            s = s.replace("U.S. Census Bureau", "Census Bureau")
+            return s
         for item in institutional:
-            grouped_inst[item.get("source", "Email")].append(item)
+            normalized = _normalize_publisher(item.get("source", "Email"))
+            grouped_inst[normalized].append(item)
 
         html += _section_heading(f"Institutional Signal ({len(institutional)})")
         html += _spacer(10)
