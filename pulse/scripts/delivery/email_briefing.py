@@ -254,7 +254,7 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
 
     # ── CONVERSATION THEMES (main section ~60% of email) ──
     if themes:
-        html += _section_heading("Conversation Themes")
+        html += _section_heading("News Themes")
         html += _spacer(14)
 
         for theme in themes[:6]:
@@ -299,53 +299,10 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
 
         html += _spacer(10)
 
-    # ── HEADLINES (single ranked list by relevance, source in brackets) ──
-    if headlines:
-        # Preprocess: consolidate a few multi-feed sources and drop the noisy ones
-        processed = []
-        for item in headlines:
-            source = item.get("source", "News")
-            item = dict(item)  # don't mutate upstream
-            if source.startswith("Alert: "):
-                reporter_name = source[len("Alert: "):]
-                item["headline"] = f"{reporter_name}: {item.get('headline', '')}"
-                source = "Alerts"
-            elif source.startswith("Economist: "):
-                section_name = source[len("Economist: "):]
-                item["headline"] = f"{section_name}: {item.get('headline', '')}"
-                source = "Economist"
-            elif source in ("Bloomberg Markets", "Bloomberg Wealth"):
-                continue  # drop — not housing-relevant enough
-            elif source in ("FT Front Page", "FT Global Economy", "FT Markets"):
-                source = "Financial Times"
-            item["source"] = source
-            processed.append(item)
-
-        # Sort by relevance_score (desc), tiebreak by position
-        processed.sort(key=lambda x: -(x.get("relevance_score") or 0))
-
-        html += _section_heading(f"Headlines ({len(processed)})")
-        html += _spacer(10)
-
-        for idx, item in enumerate(processed):
-            url = item.get("url", "")
-            headline_text = _esc(item.get('headline', ''))
-            source_name = _esc(item.get('source', 'News'))
-            if url:
-                headline_link = f'<a href="{url}" target="_blank" style="color: #3D3733; text-decoration: none;">{headline_text}</a>'
-                source_link = f'<a href="{url}" target="_blank" style="color: #0BB4FF; text-decoration: none;">[{source_name}]</a>'
-            else:
-                headline_link = headline_text
-                source_link = f'<span style="color: #888;">[{source_name}]</span>'
-            bg = "#f9faf7" if idx % 2 == 0 else "#ffffff"
-            html += f"""<table width="100%" cellpadding="0" cellspacing="0"><tr>
-<td style="font-size: 17px; padding: 8px 12px; line-height: 1.5; background: {bg};">
-  {headline_link} <span style="font-size: 15px;">{source_link}</span>
-</td></tr></table>
-"""
-            html += _spacer(8)
-
-        html += _spacer(20)
+    # Headlines section removed 2026-05-09: news content now folds into the
+    # main News Themes section above, where Sonnet weaves article reporting
+    # alongside social conversation. The standalone headlines list was bloated
+    # and redundant with what themes already cover.
 
     # ── AI SECTION — single synthesized paragraph with inline links ──
     if ai_brief and ai_brief.strip():
