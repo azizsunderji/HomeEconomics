@@ -458,23 +458,11 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
 """
         html += _spacer(28)
 
-    # ── GMAIL NEWSLETTERS (Katie Martin/Unhedged, Brandon Donnelly, Bloomberg) ──
-    # Raw email-based newsletter list (no LLM summary). Distinct from the
-    # "Newsletters" section above which contains LLM-summarized takes.
-    if gmail_newsletters:
-        html += _section_heading(f"Email Newsletters ({len(gmail_newsletters)})")
-        html += _spacer(10)
-        for item in gmail_newsletters:
-            source_name = item.get("source") or item.get("author", "Newsletter")
-            url = item.get("url", "")
-            headline = _esc(item.get("headline") or item.get("title", ""))
-            link = f'<a href="{url}" target="_blank" style="color: #0BB4FF; text-decoration: none;">{headline}</a>' if url else headline
-            html += f"""<table width="100%" cellpadding="0" cellspacing="0"><tr>
-<td style="font-size: 15px; padding: 4px 0; border-bottom: 1px solid #f0f0f0;">
-  <span style="font-weight: 600; color: #888;">{_esc(source_name)}</span>: {link}
-</td></tr></table>
-"""
-        html += _spacer(28)
+    # Gmail newsletters (Brandon Donnelly, Daire MacFadden/Unhedged, etc.) used
+    # to render here as a separate raw-list section labeled "Email Newsletters".
+    # Removed 2026-05-09: those senders already feed into the substacker_takes
+    # section above (where Sonnet summarizes each as a paragraph), so a second
+    # raw-list section was redundant. One unified Newsletters section now.
 
     # ── JOURNAL ARTICLES (academic, 7-day window, grouped by journal) ──
     if journal_articles:
