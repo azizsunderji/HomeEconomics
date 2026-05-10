@@ -114,7 +114,13 @@ def _format_items_for_conversation(items: list[dict], limit: int = 280) -> str:
     # the many shorter tweets. A tweet "competing" with a 5000-char article on
     # equal terms loses because tweets feel complete while truncated articles
     # feel incomplete — so Sonnet picks tweets. The reserve fixes that.
-    MAX_PER_AUTHOR_SOCIAL = 1  # one slot per unique person — diversifies the pool fed to Sonnet
+    MAX_PER_AUTHOR_SOCIAL = 8  # per-author cap is now per-THREAD, not per-tweet:
+                                # threads (CSElmendorf's 14-tweet CA housing analysis,
+                                # nickgerli1's 12-tweet Seattle correction) need all
+                                # their tweets in Sonnet's view to make sense as a
+                                # coherent argument. Sonnet collapses them into one
+                                # summary per author downstream (see prompt rule 12d).
+                                # Cap at 8/author to prevent runaway thread spam.
     LONGFORM_RESERVED_SLOTS = 60  # guaranteed seats for long-form with real body
     LONGFORM_MIN_BODY = 1500      # chars — "real body" threshold
     LONGFORM_SOURCES = {"rss", "substack", "gmail"}
@@ -188,8 +194,41 @@ def _format_items_for_conversation(items: list[dict], limit: int = 280) -> str:
                 author_counts[akey] = n + 1
         by_tier[item["_tier"]].append(item)
 
+    # Within each tier, group consecutive same-author social items so they
+    # appear visually as a thread — Sonnet can see the full thread arc and
+    # write ONE summary per author covering all of it.
+    def _author_key_for_grouping(item: dict) -> str:
+        a = (item.get("author") or "").lower().strip().lstrip("@")
+        for suffix in (".bsky.social", ".bsky", "@twitter", "@x"):
+            if a.endswith(suffix):
+                a = a[: -len(suffix)]
+        return a
+
+    for tier in by_tier:
+        social_items = [
+            i for i in by_tier[tier]
+            if (i.get("source") or "").lower() in ("twitter", "bluesky")
+        ]
+        other_items = [
+            i for i in by_tier[tier]
+            if (i.get("source") or "").lower() not in ("twitter", "bluesky")
+        ]
+        # Group social by author (preserving relevance order across groups)
+        from collections import OrderedDict
+        grouped = OrderedDict()
+        for it in social_items:
+            grouped.setdefault(_author_key_for_grouping(it), []).append(it)
+        # Re-flatten author-by-author, each author's tweets contiguous
+        regrouped_social = []
+        for k, group in grouped.items():
+            # Sort each author's tweets by relevance (highest first within thread)
+            group.sort(key=lambda x: -(x.get("relevance_score") or 0))
+            regrouped_social.extend(group)
+        by_tier[tier] = other_items + regrouped_social
+
     lines = []
     count = 0
+    last_author_key = None  # used to insert thread-grouping markers
     for tier in sorted(by_tier.keys()):
         tier_items = by_tier[tier]
         lines.append(f"\n### {tier_names.get(tier, f'TIER {tier}')} ({len(tier_items)} items)")
@@ -213,14 +252,21 @@ def _format_items_for_conversation(items: list[dict], limit: int = 280) -> str:
                 # ALL volume signals (likes, retweets, comment count) hidden from
                 # Sonnet — user feedback was that any volume-correlated signal
                 # biases toward dumb-but-loud accounts. The engagement floor
-                # (TWITTER_MIN_LIKES=1) is enforced at collection, so anything
+                # (TWITTER_MIN_LIKES=2) is enforced at collection, so anything
                 # reaching Sonnet has at least minimal engagement; beyond that
                 # let Sonnet judge on substance (topics + content), not popularity.
                 # conversation_signal kept because it's Haiku's quality rating
                 # of debate intensity, not a raw count.
+                #
+                # Thread grouping: consecutive same-author items get a "↪" prefix
+                # so Sonnet visually sees them as a thread to summarize together.
+                akey = _author_key_for_grouping(item)
+                is_continuation = (akey == last_author_key and source in ("twitter", "bluesky"))
+                last_author_key = akey
                 body_preview = body[:600]
+                prefix = "  ↪ " if is_continuation else "  "
                 lines.append(
-                    f"  [{item.get('conversation_signal', '?'):>3} conv] "
+                    f"{prefix}[{item.get('conversation_signal', '?'):>3} conv] "
                     f"{item['_source_display']}: "
                     f"{item['title'][:200]}\n"
                     f"       Topics: {', '.join(topics) if topics else 'unclassified'}\n"
@@ -803,9 +849,14 @@ Label each theme's anchor platforms accurately: use "rss" or "substack" or the n
 
 12. TWITTER/BLUESKY ROUNDUP: A scannable bullet list of accounts (from EITHER Twitter or Bluesky) that had something notable but did NOT appear in conversation_themes. CRITICAL RULES:
     a. Do NOT include any voice you already covered in conversation_themes — this section is strictly the overflow.
-    b. ONE entry per account. The "summary" field is ONE sentence (max 20 words) with ONE inline markdown link [short phrase](tweet_url) to their most notable tweet. No paragraphs.
+    b. ONE entry per account. The "summary" field is 1-2 sentences (max 40 words). If the account had ONE tweet, use ONE inline markdown link [short phrase](tweet_url). If the account had a THREAD (multiple consecutive tweets — see thread markers below), summarize the whole thread's argument and link to the most central or earliest tweet via one inline markdown link.
     c. Aim for 15-25 accounts. Skip anyone with nothing notable — do not pad with low-signal tweets.
     d. Prioritize: contrarian views, data-backed claims, novel arguments, housing/AI/demographics focus.
+
+12b. THREAD HANDLING (critical for roundup AND themes): The input groups consecutive same-author tweets together — items prefixed with "  ↪" are CONTINUATIONS of a thread anchored by the previous "  [conv]" item from the same author. Treat the whole thread as ONE coherent argument, NOT as separate items. Twitter threads are how substantive analysis happens — picking one fragment ("Take SB 79 for example", "/13") strips the context that makes the analysis make sense. So:
+    - For roundup: write ONE entry per author summarizing the thread's overall argument (max 40 words, with one inline markdown link to the thread's anchor tweet).
+    - For themes: when a thread anchors a theme, your summary should reflect the thread's full arc, not just one tweet's claim. Cite the anchor tweet's URL.
+    - Never include the same author's thread spread across multiple themes or as multiple roundup entries — one author = one summary.
 
 13. WRITING STYLE: Be direct and factual. NO AI slop. Avoid these patterns:
     - "People aren't arguing X; they're watching Y" — just state what they're arguing
