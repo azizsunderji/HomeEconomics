@@ -209,11 +209,17 @@ def _format_items_for_conversation(items: list[dict], limit: int = 280) -> str:
             body = item.get("body") or ""
 
             if source in ("twitter", "bluesky", "hackernews"):
-                # Social: 600 chars covers the full tweet/post in almost all cases
+                # Social: 600 chars covers the full tweet/post in almost all cases.
+                # Engagement (likes/score) DELIBERATELY hidden from Sonnet — it was
+                # treating raw likes as a quality proxy and over-rewarding mainstream
+                # high-engagement accounts (Cathie Wood, Elon Musk, Brooks/Hoops)
+                # over substantive specialists with small-but-qualified audiences
+                # (Armlovich, Gupta, Wiebe). Conversation_signal + comment count
+                # remain because those proxy substantive discussion, not popularity.
                 body_preview = body[:600]
                 lines.append(
-                    f"  [{item.get('conversation_signal', '?'):>3} conv | {item.get('num_comments', 0)} comments | "
-                    f"score {item.get('score', 0)}] {item['_source_display']}: "
+                    f"  [{item.get('conversation_signal', '?'):>3} conv | {item.get('num_comments', 0)} comments] "
+                    f"{item['_source_display']}: "
                     f"{item['title'][:200]}\n"
                     f"       Topics: {', '.join(topics) if topics else 'unclassified'}\n"
                     f"       URL: {item.get('url', '')}\n"
@@ -392,6 +398,104 @@ _REFUSAL_PATTERNS = re.compile(
     r"without (?:the |access to )?(?:full|more)\s+(?:content|context|details))",
     re.IGNORECASE,
 )
+
+
+def _enforce_per_author_theme_cap(briefing: dict) -> dict:
+    """Belt-and-braces companion to prompt rule 11b — enforce in two passes:
+
+    Pass A: Drop themes where the PRIMARY ANCHOR (first twitter URL) is a handle
+    already anchoring an earlier theme. The dropped theme's substance is demoted
+    into twitter_roundup so the content isn't lost.
+
+    Pass B: For any handle cited in 2+ themes (anchor or secondary reference),
+    keep the citation in the FIRST theme (its anchor or first mention) and
+    strip the URL from secondary references — converts the markdown link to
+    plain text in those themes. Preserves prose flow but removes redundant
+    Brooks/Hoops links across themes.
+
+    Sonnet routinely violates "max 1 theme per voice" — yesterday's @jonbrooks
+    anchored 3 themes; today the same person was cited in pulse + theme 1
+    anchor + theme 3 secondary. This function makes the rule actually stick.
+    """
+    themes = briefing.get("conversation_themes", []) or []
+    if not themes:
+        return briefing
+
+    # ── Pass A: Drop themes whose primary anchor duplicates an earlier theme ──
+    seen_anchors: set[str] = set()
+    kept: list[dict] = []
+    dropped: list[tuple[str, dict]] = []
+
+    for theme in themes:
+        s = theme.get("summary", "") or ""
+        m = re.search(r"(?:twitter|x)\.com/([A-Za-z0-9_]+)/status", s, re.IGNORECASE)
+        anchor = m.group(1).lower() if m else None
+        if anchor and anchor in seen_anchors:
+            dropped.append((anchor, theme))
+            continue
+        if anchor:
+            seen_anchors.add(anchor)
+        kept.append(theme)
+
+    if dropped:
+        logger.warning(
+            f"Per-author cap (anchor): dropped {len(dropped)} themes whose anchor was already "
+            f"used: {[a for a, _ in dropped]}"
+        )
+        roundup = briefing.setdefault("twitter_roundup", [])
+        existing_authors = {(e.get("author") or "").lower().lstrip("@") for e in roundup}
+        for handle, theme in dropped:
+            if handle in existing_authors:
+                continue
+            link_match = re.search(r"\[([^\]]+)\]\((https?://[^)]+)\)", theme.get("summary", ""))
+            if link_match:
+                phrase, url = link_match.group(1), link_match.group(2)
+                if handle in url.lower():
+                    roundup.append({
+                        "author": f"@{handle}",
+                        "summary": f"[{phrase}]({url})",
+                        "tweet_count": 1,
+                    })
+                    existing_authors.add(handle)
+
+    briefing["conversation_themes"] = kept
+
+    # ── Pass B: Strip secondary URL citations across themes ──
+    handle_first_theme: dict[str, int] = {}
+    for i, theme in enumerate(briefing["conversation_themes"]):
+        s = theme.get("summary", "") or ""
+        seen_in_this_theme: set[str] = set()
+        for m in re.finditer(r"(?:twitter|x)\.com/([A-Za-z0-9_]+)/status", s, re.IGNORECASE):
+            h = m.group(1).lower()
+            if h not in seen_in_this_theme:
+                seen_in_this_theme.add(h)
+                if h not in handle_first_theme:
+                    handle_first_theme[h] = i
+
+    secondary_strips = 0
+    for i, theme in enumerate(briefing["conversation_themes"]):
+        s = theme.get("summary", "") or ""
+        new_s = s
+        for handle, first_idx in handle_first_theme.items():
+            if i == first_idx:
+                continue  # this is the handle's primary theme, keep all links
+            # Strip markdown links pointing to this handle's tweets (keep the
+            # bracketed phrase as plain text so prose still flows)
+            pattern = (
+                r"\[([^\]]+)\]\(https?://(?:www\.)?(?:twitter|x)\.com/"
+                + re.escape(handle) + r"/status[^)]*\)"
+            )
+            new_s, n = re.subn(pattern, r"\1", new_s, flags=re.IGNORECASE)
+            secondary_strips += n
+        theme["summary"] = new_s
+
+    if secondary_strips:
+        logger.warning(
+            f"Per-author cap (secondary): stripped {secondary_strips} duplicate URL "
+            f"citations from themes (kept prose, removed redundant links)"
+        )
+
+    return briefing
 
 
 def _strip_refusal_meta(briefing: dict) -> dict:
@@ -1175,6 +1279,11 @@ Generate the daily briefing JSON. LEAD WITH CONVERSATION — what are people deb
         # Strip refusal-style meta-narration ("I don't have access...") that
         # Sonnet sometimes produces when a newsletter body is teaser-only.
         briefing = _strip_refusal_meta(briefing)
+
+        # Programmatically enforce rule 11b (max 1 theme per anchored handle).
+        # Sonnet routinely lets the same voice dominate 2-3 themes; drop the
+        # duplicates and demote them to twitter_roundup.
+        briefing = _enforce_per_author_theme_cap(briefing)
 
         # Validate all URLs against the database
         briefing = _validate_briefing_urls(briefing, conn)
