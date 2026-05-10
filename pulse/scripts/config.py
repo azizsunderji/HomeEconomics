@@ -376,11 +376,10 @@ TWITTER_REAL_NAMES = {
     "jabornesworth": "Jabor Nesworth",
 }
 
-TWITTER_MIN_LIKES = 1    # Was 5; dropped 2026-05-09 because it filtered out substantive
-                         # low-engagement tweets from specialist accounts (Wiebe-style:
-                         # 3 likes / 481 views from a small qualified audience). The
-                         # downstream relevance classifier (threshold 20) handles noise;
-                         # this pre-filter punished small accounts unnecessarily.
+TWITTER_MIN_LIKES = 2    # Was 1; bumped 2026-05-10 per user. Floor at 2 still admits
+                         # specialist tweets (Wiebe @ 3 likes) but trims true zero-signal
+                         # noise that 1 leaves through. Was 5 originally — that filtered
+                         # too aggressively (cut Wiebe's 3-like / 481-view tweet).
 TWITTER_MAX_PER_QUERY = 60  # Per batch; more results = better coverage of quiet accounts
 TWITTER_DAILY_BUDGET_CENTS = 200  # $2/day max Apify spend (1 batch, no sweep)
 
