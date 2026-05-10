@@ -462,39 +462,95 @@ def _enforce_per_author_theme_cap(briefing: dict) -> dict:
 
     briefing["conversation_themes"] = kept
 
-    # ── Pass B: Strip secondary URL citations across themes ──
+    # ── Pass B: Drop secondary citation SENTENCES across themes ──
+    # Earlier version only stripped the URL but left duplicate sentences ("CAYIMBY
+    # notes every California governor candidate is now claiming to be pro-housing"
+    # appeared verbatim in two themes). The user saw two identical CAYIMBY posts.
+    # Now we drop the entire sentence containing a secondary citation — link,
+    # @handle mention, or proper-name reference — so the secondary theme prose
+    # flows without the redundancy.
+    # "Primary theme" for a handle = the theme where this handle is the FIRST
+    # URL anchor (i.e., the theme is structurally about them). If a handle
+    # appears in multiple themes but isn't the anchor of any, fall back to the
+    # first theme that mentions them.
     handle_first_theme: dict[str, int] = {}
+    handle_anchor_theme: dict[str, int] = {}
     for i, theme in enumerate(briefing["conversation_themes"]):
         s = theme.get("summary", "") or ""
-        seen_in_this_theme: set[str] = set()
+        # First URL match = this theme's anchor
+        anchor_match = re.search(r"(?:twitter|x)\.com/([A-Za-z0-9_]+)/status", s, re.IGNORECASE)
+        anchor_handle = anchor_match.group(1).lower() if anchor_match else None
+        if anchor_handle and anchor_handle not in handle_anchor_theme:
+            handle_anchor_theme[anchor_handle] = i
+        # Track first-mention for handles never anchored
         for m in re.finditer(r"(?:twitter|x)\.com/([A-Za-z0-9_]+)/status", s, re.IGNORECASE):
             h = m.group(1).lower()
-            if h not in seen_in_this_theme:
-                seen_in_this_theme.add(h)
-                if h not in handle_first_theme:
-                    handle_first_theme[h] = i
+            if h not in handle_first_theme:
+                handle_first_theme[h] = i
+    # Prefer anchor-theme as primary; fall back to first-mention
+    for h, idx in handle_anchor_theme.items():
+        handle_first_theme[h] = idx
 
-    secondary_strips = 0
+    def _split_sentences_link_safe(text: str) -> list[str]:
+        """Split into sentences, masking markdown links so dots inside URLs
+        don't trigger false sentence boundaries."""
+        link_re = re.compile(r"\[[^\]]+\]\([^)]+\)")
+        placeholders: list[str] = []
+        def _mask(m):
+            placeholders.append(m.group(0))
+            return f"\x00LINK{len(placeholders)-1}\x00"
+        masked = link_re.sub(_mask, text)
+        parts = re.split(r"(?<=[.!?])\s+", masked)
+        out = []
+        for p in parts:
+            for j, link in enumerate(placeholders):
+                p = p.replace(f"\x00LINK{j}\x00", link)
+            out.append(p)
+        return out
+
+    secondary_drops = 0
     for i, theme in enumerate(briefing["conversation_themes"]):
         s = theme.get("summary", "") or ""
-        new_s = s
-        for handle, first_idx in handle_first_theme.items():
-            if i == first_idx:
-                continue  # this is the handle's primary theme, keep all links
-            # Strip markdown links pointing to this handle's tweets (keep the
-            # bracketed phrase as plain text so prose still flows)
-            pattern = (
-                r"\[([^\]]+)\]\(https?://(?:www\.)?(?:twitter|x)\.com/"
-                + re.escape(handle) + r"/status[^)]*\)"
-            )
-            new_s, n = re.subn(pattern, r"\1", new_s, flags=re.IGNORECASE)
-            secondary_strips += n
-        theme["summary"] = new_s
+        sentences = _split_sentences_link_safe(s)
+        kept_sentences: list[str] = []
+        for sent in sentences:
+            drop = False
+            for handle, first_idx in handle_first_theme.items():
+                if i == first_idx:
+                    continue  # primary theme — keep everything
+                # Check for any mention: URL link to this handle's status,
+                # or @handle, or the bare handle name (case-insensitive)
+                handle_url_re = (
+                    r"https?://(?:www\.)?(?:twitter|x)\.com/"
+                    + re.escape(handle) + r"/status"
+                )
+                if (re.search(handle_url_re, sent, re.IGNORECASE)
+                    or re.search(r"@" + re.escape(handle) + r"\b", sent, re.IGNORECASE)
+                    or re.search(r"\b" + re.escape(handle) + r"\b", sent, re.IGNORECASE)):
+                    drop = True
+                    break
+            if drop:
+                secondary_drops += 1
+            else:
+                kept_sentences.append(sent)
+        theme["summary"] = " ".join(kept_sentences).strip()
 
-    if secondary_strips:
+    if secondary_drops:
         logger.warning(
-            f"Per-author cap (secondary): stripped {secondary_strips} duplicate URL "
-            f"citations from themes (kept prose, removed redundant links)"
+            f"Per-author cap (secondary): dropped {secondary_drops} duplicate "
+            f"sentences from themes (handle already cited in earlier theme)"
+        )
+
+    # If a theme's prose was completely emptied by dedup, drop the whole theme
+    before_drop = len(briefing["conversation_themes"])
+    briefing["conversation_themes"] = [
+        t for t in briefing["conversation_themes"]
+        if (t.get("summary") or "").strip()
+    ]
+    if before_drop != len(briefing["conversation_themes"]):
+        logger.warning(
+            f"Dropped {before_drop - len(briefing['conversation_themes'])} themes "
+            f"left empty after secondary-sentence dedup"
         )
 
     return briefing
