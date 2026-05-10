@@ -121,6 +121,9 @@ def _format_items_for_conversation(items: list[dict], limit: int = 280) -> str:
                                 # coherent argument. Sonnet collapses them into one
                                 # summary per author downstream (see prompt rule 12d).
                                 # Cap at 8/author to prevent runaway thread spam.
+    SUPER_SMART_RESERVED_SLOTS = 80  # guaranteed seats for SuperSmart-tagged items —
+                                     # short curated list of must-have voices that
+                                     # get included regardless of relevance score
     LONGFORM_RESERVED_SLOTS = 60  # guaranteed seats for long-form with real body
     LONGFORM_MIN_BODY = 1500      # chars — "real body" threshold
     LONGFORM_SOURCES = {"rss", "substack", "gmail"}
@@ -135,13 +138,40 @@ def _format_items_for_conversation(items: list[dict], limit: int = 280) -> str:
         -(x.get("relevance_score") or 0),
     ))
 
-    # Phase 1a: fill reserved long-form seats, top-relevance first
     reserved_ids = set()
     by_tier = defaultdict(list)
+
+    # Phase 0: SuperSmart items get guaranteed seats (regardless of relevance).
+    # These come from the curated SuperSmart Twitter list; user maintains
+    # membership in Twitter UI. The point is to never lose their voices
+    # to lower-relevance-but-louder accounts.
+    def _is_super_smart(item: dict) -> bool:
+        tags = item.get("platform_tags", [])
+        if isinstance(tags, str):
+            try: tags = json.loads(tags)
+            except Exception: tags = []
+        return "super_smart" in (tags or [])
+
+    super_smart_taken = 0
+    # Iterate in relevance order so high-relevance super_smart tweets fill first
+    for item in sorted_items:
+        if super_smart_taken >= SUPER_SMART_RESERVED_SLOTS:
+            break
+        if not _is_super_smart(item):
+            continue
+        by_tier[item["_tier"]].append(item)
+        reserved_ids.add(id(item))
+        super_smart_taken += 1
+    if super_smart_taken:
+        logger.info(f"SuperSmart reserved: {super_smart_taken} items guaranteed in synthesis input")
+
+    # Phase 1a: fill reserved long-form seats, top-relevance first
     longform_taken = 0
     for item in sorted_items:
         if item["_tier"] != 1 or longform_taken >= LONGFORM_RESERVED_SLOTS:
             continue
+        if id(item) in reserved_ids:
+            continue  # already grabbed by SuperSmart phase
         src = (item.get("source") or "").lower()
         if src not in LONGFORM_SOURCES:
             continue

@@ -40,6 +40,12 @@ LIST_MAX_ITEMS = 750   # 750 × 4 daily scrapes = 3000 tweets/day total (same as
                        # ate the budget and accounts like Wiebe (1-2 tweets/day)
                        # fell off the back of the chronological window.
 
+# "SuperSmart" curated list — must-have voices. Tweets from this list get
+# guaranteed reserved slots in Sonnet synthesis input, regardless of relevance
+# score, AND bypass the min_likes filter. List_id can be overridden via env var.
+SUPER_SMART_LIST_ID = os.environ.get("SUPER_SMART_LIST_ID", "1458808091651231747")
+SUPER_SMART_MAX_ITEMS = 200  # smaller budget — list is curated short
+
 # DB path for budget tracking (same DB as pulse data, synced via rclone)
 _DB_PATH = Path(__file__).parent.parent.parent / "data" / "pulse.db"
 
@@ -211,32 +217,18 @@ def _run_actor(list_id: str = PULSE_LIST_ID, max_items: int = LIST_MAX_ITEMS) ->
     return results
 
 
-def collect(
-    list_id: str = PULSE_LIST_ID,
-    max_items: int = LIST_MAX_ITEMS,
-    min_likes: int = TWITTER_MIN_LIKES,
+def _convert_raw_tweets(
+    raw_tweets: list[dict],
+    min_likes: int,
+    super_smart: bool = False,
+    seen_ids: set | None = None,
 ) -> list[PulseItem]:
-    """Collect recent tweets from the Pulse Twitter List timeline.
-
-    Scrapes the organic list feed — includes retweets and cross-account
-    conversations, giving much better coverage than per-account batching.
-    Returns list of PulseItem objects.
-    """
-    api_key = os.environ.get("APIFY_API_KEY", "")
-    if not api_key:
-        raise RuntimeError("APIFY_API_KEY not set — Twitter collection skipped entirely")
-
-    if not _check_budget():
-        raise RuntimeError(
-            f"Twitter daily Apify budget exhausted ({TWITTER_DAILY_BUDGET_CENTS}¢ limit). "
-            f"Increase TWITTER_DAILY_BUDGET_CENTS in config.py or wait until tomorrow."
-        )
-
-    raw_tweets = _run_actor(list_id=list_id, max_items=max_items)
-
-    items = []
-    seen_ids = set()
-
+    """Shared tweet-to-PulseItem conversion. Used by both Pulse and SuperSmart
+    scrapes. If super_smart=True, items get platform_tags=["super_smart"] so
+    synthesis can reserve guaranteed slots for them."""
+    if seen_ids is None:
+        seen_ids = set()
+    items: list[PulseItem] = []
     for tweet in raw_tweets:
         tweet_id = tweet.get("id", "")
         if not tweet_id or tweet_id in seen_ids:
@@ -244,10 +236,12 @@ def collect(
         seen_ids.add(tweet_id)
 
         likes = tweet.get("likeCount", 0) or 0
-        if likes < min_likes:
+        # SuperSmart bypasses min_likes — these are curated must-have accounts;
+        # a 0-like Wiebe tweet still belongs in synthesis. Regular Pulse scrape
+        # still enforces the floor.
+        if not super_smart and likes < min_likes:
             continue
 
-        # Parse date — Apify actors use different field names over time
         published = None
         for field in ("createdAt", "created_at", "timeParsed", "timestamp", "date", "tweetedAt"):
             created_at = tweet.get(field, "")
@@ -255,23 +249,18 @@ def collect(
                 continue
             try:
                 if isinstance(created_at, (int, float)):
-                    # Unix timestamp (seconds or ms)
                     ts = created_at / 1000 if created_at > 1e12 else created_at
                     published = datetime.fromtimestamp(ts, tz=timezone.utc)
                 else:
-                    # ISO string or Twitter's "Tue Apr 11 14:30:00 +0000 2026" format
                     s = str(created_at).replace("Z", "+00:00")
                     try:
                         published = datetime.fromisoformat(s)
                     except ValueError:
-                        # Try Twitter's legacy format
                         published = datetime.strptime(s, "%a %b %d %H:%M:%S %z %Y")
                 break
             except (ValueError, TypeError):
                 continue
 
-        # Skip tweets older than 48 hours — prevents old tweets from polluting
-        # today's briefing when the Apify scraper pulls an account's history.
         if published is not None:
             age = datetime.now(timezone.utc) - published
             if age > timedelta(hours=48):
@@ -284,13 +273,10 @@ def collect(
             continue
 
         reply_count = tweet.get("replyCount", 0) or 0
-
-        # Use fullText if available, fall back to text
         tweet_text = tweet.get("fullText") or tweet.get("text") or ""
-        # Use twitterUrl if available, fall back to url or construct from username/id
         tweet_url = tweet.get("twitterUrl") or tweet.get("url") or f"https://x.com/{username}/status/{tweet_id}"
 
-        item = PulseItem(
+        kwargs = dict(
             source="twitter",
             source_id=f"tw_{tweet_id}",
             url=tweet_url,
@@ -310,9 +296,56 @@ def collect(
                 "is_conversation": reply_count >= 20,
             },
         )
-        items.append(item)
+        if super_smart:
+            kwargs["platform_tags"] = ["super_smart"]
+        items.append(PulseItem(**kwargs))
+    return items
 
-    logger.info(f"Twitter total: {len(items)} items (filtered from {len(raw_tweets)} raw tweets)")
+
+def collect(
+    list_id: str = PULSE_LIST_ID,
+    max_items: int = LIST_MAX_ITEMS,
+    min_likes: int = TWITTER_MIN_LIKES,
+) -> list[PulseItem]:
+    """Collect recent tweets from the Pulse Twitter List timeline AND, if
+    configured, the SuperSmart curated list.
+
+    Returns combined list. SuperSmart items are tagged with platform_tags
+    ["super_smart"] so downstream synthesis can reserve guaranteed slots.
+    """
+    api_key = os.environ.get("APIFY_API_KEY", "")
+    if not api_key:
+        raise RuntimeError("APIFY_API_KEY not set — Twitter collection skipped entirely")
+
+    if not _check_budget():
+        raise RuntimeError(
+            f"Twitter daily Apify budget exhausted ({TWITTER_DAILY_BUDGET_CENTS}¢ limit). "
+            f"Increase TWITTER_DAILY_BUDGET_CENTS in config.py or wait until tomorrow."
+        )
+
+    # Phase 1: SuperSmart list scrape FIRST so its tweets get the super_smart
+    # tag — if a tweet appears on both lists, the SuperSmart version wins
+    # (Pulse's pass below skips already-seen IDs).
+    seen_ids: set[str] = set()
+    items: list[PulseItem] = []
+    if SUPER_SMART_LIST_ID:
+        try:
+            ss_raw = _run_actor(list_id=SUPER_SMART_LIST_ID, max_items=SUPER_SMART_MAX_ITEMS)
+            ss_items = _convert_raw_tweets(ss_raw, min_likes=0, super_smart=True, seen_ids=seen_ids)
+            logger.info(f"SuperSmart list: {len(ss_items)} items (from {len(ss_raw)} raw)")
+            items.extend(ss_items)
+        except Exception as e:
+            logger.warning(f"SuperSmart scrape failed: {e}")
+    else:
+        logger.info("SuperSmart list not configured (SUPER_SMART_LIST_ID env var unset)")
+
+    # Phase 2: Pulse list scrape (broad)
+    raw_tweets = _run_actor(list_id=list_id, max_items=max_items)
+    pulse_items = _convert_raw_tweets(raw_tweets, min_likes=min_likes, super_smart=False, seen_ids=seen_ids)
+    logger.info(f"Pulse list: {len(pulse_items)} items (filtered from {len(raw_tweets)} raw tweets)")
+    items.extend(pulse_items)
+
+    logger.info(f"Twitter total: {len(items)} items combined")
     return items
 
 
