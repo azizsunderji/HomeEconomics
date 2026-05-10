@@ -33,7 +33,12 @@ APIFY_BASE = "https://api.apify.com/v2"
 ACTOR_ID = "apidojo/twitter-list-scraper"
 # Twitter List "Pulse" — mirrors @AzizSunderji's follows (~1900 accounts)
 PULSE_LIST_ID = "2046263290972582212"
-LIST_MAX_ITEMS = 3000  # ~$1.20/day at $0.0004/tweet — covers a full 24h of ~970 accounts
+LIST_MAX_ITEMS = 750   # 750 × 4 daily scrapes = 3000 tweets/day total (same as the
+                       # old single-scrape budget, ~$1.20/day at $0.0004/tweet).
+                       # Multi-scrape distribution lets quiet specialist accounts
+                       # surface — under the old single 24h cut, volume tweeters
+                       # ate the budget and accounts like Wiebe (1-2 tweets/day)
+                       # fell off the back of the chronological window.
 
 # DB path for budget tracking (same DB as pulse data, synced via rclone)
 _DB_PATH = Path(__file__).parent.parent.parent / "data" / "pulse.db"

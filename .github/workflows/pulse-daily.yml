@@ -2,7 +2,15 @@ name: Pulse Daily Briefing
 
 on:
   schedule:
-    - cron: "0 9 * * *"  # 5:30am EST / 6:30am EDT
+    # Four daily scrapes every 6 hours (UTC). Goal: distribute the 3,000-tweet
+    # daily Apify budget evenly across the day so quiet specialist accounts
+    # whose tweets fall off the back of a single 24h chronological cut
+    # actually get captured. Each run pulls ~750 tweets (LIST_MAX_ITEMS=750
+    # in twitter_apify.py).
+    - cron: "30 10 * * *"  # 6:30am ET / 5:30am EST — fresh data before local 7am synth
+    - cron: "30 16 * * *"  # 12:30pm ET
+    - cron: "30 22 * * *"  # 6:30pm ET
+    - cron: "30  4 * * *"  # 12:30am ET
   workflow_dispatch:
 
 jobs:
@@ -82,7 +90,7 @@ jobs:
             --verbose --stats-one-line || true
           echo "=== Data lake size ===" && du -sh /tmp/data-lake/
 
-      - name: Run daily pipeline
+      - name: Collect and classify (synthesis runs locally at 7am)
         working-directory: pulse/scripts
         run: python run_pipeline.py collect
 
