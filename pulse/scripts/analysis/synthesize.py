@@ -210,15 +210,17 @@ def _format_items_for_conversation(items: list[dict], limit: int = 280) -> str:
 
             if source in ("twitter", "bluesky", "hackernews"):
                 # Social: 600 chars covers the full tweet/post in almost all cases.
-                # Engagement (likes/score) DELIBERATELY hidden from Sonnet — it was
-                # treating raw likes as a quality proxy and over-rewarding mainstream
-                # high-engagement accounts (Cathie Wood, Elon Musk, Brooks/Hoops)
-                # over substantive specialists with small-but-qualified audiences
-                # (Armlovich, Gupta, Wiebe). Conversation_signal + comment count
-                # remain because those proxy substantive discussion, not popularity.
+                # ALL volume signals (likes, retweets, comment count) hidden from
+                # Sonnet — user feedback was that any volume-correlated signal
+                # biases toward dumb-but-loud accounts. The engagement floor
+                # (TWITTER_MIN_LIKES=1) is enforced at collection, so anything
+                # reaching Sonnet has at least minimal engagement; beyond that
+                # let Sonnet judge on substance (topics + content), not popularity.
+                # conversation_signal kept because it's Haiku's quality rating
+                # of debate intensity, not a raw count.
                 body_preview = body[:600]
                 lines.append(
-                    f"  [{item.get('conversation_signal', '?'):>3} conv | {item.get('num_comments', 0)} comments] "
+                    f"  [{item.get('conversation_signal', '?'):>3} conv] "
                     f"{item['_source_display']}: "
                     f"{item['title'][:200]}\n"
                     f"       Topics: {', '.join(topics) if topics else 'unclassified'}\n"
