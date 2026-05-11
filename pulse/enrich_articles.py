@@ -21,8 +21,13 @@ import time
 from pathlib import Path
 from urllib.parse import urlparse
 
-import browser_cookie3
 from playwright.async_api import async_playwright
+
+try:
+    import browser_cookie3
+except ImportError:
+    # Only needed for local Chrome-cookie mode; cloud mode uses Browserbase.
+    browser_cookie3 = None
 
 DB_PATH = Path(__file__).parent / "data" / "pulse.db"
 LOG_PATH = Path("/tmp/pulse_enrich.log")
@@ -157,16 +162,80 @@ def _extract_article_text(html: str) -> str:
     return text.strip()
 
 
+import os
+
+BROWSERBASE_API_KEY = os.environ.get("BROWSERBASE_API_KEY", "")
+BROWSERBASE_PROJECT_ID = os.environ.get("BROWSERBASE_PROJECT_ID", "")
+# Optional context_id for persistent paywall cookies (WSJ/FT/NYT/etc.).
+# Created via Browserbase API; the user logs into each site once via the
+# Browserbase live-view, cookies persist for months.
+BROWSERBASE_CONTEXT_ID = os.environ.get("BROWSERBASE_CONTEXT_ID", "")
+
+
+def _create_browserbase_session():
+    """Create a new Browserbase session with the configured project + context.
+
+    Returns the session object (has .id and .connect_url). Returns None if
+    Browserbase isn't configured — caller falls back to local Playwright.
+    """
+    if not BROWSERBASE_API_KEY or not BROWSERBASE_PROJECT_ID:
+        return None
+    try:
+        from browserbase import Browserbase
+        bb = Browserbase(api_key=BROWSERBASE_API_KEY)
+        kwargs = {"project_id": BROWSERBASE_PROJECT_ID}
+        if BROWSERBASE_CONTEXT_ID:
+            # Persist cookies/storage across sessions — enables paywall auth
+            kwargs["browser_settings"] = {
+                "context": {"id": BROWSERBASE_CONTEXT_ID, "persist": True}
+            }
+        session = bb.sessions.create(**kwargs)
+        return session
+    except Exception as e:
+        logger.warning(f"Browserbase session creation failed: {e}")
+        return None
+
+
+async def _connect_browser(p) -> tuple[object, str]:
+    """Connect to a remote (Browserbase) or local browser. Returns (browser, mode).
+
+    Mode is one of: "browserbase", "local-fallback".
+
+    Primary path: Browserbase. Hosted Chrome with residential proxies + stealth
+    posture. Handles paywall bot-detection that local Playwright trips
+    (Bloomberg confirmed working, expect similar for WSJ/FT/NYT once auth
+    cookies are stored in a Browserbase context).
+
+    Fallback: local headless Chrome + cookie injection. Used if Browserbase is
+    misconfigured/unreachable. Same fragile behavior as before but at least
+    keeps pulse running.
+    """
+    session = _create_browserbase_session()
+    if session is not None:
+        try:
+            browser = await p.chromium.connect_over_cdp(session.connect_url)
+            logger.info(f"Connected to Browserbase session {session.id} "
+                        f"(context_id={'set' if BROWSERBASE_CONTEXT_ID else 'none'})")
+            return browser, "browserbase"
+        except Exception as e:
+            logger.warning(f"Browserbase CDP connect failed: {e}; falling back to local")
+
+    # Local fallback
+    logger.warning("Using local headless Chrome with cookie injection (Browserbase unavailable)")
+    browser = await p.chromium.launch(
+        headless=True,
+        channel="chrome",
+        args=["--no-sandbox", "--disable-blink-features=AutomationControlled"],
+    )
+    return browser, "local-fallback"
+
+
 async def _enrich_batch(items: list[dict], dry_run: bool = False) -> dict[str, str]:
     """Fetch full text for a batch of items. Returns {item_id: full_text}."""
     results: dict[str, str] = {}
 
     async with async_playwright() as p:
-        browser = await p.chromium.launch(
-            headless=True,
-            channel="chrome",
-            args=["--no-sandbox", "--disable-blink-features=AutomationControlled"],
-        )
+        browser, mode = await _connect_browser(p)
 
         for item in items:
             url = item["url"]
@@ -180,24 +249,37 @@ async def _enrich_batch(items: list[dict], dry_run: bool = False) -> dict[str, s
                 continue
 
             try:
-                cookies = _get_cookies(url)
-                context = await browser.new_context(
-                    user_agent=(
-                        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-                        "AppleWebKit/537.36 (KHTML, like Gecko) "
-                        "Chrome/147.0.0.0 Safari/537.36"
-                    ),
-                    java_script_enabled=True,
-                )
-                if cookies:
-                    await context.add_cookies(cookies)
+                if mode == "browserbase":
+                    # Reuse the single Browserbase session's default context for
+                    # all URLs — Browserbase bills per session, not per URL, so
+                    # one session per batch keeps cost flat.
+                    context = browser.contexts[0]
+                    page = context.pages[0] if context.pages else await context.new_page()
+                else:
+                    # Local fallback: spawn per-URL context with cookies
+                    cookies = _get_cookies(url)
+                    context = await browser.new_context(
+                        user_agent=(
+                            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                            "AppleWebKit/537.36 (KHTML, like Gecko) "
+                            "Chrome/147.0.0.0 Safari/537.36"
+                        ),
+                        java_script_enabled=True,
+                    )
+                    if cookies:
+                        await context.add_cookies(cookies)
+                    page = await context.new_page()
 
-                page = await context.new_page()
-                await page.goto(url, wait_until="domcontentloaded", timeout=20000)
-                await page.wait_for_timeout(2000)
+                await page.goto(url, wait_until="domcontentloaded", timeout=30000)
+                # Browserbase sometimes needs longer for JS-rendered content to
+                # stabilize (Bloomberg, FT). 4s is the sweet spot per testing.
+                await page.wait_for_timeout(4000 if mode == "browserbase" else 2000)
 
                 html = await page.content()
-                await context.close()
+                # Browserbase: keep the shared page open and just clear it on next
+                # iteration via goto(). Local: close per-URL context.
+                if mode != "browserbase":
+                    await context.close()
 
                 text = _extract_article_text(html)
 
