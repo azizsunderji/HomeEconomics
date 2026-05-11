@@ -295,12 +295,26 @@ def _format_items_for_conversation(items: list[dict], limit: int = 280) -> str:
                 last_author_key = akey
                 body_preview = body[:600]
                 prefix = "  ↪ " if is_continuation else "  "
+                # For HN items, expose BOTH URLs so Sonnet can cite the HN
+                # discussion (news.ycombinator.com/item?id=X) separately from
+                # the underlying article URL. Without this Sonnet writes
+                # "Hacker News commenters" but links to the publisher's site.
+                url_block = f"       URL: {item.get('url', '')}\n"
+                if source == "hackernews":
+                    sid = item.get("source_id", "")
+                    if sid.startswith("hn_"):
+                        story_id = sid[3:]
+                        hn_url = f"https://news.ycombinator.com/item?id={story_id}"
+                        url_block = (
+                            f"       Article URL: {item.get('url', '')}  (use this to cite the underlying publication)\n"
+                            f"       HN Discussion URL: {hn_url}  (use this when citing 'Hacker News commenters' or 'the HN thread')\n"
+                        )
                 lines.append(
                     f"{prefix}[{item.get('conversation_signal', '?'):>3} conv] "
                     f"{item['_source_display']}: "
                     f"{item['title'][:200]}\n"
                     f"       Topics: {', '.join(topics) if topics else 'unclassified'}\n"
-                    f"       URL: {item.get('url', '')}\n"
+                    f"{url_block}"
                     f"       {body_preview}"
                 )
             else:
@@ -433,14 +447,24 @@ def _format_institutional_emails(items: list[dict]) -> str:
 # ── URL validation ────────────────────────────────────────────────────────────
 
 def _get_known_urls(conn: sqlite3.Connection, hours: int = 48) -> set[str]:
-    """Get all URLs from recently collected items."""
+    """Get all URLs from recently collected items.
+
+    Also adds synthetic HN-discussion URLs (news.ycombinator.com/item?id=X)
+    for every hackernews item, so Sonnet's "Hacker News commenters" citations
+    (which we now expose as a separate URL in the synthesis input) pass URL
+    validation. Without this, the validator strips them as unknown.
+    """
     from datetime import timedelta
     cutoff = (datetime.now(timezone.utc) - timedelta(hours=hours)).isoformat()
     rows = conn.execute(
-        "SELECT url FROM items WHERE collected_at >= ? AND url != ''",
+        "SELECT url, source, source_id FROM items WHERE collected_at >= ? AND url != ''",
         (cutoff,)
     ).fetchall()
-    return {r["url"] for r in rows}
+    urls = {r["url"] for r in rows}
+    for r in rows:
+        if r["source"] == "hackernews" and (r["source_id"] or "").startswith("hn_"):
+            urls.add(f"https://news.ycombinator.com/item?id={r['source_id'][3:]}")
+    return urls
 
 
 def _find_best_url_match(url: str, known_urls: set[str], threshold: float = 0.7) -> Optional[str]:
