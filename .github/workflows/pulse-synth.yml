@@ -65,10 +65,14 @@ jobs:
           token = ${{ secrets.RCLONE_DROPBOX_TOKEN }}
           EOF
 
-      - name: Pull Pulse DB from Dropbox
+      - name: Pull Pulse DB + stamp files from Dropbox
         run: |
           mkdir -p pulse/data
-          rclone copy "dropbox:Home Economics/Data/Pulse/pulse.db" pulse/data/ \
+          # Pull both pulse.db and the JSON stamp files (gmail_token_issued.json,
+          # topic_weights.json) so health checks have the latest issuance dates
+          # from the user's most-recent local re-auth.
+          rclone copy "dropbox:Home Economics/Data/Pulse/" pulse/data/ \
+            --include "pulse.db" --include "*.json" \
             --verbose --stats-one-line
 
       - name: Pull data lake for claim verification
