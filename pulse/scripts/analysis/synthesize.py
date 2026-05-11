@@ -293,7 +293,7 @@ def _format_items_for_conversation(items: list[dict], limit: int = 280) -> str:
                 akey = _author_key_for_grouping(item)
                 is_continuation = (akey == last_author_key and source in ("twitter", "bluesky"))
                 last_author_key = akey
-                body_preview = body[:600]
+                body_preview = body[:400]
                 prefix = "  ↪ " if is_continuation else "  "
                 # For HN items, expose BOTH URLs so Sonnet can cite the HN
                 # discussion (news.ycombinator.com/item?id=X) separately from
@@ -321,7 +321,7 @@ def _format_items_for_conversation(items: list[dict], limit: int = 280) -> str:
                 # Long-form sources (newspapers, substacks, gmail newsletters):
                 # give the LLM 3000 chars of content — enough for the substantive
                 # middle of an article, not just the lede.
-                body_preview = body[:3000]
+                body_preview = body[:1200]
                 lines.append(
                     f"  {item['_source_display']}: {item['title'][:200]}\n"
                     f"       URL: {item.get('url', '')}\n"
