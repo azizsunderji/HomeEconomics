@@ -389,16 +389,21 @@ TWITTER_VIP_ACCOUNTS = []  # Removed — all accounts earn placement on merit
 # platform_tags=['super_smart'] regardless of which scrape captured it, AND
 # bypasses the TWITTER_MIN_LIKES floor and synthesis relevance threshold.
 # This is the SOURCE OF TRUTH for SuperSmart membership; the separate Apify
-# scrape of the Twitter list is a complement (catches accounts not on the
-# Pulse list at all). To add/remove: edit this set + the Twitter list.
+# scrape of the Twitter list (id 2053622551553744939) is a complement (catches
+# accounts not on the Pulse list at all). To add/remove: edit this set + the
+# Twitter list.
 SUPER_SMART_HANDLES = {
-    "neil_irwin",
-    "johncassidy",
-    "robinwigg",
-    "tracyalloway",
-    "ezraklein",
-    "bencasselman",
-    "natesilver538",
+    "phfloor",
+    "pmcondon2",
+    "arpitrage",
+    "mikefellman",
+    "drcameronmurray",
+    "graff2023",
+    "realsaadasad",
+    "michael_wiebe",
+    "cselmendorf",
+    "aarmlovi",
+    "richard_florida",
 }
 
 # ── Gmail configuration ──────────────────────────────────────────────────────

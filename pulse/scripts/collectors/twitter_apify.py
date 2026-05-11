@@ -44,7 +44,7 @@ LIST_MAX_ITEMS = 750   # 750 × 4 daily scrapes = 3000 tweets/day total (same as
 # "SuperSmart" curated list — must-have voices. Tweets from this list get
 # guaranteed reserved slots in Sonnet synthesis input, regardless of relevance
 # score, AND bypass the min_likes filter. List_id can be overridden via env var.
-SUPER_SMART_LIST_ID = os.environ.get("SUPER_SMART_LIST_ID", "1458808091651231747")
+SUPER_SMART_LIST_ID = os.environ.get("SUPER_SMART_LIST_ID", "2053622551553744939")
 SUPER_SMART_MAX_ITEMS = 200  # smaller budget — list is curated short
 
 # DB path for budget tracking (same DB as pulse data, synced via rclone)
