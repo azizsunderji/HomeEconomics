@@ -114,9 +114,18 @@ def _extract_article_text(html: str) -> str:
         r"<(script|style|nav|header|footer|aside|noscript)[^>]*>.*?</\1>",
         "", html, flags=re.DOTALL | re.IGNORECASE,
     )
-    # Try common article containers first
+    # Try common article containers first. Bloomberg-specific selectors added
+    # because the generic 'article-body' / 'story-body' didn't match their
+    # actual markup, causing 478/515 Bloomberg articles to return only the
+    # 654-char OpenGraph meta description.
     for pattern in [
         r'<article[^>]*>(.*?)</article>',
+        # Bloomberg-specific: data-component attributes
+        r'<div[^>]*\bdata-component="body"[^>]*>(.*?)</div>\s*<div[^>]*\bdata-component="(?:footer|recommended)"',
+        r'<div[^>]*\bclass="[^"]*\bbody-content\b[^"]*"[^>]*>(.*?)</div>',
+        r'<div[^>]*\bclass="[^"]*\bbody-copy\b[^"]*"[^>]*>(.*?)</div>',
+        r'<section[^>]*\bclass="[^"]*\bbody-(?:content|copy)\b[^"]*"[^>]*>(.*?)</section>',
+        # Generic patterns (existing)
         r'<div[^>]*\bclass="[^"]*\barticle-body\b[^"]*"[^>]*>(.*?)</div>',
         r'<div[^>]*\bclass="[^"]*\bstory-body\b[^"]*"[^>]*>(.*?)</div>',
         r'<div[^>]*\bclass="[^"]*\bpost-content\b[^"]*"[^>]*>(.*?)</div>',
