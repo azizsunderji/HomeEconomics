@@ -32,7 +32,7 @@ from analysis.arc_tracker import detect_narrative_shifts
 
 logger = logging.getLogger(__name__)
 
-MODEL = "claude-sonnet-4-5-20250929"
+MODEL = "claude-sonnet-4-6"  # Sonnet 4.6 has native 1M context; 4.5 only had 200K
 
 # Two-tier system:
 # Tier 1: All current conversation and journalism — competes equally for themes
@@ -293,7 +293,7 @@ def _format_items_for_conversation(items: list[dict], limit: int = 280) -> str:
                 akey = _author_key_for_grouping(item)
                 is_continuation = (akey == last_author_key and source in ("twitter", "bluesky"))
                 last_author_key = akey
-                body_preview = body[:400]
+                body_preview = body[:600]
                 prefix = "  ↪ " if is_continuation else "  "
                 # For HN items, expose BOTH URLs so Sonnet can cite the HN
                 # discussion (news.ycombinator.com/item?id=X) separately from
@@ -321,7 +321,7 @@ def _format_items_for_conversation(items: list[dict], limit: int = 280) -> str:
                 # Long-form sources (newspapers, substacks, gmail newsletters):
                 # give the LLM 3000 chars of content — enough for the substantive
                 # middle of an article, not just the lede.
-                body_preview = body[:1200]
+                body_preview = body[:3000]
                 lines.append(
                     f"  {item['_source_display']}: {item['title'][:200]}\n"
                     f"       URL: {item.get('url', '')}\n"
@@ -991,12 +991,7 @@ def generate_daily_briefing(
 
     Returns structured briefing dict.
     """
-    # 1M context beta header — required to fit the enriched corpus (~210K tokens)
-    # within a single Sonnet call. Header set at client level so it propagates to
-    # both `.messages.stream(...)` and `.messages.create(...)`.
-    client = client or anthropic.Anthropic(
-        default_headers={"anthropic-beta": "context-1m-2025-08-07"}
-    )
+    client = client or anthropic.Anthropic()
 
     # Gather all inputs
     all_items = get_items_since(conn, hours=24, min_relevance=0)
@@ -1178,7 +1173,6 @@ Generate the daily briefing JSON. LEAD WITH CONVERSATION — what are people deb
                     max_tokens=32768,
                     system=SYSTEM_PROMPT,
                     messages=[{"role": "user", "content": user_content}],
-                    extra_headers={"anthropic-beta": "context-1m-2025-08-07"},
                 ) as stream:
                     for text in stream.text_stream:
                         response_text += text
