@@ -806,7 +806,9 @@ Return a JSON object:
       "summary": "Factual summary with inline markdown links. When you mention a specific tweet, paper, article, or Substack post, link the relevant phrase using [text](url). Example: '[one economist argues](url) that housing starts will rebound, while an [NBER working paper](url) finds national labs generate regional development through knowledge spillovers.' Lead with specific claims, data, or arguments. Name authors when relevant but do NOT preferentially cite the same handful of accounts across themes — spread attribution across the full set of voices in the input. No meta-commentary, no filler.",
       "platforms": [
         {"name": "twitter", "reply_count": 89, "sentiment": "mixed", "url": "..."},
-        {"name": "bluesky", "reply_count": 12, "sentiment": "bullish", "url": "..."}
+        {"name": "bluesky", "reply_count": 12, "sentiment": "bullish", "url": "..."},
+        {"name": "WSJ", "reply_count": 0, "sentiment": "neutral", "url": "..."},
+        {"name": "Bloomberg", "reply_count": 0, "sentiment": "neutral", "url": "..."}
       ],
       "heat_level": "low|medium|high|viral",
       "related_news_trigger": "What news event sparked this conversation, if any. Empty string if organic.",
@@ -906,7 +908,7 @@ Coverage rules:
    - Macro/international items (Fed, oil prices, Canadian jobs, etc.) only belong as themes IF they explicitly tie to housing impact. A Canadian unemployment number is not a theme; "Canadian unemployment hits 6.9%, putting downward pressure on Toronto housing demand" is. Same for the Fed: "Fed holds rates higher" is not a theme; "Fed pause keeps 30-year mortgage rates near 7%" is.
    - **Tech_general items (3D printers, software lawsuits, generic tech news) NEVER anchor themes.** The classifier may assign tech_general topic to a high-engagement HN thread; ignore the engagement and skip these. They don't belong in this briefing at all unless they have explicit housing or AI-and-housing relevance.
    - Other beats: include the most substantive 2-4 stories if they pass the bar (high-quality demographics, urbanism, geography). Politics only if directly housing-related.
-   - When multiple outlets cover the same news event, ONE theme covers them all with sources linked inline (e.g. "[WSJ](url) and [FT](url) report X, while [Bloomberg](url) emphasizes Y")
+   - When multiple outlets cover the same news event, ONE theme covers them all with EVERY substantive source linked inline. Do NOT cap at 2-3 sources — a widely-covered story may warrant 5-8 inline citations. Example: "[WSJ](url) and [FT](url) report X, while [Bloomberg](url) emphasizes Y; [The Economist](url) frames it as Z, [Reuters](url) adds specific data, [Slow Boring](url) argues against the consensus, and [Conor Sen on Twitter](url) calls it overblown." If 6+ outlets covered the story substantively, cite all 6+. Stop only when sources start repeating the same angle without adding anything.
    - Use the FULL article body when present in the input (enriched articles have substantial body text — quote specifics, not just topics)
    - **Weave historical context with explicit time stamps.** When a topic touches something already discussed this week, cite the relevant historical voice from the "Past 6 Days" section with a date stamp: "Tuesday, [Brad Setser argued](url)..." or "earlier this week [Conor Sen warned](url)...". Never use a historical item without a date marker — the reader needs to instantly tell what's fresh vs context. Today's items don't need a date stamp (they're implicitly today).
 Label each theme's anchor platforms accurately: use "rss" or "substack" or the newspaper name when that's the anchor, "twitter" or "bluesky" when those anchor it.
