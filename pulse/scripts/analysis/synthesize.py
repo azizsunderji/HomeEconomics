@@ -1173,6 +1173,7 @@ Generate the daily briefing JSON. LEAD WITH CONVERSATION — what are people deb
                     max_tokens=32768,
                     system=SYSTEM_PROMPT,
                     messages=[{"role": "user", "content": user_content}],
+                    extra_headers={"anthropic-beta": "context-1m-2025-08-07"},
                 ) as stream:
                     for text in stream.text_stream:
                         response_text += text
