@@ -128,7 +128,12 @@ def check_health(conn: sqlite3.Connection) -> list[dict]:
                     continue
 
                 # (b) proactive expiry warning when within 48 hours
-                # of the 7-day testing-mode token expiry
+                # of the 7-day testing-mode token expiry. The (a) live-refresh
+                # test above is the real source of truth — this is just an
+                # advance warning. Demoted to WARNING so a stale stamp file
+                # (e.g. from cloud runs that don't see the user's local
+                # gmail_auth.py refresh) doesn't generate FAILURE alerts when
+                # the token actually still works fine.
                 meta = issued.get(cid, {})
                 if meta.get("expires"):
                     try:
@@ -138,13 +143,14 @@ def check_health(conn: sqlite3.Connection) -> list[dict]:
                         days_left = lifetime_days - age_days
                         if days_left < 2:  # < 48h remaining → warn
                             problems.append({
-                                "severity": "FAILURE",
+                                "severity": "WARNING",
                                 "stage": "gmail-auth",
                                 "message": (
                                     f"Gmail token {i} ({meta.get('account','?')}) "
-                                    f"expires in {days_left:.1f} days. "
-                                    f"Re-auth soon: `python3 pulse/scripts/gmail_auth.py`, "
-                                    f"then update GMAIL_TOKENS in ~/.zprofile AND GitHub Secrets."
+                                    f"stamp says expires in {days_left:.1f} days "
+                                    f"(token works fine in live test). "
+                                    f"If token-issued.json is stale, "
+                                    f"run gmail_auth.py to refresh the stamp."
                                 ),
                             })
                     except Exception:
