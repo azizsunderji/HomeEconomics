@@ -1,0 +1,144 @@
+name: Pulse Daily Synthesis & Email
+
+# Runs once per day at 11:00 UTC (7:00am ET / 6:00am EST).
+# Reads the pulse.db that the collection workflow synced to Dropbox,
+# re-pulls Gmail to catch late newsletters, classifies, enriches paywalled
+# articles via Browserbase, fetches journal abstracts, runs Sonnet synthesis,
+# captures FT/NYT frontpage screenshots, and sends the email via Resend.
+# Pushes the enriched DB back to Dropbox at the end.
+
+on:
+  schedule:
+    - cron: "0 11 * * *"  # 7:00am ET / 6:00am EST
+  workflow_dispatch:
+
+jobs:
+  synth:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+      APIFY_API_KEY: ${{ secrets.APIFY_API_KEY }}
+      GMAIL_TOKEN: ${{ secrets.GMAIL_TOKEN }}
+      GMAIL_TOKENS: ${{ secrets.GMAIL_TOKENS }}
+      FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+      NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
+      PUSHOVER_TOKEN: ${{ secrets.PUSHOVER_TOKEN }}
+      PUSHOVER_USER: ${{ secrets.PUSHOVER_USER }}
+      BLUESKY_HANDLE: ${{ secrets.BLUESKY_HANDLE }}
+      BLUESKY_APP_PASSWORD: ${{ secrets.BLUESKY_APP_PASSWORD }}
+      BROWSERBASE_API_KEY: ${{ secrets.BROWSERBASE_API_KEY }}
+      BROWSERBASE_PROJECT_ID: ${{ secrets.BROWSERBASE_PROJECT_ID }}
+      BROWSERBASE_CONTEXT_ID: ${{ secrets.BROWSERBASE_CONTEXT_ID }}
+      SFTP_HOST: ${{ secrets.SFTP_HOST }}
+      SFTP_USER: ${{ secrets.SFTP_USER }}
+      SFTP_KEY: ${{ secrets.SFTP_KEY }}
+      DATA_LAKE_PATH: /tmp/data-lake
+      DATA_LAKE_CATALOG_PATH: /tmp/reference/data_lake_catalog.md
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r pulse/requirements.txt
+          # Playwright Chromium for Browserbase CDP (browser is remote — just need the Python client)
+          python -m playwright install-deps chromium || true
+
+      - name: Install rclone
+        run: sudo apt-get update && sudo apt-get install -y rclone
+
+      - name: Configure rclone
+        run: |
+          mkdir -p ~/.config/rclone
+          cat > ~/.config/rclone/rclone.conf << 'EOF'
+          [dropbox]
+          type = dropbox
+          token = ${{ secrets.RCLONE_DROPBOX_TOKEN }}
+          EOF
+
+      - name: Pull Pulse DB from Dropbox
+        run: |
+          mkdir -p pulse/data
+          rclone copy "dropbox:Home Economics/Data/Pulse/pulse.db" pulse/data/ \
+            --verbose --stats-one-line
+
+      - name: Pull data lake for claim verification
+        run: |
+          mkdir -p /tmp/data-lake /tmp/reference
+          rclone copy "dropbox:Home Economics/Data/Price/" /tmp/data-lake/Price/ \
+            --include "*.parquet" --verbose --stats-one-line --transfers 4
+          rclone copy "dropbox:Home Economics/Data/Redfin/" /tmp/data-lake/Redfin/ \
+            --include "monthly_metro.parquet" --verbose --stats-one-line
+          rclone copy "dropbox:Home Economics/Data/State_Migration/" /tmp/data-lake/State_Migration/ \
+            --include "*.parquet" --verbose --stats-one-line
+          rclone copy "dropbox:Home Economics/Data/PopulationEstimates/" /tmp/data-lake/PopulationEstimates/ \
+            --include "*.parquet" --verbose --stats-one-line
+          rclone copy "dropbox:Home Economics/Data/ACS_1Y/" /tmp/data-lake/ACS_1Y/ \
+            --include "*.parquet" --verbose --stats-one-line --transfers 4
+          rclone copy "dropbox:Home Economics/Data/GSS/" /tmp/data-lake/GSS/ \
+            --include "*.parquet" --verbose --stats-one-line
+          rclone copy "dropbox:Home Economics/Data/Crosswalks/" /tmp/data-lake/Crosswalks/ \
+            --include "*.parquet" --verbose --stats-one-line
+          rclone copy "dropbox:Home Economics/Data/Politics/" /tmp/data-lake/Politics/ \
+            --include "*.parquet" --verbose --stats-one-line
+          rclone copy "dropbox:Home Economics/Data/FHFA_NMDB/" /tmp/data-lake/FHFA_NMDB/ \
+            --include "*.parquet" --verbose --stats-one-line
+          rclone copy "dropbox:Home Economics/Reference/data_lake_catalog.md" /tmp/reference/ \
+            --verbose --stats-one-line || true
+          echo "=== Data lake size ===" && du -sh /tmp/data-lake/
+
+      - name: Re-collect Gmail (late newsletters)
+        working-directory: pulse/scripts
+        run: |
+          python -c "
+          import sys
+          sys.path.insert(0, '.')
+          from store import get_db, bulk_upsert, log_collection_start, log_collection_end
+          from collectors import gmail
+          conn = get_db()
+          run_id = log_collection_start(conn, 'gmail')
+          try:
+              items = gmail.collect()
+              new, dupe = bulk_upsert(conn, items)
+              log_collection_end(conn, run_id, len(items), new, dupe)
+              print(f'Gmail re-collect: {new} new, {dupe} dupes (of {len(items)})')
+          except Exception as e:
+              log_collection_end(conn, run_id, 0, 0, 0, error=str(e))
+              print(f'Gmail re-collect failed: {e}')
+          "
+
+      - name: Classify unclassified items
+        working-directory: pulse/scripts
+        run: python run_pipeline.py classify-only
+
+      - name: Enrich articles via Browserbase
+        working-directory: pulse
+        run: python enrich_articles.py --hours 24 --limit 150
+
+      - name: Fetch journal abstracts
+        working-directory: pulse
+        run: python fetch_journal_abstracts.py
+
+      - name: Capture FT/NYT frontpage screenshots
+        working-directory: pulse
+        run: python capture_frontpages.py || echo "Screenshots failed — continuing without"
+
+      - name: Run synthesis + send email
+        working-directory: pulse/scripts
+        run: python run_pipeline.py synthesize
+
+      - name: Push DB back to Dropbox
+        if: always()
+        run: |
+          rclone copy pulse/data/ "dropbox:Home Economics/Data/Pulse/" \
+            --include "pulse.db" --include "*.json" \
+            --verbose --stats-one-line
