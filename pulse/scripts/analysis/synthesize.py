@@ -859,11 +859,17 @@ What you MUST NOT do: "[The Urban Institute projects X](slow-boring-url)" — th
    - A combination of the above
 Coverage rules:
    - Real estate / housing / urbanism: cover EVERY substantive story — don't skip housing stories just to make room for other topics
-   - Other beats (macro, AI, demographics, politics): include the most substantive 4-8 stories
+   - **At least 70% of themes must be housing/urbanism/demographics/affordability-tagged.** If your themes drift toward AI, macro, or generic tech as you approach the count target, STOP — better to have 8 housing-focused themes than 14 with 8 housing + 6 off-topic. The reader signed up for housing economics, not generic news.
+   - AI-only items (model releases, AI safety, AI politics that don't tie to housing/labor/geography) belong in `ai_brief`, NOT in conversation_themes. The ai_brief section is the dedicated outlet for those.
+   - Macro/international items (Fed, oil prices, Canadian jobs, etc.) only belong as themes IF they explicitly tie to housing impact. A Canadian unemployment number is not a theme; "Canadian unemployment hits 6.9%, putting downward pressure on Toronto housing demand" is. Same for the Fed: "Fed holds rates higher" is not a theme; "Fed pause keeps 30-year mortgage rates near 7%" is.
+   - **Tech_general items (3D printers, software lawsuits, generic tech news) NEVER anchor themes.** The classifier may assign tech_general topic to a high-engagement HN thread; ignore the engagement and skip these. They don't belong in this briefing at all unless they have explicit housing or AI-and-housing relevance.
+   - Other beats: include the most substantive 2-4 stories if they pass the bar (high-quality demographics, urbanism, geography). Politics only if directly housing-related.
    - When multiple outlets cover the same news event, ONE theme covers them all with sources linked inline (e.g. "[WSJ](url) and [FT](url) report X, while [Bloomberg](url) emphasizes Y")
    - Use the FULL article body when present in the input (enriched articles have substantial body text — quote specifics, not just topics)
    - **Weave historical context with explicit time stamps.** When a topic touches something already discussed this week, cite the relevant historical voice from the "Past 6 Days" section with a date stamp: "Tuesday, [Brad Setser argued](url)..." or "earlier this week [Conor Sen warned](url)...". Never use a historical item without a date marker — the reader needs to instantly tell what's fresh vs context. Today's items don't need a date stamp (they're implicitly today).
 Label each theme's anchor platforms accurately: use "rss" or "substack" or the newspaper name when that's the anchor, "twitter" or "bluesky" when those anchor it.
+
+**Better to have 8 substantive housing themes than 14 themes diluted with off-topic content.** Don't pad to hit the count target. If today's news truly lacks 12+ housing stories, accept fewer themes and let ai_brief cover AI items.
 
 7. SINGLE TWEETS DO NOT MAKE SOCIAL THEMES. A lone tweet asking a question, making an observation, or endorsing someone else's argument is NOT a theme on its own — put it in twitter_roundup instead. (This rule applies to social-anchored themes only. News-anchored themes don't need cross-platform debate; a single substantial article is enough to anchor a theme.) For a Twitter or Bluesky thread to anchor a theme, you need at least one of: (a) multiple accounts engaging with the same question, (b) the tweet is responding to or commenting on a concrete news story or data release, or (c) the tweet itself has substantial replies/engagement.
 
@@ -921,7 +927,15 @@ def generate_daily_briefing(
     # hackernews items are community-curated by upvotes; treat them like any other
     # curated source with a low (10) relevance threshold rather than the bulk-source
     # 30-bar that was filtering most of HN out
-    curated_sources = {"twitter", "bluesky", "rss", "substack", "gmail", "hackernews"}
+    # Per-source floor map: HN bumped from 10 → 30 because viral non-housing
+    # threads (3D printer lawsuits, generic tech) were anchoring themes despite
+    # tech_general topic and weight=40 ("include sparingly only if exceptional").
+    # HN isn't curated the way Twitter follows are; we scrape the front page.
+    SOURCE_FLOOR = {
+        "twitter": 10, "bluesky": 10, "rss": 10, "substack": 10, "gmail": 10,
+        "hackernews": 30,
+    }
+    BULK_FLOOR = 30  # google_news and other bulk sources
 
     def _is_super_smart_item(i: dict) -> bool:
         tags = i.get("platform_tags", [])
@@ -937,7 +951,7 @@ def generate_daily_briefing(
     relevant_items = [
         i for i in all_items
         if _is_super_smart_item(i)
-        or (i.get("relevance_score") or 0) >= (10 if i.get("source") in curated_sources else 30)
+        or (i.get("relevance_score") or 0) >= SOURCE_FLOOR.get(i.get("source"), BULK_FLOOR)
     ]
     convergence = compute_convergence(conn, hours=24)
     shifts = detect_narrative_shifts(conn)
