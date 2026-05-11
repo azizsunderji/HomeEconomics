@@ -24,8 +24,12 @@ from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from urllib.parse import urlparse
 
-import browser_cookie3
 from playwright.async_api import async_playwright
+
+try:
+    import browser_cookie3
+except ImportError:
+    browser_cookie3 = None
 
 DB_PATH = Path(__file__).parent / "data" / "pulse.db"
 LOG_PATH = Path("/tmp/pulse_journal_abstracts.log")
