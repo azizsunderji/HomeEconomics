@@ -29,6 +29,9 @@ jobs:
       PUSHOVER_USER: ${{ secrets.PUSHOVER_USER }}
       BLUESKY_HANDLE: ${{ secrets.BLUESKY_HANDLE }}
       BLUESKY_APP_PASSWORD: ${{ secrets.BLUESKY_APP_PASSWORD }}
+      BROWSERBASE_API_KEY: ${{ secrets.BROWSERBASE_API_KEY }}
+      BROWSERBASE_PROJECT_ID: ${{ secrets.BROWSERBASE_PROJECT_ID }}
+      BROWSERBASE_CONTEXT_ID: ${{ secrets.BROWSERBASE_CONTEXT_ID }}
       DATA_LAKE_PATH: /tmp/data-lake
       DATA_LAKE_CATALOG_PATH: /tmp/reference/data_lake_catalog.md
 
