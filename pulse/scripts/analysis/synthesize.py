@@ -478,6 +478,48 @@ _REFUSAL_PATTERNS = re.compile(
 )
 
 
+_HOUSING_THEME_TOPICS = {
+    "homeownership_demographics", "cities_urbanism", "demographics_general",
+    "immigration_housing", "ai_and_housing", "happiness_wellbeing",
+    "cultural_lifestyle", "politics_housing", "housing_geography",
+    "affordability", "housing_policy", "housing_prices", "housing_inventory",
+    "mortgage_rates", "construction_supply", "climate_insurance",
+    "commercial_real_estate", "tech_geography",
+}
+
+
+def _enforce_housing_focused_themes(briefing: dict) -> dict:
+    """Drop themes whose own topic tags have ZERO overlap with the housing-
+    related set. Even though the synth prompt asks for 70%+ housing themes,
+    Sonnet routinely picks off-topic anchors (Fed/Iran macro, AI scheming,
+    3D printer lawsuits) when the input pool runs out of fresh housing
+    stories. Belt-and-braces: post-process strip them.
+
+    Items demoted to twitter_roundup if they have a clear anchor handle.
+    """
+    themes = briefing.get("conversation_themes", []) or []
+    if not themes:
+        return briefing
+
+    kept: list[dict] = []
+    dropped: list[dict] = []
+    for theme in themes:
+        topics = theme.get("topics", []) or []
+        topic_set = {str(t).lower() for t in topics}
+        if topic_set & _HOUSING_THEME_TOPICS:
+            kept.append(theme)
+        else:
+            dropped.append(theme)
+
+    if dropped:
+        logger.warning(
+            f"Housing-focus filter: dropped {len(dropped)} themes with no housing "
+            f"topic overlap: {[t.get('theme','')[:50] for t in dropped]}"
+        )
+    briefing["conversation_themes"] = kept
+    return briefing
+
+
 def _enforce_per_author_theme_cap(briefing: dict) -> dict:
     """Belt-and-braces companion to prompt rule 11b — enforce in two passes:
 
@@ -1450,6 +1492,10 @@ Generate the daily briefing JSON. LEAD WITH CONVERSATION — what are people deb
         # Sonnet routinely lets the same voice dominate 2-3 themes; drop the
         # duplicates and demote them to twitter_roundup.
         briefing = _enforce_per_author_theme_cap(briefing)
+
+        # Drop themes with no housing-topic overlap. Sonnet drifts off-topic
+        # toward macro/AI/tech filler when its prompt says "12-18 themes".
+        briefing = _enforce_housing_focused_themes(briefing)
 
         # Validate all URLs against the database
         briefing = _validate_briefing_urls(briefing, conn)
