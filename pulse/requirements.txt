@@ -17,3 +17,9 @@ requests>=2.31
 
 # Utilities
 jinja2>=3.1
+
+# Browser automation (Browserbase connect_over_cdp; no local chromium needed)
+playwright>=1.40
+
+# Image processing for frontpage screenshots
+Pillow>=10.0
