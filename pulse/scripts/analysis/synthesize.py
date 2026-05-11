@@ -991,7 +991,12 @@ def generate_daily_briefing(
 
     Returns structured briefing dict.
     """
-    client = client or anthropic.Anthropic()
+    # 1M context beta header — required to fit the enriched corpus (~210K tokens)
+    # within a single Sonnet call. Header set at client level so it propagates to
+    # both `.messages.stream(...)` and `.messages.create(...)`.
+    client = client or anthropic.Anthropic(
+        default_headers={"anthropic-beta": "context-1m-2025-08-07"}
+    )
 
     # Gather all inputs
     all_items = get_items_since(conn, hours=24, min_relevance=0)
