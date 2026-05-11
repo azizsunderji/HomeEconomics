@@ -808,7 +808,10 @@ Return a JSON object:
         {"name": "twitter", "reply_count": 89, "sentiment": "mixed", "url": "..."},
         {"name": "bluesky", "reply_count": 12, "sentiment": "bullish", "url": "..."},
         {"name": "WSJ", "reply_count": 0, "sentiment": "neutral", "url": "..."},
-        {"name": "Bloomberg", "reply_count": 0, "sentiment": "neutral", "url": "..."}
+        {"name": "Bloomberg", "reply_count": 0, "sentiment": "neutral", "url": "..."},
+        {"name": "FT", "reply_count": 0, "sentiment": "neutral", "url": "..."},
+        {"name": "NYT", "reply_count": 0, "sentiment": "neutral", "url": "..."},
+        {"name": "Reuters", "reply_count": 0, "sentiment": "neutral", "url": "..."}
       ],
       "heat_level": "low|medium|high|viral",
       "related_news_trigger": "What news event sparked this conversation, if any. Empty string if organic.",
@@ -914,6 +917,10 @@ Coverage rules:
 Label each theme's anchor platforms accurately: use "rss" or "substack" or the newspaper name when that's the anchor, "twitter" or "bluesky" when those anchor it.
 
 **Better to have 8 substantive housing themes than 14 themes diluted with off-topic content.** Don't pad to hit the count target. If today's news truly lacks 12+ housing stories, accept fewer themes and let ai_brief cover AI items.
+
+**NO CAP ON PLATFORMS PER THEME.** The platforms[] field is not limited to 2-4 entries. If 12 outlets covered a story (WSJ, NYT, FT, Bloomberg, Reuters, Slow Boring, Brick Underground, The City, Gothamist, Politico, Twitter threads, etc.), list ALL 12. The 7-entry example in the JSON schema is illustrative, not a ceiling. Same applies to inline source citations in the summary text — cite every outlet that added a distinct angle.
+
+**CLARITY OVER BREVITY.** Themes can run a bit longer when the story warrants it. Sonnet tends to compress when more detail would actually help the reader understand the nuance. Don't sacrifice an important data point, a quoted argument, or context about what's at stake just to keep a theme short. A theme summary that runs 4-6 sentences with specific data and substantive analysis is better than a tight 2-sentence skim that loses the substance. The reader is reading a paid daily housing brief — they want depth, not headlines.
 
 7. SINGLE TWEETS DO NOT MAKE SOCIAL THEMES. A lone tweet asking a question, making an observation, or endorsing someone else's argument is NOT a theme on its own — put it in twitter_roundup instead. (This rule applies to social-anchored themes only. News-anchored themes don't need cross-platform debate; a single substantial article is enough to anchor a theme.) For a Twitter or Bluesky thread to anchor a theme, you need at least one of: (a) multiple accounts engaging with the same question, (b) the tweet is responding to or commenting on a concrete news story or data release, or (c) the tweet itself has substantial replies/engagement.
 
