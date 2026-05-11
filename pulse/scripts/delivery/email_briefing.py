@@ -299,7 +299,9 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
         html += _section_heading("News Themes")
         html += _spacer(14)
 
-        for theme in themes[:6]:
+        for theme in themes[:20]:  # bumped from 6 — Sonnet generates 12-18 themes,
+                                   # the previous cap hid >half of them from the email.
+                                   # 20 is a safety ceiling; Sonnet self-caps lower.
             heat = theme.get("heat_level", "medium")
             platforms = theme.get("platforms", [])
             trigger = theme.get("related_news_trigger", "")
