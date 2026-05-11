@@ -25,6 +25,7 @@ from config import (
     TWITTER_MIN_LIKES,
     TWITTER_DAILY_BUDGET_CENTS,
     TWITTER_AUTHOR_BLOCKLIST,
+    SUPER_SMART_HANDLES,
 )
 
 logger = logging.getLogger(__name__)
@@ -236,10 +237,18 @@ def _convert_raw_tweets(
         seen_ids.add(tweet_id)
 
         likes = tweet.get("likeCount", 0) or 0
-        # SuperSmart bypasses min_likes — these are curated must-have accounts;
-        # a 0-like Wiebe tweet still belongs in synthesis. Regular Pulse scrape
-        # still enforces the floor.
-        if not super_smart and likes < min_likes:
+        # Author-level SuperSmart check: any author on the SUPER_SMART_HANDLES
+        # set bypasses min_likes regardless of which scrape captured them.
+        # This means @ezraklein tweets pulled by the broad Pulse scrape ALSO
+        # get the super_smart tag, not just tweets from the dedicated
+        # SuperSmart-list scrape (which only captures accounts on that list).
+        author_obj = tweet.get("author", {})
+        author_handle = (author_obj.get("userName", "") if isinstance(author_obj, dict) else str(author_obj)).lower()
+        is_super_smart_author = author_handle in SUPER_SMART_HANDLES
+        # super_smart param: from the dedicated SuperSmart-list scrape
+        # OR the author is on the handle set (regardless of source)
+        is_super_smart = super_smart or is_super_smart_author
+        if not is_super_smart and likes < min_likes:
             continue
 
         published = None
@@ -296,7 +305,7 @@ def _convert_raw_tweets(
                 "is_conversation": reply_count >= 20,
             },
         )
-        if super_smart:
+        if is_super_smart:
             kwargs["platform_tags"] = ["super_smart"]
         items.append(PulseItem(**kwargs))
     return items

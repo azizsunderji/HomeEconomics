@@ -922,9 +922,22 @@ def generate_daily_briefing(
     # curated source with a low (10) relevance threshold rather than the bulk-source
     # 30-bar that was filtering most of HN out
     curated_sources = {"twitter", "bluesky", "rss", "substack", "gmail", "hackernews"}
+
+    def _is_super_smart_item(i: dict) -> bool:
+        tags = i.get("platform_tags", [])
+        if isinstance(tags, str):
+            try: tags = json.loads(tags)
+            except Exception: tags = []
+        return "super_smart" in (tags or [])
+
+    # SuperSmart items bypass the relevance floor entirely — they're a curated
+    # must-include list. Without this, low-relevance SuperSmart tweets (e.g.,
+    # Nate Silver on NBA, Ezra Klein on tacos) were getting dropped at the
+    # relevance threshold before reaching the Phase 0 reservation pass.
     relevant_items = [
         i for i in all_items
-        if (i.get("relevance_score") or 0) >= (10 if i.get("source") in curated_sources else 30)
+        if _is_super_smart_item(i)
+        or (i.get("relevance_score") or 0) >= (10 if i.get("source") in curated_sources else 30)
     ]
     convergence = compute_convergence(conn, hours=24)
     shifts = detect_narrative_shifts(conn)

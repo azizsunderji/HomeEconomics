@@ -385,6 +385,22 @@ TWITTER_DAILY_BUDGET_CENTS = 200  # $2/day max Apify spend (1 batch, no sweep)
 
 TWITTER_VIP_ACCOUNTS = []  # Removed — all accounts earn placement on merit
 
+# "SuperSmart" handles — any tweet from these accounts gets tagged
+# platform_tags=['super_smart'] regardless of which scrape captured it, AND
+# bypasses the TWITTER_MIN_LIKES floor and synthesis relevance threshold.
+# This is the SOURCE OF TRUTH for SuperSmart membership; the separate Apify
+# scrape of the Twitter list is a complement (catches accounts not on the
+# Pulse list at all). To add/remove: edit this set + the Twitter list.
+SUPER_SMART_HANDLES = {
+    "neil_irwin",
+    "johncassidy",
+    "robinwigg",
+    "tracyalloway",
+    "ezraklein",
+    "bencasselman",
+    "natesilver538",
+}
+
 # ── Gmail configuration ──────────────────────────────────────────────────────
 GMAIL_SENDER_WHITELIST = []  # No whitelist — let Haiku classify everything in the inbox
 
