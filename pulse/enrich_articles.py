@@ -245,6 +245,53 @@ async def _connect_browser(p) -> tuple[object, str]:
     return browser, "local-fallback"
 
 
+async def _try_archive_ph(context, original_url: str) -> str:
+    """Last-resort fetch via archive.ph cached snapshot.
+
+    Called when direct fetch returns < MIN_BODY_LEN chars (paywall, bot block).
+    archive.ph blocks raw HTTP scrapers but allows real browsers, so this uses
+    the Browserbase context's browser.
+
+    Returns extracted text (>= 200 chars) on success, empty string on failure.
+    """
+    from urllib.parse import urlparse as _up, urlunparse as _uu
+    parsed = _up(original_url)
+    # Strip query + fragment — archive.ph indexes the canonical URL
+    clean_url = _uu((parsed.scheme, parsed.netloc, parsed.path, "", "", ""))
+    archive_search = f"https://archive.ph/newest/{clean_url}"
+
+    page = None
+    try:
+        page = await context.new_page()
+        # archive.ph "newest" redirects to the latest snapshot; on a long fetch
+        # we cap at 25s — archived pages render fast.
+        await page.goto(archive_search, wait_until="domcontentloaded", timeout=25000)
+        await page.wait_for_timeout(3500)
+        final_url = page.url
+        # If archive.ph couldn't find a snapshot, the URL stays on archive.ph/<path>
+        # or hits a "no archived versions" page. Snapshot pages have short hash
+        # URLs like archive.ph/abc12 or archive.ph/wip/... (in-progress).
+        if "archive.ph" not in final_url:
+            return ""  # navigated somewhere unexpected
+        # Detect "no snapshot" page
+        body_text = await page.evaluate("document.body ? document.body.innerText.slice(0,400) : ''")
+        if "no archived versions" in body_text.lower() or "no snapshots" in body_text.lower():
+            return ""
+        # Detect captcha
+        if "captcha" in body_text.lower() or "are you human" in body_text.lower():
+            return ""
+        html = await page.content()
+        text = _extract_article_text(html)
+        return text if len(text) >= 200 else ""
+    except Exception as e:
+        logger.warning(f"  archive.ph fetch failed for {original_url[:60]}: {type(e).__name__}")
+        return ""
+    finally:
+        if page is not None:
+            try: await page.close()
+            except Exception: pass
+
+
 async def _enrich_batch(items: list[dict], dry_run: bool = False) -> dict[str, str]:
     """Fetch full text for a batch of items. Returns {item_id: full_text}."""
     results: dict[str, str] = {}
@@ -300,6 +347,19 @@ async def _enrich_batch(items: list[dict], dry_run: bool = False) -> dict[str, s
                 text = _extract_article_text(html)
 
                 if len(text) < 200:
+                    # Try archive.ph fallback (Browserbase only — local Chrome
+                    # would be blocked by archive.ph). Catches paywalled sites
+                    # we don't subscribe to (Atlantic, New Yorker preview-only,
+                    # niche trades, etc.) since archive.ph caches them.
+                    if mode == "browserbase":
+                        logger.info(f"  THIN ({len(text)}c) {domain} — trying archive.ph…")
+                        archive_text = await _try_archive_ph(context, url)
+                        if archive_text:
+                            archive_text = archive_text[:8000]
+                            results[item_id] = archive_text
+                            logger.info(f"  OK-ARCHIVE ({len(archive_text)}c) {domain}: {title}")
+                            await asyncio.sleep(1.5)
+                            continue
                     logger.info(f"  THIN ({len(text)}c) {domain}: {title}")
                     continue
 
