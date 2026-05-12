@@ -136,6 +136,14 @@
       <outline text="Washington Post National" title="Washington Post National" type="rss" xmlUrl="https://feeds.washingtonpost.com/rss/national" htmlUrl="https://www.washingtonpost.com/national" />
       <outline text="Washington Post Local" title="Washington Post Local" type="rss" xmlUrl="https://feeds.washingtonpost.com/rss/local" htmlUrl="https://www.washingtonpost.com/local" />
       <outline text="Washington Post Opinions" title="Washington Post Opinions" type="rss" xmlUrl="https://feeds.washingtonpost.com/rss/opinions" htmlUrl="https://www.washingtonpost.com/opinions" />
+      <outline text="LA Times Business" title="LA Times Business" type="rss" xmlUrl="https://www.latimes.com/business/rss2.0.xml" htmlUrl="https://www.latimes.com/business" />
+      <outline text="LA Times Real Estate" title="LA Times Real Estate" type="rss" xmlUrl="https://www.latimes.com/business/real-estate/rss2.0.xml" htmlUrl="https://www.latimes.com/business/real-estate" />
+      <outline text="LA Times Business Technology" title="LA Times Business Technology" type="rss" xmlUrl="https://www.latimes.com/business/technology/rss2.0.xml" htmlUrl="https://www.latimes.com/business/technology" />
+      <outline text="LA Times California" title="LA Times California" type="rss" xmlUrl="https://www.latimes.com/california/rss2.0.xml" htmlUrl="https://www.latimes.com/california" />
+      <outline text="LA Times Politics" title="LA Times Politics" type="rss" xmlUrl="https://www.latimes.com/politics/rss2.0.xml" htmlUrl="https://www.latimes.com/politics" />
+      <outline text="LA Times Environment" title="LA Times Environment" type="rss" xmlUrl="https://www.latimes.com/environment/rss2.0.xml" htmlUrl="https://www.latimes.com/environment" />
+      <outline text="LA Times World &amp; Nation" title="LA Times World &amp; Nation" type="rss" xmlUrl="https://www.latimes.com/world-nation/rss2.0.xml" htmlUrl="https://www.latimes.com/world-nation" />
+      <outline text="LA Times Opinion" title="LA Times Opinion" type="rss" xmlUrl="https://www.latimes.com/opinion/rss2.0.xml" htmlUrl="https://www.latimes.com/opinion" />
       <outline text="John Burns Research and Consulting | LinkedIn" title="John Burns Research and Consulting | LinkedIn" type="rss" xmlUrl="https://rss.app/feeds/94he2j6jTPUNzUX7.xml" htmlUrl="https://rss.app" />
     </outline>
     <outline title="Journals" text="Journals">
