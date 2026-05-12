@@ -248,13 +248,18 @@ async def _enrich_batch(items: list[dict], dry_run: bool = False) -> dict[str, s
                 logger.info(f"  SKIP {domain}: {title}")
                 continue
 
+            page = None
+            context = None
             try:
                 if mode == "browserbase":
-                    # Reuse the single Browserbase session's default context for
-                    # all URLs — Browserbase bills per session, not per URL, so
-                    # one session per batch keeps cost flat.
+                    # Use the persistent auth context but spawn a fresh page per
+                    # URL — sharing a single page across many gotos caused a
+                    # navigation cascade where a Bloomberg redirect to
+                    # chrome-error:// poisoned the page state for subsequent
+                    # URLs ("interrupted by another navigation"). A new page
+                    # per URL is fully isolated.
                     context = browser.contexts[0]
-                    page = context.pages[0] if context.pages else await context.new_page()
+                    page = await context.new_page()
                 else:
                     # Local fallback: spawn per-URL context with cookies
                     cookies = _get_cookies(url)
@@ -276,10 +281,6 @@ async def _enrich_batch(items: list[dict], dry_run: bool = False) -> dict[str, s
                 await page.wait_for_timeout(4000 if mode == "browserbase" else 2000)
 
                 html = await page.content()
-                # Browserbase: keep the shared page open and just clear it on next
-                # iteration via goto(). Local: close per-URL context.
-                if mode != "browserbase":
-                    await context.close()
 
                 text = _extract_article_text(html)
 
@@ -297,6 +298,15 @@ async def _enrich_batch(items: list[dict], dry_run: bool = False) -> dict[str, s
 
             except Exception as e:
                 logger.warning(f"  FAIL {url[:60]}: {e}")
+            finally:
+                # Always close the per-URL page to release the slot.
+                # For local mode also close the per-URL context.
+                if page is not None:
+                    try: await page.close()
+                    except Exception: pass
+                if mode != "browserbase" and context is not None:
+                    try: await context.close()
+                    except Exception: pass
 
         await browser.close()
 
