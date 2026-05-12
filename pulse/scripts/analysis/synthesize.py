@@ -941,6 +941,23 @@ When summarizing a chart, quote the chart's exact label rather than describing i
 
 If you're paraphrasing data and uncertain whether you're preserving the technical distinction, quote the original exactly with quotation marks.
 
+4e. NAMED PUBLICATIONS REQUIRE PROVENANCE PRESERVATION. When you reference a NAMED PUBLICATION by its title — institutional reports, monthly monitors, press releases, working papers, etc. (e.g., "ICE Mortgage Monitor," "NAR Existing-Home Sales Report," "Fed Beige Book," "Goldman US Daily," "FHFA HPI release," "BLS CPI release", "CBO budget outlook") — the URL MUST be on the publisher's own domain. If you only have a secondary source covering it, your prose MUST do BOTH:
+  (a) preserve the original publisher's attribution (the data came from them, not the secondary), AND
+  (b) make the secondary source's role visible (summary / analysis / report on).
+
+Acceptable forms:
+  • "[CalculatedRisk's summary of the May ICE Mortgage Monitor](secondary-url) showed annual home price growth of 0.9% in April"
+  • "The May ICE Mortgage Monitor showed 0.9% annual home price growth, [per CalculatedRisk's analysis](secondary-url)"
+  • "CalculatedRisk [summarized](secondary-url) the May ICE Mortgage Monitor, which reported 0.9% annual home price growth"
+  • If you can't honor both, DROP the link: "The May ICE Mortgage Monitor showed 0.9% annual home price growth."
+
+NEVER do any of these:
+  • "[ICE May Mortgage Monitor](secondary-url)" — link domain mismatches the named entity; reader feels deceived clicking through
+  • "[CalculatedRisk reports home price growth was 0.9%](secondary-url)" — attributes the DATA to CalculatedRisk when CR is summarizing ICE; this is data-source misattribution
+  • "[CalculatedRisk](secondary-url) reports home price growth was 0.9%" — same data-source misattribution
+
+The fix is ALWAYS: name BOTH the original publisher AND the secondary you actually link to. Two names, one link, both roles visible.
+
 5. SUBSTACKER TAKES COME FROM THE PROVIDED NEWSLETTER/COLUMNIST SECTION. The substacker_takes section is EXCLUSIVELY for items from the "Newsletters" section above (which now includes Substack newsletters, Gmail newsletters, AND single-author RSS columnists like Jonathan Levin or Sarah O'Connor). Do NOT include Twitter commentators or generic news headlines. Use the URL provided with each item (even if it's a redirect link). For each take, summarize their specific ARGUMENT — not just the topic. "Erdmann argues builders are underbuilding relative to population growth" is good. "Erdmann wrote about housing supply" is not. IMPORTANT: Include a take for EVERY newsletter/columnist item provided. Do not cherry-pick — summarize all of them.
 
 5b. NEVER NARRATE INSUFFICIENT CONTENT. If a newsletter's preview is short or teaser-only, infer the take from the title and any partial body you have, then write a confident one-sentence summary. NEVER write phrases like "I don't have access to the full content", "the snippet is cut off", "based on the limited preview", "I cannot offer specifics", or "partial summary". The reader will see this as broken output. If you genuinely can't infer anything beyond the title, write a single neutral sentence based on the title alone (e.g., "Argues that relationship-building beats AI tools and clever subject lines as the most underrated PR skill for real estate reporters.") — no meta-commentary. This rule applies to substacker_takes, ai_brief, twitter_roundup, and any other section.
