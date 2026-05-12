@@ -962,7 +962,7 @@ The fix is ALWAYS: name BOTH the original publisher AND the secondary you actual
 
 5b. NEVER NARRATE INSUFFICIENT CONTENT. If a newsletter's preview is short or teaser-only, infer the take from the title and any partial body you have, then write a confident one-sentence summary. NEVER write phrases like "I don't have access to the full content", "the snippet is cut off", "based on the limited preview", "I cannot offer specifics", or "partial summary". The reader will see this as broken output. If you genuinely can't infer anything beyond the title, write a single neutral sentence based on the title alone (e.g., "Argues that relationship-building beats AI tools and clever subject lines as the most underrated PR skill for real estate reporters.") — no meta-commentary. This rule applies to substacker_takes, ai_brief, twitter_roundup, and any other section.
 
-6. THEMES: 12-18 themes. These are the most substantive stories of the day. This section ABSORBS what used to be a separate "Headlines" section — so it must comprehensively cover today's news (especially housing/real-estate) AND today's social conversation. Each theme can be:
+6. THEMES: 8-14 themes, with a STRONG PREFERENCE for fewer, richer themes over more, thinner ones. Quality over count. These are the most substantive stories of the day. This section ABSORBS what used to be a separate "Headlines" section — so it must comprehensively cover today's news (especially housing/real-estate) AND today's social conversation. Each theme can be:
    - A news story with multiple outlets covering it (weave the actual reporting from the article BODIES, not just headlines, with inline source links to each outlet)
    - A cross-platform debate (multiple voices arguing about something)
    - A data release or research finding
@@ -981,6 +981,8 @@ Coverage rules:
 Label each theme's anchor platforms accurately: use "rss" or "substack" or the newspaper name when that's the anchor, "twitter" or "bluesky" when those anchor it.
 
 **Better to have 8 substantive housing themes than 14 themes diluted with off-topic content.** Don't pad to hit the count target. If today's news truly lacks 12+ housing stories, accept fewer themes and let ai_brief cover AI items.
+
+**CONSOLIDATE NEAR-DUPLICATE THEMES.** Before finalizing the theme list, ask: "are any two themes telling the same story from different vendor angles?" If two themes both anchor on (a) the same data period (same month / same release window) AND (b) the same housing-market dynamic (sales + prices, supply + demand, rents + vacancy, mortgage rates + affordability, etc.), MERGE them into one theme that holds the tension inside. Cite all sources inline; don't split because the data came from different vendors. Example: an April existing-home-sales theme (NAR / HousingWire / CNBC) and an April home-price-growth theme (ICE Mortgage Monitor / CalculatedRisk) are ONE story — "April: sales soft, prices firm" — not two. The reader thinks in market dynamics, not data-vendor categories. Splitting them makes the brief feel like the same story got coverage twice. When the data period or the dynamic differ meaningfully (e.g., April sales but March CPI shelter; national sales but a Bay Area-specific price piece), keep them separate.
 
 **NO CAP ON PLATFORMS PER THEME.** The platforms[] field is not limited to 2-4 entries. If 12 outlets covered a story (WSJ, NYT, FT, Bloomberg, Reuters, Slow Boring, Brick Underground, The City, Gothamist, Politico, Twitter threads, etc.), list ALL 12. The 7-entry example in the JSON schema is illustrative, not a ceiling. Same applies to inline source citations in the summary text — cite every outlet that added a distinct angle.
 
@@ -1569,7 +1571,7 @@ Generate the daily briefing JSON. LEAD WITH CONVERSATION — what are people deb
         # briefing = _enforce_per_author_theme_cap(briefing)
 
         # Drop themes with no housing-topic overlap. Sonnet drifts off-topic
-        # toward macro/AI/tech filler when its prompt says "12-18 themes".
+        # toward macro/AI/tech filler when its prompt has a high theme count.
         briefing = _enforce_housing_focused_themes(briefing)
 
         # Validate all URLs against the database
