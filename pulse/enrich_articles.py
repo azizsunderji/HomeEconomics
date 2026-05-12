@@ -185,11 +185,12 @@ def _create_browserbase_session():
         bb = Browserbase(api_key=BROWSERBASE_API_KEY)
         kwargs = {
             "project_id": BROWSERBASE_PROJECT_ID,
-            # Default session lifetime is ~5 min; bump to 30 min so a
-            # 150-article enrichment batch fits in one session. Without this
-            # the session dies mid-batch and every subsequent goto raises
-            # "list index out of range" because browser.contexts becomes empty.
-            "timeout": 1800,
+            # `api_timeout` is the SESSION lifetime in seconds (not to be
+            # confused with `timeout` which is the HTTP request timeout for
+            # the create call). Default session is ~5 min — too short for a
+            # 150-article batch. Bump to 30 min.
+            "api_timeout": 1800,
+            "keep_alive": True,
         }
         if BROWSERBASE_CONTEXT_ID:
             # Persist cookies/storage across sessions — enables paywall auth
