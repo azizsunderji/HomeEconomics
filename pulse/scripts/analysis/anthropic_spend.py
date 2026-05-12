@@ -28,6 +28,11 @@ PRICING_CENTS_PER_MTOK = {
     "claude-sonnet-4-5-20250929": {
         "input": 300, "cache_write": 375, "cache_read": 30, "output": 1500,
     },
+    "claude-sonnet-4-6": {
+        # Same per-token pricing as 4.5; 4.6 has native 1M context so no
+        # extended-context surcharge (4.5's >200K beta cost 2×; 4.6 is flat).
+        "input": 300, "cache_write": 375, "cache_read": 30, "output": 1500,
+    },
     "claude-haiku-4-5-20251001": {
         "input": 100, "cache_write": 125, "cache_read": 10, "output": 500,
     },
