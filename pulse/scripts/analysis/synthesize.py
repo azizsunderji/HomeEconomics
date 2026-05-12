@@ -943,6 +943,11 @@ When summarizing a chart, quote the chart's exact label rather than describing i
 
 If you're paraphrasing data and uncertain whether you're preserving the technical distinction, quote the original exactly with quotation marks.
 
+Social-media actions also need precise verbs. The platform action determines what you can claim happened. Don't upgrade a public reply into something it isn't.
+- "replied to" / "quote-tweeted" / "responded to" / "asked in reply to" / "tagged in a thread" — these describe specific public actions
+- "told directly" / "spoke with" / "DM'd" / "messaged" — these imply private/direct communication we virtually never have evidence of from public scrapes
+A public reply on X is NOT "telling someone directly." Failure example: "@nickgerli1 told Rep. @PramilaJayapal directly that Seattle housing supply is exploding" — wrong, that was a public reply. Correct: "@nickgerli1 replied to Rep. @PramilaJayapal that Seattle housing supply is exploding." If you're unsure from the tweet's metadata, use the neutral verb "wrote."
+
 4e. NAMED PUBLICATIONS REQUIRE PROVENANCE PRESERVATION. When you reference a NAMED PUBLICATION by its title — institutional reports, monthly monitors, press releases, working papers, etc. (e.g., "ICE Mortgage Monitor," "NAR Existing-Home Sales Report," "Fed Beige Book," "Goldman US Daily," "FHFA HPI release," "BLS CPI release", "CBO budget outlook") — the URL MUST be on the publisher's own domain. If you only have a secondary source covering it, your prose MUST do BOTH:
   (a) preserve the original publisher's attribution (the data came from them, not the secondary), AND
   (b) make the secondary source's role visible (summary / analysis / report on).
