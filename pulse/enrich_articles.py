@@ -39,6 +39,13 @@ _CHROME_PROFILES = ["Default"] + [f"Profile {i}" for i in range(1, 6)]
 SKIP_DOMAINS = {
     "google.com", "google.news.com", "t.co", "twitter.com", "x.com",
     "linkedin.com", "facebook.com",
+    # CoStar is a commercial-real-estate trade publication behind a hard
+    # paywall ($5K+/yr enterprise). Both "OK" and "THIN" enrichment outcomes
+    # for CoStar URLs are misleading — they just return the navigation chrome
+    # + a 100-200-char teaser. Skip entirely to save ~5 min/run of fruitless
+    # Browserbase time. Their RSS teasers are kept (collected earlier in the
+    # pipeline) — those are what synthesis sees for CoStar items.
+    "costar.com",
 }
 
 # Minimum body length to consider "already enriched"
