@@ -19,6 +19,7 @@
     <outline text="NAR Economists Outlook" xmlUrl="http://feeds.feedburner.com/EconomistsOutlook" type="rss" title="NAR Economists Outlook" htmlUrl="https://www.nar.realtor/economists-outlook/feed" />
     <outline title="NAR Culture Scan" type="rss" text="NAR Culture Scan" htmlUrl="https://www.nar.realtor/culture-scan/feed" xmlUrl="https://feeds.feedburner.com/nar/culture-scan" />
     <outline title="News Releases | Move, Inc." htmlUrl="https://mediaroom.realtor.com/" xmlUrl="https://mediaroom.realtor.com/news_releases?pagetemplate=rss" type="rss" text="News Releases | Move, Inc." />
+    <outline title="Realtor.com Research" text="Realtor.com Research" type="rss" htmlUrl="https://www.realtor.com/research/" xmlUrl="https://www.realtor.com/research/feed/" />
     <outline type="rss" title="NotoriousROB" text="NotoriousROB" xmlUrl="https://notoriousrob.com/feed/rss" htmlUrl="https://notoriousrob.com" />
     <outline text="Redfin | Real Estate Tips for Home Buying, Selling &amp; More" title="Redfin | Real Estate Tips for Home Buying, Selling &amp; More" htmlUrl="https://www.redfin.com/blog/" xmlUrl="https://www.redfin.com/blog/feed/" type="rss" />
     <outline type="rss" text="Residential Real Estate News - Residential Real Estate News Headlines | Bizjournals.com" xmlUrl="http://feeds.bizjournals.com/industry_21" title="Residential Real Estate News - Residential Real Estate News Headlines | Bizjournals.com" htmlUrl="https://www.bizjournals.com" />
