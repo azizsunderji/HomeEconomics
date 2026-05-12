@@ -128,6 +128,10 @@ jobs:
         working-directory: pulse
         run: python enrich_articles.py --hours 24 --limit 150
 
+      - name: Enrich t.co links inside high-relevance tweets
+        working-directory: pulse
+        run: python enrich_tweet_links.py --hours 24 --limit 60 --min-relevance 50 || echo "Tweet-link enrichment failed — continuing"
+
       - name: Fetch journal abstracts
         working-directory: pulse
         run: python fetch_journal_abstracts.py
