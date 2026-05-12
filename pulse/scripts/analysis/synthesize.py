@@ -923,6 +923,24 @@ What you MUST NOT do: "[The Urban Institute projects X](slow-boring-url)" — th
   (c) Link the verb of attribution: "Yun [said](url) affordability has improved..."
 What you MUST NOT do: write "Yun said X" as plain text. If you cited HousingWire two sentences earlier, that link does NOT cover a later separate Yun attribution — each attributed claim needs its own link. This rule applies to direct quotes, paraphrased positions, and specific data points (e.g., "Goldman tracked Q2 at 1.6%" — link Goldman; "the median price hit $417,700" — only an unattributed fact like this can stand without a link).
 
+4d. PRESERVE TECHNICAL PRECISION WHEN PARAPHRASING. When a source uses a specific technical term — especially in housing/economics where similar-sounding terms describe different things — KEEP THAT EXACT TERM. Do not generalize, smooth, or simplify it. The reader is sophisticated and the distinctions matter.
+
+Housing pipeline (most common trap):
+- "permits issued" / "units authorized" ≠ "construction"
+- "units authorized but not started" ≠ "rising construction" — it's the OPPOSITE (permits piling up because builders aren't breaking ground)
+- "housing starts" ≠ "completions" ≠ "under construction"
+- "new home sales" ≠ "existing home sales"
+Other common conflations to avoid:
+- "rent growth" ≠ "asking rent" ≠ "effective rent" ≠ "rent prices"
+- "median price" ≠ "median sale price" ≠ "median list price"
+- "mortgage rate" ≠ "mortgage application volume" ≠ "mortgage origination"
+- "construction spending" ≠ "construction starts"
+- "vacancy rate" ≠ "rental vacancy rate" ≠ "homeowner vacancy rate"
+
+When summarizing a chart, quote the chart's exact label rather than describing it loosely. Example failure: a tweet shows a chart titled "Units Authorized but Not Started," and the writeup says "construction has risen" — that is wrong (the chart shows the GAP between authorized and started, which means construction did NOT keep pace with permits). Correct version: "Units authorized but not started has climbed to record levels — permits piling up faster than builders are breaking ground."
+
+If you're paraphrasing data and uncertain whether you're preserving the technical distinction, quote the original exactly with quotation marks.
+
 5. SUBSTACKER TAKES COME FROM THE PROVIDED NEWSLETTER/COLUMNIST SECTION. The substacker_takes section is EXCLUSIVELY for items from the "Newsletters" section above (which now includes Substack newsletters, Gmail newsletters, AND single-author RSS columnists like Jonathan Levin or Sarah O'Connor). Do NOT include Twitter commentators or generic news headlines. Use the URL provided with each item (even if it's a redirect link). For each take, summarize their specific ARGUMENT — not just the topic. "Erdmann argues builders are underbuilding relative to population growth" is good. "Erdmann wrote about housing supply" is not. IMPORTANT: Include a take for EVERY newsletter/columnist item provided. Do not cherry-pick — summarize all of them.
 
 5b. NEVER NARRATE INSUFFICIENT CONTENT. If a newsletter's preview is short or teaser-only, infer the take from the title and any partial body you have, then write a confident one-sentence summary. NEVER write phrases like "I don't have access to the full content", "the snippet is cut off", "based on the limited preview", "I cannot offer specifics", or "partial summary". The reader will see this as broken output. If you genuinely can't infer anything beyond the title, write a single neutral sentence based on the title alone (e.g., "Argues that relationship-building beats AI tools and clever subject lines as the most underrated PR skill for real estate reporters.") — no meta-commentary. This rule applies to substacker_takes, ai_brief, twitter_roundup, and any other section.
