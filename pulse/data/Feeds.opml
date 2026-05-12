@@ -132,6 +132,10 @@
       <outline text="FT US Economy" title="FT US Economy" type="rss" xmlUrl="https://www.ft.com/us-economy?format=rss" htmlUrl="https://www.ft.com/us-economy" />
       <outline text="NotoriousROB" title="NotoriousROB" type="rss" xmlUrl="https://www.notoriousrob.com/rss/" htmlUrl="https://www.notoriousrob.com" />
       <outline text="WSJ Real Estate" title="WSJ Real Estate" type="rss" xmlUrl="https://rss.app/feeds/aXSOGgfvuL2dZjWn.xml" htmlUrl="https://www.wsj.com/real-estate" />
+      <outline text="Washington Post Business" title="Washington Post Business" type="rss" xmlUrl="https://feeds.washingtonpost.com/rss/business" htmlUrl="https://www.washingtonpost.com/business" />
+      <outline text="Washington Post National" title="Washington Post National" type="rss" xmlUrl="https://feeds.washingtonpost.com/rss/national" htmlUrl="https://www.washingtonpost.com/national" />
+      <outline text="Washington Post Local" title="Washington Post Local" type="rss" xmlUrl="https://feeds.washingtonpost.com/rss/local" htmlUrl="https://www.washingtonpost.com/local" />
+      <outline text="Washington Post Opinions" title="Washington Post Opinions" type="rss" xmlUrl="https://feeds.washingtonpost.com/rss/opinions" htmlUrl="https://www.washingtonpost.com/opinions" />
       <outline text="John Burns Research and Consulting | LinkedIn" title="John Burns Research and Consulting | LinkedIn" type="rss" xmlUrl="https://rss.app/feeds/94he2j6jTPUNzUX7.xml" htmlUrl="https://rss.app" />
     </outline>
     <outline title="Journals" text="Journals">
