@@ -183,7 +183,14 @@ def _create_browserbase_session():
     try:
         from browserbase import Browserbase
         bb = Browserbase(api_key=BROWSERBASE_API_KEY)
-        kwargs = {"project_id": BROWSERBASE_PROJECT_ID}
+        kwargs = {
+            "project_id": BROWSERBASE_PROJECT_ID,
+            # Default session lifetime is ~5 min; bump to 30 min so a
+            # 150-article enrichment batch fits in one session. Without this
+            # the session dies mid-batch and every subsequent goto raises
+            # "list index out of range" because browser.contexts becomes empty.
+            "timeout": 1800,
+        }
         if BROWSERBASE_CONTEXT_ID:
             # Persist cookies/storage across sessions — enables paywall auth
             kwargs["browser_settings"] = {
