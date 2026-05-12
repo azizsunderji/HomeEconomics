@@ -844,7 +844,7 @@ Return a JSON object:
   "twitter_roundup": [
     {
       "author": "@handle",
-      "summary": "1-2 sentences (max 50 words). If the account tweeted ONE notable thing, use ONE inline markdown link [short phrase](tweet_url). If the account tweeted multiple distinct things, use MULTIPLE inline links — one per distinct topic — making sure each anchor phrase matches the tweet it links to. No t.co URLs. Examples: single — '[argued rent growth is bottoming out](url)'; multi — '[noted Seattle inventory shock](url1), [criticized California's labor mandates in SB 1383](url2), and [praised the builder's remedy](url3).'"
+      "summary": "1-2 sentences (max 50 words). One inline link per distinct tweet, but LINK ANCHOR MUST BE 1-2 WORDS — typically the verb of attribution ('argued', 'pitched', 'noted', 'criticized', 'flagged') or a tight noun phrase. The rest of the sentence stays in plain prose. The reader should see mostly black text with short blue link words sprinkled in. What MUST NOT happen: a whole descriptive phrase or sentence wrapped in the link. No t.co URLs. Examples: single — '[Argued](url) rent growth is bottoming out as 2024 leases reset.'  multi — '[Pitched](url1) courtyard block designs enabling 40–60 units per PNW lot, and [argued](url2) the future of cities is mixed-use clusters rather than hub-and-spoke.'  BAD: '[Pitched courtyard block designs enabling 40-60 units per PNW lot](url1)' (whole phrase wrapped → reads as a wall of blue)."
     }
   ],
 
