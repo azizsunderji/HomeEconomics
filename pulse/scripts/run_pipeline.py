@@ -660,9 +660,16 @@ def cmd_synthesize(args):
                         for j in missing:
                             page = None
                             try:
+                                # ScienceDirect serves the abstract on /article/abs/pii/
+                                # but our RSS feed gives /article/pii/. Rewrite.
+                                fetch_url = j["url"]
+                                if "sciencedirect.com/science/article/pii/" in fetch_url:
+                                    fetch_url = fetch_url.replace(
+                                        "/science/article/pii/", "/science/article/abs/pii/"
+                                    )
                                 page = await ctx.new_page()
-                                await page.goto(j["url"], wait_until="domcontentloaded", timeout=30000)
-                                await page.wait_for_timeout(3000)
+                                await page.goto(fetch_url, wait_until="domcontentloaded", timeout=30000)
+                                await page.wait_for_timeout(4500)
                                 html = await page.content()
                                 got = _j_extract_abs(html)
                                 if got:
