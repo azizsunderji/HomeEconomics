@@ -574,17 +574,60 @@ def cmd_synthesize(args):
         day_idx = datetime.now(timezone.utc).toordinal()
         journal_items = []
         if pool:
+            # Lazy-import abstract fetchers so they only load when needed
+            try:
+                import httpx as _httpx_j
+                import sys as _sys_j
+                _sys_j.path.insert(0, str(Path(__file__).parent.parent))
+                from fetch_journal_abstracts import (
+                    _extract_doi as _j_extract_doi,
+                    _fetch_abstract_by_doi as _j_fetch_doi,
+                    _fetch_abstract_by_title as _j_fetch_title,
+                )
+                _abs_client = _httpx_j.Client(headers={
+                    "User-Agent": "Pulse Briefing <aziz@home-economics.us>"
+                }, timeout=15)
+            except Exception as _e:
+                logger.warning(f"Abstract fetcher unavailable: {_e}")
+                _abs_client = None
+
             start = (day_idx * 5) % len(pool)
             for i in range(5):
                 item = pool[(start + i) % len(pool)]
                 feed = item.get("feed_name", "")
-                # Try to get an abstract — NBER puts it in body; others only
-                # have metadata in RSS, so show whatever body we have.
                 import re as _re_j
                 body = item.get("body", "") or ""
                 body = _re_j.sub(r"Publication date:.*?Author\(s\):[^\n]*", "", body).strip()
                 body = _re_j.sub(r"Volume \d+, Issue \d+.*?\.\s*$", "", body).strip()
                 abstract = body[:1500] if len(body) > 80 else ""
+
+                # If RSS body had no usable abstract, fetch one inline via DOI →
+                # OpenAlex/Semantic Scholar/CrossRef → title search. This keeps
+                # the picked papers and the fetched abstracts in lockstep —
+                # earlier separate fetch_journal_abstracts.py ran on a different
+                # 5-paper rotation slice due to pool-size drift between scripts.
+                if not abstract and _abs_client is not None:
+                    title = (item.get("title") or "").strip()
+                    url = item.get("url") or ""
+                    fetched = ""
+                    doi = _j_extract_doi(url) if url else None
+                    if doi:
+                        try:
+                            fetched = _j_fetch_doi(doi, _abs_client) or ""
+                        except Exception:
+                            fetched = ""
+                    if not fetched and title:
+                        clean_title = _re_j.sub(r"<[^>]+>", "", title).strip()
+                        try:
+                            fetched = _j_fetch_title(clean_title, _abs_client) or ""
+                        except Exception:
+                            fetched = ""
+                    if fetched:
+                        abstract = fetched[:1500]
+                        logger.info(f"  inline-abstract ({len(abstract)}c) {title[:60]}")
+                    else:
+                        logger.info(f"  inline-abstract MISS {title[:60]}")
+
                 journal_items.append({
                     "journal": feed.replace("ScienceDirect Publication: ", "").replace("ScienceDirect: ", ""),
                     "title": item.get("title", ""),
