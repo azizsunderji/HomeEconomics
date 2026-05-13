@@ -634,6 +634,54 @@ def cmd_synthesize(args):
                     "url": item.get("url", ""),
                     "abstract": abstract,
                 })
+
+        # Pass 3 (last-resort): for any journal_item still without an abstract,
+        # fetch the article page via Browserbase and extract the abstract from
+        # HTML. Catches brand-new papers not yet indexed in OpenAlex/Semantic
+        # Scholar — ScienceDirect, Wiley, Springer all put abstracts in
+        # <meta name="description"> or .abstract-content blocks.
+        missing = [j for j in journal_items if not j.get("abstract") and j.get("url")]
+        if missing and os.environ.get("BROWSERBASE_API_KEY"):
+            try:
+                import asyncio as _asyncio_j
+                import sys as _sys_j2
+                _sys_j2.path.insert(0, str(Path(__file__).parent.parent))
+                from fetch_journal_abstracts import _extract_abstract as _j_extract_abs
+                from enrich_articles import _create_browserbase_session as _j_bb_session
+                from playwright.async_api import async_playwright as _j_playwright
+
+                async def _fetch_via_bb():
+                    session = _j_bb_session()
+                    if session is None:
+                        return
+                    async with _j_playwright() as p:
+                        browser = await p.chromium.connect_over_cdp(session.connect_url)
+                        ctx = browser.contexts[0]
+                        for j in missing:
+                            page = None
+                            try:
+                                page = await ctx.new_page()
+                                await page.goto(j["url"], wait_until="domcontentloaded", timeout=30000)
+                                await page.wait_for_timeout(3000)
+                                html = await page.content()
+                                got = _j_extract_abs(html)
+                                if got:
+                                    j["abstract"] = got[:1500]
+                                    logger.info(f"  inline-abstract-bb ({len(got)}c) {(j.get('title') or '')[:60]}")
+                                else:
+                                    logger.info(f"  inline-abstract-bb MISS {(j.get('title') or '')[:60]}")
+                            except Exception as e:
+                                logger.warning(f"  inline-abstract-bb fail {(j.get('title') or '')[:50]}: {type(e).__name__}")
+                            finally:
+                                if page is not None:
+                                    try: await page.close()
+                                    except Exception: pass
+                        await browser.close()
+
+                _asyncio_j.run(_fetch_via_bb())
+            except Exception as e:
+                logger.warning(f"Browserbase abstract fallback skipped: {e}")
+
         briefing["_journal_articles"] = journal_items
 
         # Headlines
