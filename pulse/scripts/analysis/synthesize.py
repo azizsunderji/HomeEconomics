@@ -698,6 +698,98 @@ def _enforce_per_author_theme_cap(briefing: dict) -> dict:
     return briefing
 
 
+def _dedup_cross_theme_citations(briefing: dict) -> dict:
+    """Pass B only — drop sentences that re-cite a handle/URL already cited in
+    an earlier theme. Does NOT drop whole themes (that's Pass A, which was
+    too aggressive — disabled per 2026-05-11 user feedback). This catches the
+    real failure mode: the same fact (same tweet URL) showing up verbatim in
+    two themes' prose. Example caught 2026-05-13:
+    Theme 4: "Earlier this week, @nickgerli1 noted that existing home sales
+              over the first four months of 2026 were the lowest since 2009"
+    Theme 5: "Yesterday, @nickgerli1 flagged that early 2026 existing-home
+              sales were the weakest since 2009"
+    Both link to the same status URL — Pass B keeps the first, strips the second.
+    """
+    themes = briefing.get("conversation_themes", []) or []
+    if not themes:
+        return briefing
+
+    # Build handle → first-mention-theme-index
+    handle_first_theme: dict[str, int] = {}
+    handle_anchor_theme: dict[str, int] = {}
+    for i, theme in enumerate(themes):
+        s = theme.get("summary", "") or ""
+        anchor_match = re.search(r"(?:twitter|x)\.com/([A-Za-z0-9_]+)/status", s, re.IGNORECASE)
+        anchor_handle = anchor_match.group(1).lower() if anchor_match else None
+        if anchor_handle and anchor_handle not in handle_anchor_theme:
+            handle_anchor_theme[anchor_handle] = i
+        for m in re.finditer(r"(?:twitter|x)\.com/([A-Za-z0-9_]+)/status", s, re.IGNORECASE):
+            h = m.group(1).lower()
+            if h not in handle_first_theme:
+                handle_first_theme[h] = i
+    for h, idx in handle_anchor_theme.items():
+        handle_first_theme[h] = idx
+
+    def _split_sentences_link_safe(text: str) -> list[str]:
+        link_re = re.compile(r"\[[^\]]+\]\([^)]+\)")
+        placeholders: list[str] = []
+        def _mask(m):
+            placeholders.append(m.group(0))
+            return f"\x00LINK{len(placeholders)-1}\x00"
+        masked = link_re.sub(_mask, text)
+        parts = re.split(r"(?<=[.!?])\s+", masked)
+        out = []
+        for p in parts:
+            for j, link in enumerate(placeholders):
+                p = p.replace(f"\x00LINK{j}\x00", link)
+            out.append(p)
+        return out
+
+    secondary_drops = 0
+    for i, theme in enumerate(themes):
+        s = theme.get("summary", "") or ""
+        sentences = _split_sentences_link_safe(s)
+        kept_sentences: list[str] = []
+        for sent in sentences:
+            drop = False
+            for handle, first_idx in handle_first_theme.items():
+                if i == first_idx:
+                    continue
+                handle_url_re = (
+                    r"https?://(?:www\.)?(?:twitter|x)\.com/"
+                    + re.escape(handle) + r"/status"
+                )
+                if (re.search(handle_url_re, sent, re.IGNORECASE)
+                    or re.search(r"@" + re.escape(handle) + r"\b", sent, re.IGNORECASE)):
+                    drop = True
+                    break
+            if drop:
+                secondary_drops += 1
+            else:
+                kept_sentences.append(sent)
+        theme["summary"] = " ".join(kept_sentences).strip()
+
+    if secondary_drops:
+        logger.warning(
+            f"Cross-theme dedup: dropped {secondary_drops} sentences that re-cited "
+            f"a handle already mentioned in an earlier theme"
+        )
+
+    # If a theme's prose was completely emptied by dedup, drop the whole theme
+    before_drop = len(briefing["conversation_themes"])
+    briefing["conversation_themes"] = [
+        t for t in briefing["conversation_themes"]
+        if (t.get("summary") or "").strip()
+    ]
+    if before_drop != len(briefing["conversation_themes"]):
+        logger.warning(
+            f"Dropped {before_drop - len(briefing['conversation_themes'])} themes "
+            f"left empty after cross-theme dedup"
+        )
+
+    return briefing
+
+
 def _strip_refusal_meta(briefing: dict) -> dict:
     """Replace any refusal-style meta-narration with a clean title-based fallback.
 
@@ -1576,6 +1668,12 @@ Generate the daily briefing JSON. LEAD WITH CONVERSATION — what are people deb
         # a problem when there were limited citations per theme." We keep the
         # function defined (in case we re-enable later) but disabled here.
         # briefing = _enforce_per_author_theme_cap(briefing)
+
+        # Cross-theme citation dedup IS enabled — catches the case where the
+        # SAME tweet/fact is re-cited in two themes' prose (different topics,
+        # same supporting voice). User feedback 2026-05-13: @nickgerli1's
+        # "existing home sales since 2009" fact appeared verbatim in two themes.
+        briefing = _dedup_cross_theme_citations(briefing)
 
         # Drop themes with no housing-topic overlap. Sonnet drifts off-topic
         # toward macro/AI/tech filler when its prompt has a high theme count.
