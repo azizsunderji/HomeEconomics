@@ -126,6 +126,7 @@ def _extract_abstract(html: str) -> str:
         return _clean(m.group(1))
     # 4. Common abstract containers
     for pattern in [
+        r'<div[^>]*class="[^"]*\bhlFld-Abstract\b[^"]*"[^>]*>(.*?)</div>',  # Taylor & Francis
         r'<div[^>]*class="[^"]*\babstract-content\b[^"]*"[^>]*>(.*?)</div>',
         r'<section[^>]*class="[^"]*\babstract\b[^"]*"[^>]*>(.*?)</section>',
         r'<div[^>]*class="[^"]*\bArticleAbstract\b[^"]*"[^>]*>(.*?)</div>',
@@ -133,6 +134,7 @@ def _extract_abstract(html: str) -> str:
         r'<div[^>]*id=["\']abstract["\'][^>]*>(.*?)</div>',
         r'<div[^>]*id=["\']abstracts["\'][^>]*>(.*?)</div>',  # ScienceDirect uses plural id
         r'<div[^>]*class="[^"]*\bAbstracts\b[^"]*"[^>]*>(.*?)</div>',
+        r'<div[^>]*class="[^"]*\babstractSection\b[^"]*"[^>]*>(.*?)</div>',
     ]:
         m = re.search(pattern, html, re.DOTALL | re.IGNORECASE)
         if m:
@@ -145,6 +147,12 @@ def _extract_abstract(html: str) -> str:
         txt = _clean(m.group(1))
         if len(txt) > MIN_ABSTRACT_LEN:
             return txt
+    # 6. og:description fallback — T&F and others publish a clean abstract
+    # excerpt via OpenGraph for social previews. Last resort because length
+    # varies (often 150-250c — workable for our use case, just short).
+    m = re.search(r'<meta\s+property=["\']og:description["\']\s+content=["\']([^"\']+)["\']', html, re.IGNORECASE)
+    if m and len(m.group(1)) > MIN_ABSTRACT_LEN:
+        return _clean(m.group(1))
     return ""
 
 
