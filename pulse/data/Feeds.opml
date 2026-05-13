@@ -116,8 +116,15 @@
       <outline xmlUrl="https://www.tandfonline.com/feed/rss/rjrh20" text="Journal of Housing Research" title="Journal of Housing Research" type="rss" htmlUrl="https://www.tandfonline.com/loi/rjrh20?af=R" />
       <outline xmlUrl="https://www.tandfonline.com/feed/rss/rsea20" text="Spatial Economic Analysis" title="Spatial Economic Analysis" type="rss" htmlUrl="https://www.tandfonline.com/loi/rsea20?af=R" />
       <outline text="Housing Studies" type="rss" htmlUrl="https://www.tandfonline.com/loi/chos20?af=R" title="Housing Studies" xmlUrl="https://www.tandfonline.com/feed/rss/chos20" />
+      <outline text="Housing Policy Debate" type="rss" htmlUrl="https://www.tandfonline.com/loi/rhpd20?af=R" title="Housing Policy Debate" xmlUrl="https://www.tandfonline.com/feed/rss/rhpd20" />
+      <outline text="Journal of Urban Affairs" type="rss" htmlUrl="https://www.tandfonline.com/loi/ujua20?af=R" title="Journal of Urban Affairs" xmlUrl="https://www.tandfonline.com/feed/rss/ujua20" />
+      <outline text="Annals of the American Association of Geographers" type="rss" htmlUrl="https://www.tandfonline.com/loi/raag21?af=R" title="Annals of the American Association of Geographers" xmlUrl="https://www.tandfonline.com/feed/rss/raag21" />
       <outline text="ScienceDirect Publication: Journal of Urban Economics" title="ScienceDirect Publication: Journal of Urban Economics" type="rss" htmlUrl="https://www.sciencedirect.com/journal/journal-of-urban-economics" xmlUrl="https://rss.sciencedirect.com/publication/science/00941190" />
       <outline text="ScienceDirect Publication: Cities" htmlUrl="https://www.sciencedirect.com/journal/cities" xmlUrl="https://rss.sciencedirect.com/publication/science/02642751" type="rss" title="ScienceDirect Publication: Cities" />
+      <outline text="Regional Science and Urban Economics" title="Regional Science and Urban Economics" type="rss" htmlUrl="https://www.sciencedirect.com/journal/regional-science-and-urban-economics" xmlUrl="https://rss.sciencedirect.com/publication/science/01660462" />
+      <outline text="Journal of Regional Science" title="Journal of Regional Science" type="rss" htmlUrl="https://onlinelibrary.wiley.com/journal/14679787" xmlUrl="https://onlinelibrary.wiley.com/feed/14679787/most-recent" />
+      <outline text="Journal of Real Estate Finance and Economics" title="Journal of Real Estate Finance and Economics" type="rss" htmlUrl="https://link.springer.com/journal/11146" xmlUrl="https://link.springer.com/search.rss?facet-content-type=Article&amp;facet-journal-id=11146" />
+      <outline text="Annals of Regional Science" title="Annals of Regional Science" type="rss" htmlUrl="https://link.springer.com/journal/168" xmlUrl="https://link.springer.com/search.rss?facet-content-type=Article&amp;facet-journal-id=168" />
       <outline text="NBER New Working Papers" title="NBER New Working Papers" type="rss" xmlUrl="https://www.nber.org/rss/new.xml" htmlUrl="https://www.nber.org" />
     </outline>
     <outline text="Housing Reporters" title="Housing Reporters">
