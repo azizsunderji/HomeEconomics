@@ -682,6 +682,50 @@ def cmd_synthesize(args):
             except Exception as e:
                 logger.warning(f"Browserbase abstract fallback skipped: {e}")
 
+        # ── Condense abstracts via Haiku ──
+        # Raw OpenAlex abstracts are academic-paragraph-length (1,500c) — too
+        # long for the email's Academic Journals section. Haiku boils each
+        # down to 1-2 sentences leading with the key finding. Cheap: 5 papers
+        # × ~500 input tokens × Haiku rates = ~$0.01/run.
+        to_condense = [j for j in journal_items if (j.get("abstract") or "").strip()]
+        if to_condense:
+            try:
+                import anthropic as _anthropic_j
+                from analysis.anthropic_spend import record_usage as _rec_usage_j
+                _hc = _anthropic_j.Anthropic()
+                _model_h = "claude-haiku-4-5-20251001"
+                prompt_blocks = []
+                for k, j in enumerate(to_condense):
+                    title = (j.get("title") or "").strip()
+                    abstract = (j.get("abstract") or "").strip()[:2000]
+                    prompt_blocks.append(f"PAPER {k+1}\nTitle: {title}\nAbstract: {abstract}")
+                user_content = (
+                    "Summarize each paper's abstract in ONE sentence (max 35 words) "
+                    "that leads with the KEY FINDING — not the methodology setup. "
+                    "Use a confident, declarative voice. Quote specific numbers when "
+                    "the abstract has them. Output as a JSON array of strings in the "
+                    "same order as the papers below. No prose outside the JSON.\n\n"
+                    + "\n\n".join(prompt_blocks)
+                )
+                resp = _hc.messages.create(
+                    model=_model_h, max_tokens=1500,
+                    system="You condense academic abstracts into single-sentence findings.",
+                    messages=[{"role": "user", "content": user_content}],
+                )
+                try: _rec_usage_j(_model_h, resp.usage)
+                except Exception: pass
+                raw = resp.content[0].text
+                import json as _json_j, re as _re_haiku
+                m = _re_haiku.search(r"\[.*\]", raw, _re_haiku.DOTALL)
+                if m:
+                    summaries = _json_j.loads(m.group(0))
+                    for k, j in enumerate(to_condense):
+                        if k < len(summaries) and summaries[k]:
+                            j["abstract"] = summaries[k].strip()
+                            logger.info(f"  haiku-condensed {(j.get('title') or '')[:60]}")
+            except Exception as e:
+                logger.warning(f"Haiku abstract condensation failed: {e}")
+
         briefing["_journal_articles"] = journal_items
 
         # Headlines
