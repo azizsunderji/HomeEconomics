@@ -1495,9 +1495,30 @@ Generate the daily briefing JSON. LEAD WITH CONVERSATION — what are people deb
                     chosen = chosen[:max_chars].rstrip(",.;: ") + "…"
             return chosen
 
+        def _shorten_link_anchors(text: str, max_anchor_words: int = 2) -> str:
+            """Rewrite [longphrase](url) → [verb](url) longphrase-remainder.
+
+            User wants short link anchors (1-2 words, typically the verb) with
+            the descriptive remainder in plain prose. Sonnet ignores this rule
+            in prose generation (added 2026-05-12; still violated 2026-05-13)
+            so we enforce it programmatically here.
+            """
+            def _rewrite(m):
+                anchor = m.group(1)
+                url = m.group(2)
+                words = anchor.split()
+                if len(words) <= max_anchor_words:
+                    return m.group(0)
+                # Keep first word(s) as anchor, push remainder to plain text
+                kept = " ".join(words[:max_anchor_words])
+                remainder = " ".join(words[max_anchor_words:])
+                return f"[{kept}]({url}) {remainder}"
+            return re.sub(r"\[([^\]]+)\]\((https?://[^)]+)\)", _rewrite, text)
+
         for entry in briefing.get("twitter_roundup", []):
             if "summary" in entry:
                 entry["summary"] = _clean_summary_text(entry["summary"])
+                entry["summary"] = _shorten_link_anchors(entry["summary"])
                 entry["summary"] = _truncate_summary(entry["summary"])
 
         # 1. Deduplicate twitter_roundup and split out AI Roundup accounts
