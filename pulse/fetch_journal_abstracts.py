@@ -131,6 +131,7 @@ def _extract_abstract(html: str) -> str:
         r'<div[^>]*class="[^"]*\bArticleAbstract\b[^"]*"[^>]*>(.*?)</div>',
         r'<div[^>]*class="[^"]*\barticle-section__content\b[^"]*"[^>]*>(.*?)</div>',
         r'<div[^>]*id=["\']abstract["\'][^>]*>(.*?)</div>',
+        r'<div[^>]*id=["\']abstracts["\'][^>]*>(.*?)</div>',  # ScienceDirect uses plural id
         r'<div[^>]*class="[^"]*\bAbstracts\b[^"]*"[^>]*>(.*?)</div>',
     ]:
         m = re.search(pattern, html, re.DOTALL | re.IGNORECASE)
