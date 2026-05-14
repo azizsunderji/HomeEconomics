@@ -669,7 +669,19 @@ def cmd_synthesize(args):
                                     )
                                 page = await ctx.new_page()
                                 await page.goto(fetch_url, wait_until="domcontentloaded", timeout=30000)
-                                await page.wait_for_timeout(4500)
+                                # Wait explicitly for the abstract element to render
+                                # instead of a fixed timeout — ScienceDirect's abstract
+                                # block hydrates after the page reports "domcontentloaded"
+                                # and a 4.5s fixed wait sometimes missed it.
+                                try:
+                                    await page.wait_for_selector(
+                                        "div#abstracts, div.abstract, div.hlFld-Abstract, "
+                                        "section[role='doc-abstract'], meta[property='og:description']",
+                                        timeout=12000,
+                                    )
+                                except Exception:
+                                    pass  # Not all pages have these — fall through to extractor
+                                await page.wait_for_timeout(1500)
                                 html = await page.content()
                                 got = _j_extract_abs(html)
                                 if got:
