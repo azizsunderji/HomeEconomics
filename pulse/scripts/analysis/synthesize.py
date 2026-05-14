@@ -886,6 +886,26 @@ def _validate_briefing_urls(briefing: dict, conn: sqlite3.Connection) -> dict:
     for i, take in enumerate(briefing.get("substacker_takes", [])):
         if "url" in take:
             take["url"] = validate_url(take["url"], f"substacker_takes[{i}]")
+        # If Sonnet dropped the URL (or it was empty), look up the original item
+        # by title and inject its URL. Covers the substack-redirect case where
+        # Sonnet over-prunes — better to send the reader to a subscribe page
+        # (better than nothing) than leave the entry unclickable.
+        if not take.get("url"):
+            t_title = (take.get("title") or "").strip()
+            if t_title:
+                try:
+                    row = conn.execute(
+                        "SELECT url FROM items WHERE source IN ('substack','rss','gmail') "
+                        "AND substr(title,1,80) = ? "
+                        "AND collected_at > datetime('now', '-5 day') "
+                        "ORDER BY length(body) DESC LIMIT 1",
+                        (t_title[:80],),
+                    ).fetchone()
+                    if row and row["url"]:
+                        take["url"] = row["url"]
+                        logger.info(f"  substacker_takes: backfilled URL for '{t_title[:50]}'")
+                except Exception as e:
+                    logger.warning(f"  substacker_takes URL backfill failed: {e}")
     # twitter_roundup URLs are now inline markdown links in the summary field
     # — no top-level URL to validate
 
