@@ -54,6 +54,46 @@ _INSTITUTIONAL_SIGNALS = [
 ]
 
 
+def _normalize_substack_redirect(url: str) -> str:
+    """Substack delivers many newsletter feeds as redirect URLs whose decoded
+    payload points at the publisher's /subscribe page. Decode the b64 in the
+    redirect path; if the destination is a subscribe-only page, trim back to
+    the publisher's homepage so the reader can navigate to the actual article.
+    Falls back to the raw URL on any failure.
+    """
+    if not url or "substack.com/redirect/" not in url:
+        return url
+    try:
+        import base64
+        import json as _json
+        from urllib.parse import urlparse as _up
+        # Path format: /redirect/2/<base64-payload>
+        path = _up(url).path
+        parts = [p for p in path.split("/") if p]
+        if len(parts) < 3:
+            return url
+        payload = parts[-1]
+        # Pad if needed for base64
+        payload += "=" * (-len(payload) % 4)
+        try:
+            decoded = base64.urlsafe_b64decode(payload).decode("utf-8", errors="ignore")
+        except Exception:
+            decoded = base64.b64decode(payload).decode("utf-8", errors="ignore")
+        # Decoded is a JSON-ish blob with key "e" = destination URL
+        m = re.search(r'"e"\s*:\s*"([^"]+)"', decoded)
+        if not m:
+            return url
+        dest = m.group(1)
+        # Strip /subscribe path and query params → publisher homepage
+        parsed = _up(dest)
+        path_clean = parsed.path
+        if path_clean.rstrip("/").endswith("/subscribe"):
+            path_clean = path_clean.rstrip("/").rsplit("/subscribe", 1)[0] + "/"
+        return f"{parsed.scheme}://{parsed.netloc}{path_clean}"
+    except Exception:
+        return url
+
+
 def _get_source_tier(item: dict) -> int:
     """Determine source tier.
 
@@ -902,8 +942,14 @@ def _validate_briefing_urls(briefing: dict, conn: sqlite3.Connection) -> dict:
                         (t_title[:80],),
                     ).fetchone()
                     if row and row["url"]:
-                        take["url"] = row["url"]
-                        logger.info(f"  substacker_takes: backfilled URL for '{t_title[:50]}'")
+                        raw = row["url"]
+                        # Substack delivers many feeds as redirect URLs whose
+                        # decoded destination is a /subscribe page. Decode the
+                        # b64 payload, strip /subscribe and query params, leaves
+                        # the publisher's homepage (where the article lives).
+                        cleaned = _normalize_substack_redirect(raw)
+                        take["url"] = cleaned
+                        logger.info(f"  substacker_takes: backfilled URL for '{t_title[:50]}' → {cleaned[:80]}")
                 except Exception as e:
                     logger.warning(f"  substacker_takes URL backfill failed: {e}")
     # twitter_roundup URLs are now inline markdown links in the summary field
