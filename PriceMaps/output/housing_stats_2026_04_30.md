@@ -1,0 +1,50 @@
+According to Zillow data compiled by Home Economics, home prices inched up by the slightest of margins (0.02%) in April, bringing year-over-year appreciation to 0.6%.
+## Highest Prices
+1. **92657** Newport Beach, CA ($5.71M)
+2. **90210** Beverly Hills, CA ($5.24M)
+3. **94022** Los Altos, CA ($5.15M)
+4. **93108** Montecito, CA ($5.12M)
+5. **90402** Santa Monica, CA ($4.83M)
+6. **94024** Los Altos, CA ($4.70M)
+7. **94301** Palo Alto, CA ($4.36M)
+8. **92625** Newport Beach, CA ($4.30M)
+9. **95070** Saratoga, CA ($4.20M)
+10. **95030** Los Gatos, CA ($3.62M)
+
+## Lowest Prices
+1. **48505** Flint, MI ($34K)
+2. **71109** Shreveport, LA ($41K)
+3. **63115** Saint Louis, MO ($41K)
+4. **61605** Peoria, IL ($41K)
+5. **71601** Pine Bluff, AR ($46K)
+6. **48213** Detroit, MI ($47K)
+7. **15906** Johnstown, PA ($48K)
+8. **48504** Flint, MI ($48K) **(new)**
+9. **39209** Jackson, MS ($49K) **(new)**
+10. **38614** Clarksdale, MS ($50K)
+
+## Accelerating Prices (Y/Y)
+1. **61104** Rockford, IL (+15.4% y/y)
+2. **83333** Hailey, ID (+15.3% y/y)
+3. **92008** Carlsbad, CA (+15.2% y/y)
+4. **61401** Galesburg, IL (+14.9% y/y)
+5. **53581** nan, WI (+14.5% y/y)
+6. **70002** Metairie, LA (+14.4% y/y)
+7. **61101** Rockford, IL (+14.2% y/y)
+8. **53206** Milwaukee, WI (+13.5% y/y) **(new)**
+9. **70058** Harvey, LA (+13.5% y/y) **(new)**
+10. **38843** Fulton, MS (+13.5% y/y) **(new)**
+
+## Decelerating Prices (Y/Y)
+1. **15902** Johnstown, PA (-25.3% y/y)
+2. **38701** Greenville, MS (-21.9% y/y)
+3. **42211** Cadiz, KY (-20.1% y/y)
+4. **41339** Jackson, KY (-18.9% y/y)
+5. **48214** Detroit, MI (-17.3% y/y)
+6. **47807** Terre Haute, IN (-16.8% y/y)
+7. **15906** Johnstown, PA (-16.6% y/y)
+8. **48202** Detroit, MI (-16.4% y/y) **(new)**
+9. **63113** Saint Louis, MO (-15.7% y/y)
+10. **42071** Murray, KY (-15.4% y/y) **(new)**
+
+Data source: Zillow Home Value Index (ZHVI) as of 2026-04-30
