@@ -1686,14 +1686,17 @@ Generate the daily briefing JSON. LEAD WITH CONVERSATION — what are people deb
                     max_tokens=300,
                     messages=[{"role": "user", "content": (
                         f"The following tweets from {display} are PROVIDED IN FULL BELOW. "
-                        f"Write a brief summary (max 35 words) where EACH distinct claim is "
-                        f"its OWN inline markdown link [short phrase](tweet_url). "
-                        f"If the tweets cover 3 different topics, use 3 inline links "
-                        f"(one per topic) — every phrase that summarizes a tweet must be "
-                        f"a markdown link to that specific tweet's URL. "
-                        f"Example: '[on rising rents](url1), [criticized education paths](url2), "
-                        f"and [urged House support](url3).' "
-                        f"If only one tweet, ONE inline link is fine. "
+                        f"Write a brief summary (max 35 words). For each distinct claim, "
+                        f"the LINK ANCHOR must be ONE OR TWO WORDS — typically the verb of "
+                        f"attribution (argued, noted, criticized, flagged, urged, pitched) "
+                        f"or a tight two-word noun phrase. The rest of the claim stays in "
+                        f"plain prose AROUND the link, not inside it. "
+                        f"GOOD: '[argued](url1) rents are bottoming, [criticized](url2) education "
+                        f"funding cuts, [urged](url3) House support for HR-2'. "
+                        f"BAD: '[argued rents are bottoming](url1), [criticized education funding cuts](url2)' "
+                        f"— do NOT wrap the whole claim phrase in the link. The reader should see "
+                        f"mostly BLACK prose with short 1-2-word BLUE link anchors sprinkled in. "
+                        f"If only one tweet, ONE link with a 1-2-word verb anchor is fine. "
                         f"No paragraphs. No meta-commentary. "
                         f"Do NOT say you can't access Twitter — the content is below.\n\n"
                         f"Tweets:\n" + "\n".join(tweet_lines)
@@ -1757,6 +1760,11 @@ Generate the daily briefing JSON. LEAD WITH CONVERSATION — what are people deb
                 if summary:
                     # Apply same length cap as Sonnet entries get
                     summary = _truncate_summary(summary)
+                    # Programmatic safety net: even with the explicit "1-2 word
+                    # anchor" prompt, Haiku still sometimes wraps full claim
+                    # phrases. Enforce 1-2 word anchors here so the supplement
+                    # entries match the Sonnet entries' formatting.
+                    summary = _shorten_link_anchors(summary)
                     roundup_authors.add(author_key)
                     briefing.setdefault("twitter_roundup", []).append({
                         "author": display_author,
