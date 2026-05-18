@@ -1075,11 +1075,23 @@ Return a JSON object:
   (b) drop the attribution entirely: "rental restrictions would disrupt 72,000 units/year" with no byline
 What you MUST NOT do: "[The Urban Institute projects X](slow-boring-url)" — that makes the reader think they're clicking through to Urban Institute when they're really going to Slow Boring. This is a form of misattribution. Every anchor text + URL pairing must be internally consistent.
 
-4c. ATTRIBUTED QUOTES MUST BE HYPERLINKED. Any time you attribute a direct quote, statement, or specific data point to a named person or organization, the attribution MUST be wrapped in a hyperlink to the source containing that quote. Plain-text attribution ("Lawrence Yun said affordability has improved") with no link is unacceptable — the reader has no way to verify or read more. Acceptable forms:
-  (a) Link the speaker: "[NAR chief economist Lawrence Yun](url) said affordability has improved..."
-  (b) Link the publication that ran the quote: "[per HousingWire](url), Yun said affordability has improved..."
-  (c) Link the verb of attribution: "Yun [said](url) affordability has improved..."
-What you MUST NOT do: write "Yun said X" as plain text. If you cited HousingWire two sentences earlier, that link does NOT cover a later separate Yun attribution — each attributed claim needs its own link. This rule applies to direct quotes, paraphrased positions, and specific data points (e.g., "Goldman tracked Q2 at 1.6%" — link Goldman; "the median price hit $417,700" — only an unattributed fact like this can stand without a link).
+4c. ATTRIBUTED QUOTES MUST BE HYPERLINKED — AND THE LINK MUST POINT TO WHERE THE CLAIM ORIGINATED. Any time you attribute a direct quote, statement, or specific data point to a named person or organization, the attribution MUST be wrapped in a hyperlink. Plain-text attribution ("Lawrence Yun said affordability has improved") with no link is unacceptable — the reader has no way to verify or read more.
+
+WHICH URL TO LINK depends on where the claim originated:
+  - **Twitter/Bluesky tweet** → link the tweet's URL. The tweet IS the source. Do NOT link to an article that summarizes the tweet; link directly to the tweet itself.
+  - **Article quote** (person quoted IN an article) → link the article. The article IS the source — the person didn't publish their statement themselves; they spoke to the reporter.
+  - **Substack / newsletter / column** → link the post itself.
+  - **Working paper / report** → link the paper's own URL (PDF, abstract page, or publisher landing).
+
+Examples by source type:
+  (a) Tweet attribution: "[@nickgerli1 noted](https://x.com/nickgerli1/status/...) that existing-home sales were the lowest YTD pace since 2009" — link the TWEET.
+  (b) Article quote: "[NAR chief economist Lawrence Yun told HousingWire](https://housingwire.com/...) that affordability has improved" — link the ARTICLE.
+  (c) Anchor on the verb: "Yun [said](https://housingwire.com/...) affordability has improved" — link the article via the verb.
+  (d) Anchor on the publication: "[per HousingWire](https://housingwire.com/...), Yun said affordability has improved" — link the article via the publication.
+
+@HANDLE ATTRIBUTIONS ALWAYS NEED A LINK. The pattern "per @handle" / "@handle noted" / "@handle argued" / "@handle flagged" written as plain text (no markdown link wrapping any part of it) is the most common 4c violation. If you reference a Twitter or Bluesky handle by their data point or argument, the tweet URL MUST be linked — typically the cleanest form is to wrap the verb: "@nickgerli1 [noted](tweet_url) that...". If you don't have the tweet URL in your corpus, drop the attribution entirely and state the fact directly without naming the handle.
+
+What you MUST NOT do: write "Yun said X" or "@nickgerli1 noted X" as plain text. If you cited HousingWire two sentences earlier, that link does NOT cover a later separate Yun attribution — each attributed claim needs its own link. This rule applies to direct quotes, paraphrased positions, and specific data points (e.g., "Goldman tracked Q2 at 1.6%" — link Goldman; "the median price hit $417,700" — only an unattributed fact like this can stand without a link).
 
 VAGUE REFERENCES STILL REQUIRE LINKS. Any reference to a specific paper, report, study, dataset, or analysis MUST be hyperlinked — even when you do NOT name it explicitly. Phrasings like "an NBER working paper examined X," "a Goldman note argued Y," "Census data showed Z," "research from the Urban Institute found W" all count: the reader has no other handle to find the source if you don't link it. The link is MORE important when the reference is vague, not less. Failure example: "Yesterday, an NBER working paper flagged in the feed examined gender gaps" — with no link, the reader has no way to find which paper. Correct: "Yesterday, [an NBER working paper](url) flagged in the feed examined gender gaps." If the source isn't in your corpus, don't reference it at all — drop the attribution and make the claim directly: "Gender gaps in education are widening" rather than "[unsourced] research showed gender gaps are widening."
 
