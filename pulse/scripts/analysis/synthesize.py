@@ -1196,6 +1196,17 @@ Label each theme's anchor platforms accurately: use "rss" or "substack" or the n
 
     (b) THEME SUMMARIES CAN BE TWO OR THREE SHORT PARAGRAPHS, NOT ONE WELDED PARAGRAPH. When a theme has two or three genuinely distinct sub-clusters of facts (e.g., permits data + price reactions + a separate policy debate), split them into separate paragraphs separated by a blank line (use `\\n\\n` in the JSON string). Still prose — no bullet points — but the paragraph break signals "new sub-point" cleanly and lets each paragraph be internally coherent. One welded paragraph that strings unrelated points together with fake transitions is the failure mode; 2–3 short topical paragraphs is the fix. Keep ONE paragraph when the points really are one continuous argument. Within each paragraph, rule (a2) still applies — cluster, don't interleave.
 
+    (b2) PARAGRAPH-BREAK TRIGGERS — DEFAULT TO BREAKING, NOT WELDING. The bias should be PRO-paragraph-break, not anti. Insert `\\n\\n` (paragraph break) whenever ANY of these is true between two adjacent sentences:
+        - Different MECHANISM (e.g., oil supply shock → bond markets → Fed expectations vs. property-tax/insurance trends → escrow shortfalls — these are different cause-effect chains even though both pressure household budgets)
+        - Different DATA SOURCE or different INSTITUTION publishing the data (FT/JPMorgan/Bloomberg on bond markets vs. CNBC/Cotality/Selma Hepp on escrow)
+        - Different ACTORS (Fed officials and bond traders vs. insurance industry and county assessors)
+        - Different UNIT OF ANALYSIS (per-household annual fuel cost vs. per-month escrow shortfall vs. nominal mortgage rate)
+        - Different GEOGRAPHY or SCALE (national gas prices vs. Florida-and-Colorado-specific escrow shocks)
+        - Different TIME WINDOW (last 30 days of mortgage data vs. 2026-projected escrow shortfall vs. since-2019 trend)
+        - The transition phrase you would otherwise write requires a hedging noun: "a related X," "a parallel Y," "a similar dynamic," "another dimension of the squeeze," "a connected story" — if you reach for one of these, the bridge isn't real; break instead.
+
+    Concrete failure to AVOID (from 2026-05-18 brief): "the FT calculates the Iran war has cost consumers $41.5bn extra in fuel since late February — $316 per household, with gas at $4.51 nationally. CNBC details a related squeeze: about 65% of escrow accounts are projected to be short in 2026 because of jumps in property taxes and homeowners insurance, with the average shortfall at $2,157..." — these are two stories welded with "a related squeeze." The Iran-war-→-fuel chain (commodity / bond market / Fed narrative) and the property-tax-and-insurance-→-escrow chain (insurer pricing / county assessments / mortgage servicing) share NO mechanism. Different data, different actors, different time window. REQUIRED FIX: paragraph break before "CNBC" — and the new paragraph stands on its own without the "related" framing.
+
     (c) BANNED FAKE-CONNECTIVE PHRASES. These are the smooth-sounding transitions the model defaults to when it has nothing logical to bridge between two sentences. Do NOT use them:
         - "Meanwhile," / "Elsewhere," / "Separately, in a similar vein,"
         - "This echoes" / "This is consistent with" / "This mirrors"
@@ -1203,7 +1214,12 @@ Label each theme's anchor platforms accurately: use "rss" or "substack" or the n
         - "The picture that emerges is..." / "Taken together..." / "All told,"
         - "There's a sense that..." / "It feels like..."
         - "Adding to the debate," / "Adding context,"
-    When two points are genuinely independent within a theme, use honest disjunctive signals instead: "Separately:" / "On a different track:" / "Unrelated but on the same beat:". When two points ARE connected, name the connection explicitly: "This is the supply-side mirror of..." / "Which helps explain why..." / "Cutting against this," / "The counter-argument from [X] is...". The reader should always be able to tell, from the transition alone, whether the next sentence is causally connected to the previous one or just adjacent to it.
+        - "[Source] details a related X" / "a related squeeze / pressure / dynamic / story / picture / piece"
+        - "a parallel X" / "a similar dynamic" / "another dimension of [the same thing]"
+        - "Compounding this," / "Stacking on top of this,"
+        - "Another piece of the puzzle is..." / "Adding to the picture,"
+        - "On a connected front," / "On a parallel track,"
+    When two points are genuinely independent within a theme, use honest disjunctive signals instead: "Separately:" / "On a different track:" / "Unrelated but on the same beat:". When two points ARE connected, name the connection explicitly: "This is the supply-side mirror of..." / "Which helps explain why..." / "Cutting against this," / "The counter-argument from [X] is...". The reader should always be able to tell, from the transition alone, whether the next sentence is causally connected to the previous one or just adjacent to it. Reminder: "a related X" is ALWAYS a code-smell for welding — when in doubt, break to a new paragraph.
 
 14. ALL SECTIONS ARE MANDATORY. Your JSON output MUST include ALL of these keys: conversation_themes, twitter_roundup, substacker_takes, ai_brief. If you omit any section, the briefing is broken. substacker_takes should include a take for EVERY Substack newsletter provided — summarize all of them, not just a few.
 
