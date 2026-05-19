@@ -1214,10 +1214,22 @@ Label each theme's anchor platforms accurately: use "rss" or "substack" or the n
         - Different ACTORS (Fed officials and bond traders vs. insurance industry and county assessors)
         - Different UNIT OF ANALYSIS (per-household annual fuel cost vs. per-month escrow shortfall vs. nominal mortgage rate)
         - Different GEOGRAPHY or SCALE (national gas prices vs. Florida-and-Colorado-specific escrow shocks)
-        - Different TIME WINDOW (last 30 days of mortgage data vs. 2026-projected escrow shortfall vs. since-2019 trend)
+        - Different LEVEL OF GOVERNMENT (city council policy vs. state legislature vs. federal bill — never weld these into one paragraph)
+        - Different TIME WINDOW (last 30 days of mortgage data vs. 2026-projected escrow shortfall vs. since-2019 trend; today's news vs. "earlier this week" historical context)
         - The transition phrase you would otherwise write requires a hedging noun: "a related X," "a parallel Y," "a similar dynamic," "another dimension of the squeeze," "a connected story" — if you reach for one of these, the bridge isn't real; break instead.
 
+    (b3) DISJUNCTIVE TRANSITIONS *ARE* PARAGRAPH BREAKS, NOT INLINE GESTURES. This is the single most common rule violation. If you reach for ANY of the following transition phrases, that phrase MUST appear at the START of a new paragraph (preceded by `\\n\\n`), NOT buried mid-paragraph. The act of writing the transition is itself the signal that you should have already inserted a paragraph break:
+        - "Separately," / "On a separate track:" / "On a different track:" / "On a parallel track,"
+        - "At the federal level," / "At the state level," / "At the city level," / "On the policy side,"
+        - "Earlier this week," / "Yesterday," / "Last week," (any time-shift transition)
+        - "On a different note," / "Switching to," / "Turning to,"
+        - "Meanwhile," / "Elsewhere," (these are banned inline per (c) anyway, but if you find yourself needing them, the answer is `\\n\\n`)
+
+    Failure pattern to AVOID (from 2026-05-19 brief on NYT Editorial / Housing theme): one welded paragraph that read "@conorsen.bsky.social's framing that the political moment has shifted to '2026: It's affordability, stupid.' Separately, NYC Council Member Lincoln Restler's newsletter announced Mayor Mamdani's executive budget includes an additional $5 billion for affordable housing… At the federal level, Rep. French Hill appeared on CNBC to discuss the bipartisan 21st Century ROAD to Housing Act… Earlier this week, Saturday, @BalanceCrafting flagged that the House version of ROAD expands…" — that paragraph contains THREE buried disjunctive transitions ("Separately," "At the federal level," "Earlier this week,") that should have been three paragraph breaks. Required fix: four short paragraphs, one per topic cluster (election politics / NYC city policy / federal legislation / historical context on the federal bill). Each transition starts a new paragraph; none appears mid-sentence.
+
     Concrete failure to AVOID (from 2026-05-18 brief): "the FT calculates the Iran war has cost consumers $41.5bn extra in fuel since late February — $316 per household, with gas at $4.51 nationally. CNBC details a related squeeze: about 65% of escrow accounts are projected to be short in 2026 because of jumps in property taxes and homeowners insurance, with the average shortfall at $2,157..." — these are two stories welded with "a related squeeze." The Iran-war-→-fuel chain (commodity / bond market / Fed narrative) and the property-tax-and-insurance-→-escrow chain (insurer pricing / county assessments / mortgage servicing) share NO mechanism. Different data, different actors, different time window. REQUIRED FIX: paragraph break before "CNBC" — and the new paragraph stands on its own without the "related" framing.
+
+    (b4) PARAGRAPH LENGTH CEILING. Independent of the trigger rules above: NO theme summary should be ONE paragraph longer than ~7 sentences. If your draft has a paragraph that runs 8+ sentences, the failure mode is welding by length; find the natural break point (apply b2/b3 triggers) and split. Long welded paragraphs are unreadable in the email rendering — better to ship four 3-sentence paragraphs than one 12-sentence wall.
 
     (c) BANNED FAKE-CONNECTIVE PHRASES. These are the smooth-sounding transitions the model defaults to when it has nothing logical to bridge between two sentences. Do NOT use them:
         - "Meanwhile," / "Elsewhere," / "Separately, in a similar vein,"
