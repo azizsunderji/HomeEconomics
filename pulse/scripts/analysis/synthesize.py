@@ -1596,6 +1596,16 @@ Generate the daily briefing JSON. LEAD WITH CONVERSATION — what are people deb
         # AND enforce the "ONE sentence, max ~30 words" rule — Sonnet routinely
         # ignores it for high-volume authors (zerohedge, VladTheInflator) and
         # writes paragraph-length summaries. Truncate at sentence boundary.
+        # Common abbreviations that end in a period but are NOT sentence
+        # boundaries. Without masking these, "Dr. Cameron Murray argued X"
+        # gets truncated to "Dr." by the sentence-boundary regex.
+        _ABBREV_RE = re.compile(
+            r"\b(Dr|Mr|Mrs|Ms|Prof|Sr|Jr|St|Mt|Rev|Hon|Gen|Adm|Capt|Sgt|"
+            r"Lt|Col|Maj|Pres|Gov|Rep|Sen|Esq|Inc|Ltd|Co|Corp|"
+            r"No|vs|cf|approx|Dept|Univ|Assn|Bros|Ph\.D|M\.D|"
+            r"a\.m|p\.m|e\.g|i\.e|et al|U\.S|U\.K|N\.Y|D\.C|L\.A)\.",
+        )
+
         def _truncate_summary(text: str, max_words: int = 45, max_chars: int = 500) -> str:
             if not text:
                 return text
@@ -1609,12 +1619,22 @@ Generate the daily briefing JSON. LEAD WITH CONVERSATION — what are people deb
                 placeholders.append(m.group(0))
                 return f"\x00LINK{len(placeholders)-1}\x00"
             masked = link_re.sub(_mask, text)
+            # Mask common abbreviations ending in "." so they don't get
+            # mistaken for sentence boundaries.
+            abbrev_placeholders = []
+            def _mask_abbrev(m):
+                abbrev_placeholders.append(m.group(0))
+                return f"\x00ABBREV{len(abbrev_placeholders)-1}\x00"
+            masked = _ABBREV_RE.sub(_mask_abbrev, masked)
             # Pick the first sentence (or first-N-words if no boundary found)
             m = re.match(r"([^.!?]+[.!?])", masked)
             if m and len(m.group(1).split()) <= max_words:
                 chosen = m.group(1).strip()
             else:
                 chosen = " ".join(masked.split()[:max_words]).rstrip(",.;:") + "…"
+            # Restore abbreviations
+            for i, abbrev in enumerate(abbrev_placeholders):
+                chosen = chosen.replace(f"\x00ABBREV{i}\x00", abbrev)
             # Restore links
             for i, link in enumerate(placeholders):
                 chosen = chosen.replace(f"\x00LINK{i}\x00", link)
