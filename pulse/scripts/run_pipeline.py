@@ -448,6 +448,13 @@ def cmd_synthesize(args):
     logger.info("=== PULSE SYNTHESIZE + EMAIL ===")
     start = time.time()
     pipeline_errors = []
+    # Freeze a "job start" timestamp for 24h-window queries. Synthesis +
+    # enrichment can take 25+ minutes; if every injection step recomputes
+    # `datetime.now() - 24h` independently, the cutoff drifts forward and
+    # items collected just inside the prior cron tick get dropped. (Caught
+    # on 2026-05-23 when Superhuman/Neuron newsletters arrived at 11:32
+    # but the AI-newsletter injection at 11:55 had a cutoff of 11:55-24h.)
+    job_start = datetime.now(timezone.utc)
 
     # Pipeline health check — alert loudly on upstream breakage rather than
     # shipping a silently-degraded briefing.
@@ -492,7 +499,7 @@ def cmd_synthesize(args):
         journal_feed_names = {f["title"] for f in opml_feeds if f.get("priority") == "journal"}
         headline_feed_names = {f["title"] for f in opml_feeds if f.get("folder") in ("HighPriority", "Housing Reporters")}
 
-        cutoff_24h = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
+        cutoff_24h = (job_start - timedelta(hours=24)).isoformat()
         all_rss_24h = conn.execute(
             "SELECT * FROM items WHERE source IN ('rss', 'google_news') AND collected_at >= ? ORDER BY collected_at DESC",
             (cutoff_24h,),
@@ -502,7 +509,7 @@ def cmd_synthesize(args):
         # across all journal feeds, then rotate through it: each day shows 5
         # papers deterministically based on the date, so over a month the
         # reader sees the whole pool without repeats on the same day.
-        cutoff_30d = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
+        cutoff_30d = (job_start - timedelta(days=30)).isoformat()
         rows_30d = conn.execute(
             "SELECT * FROM items WHERE source = 'rss' AND feed_name IN ({}) AND collected_at >= ? ORDER BY feed_name, collected_at DESC".format(
                 ",".join(["?"] * len(journal_feed_names))
@@ -797,7 +804,7 @@ def cmd_synthesize(args):
                           GMAIL_AI_HEADLINE_SENDERS)
         import re as _re
         from datetime import timedelta
-        cutoff_24h_gmail = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
+        cutoff_24h_gmail = (job_start - timedelta(hours=24)).isoformat()
         all_gmail = conn.execute(
             "SELECT * FROM items WHERE source = 'gmail' AND collected_at >= ? ORDER BY collected_at DESC",
             (cutoff_24h_gmail,),

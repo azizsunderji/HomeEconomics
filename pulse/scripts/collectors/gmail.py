@@ -437,6 +437,24 @@ def collect(
                     sender_lower = (sender or "").lower()
                     if "onboarding@resend.dev" in sender_lower or "pulse@home-economics" in sender_lower:
                         continue
+                    # Skip forwards/replies of Pulse emails. When Aziz forwards
+                    # yesterday's Pulse to a friend (or it bounces back via a
+                    # reply thread), the full content of the prior briefing
+                    # ends up in the inbox with sender=Aziz/correspondent. The
+                    # synthesizer then reads its own prior output as "fresh
+                    # news" and re-leads with yesterday's lead theme. (Caught
+                    # on 2026-05-23 when "Why Families Leave Cities" was lead
+                    # theme two days running.)
+                    title_for_pulse_check = (subject or "").lower()
+                    if ("fwd: pulse:" in title_for_pulse_check
+                        or "fw: pulse:" in title_for_pulse_check
+                        or "re: pulse:" in title_for_pulse_check):
+                        continue
+                    # Skip outbound from Aziz himself — when his own messages
+                    # land back in INBOX (cc-to-self, list replies), they're
+                    # personal correspondence not news inputs.
+                    if "aziz@home-economics.us" in sender_lower:
+                        continue
 
                     # Detect Substack newsletters and re-tag them
                     is_substack = "substack.com" in sender_lower

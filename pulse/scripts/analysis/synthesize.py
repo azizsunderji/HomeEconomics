@@ -409,6 +409,49 @@ def _format_historical_items(items: list[dict]) -> str:
     return "\n".join(lines)
 
 
+def _fetch_recent_briefing_themes(conn: sqlite3.Connection, n: int = 2) -> list[dict]:
+    """Pull theme titles from the last `n` briefings (most recent first).
+
+    Used to tell the synthesis model what it already led with on prior days,
+    so it doesn't re-lead the same story without explicit new news. Each
+    returned dict has {date: 'YYYY-MM-DD' (created_at-derived), themes: [titles]}.
+    """
+    try:
+        rows = conn.execute(
+            "SELECT id, created_at, content_json FROM briefings "
+            "WHERE briefing_type = 'daily' ORDER BY id DESC LIMIT ?",
+            (n,),
+        ).fetchall()
+    except Exception:
+        return []
+    out = []
+    for r in rows:
+        try:
+            content = json.loads(r["content_json"] or "{}")
+        except Exception:
+            continue
+        themes = content.get("conversation_themes") or content.get("briefing", {}).get("conversation_themes") or []
+        titles = [t.get("theme") or t.get("title") or "" for t in themes if isinstance(t, dict)]
+        titles = [t for t in titles if t]
+        if not titles:
+            continue
+        date_label = (r["created_at"] or "")[:10]
+        out.append({"date": date_label, "id": r["id"], "themes": titles})
+    return out
+
+
+def _format_recent_themes(recent: list[dict]) -> str:
+    """Render recently led themes as guidance for the synthesis prompt."""
+    if not recent:
+        return "No recent briefings on record."
+    lines = []
+    for entry in recent:
+        lines.append(f"### {entry['date']} (briefing #{entry['id']}):")
+        for t in entry["themes"]:
+            lines.append(f"  - {t}")
+    return "\n".join(lines)
+
+
 def _format_substacker_items(items: list[dict]) -> str:
     """Format Substack newsletter items as a dedicated section for the LLM."""
     if not items:
@@ -508,26 +551,37 @@ def _get_known_urls(conn: sqlite3.Connection, hours: int = 48) -> set[str]:
 
 
 def _find_best_url_match(url: str, known_urls: set[str], threshold: float = 0.7) -> Optional[str]:
-    """Find the closest matching known URL."""
+    """Find a known URL that is the same article as the input.
+
+    Conservative: only matches when the URL paths are identical
+    (ignoring trailing slash, query string, and fragment). Same-domain
+    URLs with different paths are treated as different articles — the
+    previous SequenceMatcher-on-full-URL approach corrupted opaque-hash
+    URLs (ft.com/content/<hash>, etc.) by "correcting" one article to
+    a different article on the same domain. Better to strip a real-but-
+    novel URL than to silently substitute a wrong article.
+    (Hardened on 2026-05-23 after Burn-Murdoch FT URL was being swapped
+    for a Russia-Beijing FT article every day.)
+    """
     if url in known_urls:
         return url
     try:
         parsed = urlparse(url)
         domain = parsed.netloc
+        path = (parsed.path or "").rstrip("/")
     except Exception:
         return None
-    same_domain = [u for u in known_urls if domain in u]
-    if not same_domain:
+    if not domain or not path:
         return None
-    best_match = None
-    best_ratio = 0.0
-    for known in same_domain:
-        ratio = SequenceMatcher(None, url, known).ratio()
-        if ratio > best_ratio:
-            best_ratio = ratio
-            best_match = known
-    if best_ratio >= threshold:
-        return best_match
+    for known in known_urls:
+        try:
+            kp = urlparse(known)
+        except Exception:
+            continue
+        if kp.netloc != domain:
+            continue
+        if (kp.path or "").rstrip("/") == path:
+            return known
     return None
 
 
@@ -883,12 +937,19 @@ def _validate_briefing_urls(briefing: dict, conn: sqlite3.Connection) -> dict:
         "sfchronicle.com", "bostonglobe.com", "seattletimes.com",
         "fortune.com", "marketwatch.com", "axios.com", "semafor.com",
         "inman.com", "bisnow.com", "therealdeal.com", "costar.com",
+        # Real-estate research / industry publications
+        "realtor.com", "fastcompany.com", "eyeonhousing.org",
+        "thehousingdownload.com", "thehustle.co",
+        # Regional / NYC housing publications
+        "gothamist.com", "brownstoner.com", "bxtimes.com", "amny.com",
         # Newsletter tracking/redirect domains (legitimate email links)
         "beehiiv.com", "prnewswire.com", "paragraph.com",
         "mail.google.com", "thesisdriven.com", "thedailyshot.com",
         "resiclubanalytics.com", "pulsenomics.com", "apollo.com",
         "coachingatcompass.com", "substack.com", "mailchimp.com",
         "sendgrid.net", "hubspot.com", "constantcontact.com",
+        # Document hosting (PDFs cited from research)
+        "documentcloud.org", "s3.documentcloud.org",
         # Social media (Twitter roundup)
         "twitter.com", "x.com",
     }
@@ -899,14 +960,13 @@ def _validate_briefing_urls(briefing: dict, conn: sqlite3.Connection) -> dict:
         if url in known_urls:
             audit["verified"] += 1
             return url
-        best = _find_best_url_match(url, known_urls)
-        if best:
-            audit["corrected"] += 1
-            audit["corrections"].append({"context": context, "original": url, "corrected_to": best})
-            logger.info(f"URL corrected: {url[:80]} -> {best[:80]} ({context})")
-            return best
-        # Allow URLs on trusted publication domains (real public URLs
-        # even if DB only has redirect/gmail versions)
+        # Allow URLs on trusted publication domains BEFORE attempting any
+        # sequence-match correction. Opaque-hash slug domains like ft.com,
+        # bloomberg.com, wsj.com share long common prefixes (e.g.
+        # "https://www.ft.com/content/") that fool SequenceMatcher into
+        # "correcting" one article's URL to a totally unrelated article on
+        # the same domain. (Caught on 2026-05-23: Burn-Murdoch fertility URL
+        # was being swapped for a Russia-Beijing article every day.)
         try:
             domain = urlparse(url).netloc.lower().lstrip("www.")
             if any(domain == d or domain.endswith("." + d) for d in trusted_domains):
@@ -914,6 +974,12 @@ def _validate_briefing_urls(briefing: dict, conn: sqlite3.Connection) -> dict:
                 return url
         except Exception:
             pass
+        best = _find_best_url_match(url, known_urls)
+        if best:
+            audit["corrected"] += 1
+            audit["corrections"].append({"context": context, "original": url, "corrected_to": best})
+            logger.info(f"URL corrected: {url[:80]} -> {best[:80]} ({context})")
+            return best
         audit["stripped"] += 1
         logger.warning(f"URL stripped (no match): {url[:100]} ({context})")
         return ""
@@ -1393,6 +1459,20 @@ def generate_daily_briefing(
     historical_items = historical_items[:150]
     logger.info(f"Historical context: {len(historical_items)} items from past 6 days (compressed format)")
 
+    # Pull the theme titles from the last 2 briefings so the model knows
+    # what it already led with. Without this, recurring high-relevance items
+    # (e.g. a user's own forwarded Pulse email containing yesterday's lead
+    # theme) can cause the same story to be led two days in a row. Caught
+    # on 2026-05-23: "Why Families Leave Cities" was lead theme #1 on
+    # 5/22 and 5/23 because the 5/22 briefing was forwarded to a friend
+    # and the reply thread re-entered the inbox as a high-relevance item.
+    recent_briefing_themes = _fetch_recent_briefing_themes(conn, n=2)
+    if recent_briefing_themes:
+        logger.info(
+            "Recent briefing themes loaded for anti-repetition guidance: "
+            + ", ".join(f"#{b['id']} ({len(b['themes'])} themes)" for b in recent_briefing_themes)
+        )
+
     # Log source breakdown for relevant items
     relevant_source_counts = Counter(i.get("source", "?") for i in relevant_items)
     logger.info(f"Relevant items by source: {dict(relevant_source_counts.most_common())}")
@@ -1420,6 +1500,15 @@ These are newsletter articles (Substack + email newsletters). Populate substacke
 These items are from the prior 6 days, NOT today. Use them to weave the longer arc into today's themes — when today's news touches a topic that's been discussed earlier in the week, cite the relevant historical voice with a clear time stamp ("Tuesday, [Brad Setser](url) warned..."; "earlier this week, [Conor Sen](url) argued..."; "[The FT noted Friday](url)..."). Always make the time-stamp explicit in the prose so the reader knows what's fresh vs context. Do NOT use historical items as the anchor of a theme — today's items must anchor; historical context is connective tissue.
 
 {_format_historical_items(historical_items)}
+
+## RECENTLY LED THEMES — DO NOT RE-LEAD WITHOUT NEW NEWS
+These are the conversation_themes from prior daily briefings. Treat this list as the "already-covered" pile. RULES:
+1. Do NOT re-lead theme #1 with a story that already appeared as theme #1 (or as ANY top-3 theme) in the most recent prior briefing. The lead must be fresh.
+2. A repeat theme is only acceptable when today brings genuinely new news that materially advances the story (e.g., a new court ruling, a new data release, a new statement from a key actor) — and in that case, the theme title must explicitly reflect the new development, and the summary must lead with the new news, not rehash prior coverage.
+3. The user's own writing (Substack posts, forwarded emails, reply threads about a Pulse briefing) is NOT new news. If today's high-relevance items include forwards/replies of yesterday's briefing or comments on a recent Home Economics post, that does NOT justify repeating the theme. Move on to other news.
+4. If a topic appeared in BOTH prior briefings already, deprioritize it heavily today — it has had its run unless there is a major new event.
+
+{_format_recent_themes(recent_briefing_themes)}
 
 ## Cross-Platform Convergence (topics appearing on 3+ platforms)
 
