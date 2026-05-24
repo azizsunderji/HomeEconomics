@@ -184,6 +184,113 @@ def _clean_and_extract(raw_text: str, title_hint: str = "") -> dict:
         return {"title": title_hint, "author": "", "publication": "", "date": "", "body": prepare_for_tts(raw_text)}
 
 
+def _extract_via_browserbase(url: str) -> dict:
+    """Extract article text via Browserbase — hosted Chrome with residential
+    proxies, stealth posture, and persistent paywall-auth cookies.
+
+    This is the same path Pulse uses for enrichment. Much higher fidelity
+    than local Playwright (which gets bot-detected) and doesn't require the
+    user to have Chrome running locally. Costs Browserbase credits per
+    session but reliably gets full text for WSJ / FT / NYT / Bloomberg /
+    The Atlantic / The New Yorker / etc.
+
+    Requires env vars BROWSERBASE_API_KEY, BROWSERBASE_PROJECT_ID, and
+    optionally BROWSERBASE_CONTEXT_ID (for persistent paywall cookies).
+    Returns {title, text, url} or {..., error: <msg>} on failure.
+    """
+    api_key = os.environ.get("BROWSERBASE_API_KEY", "")
+    project_id = os.environ.get("BROWSERBASE_PROJECT_ID", "")
+    context_id = os.environ.get("BROWSERBASE_CONTEXT_ID", "")
+    if not api_key or not project_id:
+        logger.warning("  Browserbase: API key / project ID not set in env — skipping")
+        return {"title": "", "text": "", "url": url, "error": "browserbase env not set"}
+
+    # Reuse Pulse's HTML→article-text extractor. It has site-specific
+    # selectors (Bloomberg, WSJ, etc.) we don't want to duplicate.
+    try:
+        import sys as _sys
+        _pulse_scripts = "/Users/azizsunderji/Dropbox/Home Economics/HomeEconomics/pulse"
+        if _pulse_scripts not in _sys.path:
+            _sys.path.insert(0, _pulse_scripts)
+        from enrich_articles import _extract_article_text as _pulse_extract
+    except Exception as e:
+        logger.warning(f"  Browserbase: failed to import pulse extractor: {e}")
+        return {"title": "", "text": "", "url": url, "error": f"pulse import: {e}"}
+
+    try:
+        import asyncio
+        from browserbase import Browserbase
+        from playwright.async_api import async_playwright
+        from urllib.parse import urlparse as _up, urlunparse as _uu
+
+        async def _fetch() -> dict:
+            bb = Browserbase(api_key=api_key)
+            session_kwargs = {"project_id": project_id, "keep_alive": True}
+            if context_id:
+                session_kwargs["browser_settings"] = {
+                    "context": {"id": context_id, "persist": True}
+                }
+            session = bb.sessions.create(**session_kwargs)
+            logger.info(f"  Browserbase session {session.id} created "
+                        f"(context_id={'set' if context_id else 'none'})")
+            async with async_playwright() as p:
+                browser = await p.chromium.connect_over_cdp(session.connect_url)
+                try:
+                    context = browser.contexts[0]
+                    page = await context.new_page()
+                    await page.goto(url, wait_until="domcontentloaded", timeout=30000)
+                    # Browserbase needs longer than local for JS-heavy sites
+                    await page.wait_for_timeout(4000)
+                    title = await page.title()
+                    html = await page.content()
+                    text = _pulse_extract(html)
+                    # Thin? Try archive.ph cached snapshot in the same session.
+                    if len(text) < 500:
+                        parsed = _up(url)
+                        clean_url = _uu((parsed.scheme, parsed.netloc, parsed.path, "", "", ""))
+                        archive_search = f"https://archive.ph/newest/{clean_url}"
+                        logger.info(f"  Browserbase: thin ({len(text)}c), trying archive.ph…")
+                        try:
+                            arch_page = await context.new_page()
+                            await arch_page.goto(archive_search, wait_until="domcontentloaded", timeout=25000)
+                            await arch_page.wait_for_timeout(3500)
+                            final_url = arch_page.url
+                            if "archive.ph" in final_url:
+                                body_check = await arch_page.evaluate(
+                                    "document.body ? document.body.innerText.slice(0,400) : ''"
+                                )
+                                bc = (body_check or "").lower()
+                                if ("no archived versions" not in bc
+                                    and "no snapshots" not in bc
+                                    and "captcha" not in bc):
+                                    arch_html = await arch_page.content()
+                                    arch_text = _pulse_extract(arch_html)
+                                    if len(arch_text) >= 500:
+                                        text = arch_text
+                                        if not title:
+                                            title = await arch_page.title()
+                                        logger.info(f"  Browserbase+archive.ph: {len(text)}c")
+                            try: await arch_page.close()
+                            except Exception: pass
+                        except Exception as e:
+                            logger.warning(f"  archive.ph (via Browserbase) failed: {e}")
+                    return {"title": title, "text": text}
+                finally:
+                    try: await browser.close()
+                    except Exception: pass
+
+        result = asyncio.run(_fetch())
+        text = result.get("text", "") or ""
+        if text and len(text.split()) > 50:
+            logger.info(f"  Browserbase extraction succeeded: {len(text.split())} words")
+            return {"title": result.get("title", ""), "text": text, "url": url}
+        return {"title": "", "text": "", "url": url,
+                "error": f"Browserbase returned too little text ({len(text.split())} words)"}
+    except Exception as e:
+        logger.warning(f"  Browserbase extraction failed: {type(e).__name__}: {e}")
+        return {"title": "", "text": "", "url": url, "error": str(e)}
+
+
 def _extract_via_playwright(url: str) -> dict:
     """Extract article text via playwright with Chrome cookies (handles paywalls).
 
@@ -578,10 +685,23 @@ def process_all():
                         f"({len(text.split())} words)"
                     )
                 else:
-                    # Step 2: fresh extraction chain (HTTP → playwright → Chrome → archive.ph)
-                    extracted = extract_from_url(url)
+                    # Step 2: Browserbase — Pulse's primary enrichment path.
+                    # Hosted Chrome with residential proxies, stealth posture,
+                    # and persistent paywall cookies. High fidelity on
+                    # WSJ/FT/NYT/Bloomberg/Atlantic where local Playwright
+                    # trips bot detection. Already has an archive.ph
+                    # fallback wired into the same session.
+                    logger.info(f"  No Pulse-enriched body — trying Browserbase…")
+                    extracted = _extract_via_browserbase(url)
                 # Minimum word count to consider extraction successful
                 MIN_WORDS = 300
+
+                if extracted.get("error") or len(extracted.get("text", "").split()) < MIN_WORDS:
+                    # Step 3: cheap HTTP extraction — works on non-paywalled sites
+                    # and is essentially free, so worth trying before the slower
+                    # local-Chrome fallbacks.
+                    logger.info(f"  Browserbase insufficient ({len(extracted.get('text', '').split())} words), trying HTTP…")
+                    extracted = extract_from_url(url)
 
                 if extracted.get("error") or len(extracted.get("text", "").split()) < MIN_WORDS:
                     # Fallback 1: playwright + Chrome cookies (handles paywalled sites)
