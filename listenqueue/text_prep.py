@@ -6,6 +6,152 @@ Cleans up raw article/email text to sound natural when read aloud.
 import re
 
 
+def _integrate_footnotes(text: str) -> str:
+    """Inline Substack-style trailing numbered footnotes into the body.
+
+    Substack renders footnotes as bare numbered paragraphs at the end of
+    a post ("1First footnote text.", "2Second footnote text...") with no
+    "Notes" or "Footnotes" header, so generic header-based truncation
+    misses them. Without intervention, TTS reads them out as a confusing
+    disjointed tail.
+
+    Strategy:
+    1. Detect the footnote block — a sequence of >=2 consecutive non-empty
+       lines near the end of the text that each start with a number 1, 2,
+       3, … in ascending order (allowing some gaps for footnote-less
+       articles).
+    2. Parse {number: text} from those lines.
+    3. Find inline references in the body — sentence-ending periods
+       followed by a footnote digit (".7 " or ".10\n"), where the char
+       before the period is a letter (to avoid matching decimals like
+       "3.5"). Replace each with ". Footnote: <text>."
+    4. Strip the trailing footnote block.
+
+    If no plausible footnote block is detected, returns text unchanged.
+    """
+    if not text:
+        return text
+    lines = text.split('\n')
+    if len(lines) < 6:
+        return text
+
+    # Walk backwards from the end of the text, collecting numbered lines.
+    # Skip past Substack page-chrome that follows the article ("647", "61",
+    # "PreviousNext", "Share", numeric like/restack counts, etc.) until we
+    # either hit footnote lines (digit + substantive text) or substantive
+    # body text. Stop on the first substantive non-footnote line.
+    footnote_pat = re.compile(r'^(\d{1,3})[\s.]?\s*(.{8,})$')
+    # Lines we treat as "page chrome" — skip past them when scanning back
+    chrome_words = {
+        "share", "like", "comment", "restack", "tweet", "save", "bookmark",
+        "previousnext", "previous", "next", "subscribe", "subscribed",
+    }
+    collected: list[tuple[int, int, str]] = []  # (line_idx, number, body)
+    halfway = len(lines) // 2
+
+    i = len(lines) - 1
+    while i >= halfway:
+        raw = lines[i]
+        s = raw.strip()
+        if not s:
+            i -= 1
+            continue
+        # Substack engagement counts: bare integers (e.g. "647", "61")
+        if re.fullmatch(r'\d{1,5}\.?', s):
+            i -= 1
+            continue
+        # Page chrome words
+        if s.lower() in chrome_words:
+            i -= 1
+            continue
+        m = footnote_pat.match(s)
+        if not m:
+            # Once we collected at least one footnote, hitting a real
+            # paragraph means we're done. Otherwise, just keep walking
+            # back — we haven't entered the footnote zone yet.
+            if collected:
+                break
+            i -= 1
+            continue
+        try:
+            num = int(m.group(1))
+        except ValueError:
+            i -= 1
+            continue
+        # Footnote numbers are typically 1-50; bail out on absurd values
+        # (year numbers like "2026Trump…" shouldn't qualify).
+        if num < 1 or num > 50:
+            if collected:
+                break
+            i -= 1
+            continue
+        body_text = m.group(2).strip()
+        if not body_text or len(body_text) < 8:
+            if collected:
+                break
+            i -= 1
+            continue
+        collected.append((i, num, body_text))
+        i -= 1
+
+    if len(collected) < 2:
+        return text
+
+    # collected is in reverse order; flip and check sequence is 1,2,3,...
+    collected.reverse()
+    expected = 1
+    valid = True
+    for _, num, _ in collected:
+        if num != expected:
+            valid = False
+            break
+        expected += 1
+    if not valid:
+        return text
+
+    # Build footnotes dict and find the start of the block
+    footnotes = {num: body for (_, num, body) in collected}
+    block_start = collected[0][0]
+    body_text = '\n'.join(lines[:block_start])
+
+    # Now inline each footnote where its reference appears in the body.
+    # Match a sentence-ending punctuation + footnote number + boundary,
+    # where the char before the punctuation is a letter (to avoid
+    # decimals like "3.5" matching as ".5").
+    def _replace(m: re.Match) -> str:
+        n = int(m.group(2))
+        if n in footnotes:
+            # Strip trailing punctuation from the footnote body so we don't
+            # end up with double periods ("... still survives.. ").
+            body_clean = footnotes[n].rstrip(' .!?,;')
+            return f"{m.group(1)} Footnote: {body_clean}. "
+        return m.group(0)
+
+    # Two patterns:
+    #   (a) "letter.N " — the most common Substack-after-extraction form
+    #   (b) "letter)N " or "letter!N " — quote-closing followed by ref
+    # The lookbehind for a letter prevents matching decimals.
+    pattern_a = re.compile(r'(?<=[a-zA-Z\)])([\.\?!])(\d{1,2})(?=\s|$|[A-Z])')
+    new_body = pattern_a.sub(_replace, body_text)
+
+    # If any footnotes were never referenced inline, append them at the
+    # end so the reader doesn't lose information. (Common for "extra
+    # commentary" footnotes that aren't tied to a specific spot.)
+    used = set()
+    for m in pattern_a.finditer(body_text):
+        try: used.add(int(m.group(2)))
+        except Exception: pass
+    leftover = [(n, t) for n, t in footnotes.items() if n not in used]
+    if leftover:
+        parts = []
+        for n, t in leftover:
+            t_clean = t.rstrip(' .!?,;')
+            parts.append(f"Footnote {n}: {t_clean}.")
+        new_body = new_body.rstrip() + "\n\nAdditional notes from the author. " + " ".join(parts)
+
+    return new_body
+
+
 def prepare_for_tts(text: str) -> str:
     """Clean and format text for natural TTS output."""
 
@@ -147,6 +293,14 @@ def prepare_for_tts(text: str) -> str:
         if ll.startswith('notes:') and i > len(lines_list) * 0.7:
             text = '\n'.join(lines_list[:i])
             break
+
+    # Integrate Substack-style trailing numbered footnotes back into the
+    # body where they're referenced. Substack writes footnotes as bare
+    # numbered paragraphs at the end of the post ("1Some text.", "2Other
+    # text…"), with no "Notes" header, so the truncation pass above
+    # misses them — and the audio ended up reading them as a confusing
+    # tail of disjointed numbered fragments.
+    text = _integrate_footnotes(text)
 
     # Remove subscribe/signup junk that might appear mid-article
     sub_patterns = [

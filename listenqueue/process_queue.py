@@ -47,21 +47,28 @@ def _generate_intro(title: str, text: str, source: str = "") -> str:
         import anthropic
         client = anthropic.Anthropic()
 
-        # Always extract author/publication from the text itself — never use
-        # queue source field ("gmail", "telegram", "cli") as the author
+        # Prefer the byline that Haiku extracted in _clean_and_extract — it
+        # already filtered for "Do NOT guess or infer the author" and only
+        # returns names that appeared as an actual byline. Falling back to a
+        # naive [Bb]y regex on the first 500 chars regularly picks up
+        # illustration credits, photo credits, or "by the way" prose. (Caught
+        # 2026-05-23: "Fivey Fox by Joey Ellis — Silver Bulletin illustration"
+        # was matched as the article author for a Nate Silver post.)
         source_info = ""
-        first_lines = text[:500]
-        # Try "By Author Name" or "By Author from Publication"
-        by_match = re.search(r'[Bb]y ([^.\n]+?)(?:\.|$|\n)', first_lines)
-        if by_match:
-            source_info = by_match.group(1).strip()
-        # If source is just "gmail" or "telegram", don't use it
-        if source in ("gmail", "telegram", "cli", ""):
-            pass  # Already handled above
-        elif source_info:
-            pass  # Already found from text
-        else:
+        if source and source not in ("gmail", "telegram", "cli"):
             source_info = source
+        else:
+            first_lines = text[:500]
+            by_match = re.search(r'[Bb]y ([^.\n]+?)(?:\.|$|\n)', first_lines)
+            if by_match:
+                candidate = by_match.group(1).strip()
+                # Reject obvious non-authors (illustration / photo credits)
+                low = candidate.lower()
+                if not any(w in low for w in (
+                    " illustration", " photo", " image", " photograph",
+                    " courtesy", " — ", "credit",
+                )):
+                    source_info = candidate
 
         today = datetime.now().strftime("%B %d, %Y")
 
