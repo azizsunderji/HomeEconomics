@@ -7,9 +7,11 @@ Run this on a schedule (e.g., every 30 min via cron or launchd) or on-demand.
 import logging
 import os
 import re
+import sqlite3
 import sys
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import urlparse, urlunparse
 
 # Add parent dir so we can import from the package
 sys.path.insert(0, str(Path(__file__).parent))
@@ -19,6 +21,18 @@ from extract import extract_from_url
 from tts import synthesize
 from feed_generator import generate_feed
 from text_prep import prepare_for_tts
+
+# Pulse pipeline DB — already-enriched article bodies live here. The Pulse
+# enricher runs Browserbase (paywall-aware) + archive.ph fallback, so its
+# body content is usually higher fidelity than what ListenQueue can
+# re-extract on its own — especially for FT/WSJ/NYT/Bloomberg.
+PULSE_DB_PATH = Path(
+    "/Users/azizsunderji/Dropbox/Home Economics/Data/Pulse/pulse.db"
+)
+# Below this length, treat the pulse body as a teaser/snippet and prefer
+# fresh extraction. The Pulse enricher caps bodies at 8000 chars, so an
+# enriched article will typically sit between 1500 and 8000.
+MIN_ENRICHED_CHARS = 1500
 
 logging.basicConfig(
     level=logging.INFO,
@@ -170,6 +184,88 @@ def _clean_and_extract(raw_text: str, title_hint: str = "") -> dict:
         return {"title": title_hint, "author": "", "publication": "", "date": "", "body": prepare_for_tts(raw_text)}
 
 
+def _extract_via_playwright(url: str) -> dict:
+    """Extract article text via playwright with Chrome cookies (handles paywalls).
+
+    Uses browser_cookie3 to read the user's live Chrome cookies (decrypted via
+    macOS Keychain) and injects them into a headless Chromium session.
+    No separate Chrome debug port required.
+    """
+    try:
+        import asyncio
+        import browser_cookie3
+        from playwright.async_api import async_playwright
+        from urllib.parse import urlparse as _up
+
+        parsed = _up(url)
+        domain = parsed.netloc
+        if domain.startswith('www.'):
+            domain = '.' + domain[4:]  # www.nytimes.com -> .nytimes.com
+        else:
+            domain = '.' + domain
+
+        _chrome_base = "/Users/azizsunderji/Library/Application Support/Google/Chrome"
+        _profiles = ["Default"] + [f"Profile {i}" for i in range(1, 6)]
+        seen, raw_cookies = set(), []
+        for _profile in _profiles:
+            try:
+                _jar = browser_cookie3.chrome(
+                    domain_name=domain,
+                    cookie_file=f"{_chrome_base}/{_profile}/Cookies"
+                )
+                for c in _jar:
+                    key = (c.name, c.domain)
+                    if key not in seen:
+                        seen.add(key)
+                        raw_cookies.append(c)
+            except Exception:
+                pass
+        cookies = [
+            {'name': c.name, 'value': c.value, 'domain': c.domain,
+             'path': c.path, 'secure': bool(c.secure), 'httpOnly': False}
+            for c in raw_cookies
+        ]
+        logger.info(f"  Playwright: loaded {len(cookies)} cookies for {domain}")
+
+        async def _fetch():
+            async with async_playwright() as p:
+                browser = await p.chromium.launch(headless=True, channel='chrome')
+                context = await browser.new_context(
+                    user_agent=(
+                        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) '
+                        'AppleWebKit/537.36 (KHTML, like Gecko) '
+                        'Chrome/147.0.0.0 Safari/537.36'
+                    )
+                )
+                await context.add_cookies(cookies)
+                page = await context.new_page()
+                await page.goto(url, wait_until='load', timeout=25000)
+                await page.wait_for_timeout(2000)
+                title = await page.title()
+                try:
+                    paras = await page.query_selector_all('article p')
+                    if paras:
+                        texts = [await para.inner_text() for para in paras]
+                        text = '\n\n'.join(t for t in texts if t.strip())
+                    else:
+                        text = await page.inner_text('body')
+                except Exception:
+                    text = await page.inner_text('body')
+                await browser.close()
+                return title, text
+
+        title, text = asyncio.run(_fetch())
+
+        if text and len(text.split()) > 50:
+            logger.info(f"  Playwright extraction succeeded: {len(text.split())} words")
+            return {"title": title, "text": text, "url": url}
+        return {"title": "", "text": "", "url": url, "error": "Playwright returned too little text"}
+
+    except Exception as e:
+        logger.warning(f"  Playwright extraction failed: {e}")
+        return {"title": "", "text": "", "url": url, "error": str(e)}
+
+
 def _extract_via_chrome(url: str) -> dict:
     """Extract article text via Chrome DevTools Protocol.
 
@@ -199,8 +295,11 @@ def _extract_via_chrome(url: str) -> dict:
         if not ws_url:
             return {"title": "", "text": "", "url": url, "error": "No WebSocket URL from CDP"}
 
-        # Wait for page to load
-        time.sleep(10)
+        # Wait for page to load — longer for JS-heavy sites like Bloomberg
+        from urllib.parse import urlparse as _urlparse
+        domain = _urlparse(url).netloc.lower()
+        wait_time = 15 if "bloomberg.com" in domain else 10
+        time.sleep(wait_time)
 
         # Extract text via WebSocket
         ws = websocket.create_connection(ws_url)
@@ -257,7 +356,11 @@ def _extract_via_archive(url: str) -> dict:
             return {"title": "", "text": "", "url": url, "error": "Chrome debug not running"}
 
         # Step 1: Search archive.ph for cached versions of this URL
-        search_url = f"https://archive.ph/{url}"
+        # Strip query params (access tokens, tracking) — archive.ph indexes base URLs
+        from urllib.parse import urlparse as _ap_urlparse, urlunparse as _ap_urlunparse
+        parsed = _ap_urlparse(url)
+        clean_url = _ap_urlunparse((parsed.scheme, parsed.netloc, parsed.path, "", "", ""))
+        search_url = f"https://archive.ph/{clean_url}"
         logger.info(f"  Searching archive.ph via Chrome: {search_url}")
 
         resp = httpx.put(f"{CDP}/json/new?{search_url}", timeout=15)
@@ -343,6 +446,101 @@ def _extract_via_archive(url: str) -> dict:
         return {"title": "", "text": "", "url": url, "error": str(e)}
 
 
+def _normalize_url(url: str) -> str:
+    """Normalize a URL for matching against pulse.db.
+
+    Strips fragment, trailing slash, and common tracking query params
+    (utm_*, ref, partner, etc.) so a bookmarklet click matches the
+    canonical URL the Pulse enricher saw.
+    """
+    if not url:
+        return ""
+    try:
+        p = urlparse(url)
+    except Exception:
+        return url
+    # Drop fragment + tracking params
+    if p.query:
+        keep = []
+        for kv in p.query.split("&"):
+            key = kv.split("=", 1)[0].lower()
+            if key.startswith("utm_"):
+                continue
+            if key in {"ref", "partner", "source", "rss", "campaign_id",
+                       "campaign", "fbclid", "gclid", "mc_cid", "mc_eid"}:
+                continue
+            keep.append(kv)
+        query = "&".join(keep)
+    else:
+        query = ""
+    path = (p.path or "").rstrip("/")
+    return urlunparse((p.scheme, p.netloc, path, "", query, ""))
+
+
+def _lookup_enriched_body(url: str) -> dict | None:
+    """Look up the URL in pulse.db and return enriched body + metadata if available.
+
+    Matches on normalized URL. Returns None if no usable enriched body found.
+    """
+    if not PULSE_DB_PATH.exists():
+        return None
+    if not url:
+        return None
+    normalized = _normalize_url(url)
+    if not normalized:
+        return None
+    try:
+        conn = sqlite3.connect(f"file:{PULSE_DB_PATH}?mode=ro", uri=True, timeout=5)
+        conn.row_factory = sqlite3.Row
+    except Exception as e:
+        logger.warning(f"  pulse.db open failed: {e}")
+        return None
+    try:
+        # Try exact URL first, then normalized variants. Pulse stores some
+        # URLs with redirect prefixes (paragraph.com, mail.google.com), so
+        # also match by suffix on the canonical URL.
+        rows = conn.execute(
+            "SELECT id, url, title, author, body, source, collected_at "
+            "FROM items WHERE url = ? OR url = ? ORDER BY length(body) DESC LIMIT 5",
+            (url, normalized),
+        ).fetchall()
+        if not rows:
+            # Fallback: substring match on the normalized URL within the
+            # stored URL (catches paragraph.com / Gmail tracker redirects
+            # whose `?url=<encoded>` parameter contains the real link).
+            from urllib.parse import quote
+            rows = conn.execute(
+                "SELECT id, url, title, author, body, source, collected_at "
+                "FROM items WHERE url LIKE ? OR url LIKE ? "
+                "ORDER BY length(body) DESC LIMIT 5",
+                (f"%{normalized}%", f"%{quote(normalized, safe='')}%"),
+            ).fetchall()
+        for r in rows:
+            body = r["body"] or ""
+            if len(body) >= MIN_ENRICHED_CHARS:
+                logger.info(
+                    f"  Pulse enriched body found: id={r['id']} "
+                    f"src={r['source']} body={len(body)}c "
+                    f"({len(body.split())} words)"
+                )
+                return {
+                    "title": r["title"] or "",
+                    "text": body,
+                    "url": url,
+                    "_pulse_item_id": r["id"],
+                    "_pulse_source": r["source"],
+                }
+        return None
+    except Exception as e:
+        logger.warning(f"  pulse.db lookup failed: {e}")
+        return None
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
+
+
 def process_all():
     """Process all pending queue items."""
     pending = get_pending()
@@ -366,30 +564,52 @@ def process_all():
             if text and len(text) > 100:
                 logger.info(f"  Using pre-extracted text: '{title[:50]}' ({len(text.split())} words)")
             else:
-                # Extract text from URL
-                extracted = extract_from_url(url)
+                # Step 1: check pulse.db for an already-enriched body. Pulse's
+                # enricher runs Browserbase with paywall cookies + archive.ph
+                # fallback, so for any URL Pulse has already seen, its body
+                # is more reliable than re-running our own HTTP / Playwright
+                # / Chrome-CDP / archive.ph chain.
+                extracted = _lookup_enriched_body(url) or {}
+                if extracted.get("text"):
+                    title = extracted.get("title") or title
+                    text = extracted["text"]
+                    logger.info(
+                        f"  Using Pulse-enriched body: '{title[:50]}' "
+                        f"({len(text.split())} words)"
+                    )
+                else:
+                    # Step 2: fresh extraction chain (HTTP → playwright → Chrome → archive.ph)
+                    extracted = extract_from_url(url)
                 # Minimum word count to consider extraction successful
                 MIN_WORDS = 300
 
                 if extracted.get("error") or len(extracted.get("text", "").split()) < MIN_WORDS:
-                    # Fallback 1: try Chrome browser extraction for paywalled sites
-                    logger.info(f"  HTTP extraction insufficient ({len(extracted.get('text', '').split())} words), trying Chrome...")
-                    chrome_text = _extract_via_chrome(url)
-                    if chrome_text and len(chrome_text.get("text", "").split()) >= MIN_WORDS:
-                        extracted = chrome_text
-                        logger.info(f"  Chrome extraction succeeded: {len(extracted['text'].split())} words")
+                    # Fallback 1: playwright + Chrome cookies (handles paywalled sites)
+                    logger.info(f"  HTTP extraction insufficient ({len(extracted.get('text', '').split())} words), trying playwright...")
+                    pw_text = _extract_via_playwright(url)
+                    if pw_text and len(pw_text.get("text", "").split()) >= MIN_WORDS:
+                        extracted = pw_text
+                        logger.info(f"  Playwright extraction succeeded: {len(extracted['text'].split())} words")
                     else:
-                        # Fallback 2: try archive.ph for cached version
-                        chrome_words = len(chrome_text.get("text", "").split()) if chrome_text else 0
-                        logger.info(f"  Chrome extraction insufficient ({chrome_words} words), trying archive.ph...")
-                        archive_text = _extract_via_archive(url)
-                        if archive_text and len(archive_text.get("text", "").split()) >= MIN_WORDS:
-                            extracted = archive_text
-                            logger.info(f"  archive.ph succeeded: {len(extracted['text'].split())} words")
+                        # Fallback 2: Chrome CDP (if running with --remote-debugging-port=9222)
+                        pw_words = len(pw_text.get("text", "").split()) if pw_text else 0
+                        logger.info(f"  Playwright insufficient ({pw_words} words), trying Chrome CDP...")
+                        chrome_text = _extract_via_chrome(url)
+                        if chrome_text and len(chrome_text.get("text", "").split()) >= MIN_WORDS:
+                            extracted = chrome_text
+                            logger.info(f"  Chrome CDP succeeded: {len(extracted['text'].split())} words")
                         else:
-                            mark_error(item_id, extracted.get("error", "No text extracted"))
-                            logger.warning(f"  All extraction methods failed: {extracted.get('error', 'empty')}")
-                            continue
+                            # Fallback 3: archive.ph
+                            chrome_words = len(chrome_text.get("text", "").split()) if chrome_text else 0
+                            logger.info(f"  Chrome CDP insufficient ({chrome_words} words), trying archive.ph...")
+                            archive_text = _extract_via_archive(url)
+                            if archive_text and len(archive_text.get("text", "").split()) >= MIN_WORDS:
+                                extracted = archive_text
+                                logger.info(f"  archive.ph succeeded: {len(extracted['text'].split())} words")
+                            else:
+                                mark_error(item_id, extracted.get("error", "No text extracted"))
+                                logger.warning(f"  All extraction methods failed: {extracted.get('error', 'empty')}")
+                                continue
                 title = extracted["title"] or title
                 text = extracted["text"]
                 logger.info(f"  Extracted: '{title[:50]}' ({len(text.split())} words)")
@@ -438,7 +658,10 @@ def process_all():
             full_text = f"{intro}\n\n===INTRO_END===\n\n{body_text_raw}"
 
             # Generate audio
-            audio_path, duration = synthesize(full_text, title, item_id)
+            # Rotate voices for variety
+            VOICES = ["nova", "echo"]
+            voice = VOICES[item_id % len(VOICES)]
+            audio_path, duration = synthesize(full_text, title, item_id, voice=voice)
             logger.info(f"  Audio: {audio_path} (~{duration}s)")
 
             # Mark done
