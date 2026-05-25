@@ -16,6 +16,7 @@
     <outline xmlUrl="http://torontorealtyblog.com/feed/" htmlUrl="https://torontorealtyblog.com/" title="Toronto Realty Blog" type="rss" text="Toronto Realty Blog" />
     <outline text="HighPriority" title="HighPriority">
       <outline text="City Observatory" htmlUrl="https://cityobservatory.org" xmlUrl="http://cityobservatory.org/feed" type="rss" title="City Observatory" />
+      <outline text="The Urbanist" htmlUrl="https://www.theurbanist.org/" xmlUrl="https://www.theurbanist.org/rss/" type="rss" title="The Urbanist" />
       <outline text="Economist: Business" htmlUrl="https://www.economist.com/business" xmlUrl="https://www.economist.com/business/rss.xml" type="rss" title="Economist: Business" />
       <outline type="rss" text="Vox: Eric Levitz" htmlUrl="https://www.vox.com/author/eric-levitz" xmlUrl="https://www.vox.com/authors/eric-levitz/rss" title="Vox: Eric Levitz" />
       <outline xmlUrl="https://rss.nytimes.com/services/xml/rss/nyt/Tennis.xml" type="rss" title="NYT &gt; Sports &gt; Tennis" htmlUrl="https://www.nytimes.com/section/sports/tennis" text="NYT &gt; Sports &gt; Tennis" />
