@@ -9,7 +9,12 @@ name: Pulse Daily Synthesis & Email
 
 on:
   schedule:
-    - cron: "0 11 * * *"  # 7:00am ET / 6:00am EST
+    # Three staggered attempts within 40 min — if GitHub's cron skips one
+    # (which happens at top-of-hour under load), the next one catches it.
+    # The "already-ran-today" guard below prevents double-sending.
+    - cron: "0 11 * * *"   # 7:00am ET / 6:00am EST — primary
+    - cron: "20 11 * * *"  # 7:20am ET — backup #1
+    - cron: "40 11 * * *"  # 7:40am ET — backup #2 (last reasonable hit before 8am)
   workflow_dispatch:
 
 jobs:
@@ -17,6 +22,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
+      # GitHub token for the idempotency guard (lookup of prior successful runs)
+      GH_TOKEN: ${{ github.token }}
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
       APIFY_API_KEY: ${{ secrets.APIFY_API_KEY }}
@@ -41,12 +48,49 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # Idempotency guard: if today's run already succeeded OR is currently
+      # in-progress (started earlier than this one), set should_run=false. All
+      # subsequent steps are gated on this so backup cron triggers no-op
+      # cleanly. The in-progress check matters because the primary 11:00 run
+      # can still be running when the 11:20 backup starts (synth takes ~25 min).
+      # Manual workflow_dispatch always runs (so we can force a re-send).
+      - name: Check if today's briefing already sent or running
+        id: guard
+        run: |
+          if [ "${{ github.event_name }}" != "schedule" ]; then
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+            echo "Manual trigger — proceeding."
+            exit 0
+          fi
+          TODAY_UTC=$(date -u +%Y-%m-%d)
+          MY_ID=${{ github.run_id }}
+          MY_STARTED=$(gh run view "$MY_ID" --repo "$GITHUB_REPOSITORY" --json createdAt --jq .createdAt)
+          # Look at all recent runs of this workflow (success, failure, or in_progress).
+          # Skip if there's a prior run today that is either:
+          #   (a) already succeeded
+          #   (b) still in-progress AND was created before us (it'll get there first)
+          BLOCKERS=$(gh run list \
+            --repo "$GITHUB_REPOSITORY" \
+            --workflow="${{ github.workflow }}" \
+            --limit 20 \
+            --json databaseId,createdAt,status,conclusion \
+            --jq "[.[] | select(.databaseId != $MY_ID) | select(.createdAt | startswith(\"$TODAY_UTC\")) | select(.conclusion == \"success\" or (.status == \"in_progress\" and .createdAt < \"$MY_STARTED\"))] | length")
+          if [ "$BLOCKERS" -gt 0 ]; then
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+            echo "Today's briefing already sent OR an earlier run is in-progress ($BLOCKERS blocker(s)). Skipping."
+          else
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+            echo "No prior success or earlier-in-progress run today — proceeding."
+          fi
+
       - name: Set up Python
+        if: steps.guard.outputs.should_run == 'true'
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
       - name: Install dependencies
+        if: steps.guard.outputs.should_run == 'true'
         run: |
           python -m pip install --upgrade pip
           pip install -r pulse/requirements.txt
@@ -54,9 +98,11 @@ jobs:
           python -m playwright install-deps chromium || true
 
       - name: Install rclone
+        if: steps.guard.outputs.should_run == 'true'
         run: sudo apt-get update && sudo apt-get install -y rclone
 
       - name: Configure rclone
+        if: steps.guard.outputs.should_run == 'true'
         run: |
           mkdir -p ~/.config/rclone
           cat > ~/.config/rclone/rclone.conf << 'EOF'
@@ -66,6 +112,7 @@ jobs:
           EOF
 
       - name: Pull Pulse DB + stamp files from Dropbox
+        if: steps.guard.outputs.should_run == 'true'
         run: |
           mkdir -p pulse/data
           # Pull both pulse.db and the JSON stamp files (gmail_token_issued.json,
@@ -76,6 +123,7 @@ jobs:
             --verbose --stats-one-line
 
       - name: Pull data lake for claim verification
+        if: steps.guard.outputs.should_run == 'true'
         run: |
           mkdir -p /tmp/data-lake /tmp/reference
           rclone copy "dropbox:Home Economics/Data/Price/" /tmp/data-lake/Price/ \
@@ -101,6 +149,7 @@ jobs:
           echo "=== Data lake size ===" && du -sh /tmp/data-lake/
 
       - name: Re-collect Gmail (late newsletters)
+        if: steps.guard.outputs.should_run == 'true'
         working-directory: pulse/scripts
         run: |
           python -c "
@@ -121,31 +170,38 @@ jobs:
           "
 
       - name: Classify unclassified items
+        if: steps.guard.outputs.should_run == 'true'
         working-directory: pulse/scripts
         run: python run_pipeline.py classify-only
 
       - name: Enrich articles via Browserbase
+        if: steps.guard.outputs.should_run == 'true'
         working-directory: pulse
         run: python enrich_articles.py --hours 24 --limit 150
 
       - name: Enrich t.co links inside high-relevance tweets
+        if: steps.guard.outputs.should_run == 'true'
         working-directory: pulse
         run: python enrich_tweet_links.py --hours 24 --limit 60 --min-relevance 50 || echo "Tweet-link enrichment failed — continuing"
 
       - name: Fetch journal abstracts
+        if: steps.guard.outputs.should_run == 'true'
         working-directory: pulse
         run: python fetch_journal_abstracts.py
 
       - name: Capture FT/NYT frontpage screenshots
+        if: steps.guard.outputs.should_run == 'true'
         working-directory: pulse
         run: python capture_frontpages.py || echo "Screenshots failed — continuing without"
 
       - name: Run synthesis + send email
+        if: steps.guard.outputs.should_run == 'true'
         working-directory: pulse/scripts
         run: python run_pipeline.py synthesize
 
       - name: Push DB back to Dropbox
-        if: always()
+        # Run even on failure, but only if the guard let us proceed past the check.
+        if: always() && steps.guard.outputs.should_run == 'true'
         run: |
           rclone copy pulse/data/ "dropbox:Home Economics/Data/Pulse/" \
             --include "pulse.db" --include "*.json" \
