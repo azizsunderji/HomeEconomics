@@ -1840,7 +1840,7 @@ Generate the daily briefing JSON. LEAD WITH CONVERSATION — what are people deb
             try:
                 resp = _anthropic2.Anthropic().messages.create(
                     model="claude-haiku-4-5-20251001",
-                    max_tokens=500,
+                    max_tokens=1500,
                     messages=[{"role": "user", "content": (
                         f"The following tweets from {display} are PROVIDED IN FULL BELOW. "
                         f"Write a brief summary (max 35 words). For each distinct claim, "
