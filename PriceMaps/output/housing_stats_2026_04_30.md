@@ -19,8 +19,8 @@ According to Zillow data compiled by Home Economics, home prices inched up by th
 5. **71601** Pine Bluff, AR ($46K)
 6. **48213** Detroit, MI ($47K)
 7. **15906** Johnstown, PA ($48K)
-8. **48504** Flint, MI ($48K) **(new)**
-9. **39209** Jackson, MS ($49K) **(new)**
+8. **48504** Flint, MI ($48K)
+9. **39209** Jackson, MS ($49K)
 10. **38614** Clarksdale, MS ($50K)
 
 ## Accelerating Prices (Y/Y)
@@ -31,9 +31,9 @@ According to Zillow data compiled by Home Economics, home prices inched up by th
 5. **53581** nan, WI (+14.5% y/y)
 6. **70002** Metairie, LA (+14.4% y/y)
 7. **61101** Rockford, IL (+14.2% y/y)
-8. **53206** Milwaukee, WI (+13.5% y/y) **(new)**
-9. **70058** Harvey, LA (+13.5% y/y) **(new)**
-10. **38843** Fulton, MS (+13.5% y/y) **(new)**
+8. **53206** Milwaukee, WI (+13.5% y/y)
+9. **70058** Harvey, LA (+13.5% y/y)
+10. **38843** Fulton, MS (+13.5% y/y)
 
 ## Decelerating Prices (Y/Y)
 1. **15902** Johnstown, PA (-25.3% y/y)
@@ -43,8 +43,8 @@ According to Zillow data compiled by Home Economics, home prices inched up by th
 5. **48214** Detroit, MI (-17.3% y/y)
 6. **47807** Terre Haute, IN (-16.8% y/y)
 7. **15906** Johnstown, PA (-16.6% y/y)
-8. **48202** Detroit, MI (-16.4% y/y) **(new)**
+8. **48202** Detroit, MI (-16.4% y/y)
 9. **63113** Saint Louis, MO (-15.7% y/y)
-10. **42071** Murray, KY (-15.4% y/y) **(new)**
+10. **42071** Murray, KY (-15.4% y/y)
 
 Data source: Zillow Home Value Index (ZHVI) as of 2026-04-30
