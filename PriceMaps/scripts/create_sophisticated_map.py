@@ -7,6 +7,7 @@ import pandas as pd
 import numpy as np
 import geopandas as gpd
 import json
+import os
 from datetime import datetime
 
 print("🏠 Creating Year-over-Year Home Price Map with Search...")
@@ -3084,19 +3085,45 @@ function closeTipModal(e, dismiss) {{
 </body>
 </html>"""
 
-# Write HTML file
-output_file = 'output/ProMap.html'
-with open(output_file, 'w', encoding='utf-8') as f:
-    f.write(html_content)
+# --- Write DATA outputs only ---
+# Level-2 decoupling: the HTML is now a static, hand-maintained file served by the
+# portal (portal/src/promap-content/promap.html). This generator no longer emits HTML;
+# it produces the data the map fetches at runtime. The big html_content f-string above
+# is retained but unused (safe to delete in a later cleanup).
 
-# Write long-term data JSON file
+def _qarr(key):
+    return [int(q) if not np.isnan(q) else 0 for q in quintiles.get(key, [0, 0, 0, 0])]
+
+global_quintiles = {
+    '3m': _qarr('3m'), '6m': _qarr('6m'), '1y': _qarr('1y'),
+    '3y': _qarr('3y'), '5y': _qarr('5y'), '10y': _qarr('10y'), '15y': _qarr('15y'),
+    'price': [int(quintiles_price[0]), int(quintiles_price[1]),
+              int(quintiles_price[2]), int(quintiles_price[3])],
+}
+
+promap_data = {
+    'meta': {'startDate': date_1y, 'endDate': latest_date, 'zipCount': len(zip_data)},
+    'zipData': zip_data,
+    'msaAverages': msa_averages,
+    'globalQuintiles': global_quintiles,
+}
+
+# promap_data.js — loaded via <script src> before the main script (synchronous)
+data_file = 'output/promap_data.js'
+with open(data_file, 'w', encoding='utf-8') as f:
+    f.write('window.PROMAP_DATA = ')
+    json.dump(promap_data, f, separators=(',', ':'))
+    f.write(';\n')
+
+# Long-term data (3y/5y/10y/15y), fetched lazily by the map
 long_term_file = 'output/long_term_changes.json'
 with open(long_term_file, 'w', encoding='utf-8') as f:
     json.dump(long_term_data, f, separators=(',', ':'))
 
-print(f"\n✅ Successfully created: {output_file}")
-print(f"📏 HTML file size: {len(html_content)/1024/1024:.1f} MB")
-print(f"📏 Long-term data size: {len(json.dumps(long_term_data, separators=(',', ':')))/1024/1024:.1f} MB")
+print(f"\n✅ Wrote {data_file}: {os.path.getsize(data_file)/1024/1024:.2f} MB")
+print(f"✅ Wrote {long_term_file}: {os.path.getsize(long_term_file)/1024/1024:.2f} MB")
+print(f"   ZIPs: {len(zip_data):,}  |  dates: {date_1y} → {latest_date}")
+print("   HTML is static (portal); not generated here.")
 print(f"\n✅ Also created: {long_term_file}")
 print("\n🎯 Features implemented:")
 print("   • Multiple time horizons (3M, 6M, 1Y embedded; 3Y, 5Y, 10Y, 15Y lazy-loaded)")

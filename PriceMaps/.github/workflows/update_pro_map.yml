@@ -91,63 +91,34 @@ jobs:
       run: |
         python scripts/create_sophisticated_map.py
 
-    - name: Commit and push changes
+    - name: Set up Node
       if: steps.check.outputs.new_data == 'true'
-      run: |
-        git config --local user.email "action@github.com"
-        git config --local user.name "GitHub Action"
-
-        # Get the date from the data
-        DATE=$(python -c "import pandas as pd; df=pd.read_csv('data/ZillowZip.csv'); cols=[c for c in df.columns if '-' in c]; print(cols[-1] if cols else 'unknown')")
-
-        git add -f output/ProMap.html
-        git add -f data/last_update.json
-        git commit -m "Update ProMap with data from $DATE" || echo "No changes to commit"
-        git push
-
-    - name: Deploy to GitHub Pages (optional)
-      if: steps.check.outputs.new_data == 'true'
-      uses: peaceiris/actions-gh-pages@v3
+      uses: actions/setup-node@v4
       with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        publish_dir: ./output
-        keep_files: true
+        node-version: '20'
 
-    - name: Deploy ProMap to Server
+    - name: Upload data to Vercel Blob
       if: steps.check.outputs.new_data == 'true'
       env:
-        SERVER_HOST: ${{ secrets.SERVER_HOST }}
-        SERVER_USER: ${{ secrets.SERVER_USER }}
-        SERVER_PASS: ${{ secrets.SERVER_PASS }}
-        SERVER_PATH: /home2/yxwrmjmy/public_html/wp-content/uploads/reports/live/PriceMaps
+        BLOB_READ_WRITE_TOKEN: ${{ secrets.BLOB_READ_WRITE_TOKEN }}
       run: |
-        # Install lftp for FTP upload
-        sudo apt-get update && sudo apt-get install -y lftp
+        # Uploads output/promap_data.js + output/long_term_changes.json to the
+        # promap-data Blob store. The portal serves a static HTML that fetches
+        # these at runtime, so this is the entire deploy — no portal push needed.
+        npm install @vercel/blob
+        node scripts/upload_promap_data.mjs
 
-        # Upload ProMap and all supporting files to server
-        lftp -e "
-          set ftp:ssl-allow no;
-          open ftp://$SERVER_HOST;
-          user $SERVER_USER $SERVER_PASS;
-          mkdir -p $SERVER_PATH;
-          cd $SERVER_PATH;
-          put output/ProMap.html;
-          put output/long_term_changes.json;
-          put output/state_boundaries_low.json;
-          put output/state_boundaries_medium.json;
-          put output/state_boundaries_high.json;
-          bye
-        "
-
-        echo "✅ ProMap deployed to server at $SERVER_PATH"
-        echo "   - ProMap.html"
-        echo "   - long_term_changes.json"
-        echo "   - state_boundaries_low.json"
-        echo "   - state_boundaries_medium.json"
-        echo "   - state_boundaries_high.json"
-        echo "URL: https://home-economics.us/wp-content/uploads/reports/live/PriceMaps/ProMap.html"
-
-    - name: Send notification
+    - name: Record processed date
       if: steps.check.outputs.new_data == 'true'
       run: |
-        echo "ProMap updated successfully with new data!"
+        python scripts/save_update_metadata.py
+        DATE=$(python -c "import json;print(json.load(open('data/last_update.json'))['last_date'])")
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add -f data/last_update.json
+        git commit -m "promap: data refreshed on Blob ($DATE)" || echo "No changes to commit"
+        git push
+
+    - name: Done
+      if: steps.check.outputs.new_data == 'true'
+      run: echo "✅ promap data refreshed on Vercel Blob — live map updates automatically."
