@@ -32,6 +32,9 @@ for (const { name, contentType } of FILES) {
     addRandomSuffix: false,
     allowOverwrite: true,
     multipart: true,
+    // 1-day browser cache: these files change ~monthly, so a short max-age means
+    // returning visitors pick up new data within a day (etag still gives cheap 304s).
+    cacheControlMaxAge: 86400,
   });
   console.log(`  ✓ ${result.url}`);
 }
