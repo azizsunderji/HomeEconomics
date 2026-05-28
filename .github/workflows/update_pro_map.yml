@@ -31,6 +31,11 @@ jobs:
       with:
         python-version: '3.10'
 
+    - name: Set up Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
     - name: Cache Python dependencies
       uses: actions/cache@v3
       with:
@@ -68,14 +73,13 @@ jobs:
         cd PriceMaps
         python scripts/download_data.py
 
-    - name: Generate ProMap (both versions)
+    - name: Generate promap data
       if: steps.check.outputs.new_data == 'true'
       run: |
         cd PriceMaps
-        echo "Generating premium version (ProMap.html)..."
+        # Produces output/promap_data.js + output/long_term_changes.json (data only;
+        # the HTML is a static file served by the portal).
         python scripts/create_sophisticated_map.py
-        echo "Generating free version (ProMap_free.html)..."
-        python scripts/create_sophisticated_map_free_new.py
 
     - name: Save metadata after successful generation
       if: steps.check.outputs.new_data == 'true'
@@ -94,7 +98,19 @@ jobs:
         cat stats_output.txt >> $GITHUB_OUTPUT
         echo "EOF" >> $GITHUB_OUTPUT
 
-    - name: Commit and push changes
+    - name: Upload data to Vercel Blob
+      if: steps.check.outputs.new_data == 'true'
+      env:
+        BLOB_READ_WRITE_TOKEN: ${{ secrets.BLOB_READ_WRITE_TOKEN }}
+      run: |
+        cd PriceMaps
+        # Uploads output/promap_data.js + output/long_term_changes.json to the
+        # promap-data Blob store. The portal serves a static HTML that fetches
+        # these at runtime, so this is the entire deploy.
+        npm install @vercel/blob
+        node scripts/upload_promap_data.mjs
+
+    - name: Commit stats and metadata
       if: steps.check.outputs.new_data == 'true'
       run: |
         git config --local user.email "action@github.com"
@@ -103,57 +119,11 @@ jobs:
         # Get the date from the data
         DATE=$(cd PriceMaps && python -c "import pandas as pd; df=pd.read_csv('data/ZillowZip.csv'); cols=[c for c in df.columns if '-' in c]; print(cols[-1] if cols else 'unknown')")
 
-        git add -f PriceMaps/output/ProMap.html
-        git add -f PriceMaps/output/ProMap_free.html
         git add -f PriceMaps/output/housing_stats_*.md
         git add -f PriceMaps/output/previous_rankings.json
         git add -f PriceMaps/data/last_update.json
-        git commit -m "Update ProMap (both versions) with data from $DATE" || echo "No changes to commit"
+        git commit -m "promap: refresh data on Blob + housing stats ($DATE)" || echo "No changes to commit"
         git push
-
-    - name: Install lftp
-      if: steps.check.outputs.new_data == 'true'
-      run: sudo apt-get update && sudo apt-get install -y lftp
-
-    - name: Deploy to Server via SFTP
-      if: steps.check.outputs.new_data == 'true'
-      env:
-        HOST: ${{ secrets.SFTP_HOST }}
-        USER: ${{ secrets.SFTP_USER }}
-        KEY: ${{ secrets.SFTP_KEY }}
-        REMOTE_BASE: ${{ secrets.REMOTE_BASE }}
-      run: |
-        cd PriceMaps
-
-        # Set up SSH key
-        mkdir -p ~/.ssh
-        echo "$KEY" > ~/.ssh/id_rsa
-        chmod 600 ~/.ssh/id_rsa
-        ssh-keyscan -H $HOST >> ~/.ssh/known_hosts 2>/dev/null || true
-
-        # Generate state boundaries (they're needed but not in git)
-        python scripts/prepare_state_geometries.py
-
-        # Upload ProMap (both versions) and all geometry files
-        lftp -e "
-          set sftp:auto-confirm yes;
-          set sftp:connect-program 'ssh -i ~/.ssh/id_rsa';
-          set net:max-retries 3;
-          set net:timeout 60;
-          open -u $USER,dummy sftp://$HOST;
-          mkdir -p ${REMOTE_BASE}/live/PriceMaps;
-          put output/ProMap.html -o ${REMOTE_BASE}/live/PriceMaps/ProMap.html;
-          put output/ProMap_free.html -o ${REMOTE_BASE}/live/PriceMaps/ProMap_free.html;
-          put output/long_term_changes.json -o ${REMOTE_BASE}/live/PriceMaps/long_term_changes.json;
-          put output/state_boundaries_low.json -o ${REMOTE_BASE}/live/PriceMaps/state_boundaries_low.json;
-          put output/state_boundaries_medium.json -o ${REMOTE_BASE}/live/PriceMaps/state_boundaries_medium.json;
-          put output/state_boundaries_high.json -o ${REMOTE_BASE}/live/PriceMaps/state_boundaries_high.json;
-          bye
-        " || echo "Upload finished with warnings"
-
-        echo "✅ ProMap (both versions) and geometry files deployed"
-        echo "Premium URL: https://home-economics.us/wp-content/uploads/reports/live/PriceMaps/ProMap.html"
-        echo "Free URL: https://home-economics.us/wp-content/uploads/reports/live/PriceMaps/ProMap_free.html"
 
     - name: Create GitHub Issue with housing stats
       if: steps.check.outputs.new_data == 'true'
@@ -187,8 +157,8 @@ jobs:
           echo "2. Paste into your email update"
           echo "3. The data is also saved in the repository at PriceMaps/output/housing_stats_${DATE//-/_}.md"
           echo ""
-          echo "**ProMap Updated:**"
-          echo "- https://home-economics.us/wp-content/uploads/reports/live/PriceMaps/ProMap_free.html"
+          echo "**ProMap (live):**"
+          echo "- https://tools.home-economics.us/promap"
           echo ""
           echo "Auto-generated by workflow"
         } > issue_body.md
@@ -203,5 +173,5 @@ jobs:
     - name: Send notification
       if: steps.check.outputs.new_data == 'true'
       run: |
-        echo "ProMap updated successfully with new data!"
-        echo "Housing statistics issue created - check your GitHub issues!"
+        echo "✅ promap data refreshed on Vercel Blob — live map updates automatically."
+        echo "Housing statistics issue created — check your GitHub issues!"
