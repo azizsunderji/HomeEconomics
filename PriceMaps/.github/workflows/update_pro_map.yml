@@ -55,12 +55,12 @@ jobs:
         fi
 
     - name: Download new data
-      if: steps.check.outputs.new_data == 'true' && github.event_name != 'workflow_dispatch'
+      if: steps.check.outputs.new_data == 'true'
       run: |
         python scripts/download_data.py
 
     - name: Download reference files
-      if: steps.check.outputs.new_data == 'true' && github.event_name != 'workflow_dispatch'
+      if: steps.check.outputs.new_data == 'true'
       run: |
         # Download population data
         mkdir -p resources/populations
