@@ -120,6 +120,25 @@ def _ensure_schema(conn: sqlite3.Connection) -> None:
             items_duplicate INTEGER DEFAULT 0,
             error TEXT DEFAULT ''
         );
+
+        -- Post-synthesis quality-control log: every time the URL validator
+        -- strips a sentence, strips a struct URL, corpus-corrects a URL,
+        -- or accepts a URL via HEAD probe, we record it here. The
+        -- dashboard reads this to surface hallucination rates over time.
+        -- Added 2026-05-30 after a fake WaPo "housing confiscation scheme"
+        -- URL slipped past the validator into the 2026-05-28 briefing.
+        CREATE TABLE IF NOT EXISTS pulse_quality_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            briefing_id INTEGER,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            kind TEXT,           -- 'strip_sentence' | 'strip_link' |
+                                 -- 'url_corrected' | 'head_accept' |
+                                 -- 'head_403_paywall_kept'
+            context TEXT,        -- e.g. 'conversation_themes[1].summary'
+            original_url TEXT,
+            stripped_text TEXT,  -- full sentence removed (or '')
+            reason TEXT          -- 'HEAD 404' / 'HEAD timeout' / etc.
+        );
     """)
     conn.commit()
 
