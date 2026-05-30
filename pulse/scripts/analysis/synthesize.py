@@ -19,6 +19,7 @@ from typing import Optional
 from urllib.parse import urlparse
 
 import anthropic
+import requests
 
 from config import TOPICS, RELEVANCE_THRESHOLD_HIGHLIGHT, SOURCE_WEIGHTS
 from store import (
@@ -918,80 +919,311 @@ def _strip_refusal_meta(briefing: dict) -> dict:
     return briefing
 
 
-def _validate_briefing_urls(briefing: dict, conn: sqlite3.Connection) -> dict:
-    """Post-process briefing to validate all URLs against the database."""
-    known_urls = _get_known_urls(conn)
-    audit = {"verified": 0, "corrected": 0, "stripped": 0, "corrections": []}
+# Domains where SequenceMatcher / path-only matching is too dangerous because
+# article URLs share long common prefixes (e.g. ft.com/content/<hash>). For
+# these domains we MUST NOT fall back to corpus-fuzzy-matching — we go straight
+# to HEAD-fetch verification. (May 23 regression: Burn-Murdoch fertility URL
+# was being swapped for a Russia-Beijing FT article every day.)
+_OPAQUE_SLUG_DOMAINS = {
+    "ft.com", "bloomberg.com", "wsj.com", "washingtonpost.com",
+    "nytimes.com", "reuters.com", "economist.com",
+}
 
-    # Trusted publication domains — URLs on these are real even if not in DB
-    # (e.g., LLM reconstructs canonical URL from email/RSS metadata)
-    trusted_domains = {
-        "substack.com", "apricitas.io", "theovershoot.co", "noahpinion.blog",
-        "aei.org", "brookings.edu", "nber.org", "federalreserve.gov",
-        "bls.gov", "census.gov", "freddiemac.com", "fanniemae.com",
-        "goldmansachs.com", "jpmorgan.com", "gs.com", "housingwire.com",
-        "redfin.com", "zillow.com", "nar.realtor", "calculatedriskblog.com",
-        # Major news publications
-        "nytimes.com", "wsj.com", "bloomberg.com", "ft.com", "economist.com",
-        "reuters.com", "cnbc.com", "washingtonpost.com", "latimes.com",
-        "sfchronicle.com", "bostonglobe.com", "seattletimes.com",
-        "fortune.com", "marketwatch.com", "axios.com", "semafor.com",
-        "inman.com", "bisnow.com", "therealdeal.com", "costar.com",
-        # Real-estate research / industry publications
-        "realtor.com", "fastcompany.com", "eyeonhousing.org",
-        "thehousingdownload.com", "thehustle.co",
-        # Regional / NYC housing publications
-        "gothamist.com", "brownstoner.com", "bxtimes.com", "amny.com",
-        # Newsletter tracking/redirect domains (legitimate email links)
-        "beehiiv.com", "prnewswire.com", "paragraph.com",
-        "mail.google.com", "thesisdriven.com", "thedailyshot.com",
-        "resiclubanalytics.com", "pulsenomics.com", "apollo.com",
-        "coachingatcompass.com", "substack.com", "mailchimp.com",
-        "sendgrid.net", "hubspot.com", "constantcontact.com",
-        # Document hosting (PDFs cited from research)
-        "documentcloud.org", "s3.documentcloud.org",
-        # Social media (Twitter roundup)
-        "twitter.com", "x.com",
-    }
+# Real desktop User-Agent so paywalled news sites don't auto-403 a bare
+# python-requests client.
+_VALIDATOR_UA = (
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+)
 
-    def validate_url(url: str, context: str) -> str:
-        if not url or not url.startswith("http"):
-            return url
-        if url in known_urls:
-            audit["verified"] += 1
-            return url
-        # Allow URLs on trusted publication domains BEFORE attempting any
-        # sequence-match correction. Opaque-hash slug domains like ft.com,
-        # bloomberg.com, wsj.com share long common prefixes (e.g.
-        # "https://www.ft.com/content/") that fool SequenceMatcher into
-        # "correcting" one article's URL to a totally unrelated article on
-        # the same domain. (Caught on 2026-05-23: Burn-Murdoch fertility URL
-        # was being swapped for a Russia-Beijing article every day.)
-        try:
-            domain = urlparse(url).netloc.lower().lstrip("www.")
-            if any(domain == d or domain.endswith("." + d) for d in trusted_domains):
-                audit["verified"] += 1
-                return url
-        except Exception:
-            pass
-        best = _find_best_url_match(url, known_urls)
-        if best:
-            audit["corrected"] += 1
-            audit["corrections"].append({"context": context, "original": url, "corrected_to": best})
-            logger.info(f"URL corrected: {url[:80]} -> {best[:80]} ({context})")
-            return best
-        audit["stripped"] += 1
-        logger.warning(f"URL stripped (no match): {url[:100]} ({context})")
+
+def _split_sentences_for_validation(text: str) -> list[str]:
+    """Split text into sentences, masking [text](url) markdown links so dots
+    inside URLs or link anchors don't trigger false sentence boundaries.
+    Mirrors _split_sentences_link_safe used elsewhere in this module.
+
+    Accepts an OPTIONAL closing quote (single, double, or curly) between the
+    terminator and the trailing whitespace, e.g. 'scheme.' Yesterday — without
+    this, a stripped sentence that ends inside a quotation would swallow the
+    next legitimate sentence (caught 2026-05-30: WaPo strip was swallowing
+    the next NYT citation)."""
+    if not text:
+        return []
+    link_re = re.compile(r"\[[^\]]+\]\([^)]+\)")
+    placeholders: list[str] = []
+
+    def _mask(m):
+        placeholders.append(m.group(0))
+        return f"\x00LINK{len(placeholders)-1}\x00"
+
+    masked = link_re.sub(_mask, text)
+    # Use a sub-with-marker trick instead of pure split, so we can match
+    # the optional closing quote as part of the boundary while preserving
+    # it on the end of the preceding sentence.
+    boundary_re = re.compile(
+        r"([.!?][\"'”’]?)(\s+)(?=[A-Z\x00]|$)"
+    )
+    # Replace boundary with terminator + \x01 marker + (consumed whitespace)
+    marked = boundary_re.sub(lambda m: m.group(1) + "\x01", masked)
+    raw_parts = marked.split("\x01")
+    out = []
+    for p in raw_parts:
+        for j, link in enumerate(placeholders):
+            p = p.replace(f"\x00LINK{j}\x00", link)
+        out.append(p.strip())
+    return [p for p in out if p]
+
+
+def _domain_of(url: str) -> str:
+    try:
+        return urlparse(url).netloc.lower().lstrip("www.").removeprefix("www.")
+    except Exception:
         return ""
 
-    # Validate URLs in all sections
-    for i, theme in enumerate(briefing.get("conversation_themes", [])):
-        for j, plat in enumerate(theme.get("platforms", [])):
+
+def _validate_briefing_urls(briefing: dict, conn: sqlite3.Connection) -> dict:
+    """Post-process briefing to validate all URLs against the database.
+
+    Two-phase validation:
+      1. Structured `url` fields on theme.platforms[] and substacker_takes[].
+      2. Inline markdown links inside prose fields (conversation_pulse,
+         ai_brief, conversation_themes[i].summary, twitter_roundup[i].summary,
+         substacker_takes[i].take).
+
+    Validation order for any URL not already in the corpus:
+      a. _find_best_url_match against known_urls — ONLY if the domain is not
+         in _OPAQUE_SLUG_DOMAINS (those domains' shared path prefixes fool
+         path-equality matching, regression 2026-05-23).
+      b. HTTP HEAD with timeout=5s, allow_redirects=True, real desktop UA:
+           - 200/301/302 → accept (head_accepted)
+           - 403 → ambiguous (paywall). Keep if corpus already has another
+                   url from same domain in last 48h; else strip.
+           - 404 / timeout / connection error → strip
+      c. If the URL fails validation, the ENTIRE SENTENCE containing the
+         markdown link is removed (mode B — Aziz-authorized 2026-05-30).
+
+    Every strip / accept event is logged to the pulse_quality_log SQLite
+    table for dashboard visibility.
+    """
+    known_urls = _get_known_urls(conn)
+    audit = {
+        "verified": 0,
+        "corrected": 0,
+        "stripped": 0,
+        "head_accepted": 0,
+        "head_403_kept": 0,
+        "sentences_stripped": 0,
+        "corrections": [],
+        "sentence_strips": [],
+    }
+
+    # Cache HEAD results so repeated URLs in the same briefing don't hit
+    # the network multiple times. Maps url -> (verdict, reason) where verdict
+    # is one of: 'keep_known', 'keep_head', 'keep_403_paywall', 'strip'.
+    head_cache: dict[str, tuple[str, str]] = {}
+
+    briefing_id = briefing.get("_briefing_id")
+
+    def _log_quality(kind: str, context: str, original_url: str,
+                     stripped_text: str = "", reason: str = "") -> None:
+        try:
+            conn.execute(
+                "INSERT INTO pulse_quality_log "
+                "(briefing_id, kind, context, original_url, stripped_text, reason) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                (briefing_id, kind, context, original_url, stripped_text, reason),
+            )
+        except Exception as e:
+            logger.warning(f"pulse_quality_log insert failed ({kind}): {e}")
+
+    def _corpus_has_same_domain_recent(url: str) -> bool:
+        """Does the corpus contain ANY url from this domain within the
+        known_urls (already filtered to last 48h)?"""
+        d = _domain_of(url)
+        if not d:
+            return False
+        for k in known_urls:
+            if _domain_of(k) == d:
+                return True
+        return False
+
+    def _check_url(url: str, context: str) -> tuple[bool, str, Optional[str]]:
+        """Return (is_valid, reason, replacement_url_or_None).
+
+        replacement_url is set only when we corpus-correct to a real URL
+        (rare — _find_best_url_match returns a same-path different-domain-or-
+        canonicalized form). Otherwise replacement is None and the original
+        URL stays as-is when valid.
+        """
+        if not url or not url.startswith("http"):
+            return True, "non-http", None
+        if url in known_urls:
+            audit["verified"] += 1
+            return True, "in corpus", None
+
+        # Check cache first
+        if url in head_cache:
+            verdict, reason = head_cache[url]
+            if verdict == "keep_known":
+                audit["verified"] += 1
+            elif verdict == "keep_head":
+                audit["head_accepted"] += 1
+            elif verdict == "keep_403_paywall":
+                audit["head_403_kept"] += 1
+            return (verdict.startswith("keep"), reason, None)
+
+        domain = _domain_of(url)
+
+        # (a) Try corpus path-match ONLY if not opaque-slug domain
+        is_opaque = any(domain == d or domain.endswith("." + d)
+                        for d in _OPAQUE_SLUG_DOMAINS)
+        if not is_opaque:
+            best = _find_best_url_match(url, known_urls)
+            if best:
+                audit["corrected"] += 1
+                audit["corrections"].append({
+                    "context": context, "original": url, "corrected_to": best,
+                })
+                logger.info(f"URL corrected: {url[:80]} -> {best[:80]} ({context})")
+                _log_quality("url_corrected", context, url,
+                             stripped_text=best, reason="corpus path match")
+                head_cache[url] = ("keep_known", "corpus path match")
+                return True, "corpus path match", best
+
+        # (b) HEAD probe
+        try:
+            resp = requests.head(
+                url, timeout=5, allow_redirects=True,
+                headers={"User-Agent": _VALIDATOR_UA, "Accept": "*/*"},
+            )
+            status = resp.status_code
+        except requests.exceptions.Timeout:
+            head_cache[url] = ("strip", "HEAD timeout")
+            return False, "HEAD timeout", None
+        except requests.exceptions.RequestException as e:
+            head_cache[url] = ("strip", f"HEAD error: {type(e).__name__}")
+            return False, f"HEAD error: {type(e).__name__}", None
+
+        if status in (200, 301, 302):
+            audit["head_accepted"] += 1
+            _log_quality("head_accept", context, url,
+                         reason=f"HEAD {status}")
+            head_cache[url] = ("keep_head", f"HEAD {status}")
+            return True, f"HEAD {status}", None
+        if status == 403:
+            # Paywall ambiguity: keep if corpus has same domain recently,
+            # else treat as suspicious and strip.
+            if _corpus_has_same_domain_recent(url):
+                audit["head_403_kept"] += 1
+                _log_quality("head_403_paywall_kept", context, url,
+                             reason="HEAD 403; same-domain present in corpus")
+                head_cache[url] = ("keep_403_paywall",
+                                   "HEAD 403; same-domain in corpus")
+                return True, "HEAD 403; same-domain in corpus", None
+            head_cache[url] = ("strip",
+                               "HEAD 403; no same-domain corpus support")
+            return False, "HEAD 403; no same-domain corpus support", None
+        # 404 / 410 / 5xx etc.
+        head_cache[url] = ("strip", f"HEAD {status}")
+        return False, f"HEAD {status}", None
+
+    def _validate_struct_url(url: str, context: str) -> str:
+        ok, reason, replacement = _check_url(url, context)
+        if ok:
+            return replacement or url
+        # Structured URL failed. We can't strip a "sentence" from a structured
+        # field, so just blank it. Caller already handles empty url fields.
+        audit["stripped"] += 1
+        logger.warning(f"URL stripped (no match): {url[:100]} ({context}) — {reason}")
+        _log_quality("strip_link", context, url, reason=reason)
+        return ""
+
+    def _validate_prose_field(text: str, context: str) -> str:
+        """Walk every [anchor](url) markdown link in `text`. For each URL
+        that fails validation, strip the entire sentence containing it.
+        Returns the rewritten text (may be ""). Logs each strip to
+        audit['sentence_strips'] and the pulse_quality_log table."""
+        if not text or not isinstance(text, str):
+            return text or ""
+        link_re = re.compile(r"\[([^\]]+)\]\((https?://[^)]+)\)")
+        # Collect all (anchor, url) tuples and their validation result first
+        url_results: dict[str, tuple[bool, str, Optional[str]]] = {}
+        for m in link_re.finditer(text):
+            u = m.group(2)
+            if u not in url_results:
+                url_results[u] = _check_url(u, context)
+
+        # If every URL passed, apply any corpus-corrections and return.
+        bad_urls = {u for u, r in url_results.items() if not r[0]}
+        if not bad_urls:
+            # Apply replacements (corpus-corrected URLs)
+            def _maybe_replace(m):
+                anchor, u = m.group(1), m.group(2)
+                _, _, replacement = url_results.get(u, (True, "", None))
+                if replacement and replacement != u:
+                    return f"[{anchor}]({replacement})"
+                return m.group(0)
+            return link_re.sub(_maybe_replace, text)
+
+        # Otherwise, sentence-strip mode: for every sentence containing a
+        # bad URL, drop it entirely and log it.
+        sentences = _split_sentences_for_validation(text)
+        kept: list[str] = []
+        for sent in sentences:
+            sent_bad_urls = [u for u in bad_urls
+                             if u in sent]  # exact substring check is fine —
+            # the URL strings in `bad_urls` came verbatim from `text`.
+            if sent_bad_urls:
+                for bad in sent_bad_urls:
+                    _, reason, _ = url_results[bad]
+                    audit["sentences_stripped"] += 1
+                    audit["stripped"] += 1
+                    audit["sentence_strips"].append({
+                        "context": context,
+                        "original_url": bad,
+                        "stripped_text": sent.strip(),
+                        "reason": reason,
+                    })
+                    logger.warning(
+                        f"Sentence stripped ({context}): URL {bad[:80]} "
+                        f"failed ({reason}); sentence: {sent.strip()[:120]!r}"
+                    )
+                    _log_quality(
+                        "strip_sentence", context, bad,
+                        stripped_text=sent.strip(), reason=reason,
+                    )
+            else:
+                kept.append(sent)
+
+        # Re-join and normalize whitespace.
+        rejoined = " ".join(s.strip() for s in kept if s.strip())
+        rejoined = re.sub(r"\s+", " ", rejoined).strip()
+
+        # Apply any corpus-corrections on the URLs that survived
+        if rejoined:
+            def _maybe_replace(m):
+                anchor, u = m.group(1), m.group(2)
+                _, _, replacement = url_results.get(u, (True, "", None))
+                if replacement and replacement != u:
+                    return f"[{anchor}]({replacement})"
+                return m.group(0)
+            rejoined = link_re.sub(_maybe_replace, rejoined)
+
+        return rejoined
+
+    # ─── Phase 1: structured URL fields ───────────────────────────────────
+    for i, theme in enumerate(briefing.get("conversation_themes", []) or []):
+        for j, plat in enumerate(theme.get("platforms", []) or []):
             if "url" in plat:
-                plat["url"] = validate_url(plat["url"], f"conversation_themes[{i}].platforms[{j}]")
-    for i, take in enumerate(briefing.get("substacker_takes", [])):
+                plat["url"] = _validate_struct_url(
+                    plat["url"],
+                    f"conversation_themes[{i}].platforms[{j}].url",
+                )
+    for i, take in enumerate(briefing.get("substacker_takes", []) or []):
         if "url" in take:
-            take["url"] = validate_url(take["url"], f"substacker_takes[{i}]")
+            take["url"] = _validate_struct_url(
+                take["url"], f"substacker_takes[{i}].url"
+            )
         # If Sonnet dropped the URL (or it was empty), look up the original item
         # by title and inject its URL. Covers the substack-redirect case where
         # Sonnet over-prunes — better to send the reader to a subscribe page
@@ -1018,12 +1250,71 @@ def _validate_briefing_urls(briefing: dict, conn: sqlite3.Connection) -> dict:
                         logger.info(f"  substacker_takes: backfilled URL for '{t_title[:50]}' → {cleaned[:80]}")
                 except Exception as e:
                     logger.warning(f"  substacker_takes URL backfill failed: {e}")
-    # twitter_roundup URLs are now inline markdown links in the summary field
-    # — no top-level URL to validate
+
+    # ─── Phase 2: inline markdown links in prose fields ──────────────────
+    if briefing.get("conversation_pulse"):
+        briefing["conversation_pulse"] = _validate_prose_field(
+            briefing["conversation_pulse"], "conversation_pulse"
+        )
+    if briefing.get("ai_brief"):
+        briefing["ai_brief"] = _validate_prose_field(
+            briefing["ai_brief"], "ai_brief"
+        )
+    for i, theme in enumerate(briefing.get("conversation_themes", []) or []):
+        if "summary" in theme:
+            theme["summary"] = _validate_prose_field(
+                theme.get("summary", ""), f"conversation_themes[{i}].summary"
+            )
+    for i, entry in enumerate(briefing.get("twitter_roundup", []) or []):
+        if "summary" in entry:
+            entry["summary"] = _validate_prose_field(
+                entry.get("summary", ""), f"twitter_roundup[{i}].summary"
+            )
+    for i, take in enumerate(briefing.get("substacker_takes", []) or []):
+        if "take" in take:
+            take["take"] = _validate_prose_field(
+                take.get("take", ""), f"substacker_takes[{i}].take"
+            )
+
+    # ─── Phase 3: drop themes whose summary was completely stripped ──────
+    before_drop = len(briefing.get("conversation_themes", []) or [])
+    briefing["conversation_themes"] = [
+        t for t in (briefing.get("conversation_themes", []) or [])
+        if (t.get("summary") or "").strip()
+    ]
+    if before_drop != len(briefing["conversation_themes"]):
+        logger.warning(
+            f"Dropped {before_drop - len(briefing['conversation_themes'])} "
+            f"themes left empty after sentence-level URL strip"
+        )
+    before_drop_tw = len(briefing.get("twitter_roundup", []) or [])
+    briefing["twitter_roundup"] = [
+        e for e in (briefing.get("twitter_roundup", []) or [])
+        if (e.get("summary") or "").strip()
+    ]
+    if before_drop_tw != len(briefing["twitter_roundup"]):
+        logger.warning(
+            f"Dropped {before_drop_tw - len(briefing['twitter_roundup'])} "
+            f"twitter_roundup entries left empty after sentence-level URL strip"
+        )
+
+    try:
+        conn.commit()
+    except Exception:
+        pass
 
     briefing["_url_audit"] = audit
-    total = audit["verified"] + audit["corrected"] + audit["stripped"]
-    logger.info(f"URL validation: {audit['verified']} verified, {audit['corrected']} corrected, {audit['stripped']} stripped (of {total} total)")
+    total = audit["verified"] + audit["corrected"] + audit["stripped"] \
+        + audit["head_accepted"] + audit["head_403_kept"]
+    logger.info(
+        f"URL validation: {audit['verified']} verified, "
+        f"{audit['corrected']} corrected, "
+        f"{audit['head_accepted']} head-accepted, "
+        f"{audit['head_403_kept']} 403-paywall-kept, "
+        f"{audit['stripped']} stripped "
+        f"({audit['sentences_stripped']} sentence-strips) "
+        f"(of {total} total)"
+    )
     return briefing
 
 
