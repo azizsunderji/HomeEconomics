@@ -183,6 +183,8 @@ def send_via_resend(
         headers={
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
+            "User-Agent": "pulse-health-dashboard/1.0 (+https://github.com/azizsunderji/HomeEconomics)",
+            "Accept": "application/json",
         },
     )
     try:
