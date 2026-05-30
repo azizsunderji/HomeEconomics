@@ -1,0 +1,85 @@
+name: Pulse Health Dashboard
+
+# Triggers AFTER the main "Pulse Daily Synthesis & Email" workflow finishes
+# (any conclusion — success or failure). Emails Aziz a digest of what the
+# run did, what it caught, what's worth watching, and what it cost. On
+# failure, also fires off an immediate red alert. Delivery uses Resend
+# (same account as the daily Pulse briefing — RESEND_API_KEY secret).
+
+on:
+  workflow_run:
+    workflows: ["Pulse Daily Synthesis & Email"]
+    types: [completed]
+  workflow_dispatch:
+
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    env:
+      RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+      # For build_digest.py's gh-run-list call
+      GH_TOKEN: ${{ github.token }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # Dashboard scripts only need stdlib (sqlite3 is built-in, urllib for
+      # Resend HTTP). No pip install required.
+
+      - name: Install rclone
+        run: sudo apt-get update && sudo apt-get install -y rclone
+
+      - name: Configure rclone
+        run: |
+          mkdir -p ~/.config/rclone
+          cat > ~/.config/rclone/rclone.conf << 'EOF'
+          [dropbox]
+          type = dropbox
+          token = ${{ secrets.RCLONE_DROPBOX_TOKEN }}
+          EOF
+
+      - name: Pull Pulse DB from Dropbox
+        run: |
+          mkdir -p pulse/data
+          rclone copy "dropbox:Home Economics/Data/Pulse/" pulse/data/ \
+            --include "pulse.db" \
+            --verbose --stats-one-line
+
+      # ── RED ALERT path — only when the upstream workflow failed ──
+      - name: Send red alert (failure path)
+        if: ${{ github.event.workflow_run.conclusion == 'failure' }}
+        working-directory: pulse/scripts/dashboard
+        run: |
+          MSG=$(python build_alert.py \
+            --kind gha_failure \
+            --context "The daily run finished with status 'failure' — check the run logs.")
+          echo "----- ALERT -----"
+          echo "$MSG"
+          echo "----- /ALERT -----"
+          if [ -n "$RESEND_API_KEY" ]; then
+            echo "$MSG" | python send_email.py
+          else
+            echo "RESEND_API_KEY not set — skipping send"
+          fi
+
+      # ── DAILY DIGEST path — runs on every completion (success or failure) ──
+      - name: Build and send daily digest
+        working-directory: pulse/scripts/dashboard
+        run: |
+          MSG=$(python build_digest.py --db ../../data/pulse.db)
+          echo "----- DIGEST -----"
+          echo "$MSG"
+          echo "----- /DIGEST -----"
+          if [ -n "$RESEND_API_KEY" ]; then
+            echo "$MSG" | python send_email.py
+          else
+            echo "RESEND_API_KEY not set — printing only (no email send)"
+          fi
