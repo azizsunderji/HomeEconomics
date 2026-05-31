@@ -53,7 +53,36 @@ jobs:
             --include "pulse.db" \
             --verbose --stats-one-line
 
+      # ── Dedupe: only one digest per day ──
+      # The synth workflow has two backup cron runs (~12:20 and ~12:40 UTC)
+      # behind an idempotency gate. When the main 12:06 run succeeds, the
+      # backups still execute but exit in <1 min after the "Check if today's
+      # briefing already sent" step. Each completion fires a workflow_run
+      # event here, so without dedupe Aziz gets 3 dashboard emails per day.
+      # Heuristic: real synth runs take ~25 min; gate-skipped backups < 1 min.
+      # Skip the digest when the triggering run was under 5 min (only on
+      # workflow_run events — manual workflow_dispatch always sends).
+      - name: Detect backup gate-skip
+        id: dedupe
+        if: ${{ github.event_name == 'workflow_run' }}
+        run: |
+          STARTED="${{ github.event.workflow_run.run_started_at }}"
+          UPDATED="${{ github.event.workflow_run.updated_at }}"
+          S=$(date -d "$STARTED" +%s)
+          U=$(date -d "$UPDATED" +%s)
+          DUR=$((U - S))
+          echo "Triggering synth run duration: ${DUR}s"
+          if [ "$DUR" -lt 300 ]; then
+            echo "Under 5 min — treating as backup gate-skip. Will skip digest."
+            echo "skip_digest=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Over 5 min — treating as real synth run. Will send digest."
+            echo "skip_digest=false" >> "$GITHUB_OUTPUT"
+          fi
+
       # ── RED ALERT path — only when the upstream workflow failed ──
+      # Always runs on failure regardless of duration (a fast-failing synth
+      # is exactly when an alert matters most).
       - name: Send red alert (failure path)
         if: ${{ github.event.workflow_run.conclusion == 'failure' }}
         working-directory: pulse/scripts/dashboard
@@ -70,8 +99,9 @@ jobs:
             echo "RESEND_API_KEY not set — skipping send"
           fi
 
-      # ── DAILY DIGEST path — runs on every completion (success or failure) ──
+      # ── DAILY DIGEST path — runs once per day (skipped for backup gate-skips) ──
       - name: Build and send daily digest
+        if: ${{ steps.dedupe.outputs.skip_digest != 'true' }}
         working-directory: pulse/scripts/dashboard
         run: |
           MSG=$(python build_digest.py --db ../../data/pulse.db)
