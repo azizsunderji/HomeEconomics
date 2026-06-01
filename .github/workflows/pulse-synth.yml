@@ -1,11 +1,15 @@
 name: Pulse Daily Synthesis & Email
 
-# Synthesis runs at 4:00am ET (with backups at +20 and +40 min). Email delivery
-# is scheduled to land at exactly 7:00am ET via Resend's `scheduled_at`
+# Synthesis runs at 7:00am ET (with backups at +20 and +40 min). Email delivery
+# is scheduled to land at exactly 8:30am ET via Resend's `scheduled_at`
 # parameter — see pulse/scripts/delivery/email_briefing.py — so even if synth
 # runs late, the email still arrives at the target time as long as we finish
-# before 7:00am ET. The 3-hour buffer tolerates up to ~2.5 hours of GitHub
-# cron drift plus the ~25-min synth time before delivery is at risk.
+# before 8:30am ET. The 90-minute buffer is the tradeoff for catching the
+# morning news/Substack cycle (most major housing publications drop between
+# 6:00 and 7:00am ET). If synth slips past 8:30am ET, email_briefing.py sends
+# immediately (it won't push to tomorrow). An external Cloudflare Worker
+# cron-triggers the workflow at exactly 11:00 UTC to bypass GitHub's
+# unreliable scheduler — the cron entries below are belt-and-suspenders.
 #
 # Reads the pulse.db that the collection workflow synced to Dropbox,
 # re-pulls Gmail to catch late newsletters, classifies, enriches paywalled
@@ -15,14 +19,16 @@ name: Pulse Daily Synthesis & Email
 
 on:
   schedule:
-    # Three staggered attempts within 40 min — if GitHub's cron skips one
-    # (which happens at top-of-hour under load), the next one catches it.
-    # The "already-ran-today" guard below prevents double-sending.
+    # GitHub cron is best-effort and frequently fires 30–90 min late under
+    # load. We rely on an external Cloudflare Worker (free, sub-second
+    # precise) to fire workflow_dispatch at exactly 11:00 UTC. The crons
+    # below are belt-and-suspenders — the "already-ran-today" guard
+    # prevents double-sending if multiple triggers fire close together.
     # Times below are EDT (March–Nov); during EST they run 1 hour earlier
-    # in local time (3:00am ET), which still leaves a 4-hour buffer.
-    - cron: "0 8 * * *"    # 4:00am ET (EDT) — primary
-    - cron: "20 8 * * *"   # 4:20am ET — backup #1
-    - cron: "40 8 * * *"   # 4:40am ET — backup #2
+    # in local time (6:00am ET), which still leaves a 2.5-hour buffer.
+    - cron: "0 11 * * *"   # 7:00am ET (EDT) — primary
+    - cron: "20 11 * * *"  # 7:20am ET — backup #1
+    - cron: "40 11 * * *"  # 7:40am ET — backup #2
   workflow_dispatch:
 
 jobs:
@@ -202,31 +208,39 @@ jobs:
         working-directory: pulse
         run: python capture_frontpages.py || echo "Screenshots failed — continuing without"
 
-      - name: Compute scheduled_at for 7am ET delivery
+      - name: Compute scheduled_at for 8:30am ET delivery
         if: steps.guard.outputs.should_run == 'true'
         run: |
-          # Compute the NEXT 7:00am ET in UTC, regardless of when this job runs.
-          # If 7am ET today is still in the future (cron at 4am ET), schedule
-          # for today. If we're already past 7am ET (late cron, manual dispatch
-          # in the afternoon), schedule for tomorrow — never send immediately,
-          # never send for a past time. zoneinfo handles EDT/EST automatically.
-          # Script is written to /tmp to avoid Python indentation issues with
-          # YAML/shell heredoc leading-whitespace.
+          # Compute today's 8:30am ET in UTC. If today's 8:30am ET has already
+          # passed (synth ran very late), emit SEND_NOW so email_briefing.py
+          # omits scheduled_at and the email goes immediately — explicitly
+          # do NOT push to tomorrow's 8:30am, since a late email is much
+          # better than a 24-hour-delayed one. zoneinfo handles EDT/EST
+          # automatically. Script is written to /tmp to avoid Python
+          # indentation issues with YAML/shell heredoc leading-whitespace.
           cat > /tmp/compute_scheduled_at.py << 'PYEOF'
-          from datetime import datetime, timezone, timedelta
+          from datetime import datetime, timezone
           from zoneinfo import ZoneInfo
           now_utc = datetime.now(timezone.utc)
           et = ZoneInfo('America/New_York')
-          target = now_utc.astimezone(et).replace(hour=7, minute=0, second=0, microsecond=0)
-          if target.astimezone(timezone.utc) <= now_utc:
-              target += timedelta(days=1)
-          print(target.astimezone(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'))
+          target = now_utc.astimezone(et).replace(hour=8, minute=30, second=0, microsecond=0)
+          target_utc = target.astimezone(timezone.utc)
+          if target_utc <= now_utc:
+              print("SEND_NOW")
+          else:
+              print(target_utc.strftime('%Y-%m-%dT%H:%M:%SZ'))
           PYEOF
           # Strip the leading 10 spaces YAML/shell preserved from the heredoc.
           sed -i 's/^          //' /tmp/compute_scheduled_at.py
           SCHED=$(python /tmp/compute_scheduled_at.py)
-          echo "Computed PULSE_EMAIL_SCHEDULED_AT=$SCHED"
-          echo "PULSE_EMAIL_SCHEDULED_AT=$SCHED" >> "$GITHUB_ENV"
+          if [ "$SCHED" = "SEND_NOW" ]; then
+            echo "Past 8:30am ET — sending immediately (no scheduled_at)"
+            # Leave PULSE_EMAIL_SCHEDULED_AT unset so email_briefing.py
+            # sends the email through Resend without a hold.
+          else
+            echo "Computed PULSE_EMAIL_SCHEDULED_AT=$SCHED"
+            echo "PULSE_EMAIL_SCHEDULED_AT=$SCHED" >> "$GITHUB_ENV"
+          fi
 
       - name: Run synthesis + send email
         if: steps.guard.outputs.should_run == 'true'
