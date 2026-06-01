@@ -689,6 +689,21 @@ def send_email(
     # Retry up to 3 times on transient failures (network, 4xx, 5xx)
     import time as _time
     last_error = None
+    # Build payload. If PULSE_EMAIL_SCHEDULED_AT is set (ISO-8601 UTC like
+    # "2026-06-02T11:00:00Z"), pass it to Resend so delivery is held until that
+    # time — decouples cron firing time from inbox-arrival time so the email
+    # lands at exactly 7am ET regardless of when synthesis finishes.
+    payload = {
+        "from": EMAIL_FROM,
+        "to": [to],
+        "subject": subject,
+        "html": html,
+    }
+    scheduled_at = os.environ.get("PULSE_EMAIL_SCHEDULED_AT", "").strip()
+    if scheduled_at:
+        payload["scheduled_at"] = scheduled_at
+        logger.info(f"Scheduling email for {scheduled_at} (Resend will hold delivery)")
+
     for attempt in range(3):
         try:
             resp = httpx.post(
@@ -697,12 +712,7 @@ def send_email(
                     "Authorization": f"Bearer {api_key}",
                     "Content-Type": "application/json",
                 },
-                json={
-                    "from": EMAIL_FROM,
-                    "to": [to],
-                    "subject": subject,
-                    "html": html,
-                },
+                json=payload,
                 timeout=30,
             )
             if resp.status_code == 200:
