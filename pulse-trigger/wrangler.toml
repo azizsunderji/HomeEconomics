@@ -1,0 +1,23 @@
+name = "pulse-cron-trigger"
+main = "worker.js"
+compatibility_date = "2024-11-01"
+
+# Plain text vars — safe to commit.
+[vars]
+REPO_OWNER = "azizsunderji"
+REPO_NAME = "HomeEconomics"
+WORKFLOW_FILE = "pulse-synth.yml"
+
+# Cloudflare Cron Triggers — fire at exactly 11:00 UTC daily.
+# That's 7:00am ET in EDT (March–Nov) and 6:00am ET in EST (Nov–Mar).
+# Resend holds the email until 8:30am ET, so EDT/EST drift doesn't matter
+# for the user's inbox arrival time.
+[triggers]
+crons = ["0 11 * * *"]
+
+# Secrets (GITHUB_TOKEN, MANUAL_TRIGGER_KEY) are NOT defined here.
+# Set them via:
+#   wrangler secret put GITHUB_TOKEN
+#   wrangler secret put MANUAL_TRIGGER_KEY
+# Or via the Cloudflare Dashboard: Workers → pulse-cron-trigger →
+# Settings → Variables and Secrets.
