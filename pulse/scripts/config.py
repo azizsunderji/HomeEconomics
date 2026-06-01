@@ -282,6 +282,7 @@ TWITTER_ACCOUNTS = [
 # Match is case-insensitive against the username (without @).
 TWITTER_AUTHOR_BLOCKLIST = {
     "lymanstoneky",
+    "jonbrooks",
 }
 
 # AI Roundup accounts: shown in a separate "AI Roundup" section in the email.
