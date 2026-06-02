@@ -910,6 +910,8 @@ def _strip_refusal_meta(briefing: dict) -> dict:
         take["take"] = _clean(take.get("take", ""), take.get("title", ""))
     for theme in briefing.get("conversation_themes", []) or []:
         theme["summary"] = _clean(theme.get("summary", ""), theme.get("theme", ""))
+    for roundup in briefing.get("conversation_roundups", []) or []:
+        roundup["summary"] = _clean(roundup.get("summary", ""), roundup.get("topic", ""))
     if briefing.get("ai_brief"):
         briefing["ai_brief"] = _clean(briefing["ai_brief"], "")
     if briefing.get("conversation_pulse"):
@@ -987,7 +989,7 @@ def _validate_briefing_urls(briefing: dict, conn: sqlite3.Connection) -> dict:
     Two-phase validation:
       1. Structured `url` fields on theme.platforms[] and substacker_takes[].
       2. Inline markdown links inside prose fields (conversation_pulse,
-         ai_brief, conversation_themes[i].summary, twitter_roundup[i].summary,
+         ai_brief, conversation_themes[i].summary, conversation_roundups[i].summary, twitter_roundup[i].summary,
          substacker_takes[i].take).
 
     Validation order for any URL not already in the corpus:
@@ -1265,6 +1267,11 @@ def _validate_briefing_urls(briefing: dict, conn: sqlite3.Connection) -> dict:
             theme["summary"] = _validate_prose_field(
                 theme.get("summary", ""), f"conversation_themes[{i}].summary"
             )
+    for i, roundup in enumerate(briefing.get("conversation_roundups", []) or []):
+        if "summary" in roundup:
+            roundup["summary"] = _validate_prose_field(
+                roundup.get("summary", ""), f"conversation_roundups[{i}].summary"
+            )
     for i, entry in enumerate(briefing.get("twitter_roundup", []) or []):
         if "summary" in entry:
             entry["summary"] = _validate_prose_field(
@@ -1296,6 +1303,16 @@ def _validate_briefing_urls(briefing: dict, conn: sqlite3.Connection) -> dict:
         logger.warning(
             f"Dropped {before_drop_tw - len(briefing['twitter_roundup'])} "
             f"twitter_roundup entries left empty after sentence-level URL strip"
+        )
+    before_drop_cr = len(briefing.get("conversation_roundups", []) or [])
+    briefing["conversation_roundups"] = [
+        r for r in (briefing.get("conversation_roundups", []) or [])
+        if (r.get("summary") or "").strip()
+    ]
+    if before_drop_cr != len(briefing["conversation_roundups"]):
+        logger.warning(
+            f"Dropped {before_drop_cr - len(briefing['conversation_roundups'])} "
+            f"conversation_roundups left empty after sentence-level URL strip"
         )
 
     try:
@@ -1353,6 +1370,13 @@ Return a JSON object:
       "heat_level": "low|medium|high|viral",
       "related_news_trigger": "What news event sparked this conversation, if any. Empty string if organic.",
       "topics": ["topic_key1", "topic_key2"]
+    }
+  ],
+
+  "conversation_roundups": [
+    {
+      "topic": "Title-case short topic — e.g. 'Supply trends across the Sun Belt'",
+      "summary": "Single paragraph (3-6 sentences, max 110 words) summarizing what people across multiple sources are saying about this topic. Every claim links inline via [text](url), same convention as ai_brief. The paragraph is observational — 'the discourse is doing X' — not assertive news. Mix of voices: tweets, substack posts, news commentary. No single trigger required (that's the point — these are themes without one)."
     }
   ],
 
@@ -1527,6 +1551,20 @@ Coverage rules:
    - **Tech_general items (3D printers, software lawsuits, generic tech news) NEVER anchor themes.** The classifier may assign tech_general topic to a high-engagement HN thread; ignore the engagement and skip these. They don't belong in this briefing at all unless they have explicit housing or AI-and-housing relevance.
    - Other beats: include the most substantive 2-4 stories if they pass the bar (high-quality demographics, urbanism, geography). Politics only if directly housing-related.
    - When multiple outlets cover the same news event, ONE theme covers them all with EVERY substantive source linked inline. Do NOT cap at 2-3 sources — a widely-covered story may warrant 5-8 inline citations. Example: "[WSJ](url) and [FT](url) report X, while [Bloomberg](url) emphasizes Y; [The Economist](url) frames it as Z, [Reuters](url) adds specific data, [Slow Boring](url) argues against the consensus, and [Conor Sen on Twitter](url) calls it overblown." If 6+ outlets covered the story substantively, cite all 6+. Stop only when sources start repeating the same angle without adding anything.
+   - **EVENT-ANCHOR REQUIREMENT (HARD GATE FOR NEWS THEMES).** Every conversation_themes entry MUST be anchored on a single named, dated event. Valid triggers:
+       - A publication (named outlet released a story/report on date X)
+       - An announcement or deal (company A acquires company B; person X announced Y)
+       - A government action (bill cleared the [chamber]; agency Z issued a ruling)
+       - A data release (NAR / Redfin / Zillow / Census released X data showing Y)
+       - A court filing or ruling
+       - A named research paper or institutional report (NBER working paper #####, Brookings report titled Z)
+     If you cannot complete the sentence "Today, [specific entity] [specific action] [specific thing]" in 15 words or fewer, it is NOT a news theme. Move the material to conversation_roundups instead.
+     INVALID as themes (move to conversation_roundups):
+       - Tweets across multiple states/cities discussing a topic without a single named trigger
+       - Retrospectives, anniversary investigations, "look back at" pieces with no new news hook
+       - General topical discourse ("housing supply is doing X" without naming a specific report)
+       - Op-eds and commentary that aren't TIED to a specific event from today
+     Each conversation_themes entry's `related_news_trigger` field is now MANDATORY and must name the specific event. If it would read "ongoing discussion about X" or "various tweets about Y", the entry is invalid as a theme — move it to conversation_roundups.
    - Use the FULL article body when present in the input (enriched articles have substantial body text — quote specifics, not just topics)
    - **Weave historical context with explicit time stamps.** When a topic touches something already discussed this week, cite the relevant historical voice from the "Past 6 Days" section with a date stamp: "Tuesday, [Brad Setser argued](url)..." or "earlier this week [Conor Sen warned](url)...". Never use a historical item without a date marker — the reader needs to instantly tell what's fresh vs context. Today's items don't need a date stamp (they're implicitly today).
    - **CRITICAL: historical context must match the theme's specific topic, geography, and country.** Don't weld an Australian migration statistic into a Canadian unemployment theme, or a NYC rent freeze argument into a San Francisco housing theme, just because both have "international" or "housing_policy" tags. Before citing a historical voice, verify: (a) same country/metro, (b) same specific topic (rent control ≠ inclusionary zoning ≠ permitting reform), (c) same direction of argument. If a historical item is about a different country or a tangentially-related topic, leave it out — better to have no historical citation than a misleading one. Recent failure: Sonnet wrote "Canadian unemployment...Thursday, @AvidCommentator noted that Treasury forecasts missed the migration surge: 'At the 2022 Federal Budget...'" — but @AvidCommentator was discussing AUSTRALIAN migration numbers, not Canadian. The cite was geographically wrong.
@@ -1620,9 +1658,11 @@ Label each theme's anchor platforms accurately: use "rss" or "substack" or the n
         - "On a connected front," / "On a parallel track,"
     When two points are genuinely independent within a theme, use honest disjunctive signals instead: "Separately:" / "On a different track:" / "Unrelated but on the same beat:". When two points ARE connected, name the connection explicitly: "This is the supply-side mirror of..." / "Which helps explain why..." / "Cutting against this," / "The counter-argument from [X] is...". The reader should always be able to tell, from the transition alone, whether the next sentence is causally connected to the previous one or just adjacent to it. Reminder: "a related X" is ALWAYS a code-smell for welding — when in doubt, break to a new paragraph.
 
-14. ALL SECTIONS ARE MANDATORY. Your JSON output MUST include ALL of these keys: conversation_themes, twitter_roundup, substacker_takes, ai_brief. If you omit any section, the briefing is broken. substacker_takes should include a take for EVERY Substack newsletter provided — summarize all of them, not just a few.
+14. ALL SECTIONS ARE MANDATORY. Your JSON output MUST include ALL of these keys: conversation_themes, conversation_roundups, twitter_roundup, substacker_takes, ai_brief. If you omit any section, the briefing is broken. substacker_takes should include a take for EVERY Substack newsletter provided — summarize all of them, not just a few. conversation_roundups may be an empty list ONLY if every notable topic of the day cleanly anchors on a single event (rare); usually expect 3-5 entries.
 
 15. AI_BRIEF: Scan the input for ALL AI-related content — tweets from @trq212, @claudeai, @felixrieseberg, @bcherny, @emollick, @CaseyNewton, @kevinroose; substack posts from Understanding AI, One Useful Thing, Stratechery, Zvi, Simon Willison, SemiAnalysis, Dwarkesh, Import AI, Platformer; and emails from Superhuman, The Neuron, FT AI Shift. Synthesize into ONE coherent paragraph (4-6 sentences) with inline markdown links to each source. Do NOT duplicate content that's in conversation_themes — the ai_brief is for AI-specific items that wouldn't make it into a main theme.
+
+16. CONVERSATION_ROUNDUPS: This section is the home for topical discourse that does NOT have a single named, dated event trigger. The format mirrors `ai_brief`: ONE coherent paragraph per topic, every claim hyperlinked inline via [text](url), no bullet points. Each summary is 3-6 sentences (max 110 words), observational rather than assertive — describing what the discourse is doing, not breaking news. Mix voices across sources: tweets, Bluesky posts, substacks, and news commentary. Aim for 3-5 roundups per day total, each on a DISTINCT topic — don't make three roundups all about supply. Same housing-economics scope as conversation_themes (housing, urbanism, affordability, demographics, mortgage/credit, labor and regional economies tied to housing). Examples of legitimate roundup topics: "Supply trends across the Sun Belt", "State-level rent-control proposals", "The Zillow / MLS antitrust war", "Insurance pricing in coastal markets", "Office-to-residential conversion progress". The same logical-honesty and citation rules from conversation_themes apply: no fake connective transitions, every attributed claim hyperlinked, named publications get publisher-domain URLs. Do NOT duplicate material already covered in conversation_themes — roundups are STRICTLY for topics that lack a single event anchor. If a roundup would be better as a news theme (i.e., you CAN complete "Today, X did Y" in 15 words), move it to conversation_themes instead.
 
 """
 
