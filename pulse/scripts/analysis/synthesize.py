@@ -613,8 +613,6 @@ def _enforce_housing_focused_themes(briefing: dict) -> dict:
     Sonnet routinely picks off-topic anchors (Fed/Iran macro, AI scheming,
     3D printer lawsuits) when the input pool runs out of fresh housing
     stories. Belt-and-braces: post-process strip them.
-
-    Items demoted to twitter_roundup if they have a clear anchor handle.
     """
     themes = briefing.get("conversation_themes", []) or []
     if not themes:
@@ -912,12 +910,8 @@ def _strip_refusal_meta(briefing: dict) -> dict:
         theme["summary"] = _clean(theme.get("summary", ""), theme.get("theme", ""))
     for roundup in briefing.get("conversation_roundups", []) or []:
         roundup["summary"] = _clean(roundup.get("summary", ""), roundup.get("topic", ""))
-    if briefing.get("ai_brief"):
-        briefing["ai_brief"] = _clean(briefing["ai_brief"], "")
     if briefing.get("conversation_pulse"):
         briefing["conversation_pulse"] = _clean(briefing["conversation_pulse"], "")
-    for entry in briefing.get("twitter_roundup", []) or []:
-        entry["summary"] = _clean(entry.get("summary", ""), "")
     return briefing
 
 
@@ -989,7 +983,7 @@ def _validate_briefing_urls(briefing: dict, conn: sqlite3.Connection) -> dict:
     Two-phase validation:
       1. Structured `url` fields on theme.platforms[] and substacker_takes[].
       2. Inline markdown links inside prose fields (conversation_pulse,
-         ai_brief, conversation_themes[i].summary, conversation_roundups[i].summary, twitter_roundup[i].summary,
+         conversation_themes[i].summary, conversation_roundups[i].summary,
          substacker_takes[i].take).
 
     Validation order for any URL not already in the corpus:
@@ -1258,10 +1252,6 @@ def _validate_briefing_urls(briefing: dict, conn: sqlite3.Connection) -> dict:
         briefing["conversation_pulse"] = _validate_prose_field(
             briefing["conversation_pulse"], "conversation_pulse"
         )
-    if briefing.get("ai_brief"):
-        briefing["ai_brief"] = _validate_prose_field(
-            briefing["ai_brief"], "ai_brief"
-        )
     for i, theme in enumerate(briefing.get("conversation_themes", []) or []):
         if "summary" in theme:
             theme["summary"] = _validate_prose_field(
@@ -1271,11 +1261,6 @@ def _validate_briefing_urls(briefing: dict, conn: sqlite3.Connection) -> dict:
         if "summary" in roundup:
             roundup["summary"] = _validate_prose_field(
                 roundup.get("summary", ""), f"conversation_roundups[{i}].summary"
-            )
-    for i, entry in enumerate(briefing.get("twitter_roundup", []) or []):
-        if "summary" in entry:
-            entry["summary"] = _validate_prose_field(
-                entry.get("summary", ""), f"twitter_roundup[{i}].summary"
             )
     for i, take in enumerate(briefing.get("substacker_takes", []) or []):
         if "take" in take:
@@ -1293,16 +1278,6 @@ def _validate_briefing_urls(briefing: dict, conn: sqlite3.Connection) -> dict:
         logger.warning(
             f"Dropped {before_drop - len(briefing['conversation_themes'])} "
             f"themes left empty after sentence-level URL strip"
-        )
-    before_drop_tw = len(briefing.get("twitter_roundup", []) or [])
-    briefing["twitter_roundup"] = [
-        e for e in (briefing.get("twitter_roundup", []) or [])
-        if (e.get("summary") or "").strip()
-    ]
-    if before_drop_tw != len(briefing["twitter_roundup"]):
-        logger.warning(
-            f"Dropped {before_drop_tw - len(briefing['twitter_roundup'])} "
-            f"twitter_roundup entries left empty after sentence-level URL strip"
         )
     before_drop_cr = len(briefing.get("conversation_roundups", []) or [])
     briefing["conversation_roundups"] = [
@@ -1339,7 +1314,7 @@ def _validate_briefing_urls(briefing: dict, conn: sqlite3.Connection) -> dict:
 
 SYSTEM_PROMPT = """You are the conversation intelligence system for "Home Economics," a data journalism newsletter about the US housing market and economy by Aziz Sunderji.
 
-Your job: surface the day's most substantive and interesting content for a daily US housing-economics brief. Primary topic: US housing — prices, inventory, mortgages, affordability, zoning/policy, construction supply, urbanism, real estate. Adjacent topics that earn coverage: demographics, internal migration, household formation, mortgage and credit markets, labor markets and regional economies WHERE they affect housing. AI items go in the dedicated `ai_brief` section, NOT in conversation_themes (unless they explicitly tie to housing, like AI data centers driving local development or tech-worker geography). Macro/Fed/markets: only as themes IF the housing tie is direct ("Fed pause keeps 30-yr mortgage at 7%" yes; "Fed holds rates" no).
+Your job: surface the day's most substantive and interesting content for a daily US housing-economics brief. Primary topic: US housing — prices, inventory, mortgages, affordability, zoning/policy, construction supply, urbanism, real estate. Adjacent topics that earn coverage: demographics, internal migration, household formation, mortgage and credit markets, labor markets and regional economies WHERE they affect housing. AI-only items (model releases, AI safety) are out of scope; only include AI when it explicitly ties to housing (AI data centers driving local development, tech-worker geography). Macro/Fed/markets: only as themes IF the housing tie is direct ("Fed pause keeps 30-yr mortgage at 7%" yes; "Fed holds rates" no).
 
 CRITICAL: Quality over volume. A substantive thread with 4 thoughtful replies is FAR more valuable than anonymous comments saying "economy is rigged." Prioritize substantive discussions over populist venting. Do NOT preferentially feature any specific Twitter or Bluesky account — every voice in the input competes on merit. What matters is what was said, not who said it.
 
@@ -1376,14 +1351,7 @@ Return a JSON object:
   "conversation_roundups": [
     {
       "topic": "Title-case short topic — e.g. 'Supply trends across the Sun Belt'",
-      "summary": "Single paragraph (3-6 sentences, max 110 words) summarizing what people across multiple sources are saying about this topic. Every claim links inline via [text](url), same convention as ai_brief. The paragraph is observational — 'the discourse is doing X' — not assertive news. Mix of voices: tweets, substack posts, news commentary. No single trigger required (that's the point — these are themes without one)."
-    }
-  ],
-
-  "twitter_roundup": [
-    {
-      "author": "@handle",
-      "summary": "1-2 sentences (max 50 words). One inline link per distinct tweet, but LINK ANCHOR MUST BE 1-2 WORDS — typically the verb of attribution ('argued', 'pitched', 'noted', 'criticized', 'flagged') or a tight noun phrase. The rest of the sentence stays in plain prose. The reader should see mostly black text with short blue link words sprinkled in. What MUST NOT happen: a whole descriptive phrase or sentence wrapped in the link. No t.co URLs. Examples: single — '[Argued](url) rent growth is bottoming out as 2024 leases reset.'  multi — '[Pitched](url1) courtyard block designs enabling 40–60 units per PNW lot, and [argued](url2) the future of cities is mixed-use clusters rather than hub-and-spoke.'  BAD: '[Pitched courtyard block designs enabling 40-60 units per PNW lot](url1)' (whole phrase wrapped → reads as a wall of blue)."
+      "summary": "Single paragraph (3-6 sentences, max 110 words) summarizing what people across multiple sources are saying about this topic. Every claim links inline via [text](url). The paragraph is observational — 'the discourse is doing X' — not assertive news. Mix of voices: tweets, substack posts, news commentary. No single trigger required (that's the point — these are themes without one)."
     }
   ],
 
@@ -1396,8 +1364,6 @@ Return a JSON object:
     "summary": "3-5 sentence paragraph for an intelligent non-academic reader. What did they find, how did they show it, why does it matter for US housing. Measured, restrained, data-first tone. No filler phrases, no hedges, no academic jargon. State the finding, then the method in one sentence, then the implication.",
     "key_finding": "Single sentence (max 25 words) capturing the central finding plainly, like a wire-service lede."
   },
-
-  "ai_brief": "ONE coherent 4-6 sentence paragraph summarizing today's most interesting AI-related developments across Twitter, newsletters, and substacks. Pull from ALL AI sources: the Twitter accounts in AI_ROUNDUP_ACCOUNTS (@trq212, @claudeai, @felixrieseberg, @bcherny, @emollick, @CaseyNewton, @kevinroose), AI substacks, and AI newsletter emails. Use inline markdown links [text](url) for EVERY claim — link the specific phrase to the original source. Lead with the most substantive development (model release, research finding, industry shift), then cover secondary items. Write it as flowing prose, not bullet points. Example: '[A lab released](url) a new model with notable capabilities, prompting [an analyst to argue](url) it represents a meaningful shift toward autonomous systems. Meanwhile, [a researcher noted](url) that reasoning traces are getting more sophisticated...'",
 
   "stats_summary": {
     "total_items_analyzed": N,
@@ -1542,7 +1508,7 @@ The fix is ALWAYS: name BOTH the original publisher AND the secondary you actual
    - Skip newsletters whose content is purely promotional, off-topic, or too thin to summarize.
 This is a structural change: newsletter content is now distributed across themes/roundups based on subject matter, not collected into a single dedicated section.
 
-5b. NEVER NARRATE INSUFFICIENT CONTENT. If a source's preview is short or teaser-only, infer the take from the title and any partial body you have, then write a confident one-sentence summary. NEVER write phrases like "I don't have access to the full content", "the snippet is cut off", "based on the limited preview", "I cannot offer specifics", or "partial summary". The reader will see this as broken output. If you genuinely can't infer anything beyond the title, write a single neutral sentence based on the title alone — no meta-commentary. This rule applies to ai_brief, twitter_roundup, conversation_roundups, paper_of_the_day, and every other section.
+5b. NEVER NARRATE INSUFFICIENT CONTENT. If a source's preview is short or teaser-only, infer the take from the title and any partial body you have, then write a confident one-sentence summary. NEVER write phrases like "I don't have access to the full content", "the snippet is cut off", "based on the limited preview", "I cannot offer specifics", or "partial summary". The reader will see this as broken output. If you genuinely can't infer anything beyond the title, write a single neutral sentence based on the title alone — no meta-commentary. This rule applies to conversation_themes, conversation_roundups, paper_of_the_day, and every other section.
 
 5c. PAPER OF THE DAY. Pick ONE academic paper from the journal-feed input (NBER working papers, Journal of Housing Economics, Journal of Urban Economics, Real Estate Economics, Regional Science and Urban Economics, Housing Policy Debate, Cities, etc.) as today's Paper of the Day. Selection criteria, in order: (1) most directly relevant to US housing, mortgages, zoning, demographics-of-housing, or affordability; (2) most interesting / surprising / counterintuitive findings; (3) methodologically sound; (4) not too inside-baseball for a general reader. Write the `summary` field in Pulse's measured, restrained, data-first tone — state the finding, then the method in one sentence, then the implication for US housing. The `key_finding` is a single wire-service-style lede sentence (max 25 words). If NO journal candidate is credible for the day (e.g., all candidates are non-housing or TOCs), set `paper_of_the_day` to null and the renderer will omit the section. Bias toward recency (papers <7 days old slightly preferred) but don't pick a marginal recent paper over a strong one from earlier in the 30-day window.
 
@@ -1554,7 +1520,7 @@ This is a structural change: newsletter content is now distributed across themes
 Coverage rules:
    - Real estate / housing / urbanism: cover EVERY substantive story — don't skip housing stories just to make room for other topics
    - **At least 70% of themes must be housing/urbanism/demographics/affordability-tagged.** If your themes drift toward AI, macro, or generic tech as you approach the count target, STOP — better to have 8 housing-focused themes than 14 with 8 housing + 6 off-topic. The reader signed up for housing economics, not generic news.
-   - AI-only items (model releases, AI safety, AI politics that don't tie to housing/labor/geography) belong in `ai_brief`, NOT in conversation_themes. The ai_brief section is the dedicated outlet for those.
+   - AI-only items (model releases, AI safety, AI politics that don't tie to housing/labor/geography) are OUT OF SCOPE for this briefing — skip them entirely. Only include AI when it explicitly ties to housing or labor/geography.
    - Macro/international items (Fed, oil prices, Canadian jobs, etc.) only belong as themes IF they explicitly tie to housing impact. A Canadian unemployment number is not a theme; "Canadian unemployment hits 6.9%, putting downward pressure on Toronto housing demand" is. Same for the Fed: "Fed holds rates higher" is not a theme; "Fed pause keeps 30-year mortgage rates near 7%" is.
    - **Tech_general items (3D printers, software lawsuits, generic tech news) NEVER anchor themes.** The classifier may assign tech_general topic to a high-engagement HN thread; ignore the engagement and skip these. They don't belong in this briefing at all unless they have explicit housing or AI-and-housing relevance.
    - Other beats: include the most substantive 2-4 stories if they pass the bar (high-quality demographics, urbanism, geography). Politics only if directly housing-related.
@@ -1586,7 +1552,7 @@ Coverage rules:
    - **CRITICAL: historical context must match the theme's specific topic, geography, and country.** Don't weld an Australian migration statistic into a Canadian unemployment theme, or a NYC rent freeze argument into a San Francisco housing theme, just because both have "international" or "housing_policy" tags. Before citing a historical voice, verify: (a) same country/metro, (b) same specific topic (rent control ≠ inclusionary zoning ≠ permitting reform), (c) same direction of argument. If a historical item is about a different country or a tangentially-related topic, leave it out — better to have no historical citation than a misleading one. Recent failure: Sonnet wrote "Canadian unemployment...Thursday, @handle noted that Treasury forecasts missed the migration surge: 'At the 2022 Federal Budget...'" — but @handle was discussing AUSTRALIAN migration numbers, not Canadian. The cite was geographically wrong.
 Label each theme's anchor platforms accurately: use "rss" or "substack" or the newspaper name when that's the anchor, "twitter" or "bluesky" when those anchor it.
 
-**Better to have 8 substantive housing themes than 14 themes diluted with off-topic content.** Don't pad to hit the count target. If today's news truly lacks 12+ housing stories, accept fewer themes and let ai_brief cover AI items.
+**Better to have 8 substantive housing themes than 14 themes diluted with off-topic content.** Don't pad to hit the count target. If today's news truly lacks 12+ housing stories, accept fewer themes.
 
 **CONSOLIDATE NEAR-DUPLICATE THEMES.** Before finalizing the theme list, ask: "are any two themes telling the same story from different vendor angles?" If two themes both anchor on (a) the same data period (same month / same release window) AND (b) the same housing-market dynamic (sales + prices, supply + demand, rents + vacancy, mortgage rates + affordability, etc.), MERGE them into one theme that holds the tension inside. Cite all sources inline; don't split because the data came from different vendors. Example: an April existing-home-sales theme (NAR / [trade publication] / [major outlet]) and an April home-price-growth theme (ICE Mortgage Monitor / [housing analyst blog]) are ONE story — "April: sales soft, prices firm" — not two. The reader thinks in market dynamics, not data-vendor categories. Splitting them makes the brief feel like the same story got coverage twice. When the data period or the dynamic differ meaningfully (e.g., April sales but March CPI shelter; national sales but a Bay Area-specific price piece), keep them separate.
 
@@ -1598,7 +1564,7 @@ Label each theme's anchor platforms accurately: use "rss" or "substack" or the n
 
 **CLARITY OVER BREVITY.** Themes can run a bit longer when the story warrants it. Sonnet tends to compress when more detail would actually help the reader understand the nuance. Don't sacrifice an important data point, a quoted argument, or context about what's at stake just to keep a theme short. A theme summary that runs 4-6 sentences with specific data and substantive analysis is better than a tight 2-sentence skim that loses the substance. The reader is reading a paid daily housing brief — they want depth, not headlines.
 
-7. SINGLE TWEETS DO NOT MAKE SOCIAL THEMES. A lone tweet asking a question, making an observation, or endorsing someone else's argument is NOT a theme on its own — put it in twitter_roundup instead. (This rule applies to social-anchored themes only. News-anchored themes don't need cross-platform debate; a single substantial article is enough to anchor a theme.) For a Twitter or Bluesky thread to anchor a theme, you need at least one of: (a) multiple accounts engaging with the same question, (b) the tweet is responding to or commenting on a concrete news story or data release, or (c) the tweet itself has substantial replies/engagement.
+7. SINGLE TWEETS DO NOT MAKE SOCIAL THEMES. A lone tweet asking a question, making an observation, or endorsing someone else's argument is NOT a theme on its own — fold it into a conversation_roundup if topical, or drop it. (This rule applies to social-anchored themes only. News-anchored themes don't need cross-platform debate; a single substantial article is enough to anchor a theme.) For a Twitter or Bluesky thread to anchor a theme, you need at least one of: (a) multiple accounts engaging with the same question, (b) the tweet is responding to or commenting on a concrete news story or data release, or (c) the tweet itself has substantial replies/engagement.
 
 8. ONE TOPIC PER THEME. Do NOT group unrelated threads or voices into one theme just to reduce count. If Winton ARK is talking about AI and photography employment, and Arindube is making a separate argument about AI asset valuations, those are TWO separate themes — not one. Only group threads together when they are genuinely part of the SAME conversation (people replying to each other, referencing each other's points). Three separate people talking about three separate things on the same broad topic is NOT one theme.
 
@@ -1610,16 +1576,7 @@ Label each theme's anchor platforms accurately: use "rss" or "substack" or the n
 
 11b. SPREAD ATTRIBUTION — soft guideline. Prefer diverse voices across themes; a single account anchoring 4+ themes feels like one person's feed, not the day's housing conversation. But it IS fine for the same account to appear in 2-3 themes when they made multiple substantively different arguments on different topics (e.g., @analyst-handle making a separate case on SB 79 transit upzoning AND on SB 1383 labor mandates AND on the builder's remedy — three distinct policy stories, three legitimate anchorings). The risk to avoid: same account cited in 2+ themes for what's essentially the same point reworded. Use editorial judgment, not a hard cap.
 
-12. TWITTER/BLUESKY ROUNDUP: A scannable bullet list of accounts (from EITHER Twitter or Bluesky) that had something notable but did NOT appear in conversation_themes. CRITICAL RULES:
-    a. Do NOT include any voice you already covered in conversation_themes — this section is strictly the overflow.
-    b. ONE entry per account. The "summary" field is 1-2 sentences (max 50 words). Multiple inline links are allowed when the account tweeted on multiple distinct topics — link each anchor phrase to the specific tweet it describes. If the account had a THREAD (multiple consecutive tweets — see thread markers below), summarize the whole thread's argument and link to the most central or earliest tweet.
-    c. Aim for 15-25 accounts. Skip anyone with nothing notable — do not pad with low-signal tweets.
-    d. Prioritize: contrarian views, data-backed claims, novel arguments. Topic focus matches the brief's broad housing-economics scope (housing, demographics, internal migration, household formation, mortgage/credit markets, labor markets and regional economies tied to housing, urbanism, AI when tied to housing).
-
-12b. THREAD HANDLING (critical for roundup AND themes): The input groups consecutive same-author tweets together — items prefixed with "  ↪" are CONTINUATIONS of a thread anchored by the previous "  [conv]" item from the same author. Treat the whole thread as ONE coherent argument, NOT as separate items. Twitter threads are how substantive analysis happens — picking one fragment ("Take SB 79 for example", "/13") strips the context that makes the analysis make sense. So:
-    - For roundup: write ONE entry per author summarizing the thread's overall argument (max 40 words, with one inline markdown link to the thread's anchor tweet).
-    - For themes: when a thread anchors a theme, your summary should reflect the thread's full arc, not just one tweet's claim. Cite the anchor tweet's URL.
-    - Never include the same author's thread spread across multiple themes or as multiple roundup entries — one author = one summary.
+12. THREAD HANDLING (critical for themes): The input groups consecutive same-author tweets together — items prefixed with "  ↪" are CONTINUATIONS of a thread anchored by the previous "  [conv]" item from the same author. Treat the whole thread as ONE coherent argument, NOT as separate items. Twitter threads are how substantive analysis happens — picking one fragment ("Take SB 79 for example", "/13") strips the context that makes the analysis make sense. When a thread anchors a theme, your summary should reflect the thread's full arc, not just one tweet's claim. Cite the anchor tweet's URL. Never include the same author's thread spread across multiple themes — one author = one summary.
 
 13. WRITING STYLE: Be direct and factual. NO AI slop. Avoid these patterns:
     - "People aren't arguing X; they're watching Y" — just state what they're arguing
@@ -1674,11 +1631,9 @@ Label each theme's anchor platforms accurately: use "rss" or "substack" or the n
         - "On a connected front," / "On a parallel track,"
     When two points are genuinely independent within a theme, use honest disjunctive signals instead: "Separately:" / "On a different track:" / "Unrelated but on the same beat:". When two points ARE connected, name the connection explicitly: "This is the supply-side mirror of..." / "Which helps explain why..." / "Cutting against this," / "The counter-argument from [X] is...". The reader should always be able to tell, from the transition alone, whether the next sentence is causally connected to the previous one or just adjacent to it. Reminder: "a related X" is ALWAYS a code-smell for welding — when in doubt, break to a new paragraph.
 
-14. MANDATORY SECTIONS. Your JSON output MUST include these keys: conversation_themes, conversation_roundups, twitter_roundup, ai_brief, and paper_of_the_day (when a credible candidate exists; otherwise set paper_of_the_day to null). The substacker_takes field has been REMOVED (see rule 5) — do NOT output it; if you do, it will be discarded. conversation_roundups may be an empty list ONLY if every notable topic of the day cleanly anchors on a single event (rare); usually expect 3-5 entries.
+14. MANDATORY SECTIONS. Your JSON output MUST include these keys: conversation_pulse, conversation_themes, conversation_roundups, and paper_of_the_day (when a credible candidate exists; otherwise set paper_of_the_day to null). The substacker_takes, twitter_roundup, and ai_brief fields have been REMOVED — do NOT output them; if you do, they will be discarded. conversation_roundups may be an empty list ONLY if every notable topic of the day cleanly anchors on a single event (rare); usually expect 3-5 entries.
 
-15. AI_BRIEF: Scan the input for ALL AI-related content — tweets from @trq212, @claudeai, @felixrieseberg, @bcherny, @emollick, @CaseyNewton, @kevinroose; substack posts from Understanding AI, One Useful Thing, Stratechery, Zvi, Simon Willison, SemiAnalysis, Dwarkesh, Import AI, Platformer; and emails from Superhuman, The Neuron, FT AI Shift. Synthesize into ONE coherent paragraph (4-6 sentences) with inline markdown links to each source. Do NOT duplicate content that's in conversation_themes — the ai_brief is for AI-specific items that wouldn't make it into a main theme.
-
-16. CONVERSATION_ROUNDUPS: This section is the home for topical discourse that does NOT have a single named, dated event trigger. The format mirrors `ai_brief`: ONE coherent paragraph per topic, every claim hyperlinked inline via [text](url), no bullet points. Each summary is 3-6 sentences (max 110 words), observational rather than assertive — describing what the discourse is doing, not breaking news. Mix voices across sources: tweets, Bluesky posts, substacks, and news commentary. Aim for 3-5 roundups per day total, each on a DISTINCT topic — don't make three roundups all about supply. Same housing-economics scope as conversation_themes (housing, urbanism, affordability, demographics, mortgage/credit, labor and regional economies tied to housing). Examples of legitimate roundup topics: "Supply trends across the Sun Belt", "State-level rent-control proposals", "The brokerage / MLS antitrust war", "Insurance pricing in coastal markets", "Office-to-residential conversion progress". The same logical-honesty and citation rules from conversation_themes apply: no fake connective transitions, every attributed claim hyperlinked, named publications get publisher-domain URLs. Do NOT duplicate material already covered in conversation_themes — roundups are STRICTLY for topics that lack a single event anchor. If a roundup would be better as a news theme (i.e., you CAN complete "Today, X did Y" in 15 words), move it to conversation_themes instead.
+15. CONVERSATION_ROUNDUPS: This section is the home for topical discourse that does NOT have a single named, dated event trigger. The format is ONE coherent paragraph per topic, every claim hyperlinked inline via [text](url), no bullet points. Each summary is 3-6 sentences (max 110 words), observational rather than assertive — describing what the discourse is doing, not breaking news. Mix voices across sources: tweets, Bluesky posts, substacks, and news commentary. Aim for 3-5 roundups per day total, each on a DISTINCT topic — don't make three roundups all about supply. Same housing-economics scope as conversation_themes (housing, urbanism, affordability, demographics, mortgage/credit, labor and regional economies tied to housing). Examples of legitimate roundup topics: "Supply trends across the Sun Belt", "State-level rent-control proposals", "The brokerage / MLS antitrust war", "Insurance pricing in coastal markets", "Office-to-residential conversion progress". The same logical-honesty and citation rules from conversation_themes apply: no fake connective transitions, every attributed claim hyperlinked, named publications get publisher-domain URLs. Do NOT duplicate material already covered in conversation_themes — roundups are STRICTLY for topics that lack a single event anchor. If a roundup would be better as a news theme (i.e., you CAN complete "Today, X did Y" in 15 words), move it to conversation_themes instead.
 
 """
 
@@ -1868,8 +1823,8 @@ When citing a tweet or Bluesky post, use the @handle exactly as it appears — d
 
 {_format_items_for_conversation(relevant_items, limit=280)}
 
-## Newsletters (INPUT — route into themes / roundups / ai_brief; no dedicated section)
-These are newsletter articles (Substack + email newsletters). The dedicated substacker_takes output section has been removed (see rule 5) — DO NOT output a substacker_takes field. Instead: when a newsletter directly comments on a candidate event, weave it into that theme's commentary with inline [author](url) citation; when it's topical discussion without a single event anchor, route it into a conversation_roundup; AI-focused posts go into ai_brief; skip the rest.
+## Newsletters (INPUT — route into themes / roundups; no dedicated section)
+These are newsletter articles (Substack + email newsletters). The dedicated substacker_takes output section has been removed (see rule 5) — DO NOT output a substacker_takes field. Instead: when a newsletter directly comments on a candidate event, weave it into that theme's commentary with inline [author](url) citation; when it's topical discussion without a single event anchor, route it into a conversation_roundup; skip the rest.
 
 {_format_substacker_items(substacker_items)}
 
@@ -2023,290 +1978,14 @@ Generate the daily briefing JSON. LEAD WITH CONVERSATION — what are people deb
 
         # === POST-PROCESSING: Fix common Sonnet omissions ===
 
-        def _clean_summary_text(text: str) -> str:
-            """Clean t.co URLs and excess whitespace from a Twitter summary string.
-
-            Sonnet sometimes wraps raw tweet bodies as link text, so we strip
-            t.co URLs from inside the link text while preserving the markdown
-            link structure.
-            """
-            import re as _re
-            if not text:
-                return text
-            # Replace t.co URLs and bare URLs INSIDE link text only ([...]) — leave
-            # the URL part of links (...) untouched.
-            def _strip_in_link_text(match):
-                link_text = match.group(1)
-                url = match.group(2)
-                # Strip t.co URLs from the link text
-                cleaned = _re.sub(r'https?://t\.co/\S*', '', link_text)
-                # Strip truncated URLs at end (e.g. "https://t")
-                cleaned = _re.sub(r'https?://[^\s\]]*$', '', cleaned)
-                # Collapse whitespace and trim
-                cleaned = _re.sub(r'\s+', ' ', cleaned).strip()
-                return f'[{cleaned}]({url})'
-            text = _re.sub(r'\[([^\]]+)\]\(([^)]+)\)', _strip_in_link_text, text)
-            # Also strip any t.co URLs that appear OUTSIDE of links (rare)
-            # Use a careful approach: split on links, clean the non-link parts
-            parts = _re.split(r'(\[[^\]]+\]\([^)]+\))', text)
-            for i in range(len(parts)):
-                if not (parts[i].startswith('[') and '](' in parts[i]):
-                    parts[i] = _re.sub(r'https?://t\.co/\S*', '', parts[i])
-                    parts[i] = _re.sub(r'\s+', ' ', parts[i])
-            text = ''.join(parts).strip()
-            # Replace ". " separator (old format) with " " for cleaner reading
-            text = _re.sub(r'\)\.\s*\[', ') [', text)
-            return text
-
-        # 0. Clean twitter_roundup summaries (strip t.co URLs from link text)
-        # AND enforce the "ONE sentence, max ~30 words" rule — Sonnet routinely
-        # ignores it for high-volume authors (zerohedge, VladTheInflator) and
-        # writes paragraph-length summaries. Truncate at sentence boundary.
-        # Common abbreviations that end in a period but are NOT sentence
-        # boundaries. Without masking these, "Dr. Cameron Murray argued X"
-        # gets truncated to "Dr." by the sentence-boundary regex.
-        _ABBREV_RE = re.compile(
-            r"\b(Dr|Mr|Mrs|Ms|Prof|Sr|Jr|St|Mt|Rev|Hon|Gen|Adm|Capt|Sgt|"
-            r"Lt|Col|Maj|Pres|Gov|Rep|Sen|Esq|Inc|Ltd|Co|Corp|"
-            r"No|vs|cf|approx|Dept|Univ|Assn|Bros|Ph\.D|M\.D|"
-            r"a\.m|p\.m|e\.g|i\.e|et al|U\.S|U\.K|N\.Y|D\.C|L\.A)\.",
-        )
-
-        def _truncate_summary(text: str, max_words: int = 45, max_chars: int = 500) -> str:
-            if not text:
-                return text
-            if len(text) < 200:
-                return text
-            # Mask markdown links so dots inside URLs don't trigger sentence
-            # boundaries. Restore them after truncation.
-            link_re = re.compile(r"\[[^\]]+\]\([^)]+\)")
-            placeholders = []
-            def _mask(m):
-                placeholders.append(m.group(0))
-                return f"\x00LINK{len(placeholders)-1}\x00"
-            masked = link_re.sub(_mask, text)
-            # Mask common abbreviations ending in "." so they don't get
-            # mistaken for sentence boundaries.
-            abbrev_placeholders = []
-            def _mask_abbrev(m):
-                abbrev_placeholders.append(m.group(0))
-                return f"\x00ABBREV{len(abbrev_placeholders)-1}\x00"
-            masked = _ABBREV_RE.sub(_mask_abbrev, masked)
-            # Pick the first sentence (or first-N-words if no boundary found)
-            m = re.match(r"([^.!?]+[.!?])", masked)
-            if m and len(m.group(1).split()) <= max_words:
-                chosen = m.group(1).strip()
-            else:
-                chosen = " ".join(masked.split()[:max_words]).rstrip(",.;:") + "…"
-            # Restore abbreviations
-            for i, abbrev in enumerate(abbrev_placeholders):
-                chosen = chosen.replace(f"\x00ABBREV{i}\x00", abbrev)
-            # Restore links
-            for i, link in enumerate(placeholders):
-                chosen = chosen.replace(f"\x00LINK{i}\x00", link)
-            # Final char hard-cap: even if word count is fine, if expanded
-            # character length is excessive (long markdown URLs), cut at the
-            # last sentence/clause boundary that fits.
-            if len(chosen) > max_chars:
-                # Try to break at a markdown link end "](url)" boundary
-                cut = chosen.rfind(")", 0, max_chars)
-                if cut > max_chars * 0.5:
-                    chosen = chosen[:cut + 1]
-                else:
-                    chosen = chosen[:max_chars].rstrip(",.;: ") + "…"
-            return chosen
-
-        def _shorten_link_anchors(text: str, max_anchor_words: int = 2) -> str:
-            """Rewrite [longphrase](url) → [verb](url) longphrase-remainder.
-
-            User wants short link anchors (1-2 words, typically the verb) with
-            the descriptive remainder in plain prose. Sonnet ignores this rule
-            in prose generation (added 2026-05-12; still violated 2026-05-13)
-            so we enforce it programmatically here.
-            """
-            def _rewrite(m):
-                anchor = m.group(1)
-                url = m.group(2)
-                words = anchor.split()
-                if len(words) <= max_anchor_words:
-                    return m.group(0)
-                # Keep first word(s) as anchor, push remainder to plain text
-                kept = " ".join(words[:max_anchor_words])
-                remainder = " ".join(words[max_anchor_words:])
-                return f"[{kept}]({url}) {remainder}"
-            return re.sub(r"\[([^\]]+)\]\((https?://[^)]+)\)", _rewrite, text)
-
-        for entry in briefing.get("twitter_roundup", []):
-            if "summary" in entry:
-                entry["summary"] = _clean_summary_text(entry["summary"])
-                entry["summary"] = _shorten_link_anchors(entry["summary"])
-                entry["summary"] = _truncate_summary(entry["summary"])
-
-        # 1. Deduplicate twitter_roundup and split out AI Roundup accounts
-        try:
-            from config import AI_ROUNDUP_ACCOUNTS
-            ai_handles = {f"@{h.lower()}" for h in AI_ROUNDUP_ACCOUNTS}
-        except ImportError:
-            ai_handles = set()
-
-        # Build the set of URLs already used in conversation themes — these
-        # should NOT appear again in the twitter roundup.
-        theme_urls = set()
-        theme_handles = set()  # normalized handles used in theme platform entries
-        import re as _re_theme
-        for theme in briefing.get("conversation_themes", []):
-            for p in theme.get("platforms", []):
-                u = p.get("url", "")
-                if u:
-                    theme_urls.add(u)
-            # Also scan the summary markdown for twitter URLs and handles
-            summary = theme.get("summary", "") or ""
-            for m in _re_theme.finditer(r'https?://(?:twitter\.com|x\.com)/(\w+)/status/(\d+)', summary):
-                handle, status_id = m.group(1), m.group(2)
-                theme_urls.add(f"https://twitter.com/{handle}/status/{status_id}")
-                theme_urls.add(f"https://x.com/{handle}/status/{status_id}")
-                theme_handles.add(handle.lower())
-
-        roundup = briefing.get("twitter_roundup", [])
-        if roundup:
-            seen_authors = set()
-            deduped = []
-            ai_roundup = []
-            skipped_theme_dup = 0
-            for entry in roundup:
-                author = (entry.get("author") or "").lower().strip().lstrip("@")
-                if not author:
-                    continue
-                if author in seen_authors:
-                    continue
-                # Skip if this account is already featured in a conversation theme
-                if author in theme_handles:
-                    skipped_theme_dup += 1
-                    continue
-                # Check if any URL in the summary is already in a theme
-                summary_text = entry.get("summary", "") or ""
-                entry_urls = set(_re_theme.findall(r'https?://(?:twitter\.com|x\.com)/\w+/status/\d+', summary_text))
-                if entry_urls and entry_urls.issubset(theme_urls):
-                    skipped_theme_dup += 1
-                    continue
-                seen_authors.add(author)
-                if f"@{author}" in ai_handles or author in {h.lstrip("@") for h in ai_handles}:
-                    ai_roundup.append(entry)
-                else:
-                    deduped.append(entry)
-            briefing["_ai_roundup"] = ai_roundup
-            if skipped_theme_dup:
-                logger.info(f"Twitter roundup: skipped {skipped_theme_dup} entries already in conversation themes")
-            briefing["twitter_roundup"] = deduped
-
-        def _build_fallback_summary(tweets: list, author: str = "") -> str:
-            """Haiku prose summary for supplement entries."""
-            import re as _re2
-            import anthropic as _anthropic2
-            display = author  # Always show the raw @handle — no name translation
-            tweet_lines = []
-            for i, t in enumerate(tweets[:8], 1):
-                body = t.get("body") or t.get("title", "")
-                body = _re2.sub(r'https?://t\.co/\S*', '', body)
-                body = _re2.sub(r'https?://\S+', '', body)
-                body = _re2.sub(r'\s+', ' ', body).strip()[:280]
-                if body:
-                    tweet_lines.append(f"[{i}] {body} (url: {t.get('url','')})")
-            if not tweet_lines:
-                return ""
-            try:
-                resp = _anthropic2.Anthropic().messages.create(
-                    model="claude-haiku-4-5-20251001",
-                    max_tokens=1500,
-                    messages=[{"role": "user", "content": (
-                        f"The following tweets from {display} are PROVIDED IN FULL BELOW. "
-                        f"Write a brief summary (max 35 words). For each distinct claim, "
-                        f"the LINK ANCHOR must be ONE OR TWO WORDS — typically the verb of "
-                        f"attribution (argued, noted, criticized, flagged, urged, pitched) "
-                        f"or a tight two-word noun phrase. The rest of the claim stays in "
-                        f"plain prose AROUND the link, not inside it. "
-                        f"GOOD: '[argued](url1) rents are bottoming, [criticized](url2) education "
-                        f"funding cuts, [urged](url3) House support for HR-2'. "
-                        f"BAD: '[argued rents are bottoming](url1), [criticized education funding cuts](url2)' "
-                        f"— do NOT wrap the whole claim phrase in the link. The reader should see "
-                        f"mostly BLACK prose with short 1-2-word BLUE link anchors sprinkled in. "
-                        f"If only one tweet, ONE link with a 1-2-word verb anchor is fine. "
-                        f"No paragraphs. No meta-commentary. "
-                        f"Do NOT say you can't access Twitter — the content is below.\n\n"
-                        f"Tweets:\n" + "\n".join(tweet_lines)
-                    )}],
-                )
-                try:
-                    from analysis.anthropic_spend import record_usage as _rec_usage
-                    _rec_usage("claude-haiku-4-5-20251001", resp.usage)
-                except Exception:
-                    pass
-                out = resp.content[0].text.strip()
-                # Reject Haiku hallucinations
-                bad_starts = (
-                    "i don't have access", "i cannot access",
-                    "i'm unable to", "i am unable to",
-                    "to help you", "could you", "please provide",
-                )
-                if any(out.lower().startswith(p) for p in bad_starts):
-                    raise RuntimeError("haiku refusal")
-                return out
-            except Exception:
-                # Fallback: just the title of the highest-scored tweet with a link
-                top = max(tweets, key=lambda t: t.get("relevance_score") or 0)
-                title = (top.get("title") or "")[:120].strip()
-                url = top.get("url", "")
-                if url and title:
-                    return f"[{title}]({url})"
-                return title or ""
-
-        # 2. Supplement twitter_roundup if Sonnet returned fewer than 15 accounts
-        roundup_authors = {(e.get("author") or "").lower().strip() for e in briefing.get("twitter_roundup", [])}
-        theme_urls = set()
-        for theme in briefing.get("conversation_themes", []):
-            for p in theme.get("platforms", []):
-                if p.get("url"):
-                    theme_urls.add(p["url"])
-        if len(briefing.get("twitter_roundup", [])) < 15:
-            # Group supplemental tweets by author
-            supplement_by_author = {}
-            for item in relevant_items:
-                if item.get("source") != "twitter":
-                    continue
-                if (item.get("relevance_score") or 0) < 40:
-                    continue
-                author = (item.get("author") or "").strip()
-                author_key = author.lower()
-                if author_key in roundup_authors:
-                    continue
-                if item.get("url", "") in theme_urls:
-                    continue
-                supplement_by_author.setdefault(author_key, []).append(item)
-
-            # Sort by total relevance score
-            sorted_authors = sorted(supplement_by_author.items(),
-                                    key=lambda x: -sum(i.get("relevance_score", 0) for i in x[1]))
-            for author_key, tweets in sorted_authors:
-                display_author = tweets[0].get("author", "").strip()
-                if not display_author.startswith("@"):
-                    display_author = f"@{display_author}"
-                summary = _build_fallback_summary(tweets, display_author)
-                if summary:
-                    # Apply same length cap as Sonnet entries get
-                    summary = _truncate_summary(summary)
-                    # Programmatic safety net: even with the explicit "1-2 word
-                    # anchor" prompt, Haiku still sometimes wraps full claim
-                    # phrases. Enforce 1-2 word anchors here so the supplement
-                    # entries match the Sonnet entries' formatting.
-                    summary = _shorten_link_anchors(summary)
-                    roundup_authors.add(author_key)
-                    briefing.setdefault("twitter_roundup", []).append({
-                        "author": display_author,
-                        "summary": summary,
-                        "tweet_count": len(tweets),
-                    })
-                if len(briefing["twitter_roundup"]) >= 25:
-                    break
+        # twitter_roundup and ai_brief sections have been REMOVED (2026-06-02) —
+        # the dedicated roundup output is gone. Discard any twitter_roundup /
+        # ai_brief Sonnet emits, in case the model produces them despite the
+        # prompt instructions.
+        if "twitter_roundup" in briefing:
+            briefing.pop("twitter_roundup", None)
+        if "ai_brief" in briefing:
+            briefing.pop("ai_brief", None)
 
         # Strip refusal-style meta-narration ("I don't have access...") that
         # Sonnet sometimes produces when a newsletter body is teaser-only.
@@ -2331,24 +2010,6 @@ Generate the daily briefing JSON. LEAD WITH CONVERSATION — what are people deb
 
         # Validate all URLs against the database
         briefing = _validate_briefing_urls(briefing, conn)
-
-        # Copy AI-related substacker takes into the unified AI section.
-        # They also remain in the main substacker_takes list so the reader
-        # sees AI-newsletter writers in both places.
-        try:
-            from config import AI_SUBSTACK_AUTHORS
-            ai_authors_lc = [a.lower() for a in AI_SUBSTACK_AUTHORS]
-            ai_substacks = []
-            for take in briefing.get("substacker_takes", []):
-                author = (take.get("author") or "").lower()
-                if any(a in author for a in ai_authors_lc):
-                    ai_substacks.append(take)
-            # substacker_takes stays unchanged — dual presence is intentional
-            briefing["_ai_substacks"] = ai_substacks
-            if ai_substacks:
-                logger.info(f"AI substacks routed to AI section: {len(ai_substacks)}")
-        except ImportError:
-            briefing["_ai_substacks"] = []
 
         # Inject the human-readable source breakdown
         if "stats_summary" not in briefing:
