@@ -187,12 +187,7 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
     journal_articles = briefing.get("_journal_articles", [])
     starred_emails = briefing.get("_starred_emails", [])
     press_mentions = briefing.get("_press_mentions", [])
-    twitter_roundup = briefing.get("twitter_roundup", [])
     conversation_roundups = briefing.get("conversation_roundups", []) or []
-    ai_roundup = briefing.get("_ai_roundup", [])
-    ai_newsletters = briefing.get("_ai_newsletters", [])
-    ai_substacks = briefing.get("_ai_substacks", [])
-    ai_brief = briefing.get("ai_brief", "")
     paper_of_the_day = briefing.get("paper_of_the_day") or None
     collection_errors = briefing.get("_collection_errors", [])
     apify_spend_cents = briefing.get("_apify_spend_cents", 0)
@@ -455,43 +450,12 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
 """
         html += _spacer(24)
 
-    # ── AI SECTION — single synthesized paragraph with inline links ──
-    if ai_brief and ai_brief.strip():
-        html += _section_heading("AI")
-        html += _spacer(14)
-        ai_brief_html = _md_links(ai_brief)
-        html += f"""<table width="100%" cellpadding="0" cellspacing="0"><tr>
-<td style="padding: 8px 0 14px 0; font-size: 17px; color: #3D3733; line-height: 1.6;">
-{ai_brief_html}
-</td></tr></table>
-"""
-        html += _spacer(24)
-
-    # ── TWITTER ROUNDUP — flat bullet list, one line per account ──
-    # Author handle links to the actual tweet (extracted from the summary's
-    # first markdown link). Summary text is shown as plain text — no inline
-    # links cluttering the prose.
-    if twitter_roundup:
-        import re as _re_tw
-        html += _section_heading(f"Also on Twitter / Bluesky ({len(twitter_roundup)})")
-        html += _spacer(10)
-        html += '<table width="100%" cellpadding="0" cellspacing="0"><tr><td style="padding: 4px 0 14px 0;">'
-        for voice in twitter_roundup[:30]:
-            author = voice.get("author", "")
-            summary = voice.get("summary", voice.get("take", ""))
-            handle = author.lstrip("@")
-            # Pull the first markdown-link URL from the summary; that's the tweet URL
-            m = _re_tw.search(r'\[[^\]]+\]\(([^)]+)\)', summary)
-            tweet_url = m.group(1) if m else f"https://x.com/{handle}"
-            author_html = f'<a href="{tweet_url}" target="_blank" style="color: #0BB4FF; text-decoration: none; font-weight: 600;">{_esc(author)}</a>'
-            # Convert inline markdown links [phrase](url) → <a> tags so each
-            # distinct claim links to its specific source tweet. Preserves
-            # the multi-link summaries the Haiku fallback produces (e.g.
-            # "[on rents](url1), [on education](url2), [on House](url3)").
-            summary_html = _md_links(summary)
-            html += f'<div style="font-size: 16px; color: #555; line-height: 1.6; padding: 2px 0;">• {author_html} — {summary_html}</div>\n'
-        html += '</td></tr></table>'
-        html += _spacer(24)
+    # ── AI BRIEF + TWITTER ROUNDUP SECTIONS REMOVED 2026-06-02 ──
+    # The dedicated ai_brief paragraph and Twitter / Bluesky roundup sections
+    # were removed. AI-only items are now out of scope; housing-tied AI content
+    # gets woven into themes via inline citation. Substantive tweets surface
+    # in conversation_themes or conversation_roundups based on whether they
+    # anchor on a named, dated event.
 
     # ── NEWSLETTERS SECTION REMOVED 2026-06-02 ──
     # The dedicated substacker_takes / Newsletters section was removed in favor
