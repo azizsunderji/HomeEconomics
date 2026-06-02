@@ -45,8 +45,20 @@ BB_CONTEXT_ID = os.environ.get("BROWSERBASE_CONTEXT_ID", "")
 USE_BROWSERBASE = bool(BB_API_KEY and BB_PROJECT_ID and BB_CONTEXT_ID)
 
 SOURCES = [
-    {"name": "nyt", "url": "https://www.nytimes.com", "wait_ms": 5000},
-    {"name": "ft",  "url": "https://www.ft.com",      "wait_ms": 5000},
+    # `wait_until` is the Playwright load condition. `wait_ms` is an extra
+    # fixed pause AFTER that fires (to let lazy-loaded JS/CSS render).
+    # `wait_for_selector` is a CSS selector that must be visible before the
+    # screenshot is taken — strongest readiness signal. None = skip.
+    #
+    # FT.com sometimes renders as a stripped, unstyled "raw HTML" view if
+    # we screenshot before its layout JS finishes (intermittent — likely
+    # depends on edge-cache freshness + bot-detection heuristics). The
+    # combo of networkidle + a longer wait + selector check is the most
+    # reliable defense without over-engineering.
+    {"name": "nyt", "url": "https://www.nytimes.com",
+     "wait_until": "load",        "wait_ms":  5000, "wait_for_selector": None},
+    {"name": "ft",  "url": "https://www.ft.com",
+     "wait_until": "networkidle", "wait_ms": 10000, "wait_for_selector": "a[data-trackable='heading-link']"},
 ]
 
 VIEWPORT_WIDTH = 1280
@@ -140,7 +152,20 @@ async def _capture_browserbase() -> list[tuple[str, Path, Path]]:
                 try:
                     page = ctx.pages[0] if ctx.pages else await ctx.new_page()
                     await page.set_viewport_size({"width": VIEWPORT_WIDTH, "height": VIEWPORT_HEIGHT})
-                    await page.goto(url, wait_until="load", timeout=45000)
+                    wait_until = source.get("wait_until", "load")
+                    try:
+                        await page.goto(url, wait_until=wait_until, timeout=45000)
+                    except Exception as nav_err:
+                        # networkidle can never fire on sites with persistent
+                        # background analytics (FT). Fall back to load.
+                        print(f"  {name}: {wait_until} timed out, retrying with load — {nav_err}")
+                        await page.goto(url, wait_until="load", timeout=45000)
+                    selector = source.get("wait_for_selector")
+                    if selector:
+                        try:
+                            await page.wait_for_selector(selector, timeout=15000)
+                        except Exception as sel_err:
+                            print(f"  {name}: selector {selector!r} didn't appear ({sel_err}) — continuing anyway")
                     await page.wait_for_timeout(source["wait_ms"])
                     await page.screenshot(path=str(png_path), full_page=False)
                     print(f"  Captured {name}: {png_path} ({png_path.stat().st_size // 1024} KB)")
@@ -183,7 +208,18 @@ async def _capture_local() -> list[tuple[str, Path, Path]]:
                 )
                 await context.add_cookies(cookies)
                 page = await context.new_page()
-                await page.goto(url, wait_until='load', timeout=30000)
+                wait_until = source.get("wait_until", "load")
+                try:
+                    await page.goto(url, wait_until=wait_until, timeout=30000)
+                except Exception as nav_err:
+                    print(f"  {name}: {wait_until} timed out, retrying with load — {nav_err}")
+                    await page.goto(url, wait_until='load', timeout=30000)
+                selector = source.get("wait_for_selector")
+                if selector:
+                    try:
+                        await page.wait_for_selector(selector, timeout=15000)
+                    except Exception as sel_err:
+                        print(f"  {name}: selector {selector!r} didn't appear ({sel_err}) — continuing anyway")
                 await page.wait_for_timeout(source["wait_ms"])
                 await page.screenshot(path=str(png_path), full_page=False)
                 await context.close()
