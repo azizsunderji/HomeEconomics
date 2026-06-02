@@ -415,10 +415,12 @@ def build_what_it_did(content: dict, item_counts: dict, hi_rel: int) -> list[str
     lines.append("- Captured the FT and NYT front pages")
 
     themes_n = len(content.get("conversation_themes") or [])
+    roundups_n = len(content.get("conversation_roundups") or [])
     twit_n = len(content.get("twitter_roundup") or [])
     subs_n = len(content.get("substacker_takes") or [])
     pieces = []
-    if themes_n: pieces.append(f"{themes_n} themes")
+    if themes_n: pieces.append(f"{themes_n} news themes")
+    if roundups_n: pieces.append(f"{roundups_n} conversations")
     if twit_n: pieces.append(f"{twit_n} Twitter highlights")
     if subs_n: pieces.append(f"{subs_n} Substack takes")
     if pieces:
