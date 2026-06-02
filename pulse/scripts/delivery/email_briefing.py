@@ -188,6 +188,7 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
     starred_emails = briefing.get("_starred_emails", [])
     press_mentions = briefing.get("_press_mentions", [])
     twitter_roundup = briefing.get("twitter_roundup", [])
+    conversation_roundups = briefing.get("conversation_roundups", []) or []
     ai_roundup = briefing.get("_ai_roundup", [])
     ai_newsletters = briefing.get("_ai_newsletters", [])
     ai_substacks = briefing.get("_ai_substacks", [])
@@ -390,6 +391,29 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
 """
                 html += _spacer(8)
             html += _spacer(20)
+
+    # ── CONVERSATIONS — topical roundups without a single named-event trigger ──
+    # Format mirrors AI section: bold topic line, single paragraph below, inline
+    # markdown links converted to <a> via _md_links. Sits between News Themes
+    # (which require a hard event anchor) and the AI section. Omitted entirely
+    # if the field is missing/empty so we never render a bare header.
+    if conversation_roundups:
+        html += _section_heading(f"Conversations ({len(conversation_roundups)})")
+        html += _spacer(14)
+        for roundup in conversation_roundups:
+            topic = roundup.get("topic", "") or ""
+            summary = roundup.get("summary", "") or ""
+            if not summary.strip():
+                continue
+            summary_html = _md_links(summary)
+            html += f"""<table width="100%" cellpadding="0" cellspacing="0"><tr>
+<td style="padding-bottom: 18px; border-bottom: 1px solid #e8e8e8;">
+  <div style="font-size: 18px; font-weight: 600; line-height: 1.3; margin-bottom: 6px;">{_esc(topic)}</div>
+  <div style="font-size: 17px; color: #555; line-height: 1.6;">{summary_html}</div>
+</td></tr></table>
+"""
+            html += _spacer(14)
+        html += _spacer(10)
 
     # ── AI SECTION — single synthesized paragraph with inline links ──
     if ai_brief and ai_brief.strip():
@@ -689,21 +713,6 @@ def send_email(
     # Retry up to 3 times on transient failures (network, 4xx, 5xx)
     import time as _time
     last_error = None
-    # Build payload. If PULSE_EMAIL_SCHEDULED_AT is set (ISO-8601 UTC like
-    # "2026-06-02T11:00:00Z"), pass it to Resend so delivery is held until that
-    # time — decouples cron firing time from inbox-arrival time so the email
-    # lands at exactly 7am ET regardless of when synthesis finishes.
-    payload = {
-        "from": EMAIL_FROM,
-        "to": [to],
-        "subject": subject,
-        "html": html,
-    }
-    scheduled_at = os.environ.get("PULSE_EMAIL_SCHEDULED_AT", "").strip()
-    if scheduled_at:
-        payload["scheduled_at"] = scheduled_at
-        logger.info(f"Scheduling email for {scheduled_at} (Resend will hold delivery)")
-
     for attempt in range(3):
         try:
             resp = httpx.post(
@@ -712,7 +721,12 @@ def send_email(
                     "Authorization": f"Bearer {api_key}",
                     "Content-Type": "application/json",
                 },
-                json=payload,
+                json={
+                    "from": EMAIL_FROM,
+                    "to": [to],
+                    "subject": subject,
+                    "html": html,
+                },
                 timeout=30,
             )
             if resp.status_code == 200:
