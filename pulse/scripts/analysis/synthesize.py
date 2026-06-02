@@ -1639,6 +1639,26 @@ def generate_daily_briefing(
 
     # Gather all inputs
     all_items = get_items_since(conn, hours=24, min_relevance=0)
+    # Apply Twitter author blocklist at synthesis time. The same blocklist
+    # gates new tweets from being collected (twitter_apify.py), but pre-existing
+    # items already in the DB from earlier collection runs would otherwise leak
+    # through. Match is case-insensitive on the @handle (without "@").
+    try:
+        from config import TWITTER_AUTHOR_BLOCKLIST as _TW_BL
+        _bl_lower = {h.lower().lstrip("@") for h in _TW_BL}
+        before = len(all_items)
+        all_items = [
+            i for i in all_items
+            if not (
+                i.get("source") == "twitter"
+                and (i.get("author") or "").lower().lstrip("@") in _bl_lower
+            )
+        ]
+        dropped = before - len(all_items)
+        if dropped:
+            logger.info(f"Blocklist filter dropped {dropped} Twitter items from blocklisted authors: {sorted(_bl_lower)}")
+    except Exception as e:
+        logger.warning(f"Twitter author blocklist filter skipped: {e}")
     # All hand-curated sources (Twitter, Bluesky, RSS) use a low threshold —
     # these are hand-picked accounts/feeds so even off-topic items are worth seeing.
     # Google News and other bulk sources use a higher threshold.
