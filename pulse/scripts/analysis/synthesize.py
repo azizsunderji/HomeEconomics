@@ -1387,14 +1387,15 @@ Return a JSON object:
     }
   ],
 
-  "substacker_takes": [
-    {
-      "author": "Name (Publication)",
-      "title": "Article title",
-      "take": "Their specific ARGUMENT — not just the topic. What position are they staking out? e.g., 'argues that supply constraints in Austin are structural, not cyclical, and prices will rebound within 18 months.'",
-      "url": "..."
-    }
-  ],
+  "paper_of_the_day": {
+    "title": "Verbatim paper title",
+    "authors": "First author + 'et al.' if multiple. If single author, just the name.",
+    "publication": "NBER Working Paper #####, Brookings, Journal of Housing Economics, etc.",
+    "url": "Direct link to the paper",
+    "date": "Published date YYYY-MM-DD",
+    "summary": "3-5 sentence paragraph for an intelligent non-academic reader. What did they find, how did they show it, why does it matter for US housing. Measured, restrained, data-first tone. No filler phrases, no hedges, no academic jargon. State the finding, then the method in one sentence, then the implication.",
+    "key_finding": "Single sentence (max 25 words) capturing the central finding plainly, like a wire-service lede."
+  },
 
   "ai_brief": "ONE coherent 4-6 sentence paragraph summarizing today's most interesting AI-related developments across Twitter, newsletters, and substacks. Pull from ALL AI sources: the Twitter accounts in AI_ROUNDUP_ACCOUNTS (@trq212, @claudeai, @felixrieseberg, @bcherny, @emollick, @CaseyNewton, @kevinroose), AI substacks, and AI newsletter emails. Use inline markdown links [text](url) for EVERY claim — link the specific phrase to the original source. Lead with the most substantive development (model release, research finding, industry shift), then cover secondary items. Write it as flowing prose, not bullet points. Example: '[A lab released](url) a new model with notable capabilities, prompting [an analyst to argue](url) it represents a meaningful shift toward autonomous systems. Meanwhile, [a researcher noted](url) that reasoning traces are getting more sophisticated...'",
 
@@ -1534,9 +1535,16 @@ NEVER do any of these:
 
 The fix is ALWAYS: name BOTH the original publisher AND the secondary you actually link to. Two names, one link, both roles visible.
 
-5. SUBSTACKER TAKES COME FROM THE PROVIDED NEWSLETTER/COLUMNIST SECTION. The substacker_takes section is EXCLUSIVELY for items from the "Newsletters" section above (which now includes Substack newsletters, Gmail newsletters, AND single-author RSS columnists). Do NOT include Twitter commentators or generic news headlines. Use the URL provided with each item (even if it's a redirect link). For each take, summarize their specific ARGUMENT — not just the topic. "[Author] argues builders are underbuilding relative to population growth" is good. "[Author] wrote about housing supply" is not. IMPORTANT: Include a take for EVERY newsletter/columnist item provided. Do not cherry-pick — summarize all of them.
+5. NEWSLETTERS AND SUBSTACKS ARE INPUTS, NOT A DEDICATED OUTPUT SECTION (UPDATED 2026-06-02). The dedicated `substacker_takes` output field has been REMOVED. Do NOT output a substacker_takes field — if you do, it will be discarded before rendering. Newsletter / substack / single-author RSS columnist items provided in the "Newsletters" input section below are still VALUABLE INPUT — route them as follows:
+   - If the newsletter post DIRECTLY COMMENTS on a candidate news event of the day, weave it into that theme's commentary with inline [author or outlet name](url) citation, same convention as other theme citations.
+   - If the post is a topical discussion without a single event anchor, route it into the relevant `conversation_roundup` (same prose-with-inline-link format as ai_brief).
+   - For AI-focused substack/newsletter posts, weave them into `ai_brief`.
+   - Skip newsletters whose content is purely promotional, off-topic, or too thin to summarize.
+This is a structural change: newsletter content is now distributed across themes/roundups based on subject matter, not collected into a single dedicated section.
 
-5b. NEVER NARRATE INSUFFICIENT CONTENT. If a newsletter's preview is short or teaser-only, infer the take from the title and any partial body you have, then write a confident one-sentence summary. NEVER write phrases like "I don't have access to the full content", "the snippet is cut off", "based on the limited preview", "I cannot offer specifics", or "partial summary". The reader will see this as broken output. If you genuinely can't infer anything beyond the title, write a single neutral sentence based on the title alone (e.g., "Argues that relationship-building beats AI tools and clever subject lines as the most underrated PR skill for real estate reporters.") — no meta-commentary. This rule applies to substacker_takes, ai_brief, twitter_roundup, and any other section.
+5b. NEVER NARRATE INSUFFICIENT CONTENT. If a source's preview is short or teaser-only, infer the take from the title and any partial body you have, then write a confident one-sentence summary. NEVER write phrases like "I don't have access to the full content", "the snippet is cut off", "based on the limited preview", "I cannot offer specifics", or "partial summary". The reader will see this as broken output. If you genuinely can't infer anything beyond the title, write a single neutral sentence based on the title alone — no meta-commentary. This rule applies to ai_brief, twitter_roundup, conversation_roundups, paper_of_the_day, and every other section.
+
+5c. PAPER OF THE DAY. Pick ONE academic paper from the journal-feed input (NBER working papers, Journal of Housing Economics, Journal of Urban Economics, Real Estate Economics, Regional Science and Urban Economics, Housing Policy Debate, Cities, etc.) as today's Paper of the Day. Selection criteria, in order: (1) most directly relevant to US housing, mortgages, zoning, demographics-of-housing, or affordability; (2) most interesting / surprising / counterintuitive findings; (3) methodologically sound; (4) not too inside-baseball for a general reader. Write the `summary` field in Pulse's measured, restrained, data-first tone — state the finding, then the method in one sentence, then the implication for US housing. The `key_finding` is a single wire-service-style lede sentence (max 25 words). If NO journal candidate is credible for the day (e.g., all candidates are non-housing or TOCs), set `paper_of_the_day` to null and the renderer will omit the section. Bias toward recency (papers <7 days old slightly preferred) but don't pick a marginal recent paper over a strong one from earlier in the 30-day window.
 
 6. THEMES: 8-14 themes, with a STRONG PREFERENCE for fewer, richer themes over more, thinner ones. Quality over count. These are the most substantive stories of the day. This section ABSORBS what used to be a separate "Headlines" section — so it must comprehensively cover today's news (especially housing/real-estate) AND today's social conversation. Each theme can be:
    - A news story with multiple outlets covering it (weave the actual reporting from the article BODIES, not just headlines, with inline source links to each outlet)
@@ -1658,7 +1666,7 @@ Label each theme's anchor platforms accurately: use "rss" or "substack" or the n
         - "On a connected front," / "On a parallel track,"
     When two points are genuinely independent within a theme, use honest disjunctive signals instead: "Separately:" / "On a different track:" / "Unrelated but on the same beat:". When two points ARE connected, name the connection explicitly: "This is the supply-side mirror of..." / "Which helps explain why..." / "Cutting against this," / "The counter-argument from [X] is...". The reader should always be able to tell, from the transition alone, whether the next sentence is causally connected to the previous one or just adjacent to it. Reminder: "a related X" is ALWAYS a code-smell for welding — when in doubt, break to a new paragraph.
 
-14. ALL SECTIONS ARE MANDATORY. Your JSON output MUST include ALL of these keys: conversation_themes, conversation_roundups, twitter_roundup, substacker_takes, ai_brief. If you omit any section, the briefing is broken. substacker_takes should include a take for EVERY Substack newsletter provided — summarize all of them, not just a few. conversation_roundups may be an empty list ONLY if every notable topic of the day cleanly anchors on a single event (rare); usually expect 3-5 entries.
+14. MANDATORY SECTIONS. Your JSON output MUST include these keys: conversation_themes, conversation_roundups, twitter_roundup, ai_brief, and paper_of_the_day (when a credible candidate exists; otherwise set paper_of_the_day to null). The substacker_takes field has been REMOVED (see rule 5) — do NOT output it; if you do, it will be discarded. conversation_roundups may be an empty list ONLY if every notable topic of the day cleanly anchors on a single event (rare); usually expect 3-5 entries.
 
 15. AI_BRIEF: Scan the input for ALL AI-related content — tweets from @trq212, @claudeai, @felixrieseberg, @bcherny, @emollick, @CaseyNewton, @kevinroose; substack posts from Understanding AI, One Useful Thing, Stratechery, Zvi, Simon Willison, SemiAnalysis, Dwarkesh, Import AI, Platformer; and emails from Superhuman, The Neuron, FT AI Shift. Synthesize into ONE coherent paragraph (4-6 sentences) with inline markdown links to each source. Do NOT duplicate content that's in conversation_themes — the ai_brief is for AI-specific items that wouldn't make it into a main theme.
 
@@ -1852,8 +1860,8 @@ When citing a tweet or Bluesky post, use the @handle exactly as it appears — d
 
 {_format_items_for_conversation(relevant_items, limit=280)}
 
-## Newsletters — SUBSTACKER TAKES (use ONLY these for the substacker_takes section)
-These are newsletter articles (Substack + email newsletters). Populate substacker_takes from this list. Use the URL provided with each item. Summarize EVERY one.
+## Newsletters (INPUT — route into themes / roundups / ai_brief; no dedicated section)
+These are newsletter articles (Substack + email newsletters). The dedicated substacker_takes output section has been removed (see rule 5) — DO NOT output a substacker_takes field. Instead: when a newsletter directly comments on a candidate event, weave it into that theme's commentary with inline [author](url) citation; when it's topical discussion without a single event anchor, route it into a conversation_roundup; AI-focused posts go into ai_brief; skip the rest.
 
 {_format_substacker_items(substacker_items)}
 
