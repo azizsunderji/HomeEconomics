@@ -340,53 +340,10 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
 
         html += _spacer(10)
 
-    # ── REAL ESTATE HEADLINES — housing-tagged subset only ──
-    # The general headlines section was killed 2026-05-09 (now folded into News
-    # Themes). Real Estate Headlines stays as a comprehensive safety net for
-    # housing items that Sonnet didn't lift into a theme. Pure list, no LLM.
-    if headlines:
-        import json as _json
-        HOUSING_TAGS = {
-            "housing", "real estate", "real_estate", "housing_market",
-            "housing_policy", "homebuilding", "construction", "mortgage",
-            "rent", "rental", "rentals", "homeownership", "homebuyer",
-            "homebuyers", "single_family", "multifamily", "urbanism",
-            "zoning", "yimby", "nimby", "land_use", "property",
-        }
-        re_items = []
-        for item in headlines:
-            topics = item.get("topics", "[]")
-            if isinstance(topics, str):
-                try: topics = _json.loads(topics)
-                except Exception: topics = []
-            tag_set = {str(t).lower().replace(" ", "_") for t in (topics or [])}
-            if tag_set & HOUSING_TAGS:
-                re_items.append(item)
-
-        if re_items:
-            re_items.sort(key=lambda x: -(x.get("relevance_score") or 0))
-            html += _section_heading(f"Real Estate Headlines ({len(re_items)})")
-            html += _spacer(10)
-            for idx, item in enumerate(re_items):
-                url = item.get("url", "")
-                headline_text = _esc(item.get('headline', '') or item.get('title', ''))
-                source_name = _esc(item.get('source', 'News'))
-                if source_name in ("FT Front Page", "FT Global Economy", "FT Markets"):
-                    source_name = "Financial Times"
-                if url:
-                    headline_link = f'<a href="{url}" target="_blank" style="color: #3D3733; text-decoration: none;">{headline_text}</a>'
-                    source_link = f'<a href="{url}" target="_blank" style="color: #0BB4FF; text-decoration: none;">[{source_name}]</a>'
-                else:
-                    headline_link = headline_text
-                    source_link = f'<span style="color: #888;">[{source_name}]</span>'
-                bg = "#f9faf7" if idx % 2 == 0 else "#ffffff"
-                html += f"""<table width="100%" cellpadding="0" cellspacing="0"><tr>
-<td style="font-size: 17px; padding: 8px 12px; line-height: 1.5; background: {bg};">
-  {headline_link} <span style="font-size: 15px;">{source_link}</span>
-</td></tr></table>
-"""
-                html += _spacer(8)
-            html += _spacer(20)
+    # Real Estate Headlines section removed 2026-06-02 (streamlining for broad
+    # housing audience). The underlying `headlines` items still feed the
+    # synthesis input pool as fodder for themes/roundups — they just don't
+    # render as their own list section in the email.
 
     # ── CONVERSATIONS — topical roundups without a single named-event trigger ──
     # Format mirrors AI section: bold topic line, single paragraph below, inline
@@ -466,141 +423,15 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
     # retained for backward compatibility with older briefings (no-op when
     # empty) but the rendering block has been removed.
 
-    # ── INSTITUTIONAL SIGNAL (all non-junk Gmail emails, grouped by source) ──
-    if institutional:
-        from collections import defaultdict as _defaultdict2
-        grouped_inst = _defaultdict2(list)
-        # Normalize publication names so split-feed senders (Capital Economics
-        # - Bonds & Equities, Capital Economics - Global Commercial Property,
-        # etc.) collapse into one bucket per publisher.
-        def _normalize_publisher(src: str) -> str:
-            s = (src or "Email").strip()
-            # Strip "Publisher - Sub-feed" → "Publisher"
-            if " - " in s and any(p in s.lower() for p in (
-                "capital economics", "fed", "federal reserve", "atlanta fed",
-                "boston fed", "newyorkfed", "ny fed", "kansas city fed",
-                "richmond fed", "san francisco fed", "st louis fed",
-                "goldman sachs", "gs ", "morgan stanley", "deutsche bank",
-                "barclays", "citigroup", "ubs", "credit suisse", "wells fargo",
-                "jpmorgan", "bank of america", "bofa", "hsbc",
-                "moodys", "moody", "apollo", "fannie mae", "freddie mac",
-            )):
-                s = s.split(" - ")[0].strip()
-            # Common rename
-            s = s.replace("U.S. Census Bureau", "Census Bureau")
-            return s
-        for item in institutional:
-            normalized = _normalize_publisher(item.get("source", "Email"))
-            grouped_inst[normalized].append(item)
+    # Institutional Signal, Academic Journals, and From Your Email sections
+    # removed 2026-06-02 (streamlining for broad housing audience). The
+    # underlying items still feed the synthesis input pool as fodder for
+    # themes/roundups and for the Paper of the Day pick — they just don't
+    # render as their own list sections in the email.
 
-        html += _section_heading(f"Institutional Signal ({len(institutional)})")
-        html += _spacer(10)
-
-        for source_name, items_list in grouped_inst.items():
-            if len(items_list) > 1:
-                html += f"""<table width="100%" cellpadding="0" cellspacing="0"><tr>
-<td style="font-size: 17px; font-weight: 600; color: #888; padding: 6px 0 2px 0;">{_esc(source_name)}</td>
-</tr></table>
-"""
-                for item in items_list:
-                    url = item.get("url", "")
-                    headline = _esc(item.get('headline', ''))
-                    link = f'<a href="{url}" target="_blank" style="color: #0BB4FF; text-decoration: none;">{headline}</a>' if url else headline
-                    html += f"""<table width="100%" cellpadding="0" cellspacing="0"><tr>
-<td style="font-size: 17px; padding: 2px 0 2px 16px; border-bottom: 1px solid #f0f0f0;">
-  &bull; {link}
-</td></tr></table>
-"""
-            else:
-                item = items_list[0]
-                url = item.get("url", "")
-                headline = _esc(item.get('headline', ''))
-                link = f'<a href="{url}" target="_blank" style="color: #0BB4FF; text-decoration: none;">{headline}</a>' if url else headline
-                html += f"""<table width="100%" cellpadding="0" cellspacing="0"><tr>
-<td style="font-size: 17px; padding: 4px 0; border-bottom: 1px solid #f0f0f0;">
-  <span style="font-weight: 600; color: #888;">{_esc(source_name)}</span>: {link}
-</td></tr></table>
-"""
-        html += _spacer(28)
-
-    # Gmail newsletters (Brandon Donnelly, Daire MacFadden/Unhedged, etc.) used
-    # to render here as a separate raw-list section labeled "Email Newsletters".
-    # Removed 2026-05-09: those senders already feed into the substacker_takes
-    # section above (where Sonnet summarizes each as a paragraph), so a second
-    # raw-list section was redundant. One unified Newsletters section now.
-
-    # ── JOURNAL ARTICLES (academic, 7-day window, grouped by journal) ──
-    if journal_articles:
-        from collections import defaultdict as _defaultdict3
-        grouped_journals = _defaultdict3(list)
-        for item in journal_articles[:30]:
-            grouped_journals[item.get("journal", "Other")].append(item)
-
-        html += _section_heading(f"Academic Journals ({len(journal_articles)})")
-        html += _spacer(10)
-
-        for journal_name, articles in grouped_journals.items():
-            html += f"""<table width="100%" cellpadding="0" cellspacing="0"><tr>
-<td style="font-size: 17px; font-weight: 600; color: #F4743B; padding: 8px 0 4px 0;">{_esc(journal_name)}</td>
-</tr></table>
-"""
-            for item in articles:
-                url = item.get("url", "")
-                raw_title = item.get('title', '')
-                # Strip NBER-style " -- by Author1, Author2" author suffixes
-                if ' -- by ' in raw_title:
-                    raw_title = raw_title[:raw_title.index(' -- by ')].strip()
-                title_text = _esc(raw_title)
-                if url:
-                    title_link = f'<a href="{url}" target="_blank" style="color: #3D3733; text-decoration: none;">{title_text}</a>'
-                else:
-                    title_link = title_text
-                abstract = item.get("abstract", "") or ""
-                abstract_html = ""
-                if abstract:
-                    abstract_html = f"""<table width="100%" cellpadding="0" cellspacing="0"><tr>
-<td style="font-size: 15px; padding: 2px 0 6px 0; color: #666; line-height: 1.5;">
-  {_esc(abstract)}
-</td></tr></table>
-"""
-                html += f"""<table width="100%" cellpadding="0" cellspacing="0"><tr>
-<td style="font-size: 17px; padding: 2px 0; line-height: 1.45; font-weight: 600;">
-  {title_link}
-</td></tr></table>
-{abstract_html}"""
-            html += _spacer(8)
-
-        html += _spacer(20)
-
-    # ── FROM YOUR EMAIL (starred emails only) ──
-    if starred_emails:
-        html += _section_heading("From Your Email")
-        html += _spacer(14)
-
-        for email in starred_emails[:5]:
-            url = email.get("url", "")
-            subject_text = _esc(email.get('subject', ''))
-            if url:
-                subject_link = f'<a href="{url}" target="_blank" style="color: #0BB4FF; text-decoration: none;">{subject_text}</a>'
-            else:
-                subject_link = subject_text
-
-            html += f"""<table width="100%" cellpadding="0" cellspacing="0"><tr>
-<td style="padding-bottom: 14px; border-bottom: 1px solid #e8e8e8;">
-  <div style="font-size: 16px;">
-    <span style="font-weight: 600;">{subject_link}</span>
-  </div>
-  <div style="font-size: 15px; color: #888; margin-top: 2px;">{_esc(email.get('from', ''))}</div>
-  <div style="font-size: 17px; color: #555; margin-top: 6px; line-height: 1.5;">{_esc(email.get('summary', ''))}</div>
-</td></tr></table>
-"""
-            html += _spacer(14)
-
-        html += _spacer(14)
-
-    # ── AZIZ IN THE NEWS (press mentions) ──
+    # ── HOME ECONOMICS IN THE NEWS (press mentions) ──
     if press_mentions:
-        html += _section_heading("Aziz in the News")
+        html += _section_heading("Home Economics in the News")
         html += _spacer(10)
 
         for mention in press_mentions[:10]:
