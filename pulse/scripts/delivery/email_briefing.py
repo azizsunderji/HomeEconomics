@@ -193,6 +193,7 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
     ai_newsletters = briefing.get("_ai_newsletters", [])
     ai_substacks = briefing.get("_ai_substacks", [])
     ai_brief = briefing.get("ai_brief", "")
+    paper_of_the_day = briefing.get("paper_of_the_day") or None
     collection_errors = briefing.get("_collection_errors", [])
     apify_spend_cents = briefing.get("_apify_spend_cents", 0)
 
@@ -415,6 +416,45 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
             html += _spacer(14)
         html += _spacer(10)
 
+    # ── PAPER OF THE DAY — single curated academic paper ──
+    # Added 2026-06-02. Rendered AFTER conversation_roundups and BEFORE the AI
+    # brief. Omitted entirely if paper_of_the_day is null / missing (e.g. no
+    # credible journal candidates surfaced from the 30-day window).
+    if paper_of_the_day and isinstance(paper_of_the_day, dict) \
+            and paper_of_the_day.get("title"):
+        html += _section_heading("Paper of the Day")
+        html += _spacer(14)
+        p_title = _esc(paper_of_the_day.get("title", ""))
+        p_authors = _esc(paper_of_the_day.get("authors", ""))
+        p_pub = _esc(paper_of_the_day.get("publication", ""))
+        p_date = _esc(paper_of_the_day.get("date", ""))
+        p_summary = _md_links(paper_of_the_day.get("summary", ""))
+        p_key = _esc(paper_of_the_day.get("key_finding", ""))
+        p_url = paper_of_the_day.get("url", "") or "#"
+
+        key_block = ""
+        if p_key:
+            key_block = (
+                f'<div style="font-size: 17px; color: #3D3733; font-weight: 600; '
+                f'line-height: 1.4; margin: 0 0 10px 0;">{p_key}</div>\n'
+            )
+        meta_line = p_pub + (f" &middot; {p_date}" if p_date else "")
+        html += f"""<table width="100%" cellpadding="0" cellspacing="0"><tr>
+<td style="padding-bottom: 14px; border-bottom: 1px solid #e8e8e8;">
+  <div style="font-size: 19px; font-weight: 700; line-height: 1.3; margin: 0 0 4px 0;">
+    <a href="{p_url}" target="_blank" style="color: #3D3733; text-decoration: none;">{p_title}</a>
+  </div>
+  <div style="font-size: 15px; color: #555; margin: 0 0 2px 0;">{p_authors}</div>
+  <div style="font-size: 14px; color: #888; margin: 0 0 12px 0;">{meta_line}</div>
+  {key_block}
+  <div style="font-size: 17px; color: #555; line-height: 1.6; margin: 0 0 14px 0;">{p_summary}</div>
+  <div style="margin-top: 6px;">
+    <a href="{p_url}" target="_blank" style="display: inline-block; background: #0BB4FF; color: #fff; padding: 8px 14px; border-radius: 4px; font-size: 15px; font-weight: 600; text-decoration: none;">Read the paper &rarr;</a>
+  </div>
+</td></tr></table>
+"""
+        html += _spacer(24)
+
     # ── AI SECTION — single synthesized paragraph with inline links ──
     if ai_brief and ai_brief.strip():
         html += _section_heading("AI")
@@ -453,43 +493,14 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
         html += '</td></tr></table>'
         html += _spacer(24)
 
-    # ── NEWSLETTERS (all Sonnet-summarized: Substack + Gmail newsletters, grouped by author) ──
-    if substacker:
-        html += _section_heading(f"Newsletters ({len(substacker)})")
-        html += _spacer(14)
-
-        # Group by author
-        from collections import defaultdict as _defaultdict_nl
-        nl_by_author = _defaultdict_nl(list)
-        for take in substacker:
-            nl_by_author[take.get('author', 'Unknown')].append(take)
-
-        for author_name, takes in nl_by_author.items():
-            html += f"""<table width="100%" cellpadding="0" cellspacing="0"><tr>
-<td style="padding-bottom: 4px;">
-  <span style="font-weight: 600; font-size: 17px;">{_esc(author_name)}</span>
-</td></tr></table>
-"""
-            for take in takes:
-                url = take.get("url", "")
-                title_text = _esc(take.get('title', ''))
-                if url:
-                    title_link = f'<a href="{url}" target="_blank" style="color: #0BB4FF; text-decoration: none;">{title_text}</a>'
-                else:
-                    title_link = title_text
-
-                take_text = take.get('take', '')
-                take_html = f'<div style="font-size: 17px; color: #555; margin-top: 4px; line-height: 1.5;">{_esc(take_text)}</div>' if take_text else ''
-
-                html += f"""<table width="100%" cellpadding="0" cellspacing="0"><tr>
-<td style="padding: 4px 0 10px 12px; border-bottom: 1px solid #f0f0f0;">
-  <div style="font-size: 17px;">{title_link}</div>
-  {take_html}
-</td></tr></table>
-"""
-            html += _spacer(10)
-
-        html += _spacer(14)
+    # ── NEWSLETTERS SECTION REMOVED 2026-06-02 ──
+    # The dedicated substacker_takes / Newsletters section was removed in favor
+    # of routing newsletter content into themes, conversation_roundups, or
+    # ai_brief based on subject matter. The synthesis prompt (rule 5) now
+    # instructs Sonnet to weave newsletter content inline rather than collect
+    # it into a dedicated section. The `substacker` local variable above is
+    # retained for backward compatibility with older briefings (no-op when
+    # empty) but the rendering block has been removed.
 
     # ── INSTITUTIONAL SIGNAL (all non-junk Gmail emails, grouped by source) ──
     if institutional:
