@@ -7,33 +7,41 @@ Pipeline (per paper):
   2. Parse with PyMuPDF: render page 1 to a high-res PNG, and extract
      the top 3-5 headlines (largest font on the page, grouped into
      multi-line headlines).
-  3. Tilt the rendered page with a PIL perspective transform (no
-     image-gen, no 3D engine — just a coefficient matrix).
-  4. Project the headline bboxes through the same transform so we
-     know where each headline now sits in the tilted image.
-  5. Compose a single image per paper: tilted page on one side,
-     headline callouts on the other, leader lines with brand-color
-     dots connecting them.
-  6. Save to /tmp/front_pages/{name}.png AND to
-     pulse/data/screenshots/{name}.png so the existing email pipeline
-     picks it up. Also uploads JPGs to Bluehost for the email's <img>.
-
-Brand colors used: Black #3D3733 (lines), Blue #0BB4FF and Orange
-#F4743B (dots, alternating), Background cream #F6F7F3.
+  3. Compose a PAGE-ONLY composite per paper: cropped top portion of
+     the print page, faded to cream at the bottom. NO masthead or
+     headline text rendered into the image — that all moves to the
+     email's HTML side-by-side layout (see email_briefing.py).
+  4. Resolve a per-headline article URL via a two-layer cascade:
+        L1: RSS match against pulse.db (free)
+        L2: Brave Search API ($5/1k requests + $5/mo free credit)
+  5. Emit a sidecar JSON `headlines.json` with masthead/url/headlines
+     [{text, article_url}] so email_briefing.py can render clickable
+     headline links next to the page snapshot.
+  6. Save PNGs to /tmp/front_pages and pulse/data/screenshots, JPGs +
+     headlines.json upload to Bluehost.
 """
 
 from __future__ import annotations
 
+import json
+import logging
 import os
+import re
+import sqlite3
 import subprocess
 import sys
+import time
+import urllib.parse
 import urllib.request
-from datetime import datetime
+from datetime import datetime, date
+from difflib import SequenceMatcher
 from pathlib import Path
 
 import fitz  # PyMuPDF
-import numpy as np
+import requests
 from PIL import Image, ImageDraw, ImageFont
+
+logger = logging.getLogger(__name__)
 
 # ── Configuration ────────────────────────────────────────────────────
 
@@ -43,72 +51,58 @@ OUT_DIR.mkdir(parents=True, exist_ok=True)
 SCREENSHOTS_DIR = Path(__file__).parent / "data" / "screenshots"
 SCREENSHOTS_DIR.mkdir(parents=True, exist_ok=True)
 
+# pulse.db lookup paths — local dev keeps a copy under data/, GHA mounts
+# the canonical copy via Dropbox sync.
+PULSE_DB_CANDIDATES = [
+    Path(__file__).parent / "data" / "pulse.db",
+    Path("/Users/azizsunderji/Dropbox/Home Economics/Data/Pulse/pulse.db"),
+    Path(os.environ.get("PULSE_DB", "")) if os.environ.get("PULSE_DB") else None,
+]
+PULSE_DB_CANDIDATES = [p for p in PULSE_DB_CANDIDATES if p]
+
 # Bluehost SFTP config (re-used from old script — same target dir)
 SSH_KEY = os.environ.get("SFTP_KEY_PATH", os.path.expanduser("~/.ssh/bluehost_deploy"))
 SSH_USER = os.environ.get("SFTP_USER", "yxwrmjmy")
 SSH_HOST = os.environ.get("SFTP_HOST", "home-economics.us")
 REMOTE_DIR = "public_html/pulse-screenshots"
 
-# Freedom Forum paper slugs. Each paper participates in the Newseum
-# project under a known {STATE}_{ABBR} (or sometimes just ABBR) code.
-# WaPo does NOT participate in Freedom Forum (paywall holdout), so we
-# substitute the Washington Times as the second DC-area paper. If/when
-# WaPo returns, swap "DC_WT" -> the new slug here.
+# Freedom Forum paper slugs. Each paper carries:
+#   article_url_re : regex that an article URL on the paper's domain must
+#                    match. Used to filter Brave Search results down to
+#                    actual article pages (not section indexes, search
+#                    pages, etc.).
 PAPERS = [
     {"name": "nyt", "slug": "NY_NYT", "masthead": "THE NEW YORK TIMES",
-     "side": "left", "url": "https://www.nytimes.com"},
-    {"name": "wsj", "slug": "WSJ",    "masthead": "THE WALL STREET JOURNAL",
-     "side": "left",  "url": "https://www.wsj.com"},
+     "url": "https://www.nytimes.com",
+     "domain": "nytimes.com",
+     "article_url_re": r'https?://www\.nytimes\.com/\d{4}/\d{2}/\d{2}/[^"\'\s<>,\\]+',
+     "rss_match": "feed_name LIKE '%New York Times%' OR feed_name LIKE '%NYT%' OR url LIKE '%nytimes.com%'"},
+    {"name": "wsj", "slug": "WSJ", "masthead": "THE WALL STREET JOURNAL",
+     "url": "https://www.wsj.com",
+     "domain": "wsj.com",
+     # WSJ digital URLs sit under section paths (politics/business/finance/etc.)
+     # and end in an 8-char hash slug. /articles/ exists too but is now rare.
+     "article_url_re": r'https?://www\.wsj\.com/(?:articles|politics|us-news|world|business|finance|economy|tech|opinion|lifestyle|real-estate|arts-culture|sports|science|markets|personal-finance|style)/[^"\'\s<>,\\]+',
+     "rss_match": "feed_name LIKE '%WSJ%' OR feed_name LIKE '%Wall Street Journal%' OR url LIKE '%wsj.com%'"},
     {"name": "lat", "slug": "CA_LAT", "masthead": "LOS ANGELES TIMES",
-     "side": "left", "url": "https://www.latimes.com"},
-    {"name": "hc",  "slug": "TX_HC",  "masthead": "HOUSTON CHRONICLE",
-     "side": "left",  "url": "https://www.houstonchronicle.com"},
+     "url": "https://www.latimes.com",
+     "domain": "latimes.com",
+     "article_url_re": r'https?://www\.latimes\.com/[a-z\-]+/story/\d{4}-\d{2}-\d{2}/[^"\'\s<>,\\]+',
+     "rss_match": "feed_name LIKE '%LA Times%' OR feed_name LIKE '%Los Angeles Times%' OR url LIKE '%latimes.com%'"},
+    {"name": "hc", "slug": "TX_HC", "masthead": "HOUSTON CHRONICLE",
+     "url": "https://www.houstonchronicle.com",
+     "domain": "houstonchronicle.com",
+     "article_url_re": r'https?://www\.houstonchronicle\.com/[a-z0-9\-/]+/article/[a-z0-9\-]+\.php',
+     "rss_match": "feed_name LIKE '%Houston%' OR url LIKE '%houstonchronicle.com%'"},
 ]
 
 # Brand palette
 COLOR_BG          = (246, 247, 243)  # F6F7F3
-COLOR_BLACK       = ( 61,  55,  51)  # 3D3733
-COLOR_BLUE        = ( 11, 180, 255)  # 0BB4FF
-COLOR_ORANGE      = (244, 116,  59)  # F4743B
-COLOR_GREY        = (180, 175, 168)  # subdued line colour
 
-CANVAS_W, CANVAS_H = 2400, 1640    # 2x for retina-crisp email rendering
-PAGE_RENDER_DPI    = 320           # high enough to keep PDF text sharp after
-                                   # the resize-to-canvas step (the page ends
-                                   # up ~1000px wide in the final composite).
+CANVAS_W           = 1200            # was 2400 (side-by-side composite)
+PAGE_RENDER_DPI    = 320
 
-# Font fallbacks. Oracle is brand standard but optional; if absent we
-# fall back to system DejaVu/Helvetica.
-ORACLE_DIR = Path("/Users/azizsunderji/Dropbox/Home Economics/Brand Assets/"
-                  "OracleFont/Oracle Aziz Sunderji/Desktop")
-ORACLE_REGULAR = ORACLE_DIR / "ABCOracle-Regular.otf"
-ORACLE_BOLD    = ORACLE_DIR / "ABCOracle-Bold.otf"
-ORACLE_MEDIUM  = ORACLE_DIR / "ABCOracle-Medium.otf"
-
-DEJAVU_REGULAR = "/Library/Fonts/Arial.ttf"
-DEJAVU_BOLD    = "/Library/Fonts/Arial Bold.ttf"
-
-
-def _font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont:
-    """Load Oracle if available, otherwise fall back to a system font."""
-    candidates = []
-    if bold:
-        candidates += [ORACLE_BOLD, ORACLE_MEDIUM]
-    else:
-        candidates += [ORACLE_REGULAR]
-    candidates += [
-        Path(DEJAVU_BOLD if bold else DEJAVU_REGULAR),
-        Path("/System/Library/Fonts/Helvetica.ttc"),
-        Path("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"),
-        Path("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"),
-    ]
-    for c in candidates:
-        try:
-            if Path(c).exists():
-                return ImageFont.truetype(str(c), size)
-        except Exception:
-            continue
-    return ImageFont.load_default()
+RSS_MATCH_THRESHOLD = 0.65
 
 
 # ── PDF fetching ─────────────────────────────────────────────────────
@@ -145,7 +139,7 @@ def _download_pdf(slug: str, dst: Path) -> bool:
 def _extract_headlines(pdf_path: Path, max_headlines: int = 5) -> list[dict]:
     """Pull the top N headlines (by font size, grouped across lines).
 
-    Returns list of dicts {text, bbox=(x0,y0,x1,y1), page_w, page_h}.
+    Returns list of dicts {text, bbox=(x0,y0,x1,y1), size}.
     bbox is in PDF coordinates (PyMuPDF's default — origin at top-left).
     """
     doc = fitz.open(pdf_path)
@@ -162,7 +156,6 @@ def _extract_headlines(pdf_path: Path, max_headlines: int = 5) -> list[dict]:
                 t = s["text"].strip()
                 if not t or len(t) < 2:
                     continue
-                # Skip obvious chrome (page numbers, prices, dates etc.)
                 if t.lower() in {"the", "a", "an", "of", "to", "in"}:
                     continue
                 spans.append({
@@ -174,34 +167,17 @@ def _extract_headlines(pdf_path: Path, max_headlines: int = 5) -> list[dict]:
     if not spans:
         return []
 
-    # Threshold: keep anything at or above some fraction of the BIGGEST
-    # JOURNALISM-SIZED font on the page. We compute a "robust max" rather
-    # than the raw max because the front page often has gigantic ad copy
-    # ("AN EVENING WITH THE STARS" / Houston Ballet at 76pt) that would
-    # otherwise drag the headline-detection threshold above the actual
-    # banner headline. The rule: if the largest distinct size is >40%
-    # larger than the second-largest, treat the top as an outlier and
-    # anchor on the second-largest.
+    # Threshold: anchor on the largest journalism-sized font, ignoring
+    # outlier mega-fonts from front-page ads.
     distinct_sizes = sorted({round(s["size"], 1) for s in spans}, reverse=True)
     if len(distinct_sizes) >= 2 and distinct_sizes[0] > distinct_sizes[1] * 1.4:
         robust_max = distinct_sizes[1]
     else:
         robust_max = distinct_sizes[0]
-    # 0.50 ratio is more permissive than the old 0.55 — papers with a steep
-    # font-size drop-off (Houston Chronicle, Washington Times) have column
-    # headlines at ~half the banner size. The downstream filters (≥4 words,
-    # ≥24 chars, not all-caps-short) cull the noise this admits.
     threshold = robust_max * 0.50
     big = [s for s in spans if s["size"] >= threshold]
 
-    # Group consecutive spans that belong to the same headline. Two
-    # spans are merged only when they're VERY clearly in the same column
-    # — same x-anchor within ~12pt, same font size, and stacked vertically
-    # with no big gap. Newspapers print multiple headlines on the same
-    # baseline in different columns; a generous overlap rule welds those
-    # together into a single garbled "headline" (e.g. the NYT extraction
-    # was producing "Payout Fund Deadly Russian Attack on Kyiv Comes
-    # With…" — three separate stories from three columns merged).
+    # Group consecutive spans into multi-line headlines.
     big.sort(key=lambda s: (s["bbox"][1], s["bbox"][0]))
     groups: list[list[dict]] = []
     for s in big:
@@ -213,11 +189,6 @@ def _extract_headlines(pdf_path: Path, max_headlines: int = 5) -> list[dict]:
             same_size = abs(last["size"] - s["size"]) / max(last["size"], 1) < 0.10
             vgap = sy0 - ly1
             line_h = (ly1 - ly0) or s["size"]
-            # Horizontal: either left edges align (left-aligned column) OR
-            # there's substantial bbox overlap (center-aligned headlines —
-            # NYT specifically lays them out with slight x-shifts between
-            # lines, but the bboxes overlap heavily). The overlap rule is
-            # tight enough that ADJACENT columns (no overlap) won't merge.
             x_aligned = abs(lx0 - sx0) < 12
             overlap = max(0, min(lx1, sx1) - max(lx0, sx0))
             narrower = min(lx1 - lx0, sx1 - sx0) or 1
@@ -230,7 +201,6 @@ def _extract_headlines(pdf_path: Path, max_headlines: int = 5) -> list[dict]:
         if not placed:
             groups.append([s])
 
-    # Build headline dicts from groups (bbox = union of all spans).
     heads = []
     for g in groups:
         text = " ".join(x["text"] for x in g).strip()
@@ -249,12 +219,8 @@ def _extract_headlines(pdf_path: Path, max_headlines: int = 5) -> list[dict]:
             "page_h": ph,
         })
 
-    # Sort by font size (largest first), then take top N.
     heads.sort(key=lambda h: (-h["size"], h["bbox"][1]))
 
-    # De-dup near-identical text and obvious non-headlines (mastheads,
-    # page numbers, price/date strings, ALL-CAPS standing labels /
-    # "kickers" like SECTION / MEETING AT THE TOP).
     bad_prefixes = (
         "vol.", "vol ", "no.", "no ", "$", "©", "edition", "designated",
         "high ", "low ", "weather", "index",
@@ -264,22 +230,16 @@ def _extract_headlines(pdf_path: Path, max_headlines: int = 5) -> list[dict]:
         t = h["text"].strip()
         if any(t.lower().startswith(p) for p in bad_prefixes):
             continue
-        # Skip if mostly digits/punctuation (e.g. "47 60 12")
         alpha = sum(c.isalpha() for c in t)
         if alpha < len(t) * 0.5:
             continue
-        # Real headlines on a front page are at least 4 words AND >= 24
-        # characters. Below that they're almost always partial fragments
-        # (column wrap artifacts) or standing kickers.
         if len(t) < 24 or len(t.split()) < 4:
             continue
-        # ALL-CAPS short strings are section labels / kickers, not headlines.
         if t.isupper() and len(t) < 40:
             continue
         key = t.lower()[:40]
         if key in seen:
             continue
-        # Also skip if a previously-kept headline contains this one (subset).
         if any(key in s for s in seen):
             continue
         seen.add(key)
@@ -287,344 +247,277 @@ def _extract_headlines(pdf_path: Path, max_headlines: int = 5) -> list[dict]:
         if len(out) >= max_headlines:
             break
 
-    # Pass 2: for each surviving headline, find its article's lede.
-    # We open the doc once via fitz blocks (already in `page` above) — but
-    # _extract_headlines doesn't keep the page handle, so we re-open below.
-    for h in out:
-        h["lede"] = _find_lede_blocks(pdf_path, h["bbox"], h["size"])
     return out
 
 
-def _find_lede_blocks(pdf_path: Path, headline_bbox: tuple, headline_size: float,
-                      max_chars: int = 240) -> str:
-    """Return the article's first ~2 sentences cleanly via block-level layout.
+# ── URL resolution ───────────────────────────────────────────────────
 
-    Strategy:
-      • Use PyMuPDF blocks (which respect column layout) instead of stitching
-        raw spans (which mash adjacent columns together in PDF source order).
-      • A valid lede block sits directly below the headline AND inside the
-        headline's horizontal column (with tight tolerance — no slop into
-        neighbouring columns).
-      • If the immediate block is a byline/dateline, skip and take the next.
-      • Trim to ~2 sentences (or max_chars at last sentence boundary).
+def _open_pulse_db() -> sqlite3.Connection | None:
+    for cand in PULSE_DB_CANDIDATES:
+        try:
+            if cand and Path(cand).exists():
+                return sqlite3.connect(str(cand))
+        except Exception:
+            continue
+    return None
+
+
+def _rss_match_url(con: sqlite3.Connection, rss_where: str, headline: str
+                   ) -> tuple[str | None, float]:
+    """Best fuzzy-match URL from pulse.db items table for a given headline.
+
+    Returns (url_or_none, ratio). Caller decides whether ratio clears the bar.
     """
-    import re as _re
-    doc = fitz.open(pdf_path)
-    page = doc[0]
-    hx0, hy0, hx1, hy1 = headline_bbox
-    head_w = hx1 - hx0
-
-    # Pull blocks. Each = (x0, y0, x1, y1, text, block_no, block_type).
-    blocks = page.get_text("blocks")
-
-    # Determine the "first column" under the headline. If the headline spans
-    # >= ~3 typical column widths (e.g. a banner head), the lede is in a
-    # narrow sub-column STARTING at the headline's left edge. Otherwise
-    # the lede block roughly matches the headline width.
-    typical_col_w = min(head_w, 220)
-
-    candidates = []
-    for b in blocks:
-        bx0, by0, bx1, by1, btext, *_ = b
-        if not btext or not btext.strip():
-            continue
-        # Must be BELOW the headline, within ~280pt vertical search.
-        if by0 < hy1 - 2 or by0 > hy1 + 280:
-            continue
-        # Must START inside the headline's horizontal column (with small
-        # left-edge tolerance) — this is what cuts out adjacent-column body.
-        if bx0 < hx0 - 12:
-            continue
-        if bx0 > hx0 + head_w * 0.6:
-            continue
-        # Must be narrower than the headline (otherwise it's likely another
-        # banner-spanning block, e.g. a sub-deck).
-        if bx1 > hx0 + typical_col_w + 30:
-            continue
-        candidates.append((by0, bx0, btext))
-
-    if not candidates:
-        return ""
-
-    candidates.sort()
-
-    # Try each candidate block in vertical order; skip bylines/datelines
-    # and accept the first one that reads as prose.
-    BYLINE_RE = _re.compile(r"^\s*By\s+[A-Z][\w\.\-']+(\s+(and|,)\s+[A-Z][\w\.\-']+)*\s*$",
-                            _re.MULTILINE)
-    SECTION_KICKER_RE = _re.compile(r"^[A-Z][A-Z &]{2,}$")
-
-    accepted = []
-    for _, _, raw in candidates:
-        text = " ".join(raw.split())            # collapse whitespace
-        text = BYLINE_RE.sub("", text).strip()  # drop trailing standalone bylines
-        # Strip leading byline / dateline patterns.
-        text = _re.sub(r"^By\s+[A-Z][\w\.\-']+(\s+(and|,)\s+[A-Z][\w\.\-']+)*\s*", "", text)
-        text = _re.sub(r"^[A-Z][A-Z\s\.\,]{4,40}\s*[\-—–]\s*", "", text)  # "WASHINGTON — "
-        text = _re.sub(r"^[A-Z][A-Z\s]{4,30}\s+", "", text)               # bare ALLCAPS kicker
-
-        # Reject if too short or all-caps section header.
-        if len(text) < 30 or SECTION_KICKER_RE.match(text):
-            continue
-        # Reject if it has the "by X" structure dominating.
-        if len(BYLINE_RE.findall(text)) > 0 and len(text) < 80:
-            continue
-        accepted.append(text)
-        # Stop once we have ~2 sentences (or comfortably enough).
-        if len(" ".join(accepted)) >= max_chars * 0.7:
-            break
-
-    if not accepted:
-        return ""
-
-    full = " ".join(accepted)
-    full = " ".join(full.split())
-
-    # Sentence split — but protect common abbreviations so we don't break
-    # on "U.S.", "Mr.", "Inc.", etc.
-    ABBR = ["U.S.", "U.K.", "U.N.", "E.U.", "D.C.",
-            "Mr.", "Mrs.", "Ms.", "Dr.", "Jr.", "Sr.", "St.",
-            "Inc.", "Co.", "Corp.", "Ltd.", "Gov.", "Sen.", "Rep.",
-            "vs.", "etc.", "i.e.", "e.g.", "No."]
-    SENTINEL = "⦙"  # arbitrary placeholder
-    protected = full
-    for a in ABBR:
-        protected = protected.replace(a, a.replace(".", SENTINEL))
-    sentences = _re.split(r"(?<=[\.\?!])\s+", protected)
-    sentences = [s.replace(SENTINEL, ".") for s in sentences]
-
-    out = ""
-    for s in sentences[:3]:
-        if len(out) + len(s) + 1 > max_chars:
-            break
-        out = (out + " " + s).strip()
-    if not out:
-        truncated = full[:max_chars]
-        last_period = max(truncated.rfind(". "), truncated.rfind("? "), truncated.rfind("! "))
-        if last_period > max_chars // 2:
-            out = truncated[:last_period + 1]
-        else:
-            out = truncated.rsplit(" ", 1)[0] + "…"
-    return out
-
-
-# ── Perspective transform ────────────────────────────────────────────
-
-def _perspective_coeffs(src_corners, dst_corners):
-    """Solve for PIL.Image.PERSPECTIVE coefficients.
-
-    PIL expects the transform that maps each *output* pixel back to a
-    source pixel, so we pass (output_corners, input_corners) here.
-    """
-    matrix = []
-    for s, t in zip(src_corners, dst_corners):
-        matrix.append([t[0], t[1], 1, 0, 0, 0, -s[0] * t[0], -s[0] * t[1]])
-        matrix.append([0, 0, 0, t[0], t[1], 1, -s[1] * t[0], -s[1] * t[1]])
-    A = np.array(matrix, dtype=float)
-    B = np.array(src_corners, dtype=float).reshape(8)
-    return tuple(np.linalg.solve(A, B))
-
-
-def _project_point(x: float, y: float, fwd_coeffs) -> tuple[float, float]:
-    """Apply a forward perspective transform to a single point."""
-    a, b, c, d, e, f, g, h = fwd_coeffs
-    denom = g * x + h * y + 1.0
-    if denom == 0:
-        return (0.0, 0.0)
-    return ((a * x + b * y + c) / denom, (d * x + e * y + f) / denom)
-
-
-def _tilt_page(page_img: Image.Image, tilt_inset_frac: float = 0.08
-               ) -> tuple[Image.Image, tuple]:
-    """Apply a 'page tilted backwards' perspective.
-
-    Top edge stays nearly full-width; the bottom edge narrows and
-    shortens slightly (vertically compressed) to suggest the page is
-    laying flat-ish with its top tilted toward the camera.
-
-    Returns (tilted_image_with_alpha, forward_coeffs) where forward_coeffs
-    maps (x_orig, y_orig) -> (x_tilted, y_tilted) on the OUTPUT image.
-    """
-    w, h = page_img.size
-    inset = int(w * tilt_inset_frac)
-    # Output (tilted) corners — bottom is narrower than top.
-    dst = [(0, 0), (w, 0), (w - inset, h), (inset, h)]
-    src = [(0, 0), (w, 0), (w, h),         (0, h)]
-
-    # PIL needs the INVERSE mapping (output -> input).
-    inv_coeffs = _perspective_coeffs(src, dst)
-    # And we need the FORWARD mapping to project headline bboxes.
-    fwd_coeffs = _perspective_coeffs(dst, src)
-
-    # Use an RGBA page so the trapezoid sits cleanly on the composite.
-    if page_img.mode != "RGBA":
-        page_img = page_img.convert("RGBA")
-    tilted = page_img.transform(
-        (w, h), Image.PERSPECTIVE, inv_coeffs,
-        resample=Image.BICUBIC,
-    )
-    # Anything outside the trapezoid is transparent because the input
-    # had alpha=255 only inside the page rectangle. PIL gives black/0
-    # for "no source pixel" cases here, but with RGBA source the alpha
-    # naturally falls to 0 outside the mapped region.
-    return tilted, fwd_coeffs
-
-
-# ── Composition ──────────────────────────────────────────────────────
-
-def _wrap_text(draw, text: str, font, max_width: int) -> list[str]:
-    """Greedy word-wrap into lines that fit within max_width pixels."""
-    words = text.split()
-    lines, line = [], ""
-    for w in words:
-        candidate = (line + " " + w).strip()
-        bbox = draw.textbbox((0, 0), candidate, font=font)
-        if bbox[2] - bbox[0] <= max_width or not line:
-            line = candidate
-        else:
-            lines.append(line)
-            line = w
-    if line:
-        lines.append(line)
-    return lines
-
-
-def _compose(paper: dict, pdf_path: Path, out_path: Path) -> bool:
-    """Build the final composite PNG for one paper."""
-    name      = paper["name"]
-    masthead  = paper["masthead"]
-    side      = paper["side"]   # which side of canvas the page sits on
     try:
-        # 1. Render PDF page to a PIL image.
+        q = ("SELECT url, title FROM items "
+             "WHERE collected_at >= datetime('now', '-3 days') "
+             f"AND source = 'rss' AND ({rss_where})")
+        rows = con.execute(q).fetchall()
+    except Exception as e:
+        logger.warning(f"rss-match query failed: {e}")
+        return None, 0.0
+
+    if not rows:
+        return None, 0.0
+
+    h_lower = headline.lower()
+    best_r, best_u = 0.0, None
+    for url, title in rows:
+        if not title:
+            continue
+        # Skip wire-tracking links (no canonical article URL) when possible.
+        if not url:
+            continue
+        r = SequenceMatcher(None, h_lower, title.lower()).ratio()
+        if r > best_r:
+            best_r, best_u = r, url
+    return best_u, best_r
+
+
+# ── Layer 2: Brave Search API ────────────────────────────────────────
+#
+# Brave Search ships a proper search API: $5 per 1000 requests with a free
+# $5/month credit (covers ~450/month, comfortably more than we need).
+# Replaces an earlier Google-via-Browserbase scraper that hit CAPTCHA
+# pages after ~10 queries — Google fingerprints Browserbase's browser
+# regardless of proxy IP, and Browserbase's `advanced_stealth` flag is
+# Enterprise-only.
+
+_BRAVE_ENDPOINT = "https://api.search.brave.com/res/v1/web/search"
+_BRAVE_FRESHNESS_DAYS = 4
+
+
+def _brave_search_url(paper: dict, paper_domain: str,
+                      headline: str) -> str | None:
+    """Resolve an article URL by querying the Brave Search API for
+    `<headline> site:<paper_domain>` and picking the first result that
+    (a) matches the paper's article URL pattern AND (b) is fresh.
+
+    Freshness check: URL paths with /YYYY/MM/DD/ or /YYYY-MM-DD/ are
+    parsed and required to be within _BRAVE_FRESHNESS_DAYS of today.
+    URLs without a date (e.g., Houston Chronicle's slug-based scheme)
+    fall back to Brave's `age` field — "X hours ago" / "X days ago" /
+    "1 week ago" are accepted; older is rejected.
+
+    Returns None when no result clears both gates — caller leaves the
+    headline as plain text (user directive: better unlinked than
+    linked to a stale or wrong article).
+    """
+    api_key = os.environ.get("BRAVE_API_KEY", "")
+    if not api_key:
+        logger.warning("BRAVE_API_KEY not set — skipping search resolution")
+        return None
+    pattern = paper.get("article_url_re")
+    if not pattern or not paper_domain:
+        return None
+
+    # Strip punctuation that confuses Brave's tokenizer ("$1.8" → "1.8",
+    # quotes/apostrophes → space). Keep word chars, hyphens, periods,
+    # and spaces.
+    cleaned = re.sub(r"[^\w\s.\-]", " ", headline)
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
+    query = f"{cleaned} site:{paper_domain}"
+
+    try:
+        r = requests.get(
+            _BRAVE_ENDPOINT,
+            params={"q": query, "count": 10, "country": "us"},
+            headers={
+                "X-Subscription-Token": api_key,
+                "Accept": "application/json",
+            },
+            timeout=12,
+        )
+    except Exception as e:
+        logger.warning(f"brave search request failed for {headline!r}: {e}")
+        return None
+    if r.status_code != 200:
+        logger.warning(
+            f"brave search status {r.status_code} for {headline!r}: "
+            f"{r.text[:160]}"
+        )
+        return None
+    try:
+        results = r.json().get("web", {}).get("results", []) or []
+    except Exception as e:
+        logger.warning(f"brave search JSON parse failed: {e}")
+        return None
+
+    today = datetime.now().date()
+    _date_re = re.compile(r"/(\d{4})/(\d{2})/(\d{2})/|/(\d{4})-(\d{2})-(\d{2})/")
+
+    def _is_article_url(u: str) -> bool:
+        if not re.match(pattern, u):
+            return False
+        if "/search" in u or u.endswith("/"):
+            return False
+        if "?mod=nav" in u or "?mod=wsjheader" in u or "?mod=wsjfooter" in u:
+            return False
+        return True
+
+    for res in results:
+        url = (res.get("url") or "").strip()
+        if not url or not _is_article_url(url):
+            continue
+        url_clean = url.split("#")[0]
+
+        m_dt = _date_re.search(url_clean)
+        if m_dt:
+            try:
+                yy = int(m_dt.group(1) or m_dt.group(4))
+                mm = int(m_dt.group(2) or m_dt.group(5))
+                dd = int(m_dt.group(3) or m_dt.group(6))
+                url_date = date(yy, mm, dd)
+                if 0 <= (today - url_date).days <= _BRAVE_FRESHNESS_DAYS:
+                    return url_clean
+                continue  # dated but stale; keep looking
+            except Exception:
+                pass
+
+        # No date in URL — use Brave's `age` field as a freshness signal.
+        age = (res.get("age") or "").lower()
+        if any(t in age for t in ("hour", "day", "today", "yesterday")):
+            return url_clean
+        if "1 week" in age or "week ago" in age:
+            return url_clean
+        # Older — skip and look at the next result.
+
+    return None
+
+
+def _resolve_article_urls(papers_data: dict, db: sqlite3.Connection | None
+                          ) -> dict:
+    """Populate {article_url} on each headline via a two-layer cascade.
+
+      L1 RSS    — free, low hit rate today but cheap to keep
+      L2 Brave  — Brave Search API, $5/1000 with $5/mo free credit
+                  (~$0/run at our volume of ~450 queries/month)
+
+    No fake-URL fallback: when both layers miss, article_url is set to
+    None and the renderer leaves the headline as plain text. Per user
+    directive: better unlinked than linked to the wrong article.
+
+    Returns a stats dict: {paper: {rss, brave, unlinked: int}}.
+    """
+    stats: dict = {}
+    brave_calls = 0
+
+    for slug, info in papers_data.items():
+        s = {"rss": 0, "brave": 0, "unlinked": 0}
+        rss_where = info.pop("_rss_match", "")
+        domain = info.pop("_domain", "")
+        paper_cfg = info.pop("_paper_cfg", {})
+
+        for h in info["headlines"]:
+            text = h["text"]
+            url = None
+
+            # L1 — RSS corpus match (free)
+            if db is not None and rss_where:
+                u, r = _rss_match_url(db, rss_where, text)
+                if u and r >= RSS_MATCH_THRESHOLD:
+                    url = u
+                    s["rss"] += 1
+                    print(f"  [{slug}] rss-match r={r:.2f} {text[:50]!r}")
+
+            # L2 — Brave Search API
+            if url is None and paper_cfg:
+                brave_calls += 1
+                u = _brave_search_url(paper_cfg, domain, text)
+                if u:
+                    url = u
+                    s["brave"] += 1
+                    print(f"  [{slug}] brave-hit {text[:50]!r}")
+                    print(f"    -> {url[:120]}")
+
+            if url is None:
+                s["unlinked"] += 1
+
+            h["article_url"] = url  # None means render as plain text
+
+        stats[slug] = s
+        print(f"  [{slug}] resolution: rss={s['rss']} brave={s['brave']} "
+              f"unlinked={s['unlinked']}")
+
+    # Brave: $5 per 1000 queries → $0.005 per call
+    cost = brave_calls * 0.005
+    print(f"  totals: brave={brave_calls} (est. cost ${cost:.3f})")
+    return stats
+
+
+# ── Composition (page-only, no headlines drawn into image) ──────────
+
+def _compose_page_image(pdf_path: Path, out_path: Path) -> bool:
+    """Build a page-only composite PNG (cropped top, faded to cream)."""
+    try:
         doc = fitz.open(pdf_path)
         page = doc[0]
         zoom = PAGE_RENDER_DPI / 72.0
         pix = page.get_pixmap(matrix=fitz.Matrix(zoom, zoom), alpha=False)
         page_img = Image.frombytes("RGB", (pix.width, pix.height), pix.samples)
-        pdf_w, pdf_h = page.rect.width, page.rect.height
         render_w, render_h = pix.width, pix.height
 
-        # 2. Extract headlines (PDF coords).
-        headlines = _extract_headlines(pdf_path, max_headlines=4)
-
-        # 3. Resize page so it fits the canvas (no top masthead anymore;
-        #    the paper name now lives as a small kicker over the headline
-        #    column, so the page can use most of the canvas height).
-        target_h = CANVAS_H - 80
-        scale = target_h / render_h
-        new_w = int(render_w * scale)
+        # Scale page to canvas width.
+        target_w = CANVAS_W
+        scale = target_w / render_w
+        new_w = target_w
         new_h = int(render_h * scale)
-        page_img = page_img.resize((new_w, new_h), Image.LANCZOS)
+        page_img = page_img.resize((new_w, new_h), Image.LANCZOS).convert("RGBA")
 
-        # Drop a subtle shadow under the page by darkening edges? Skip
-        # for V1 — it muddies the look on the cream background.
+        # Crop to top portion and fade to cream at the bottom.
+        FADE_KEEP_FRAC = 0.30
+        FADE_RAMP_FRAC = 0.12
+        keep_h = int(new_h * FADE_KEEP_FRAC)
+        ramp_h = int(new_h * FADE_RAMP_FRAC)
+        crop_h = keep_h + ramp_h
+        page_img = page_img.crop((0, 0, new_w, crop_h))
 
-        # 4. No tilt — keep the page flat and crisp so the headlines
-        #    embedded in the snapshot stay legible. Just convert to RGBA
-        #    so the bottom-fade alpha gradient (below) has something
-        #    to write to.
-        tilted = page_img.convert("RGBA")
-        t_w, t_h = tilted.size
-
-        # 5. Build canvas. No centered masthead / date — the paper name
-        #    now lives as a small ALL-CAPS kicker over the headline column.
-        canvas = Image.new("RGB", (CANVAS_W, CANVAS_H), COLOR_BG)
-        draw = ImageDraw.Draw(canvas)
-
-        # 6. Crop the page to the top third-ish and fade to cream sooner
-        #    than before. We don't need the full front page visible — just
-        #    enough that the masthead + lead-headline area reads clearly.
-        FADE_KEEP_FRAC = 0.30   # top 30% stays fully opaque
-        FADE_RAMP_FRAC = 0.12   # next 12% ramps from 255 -> 0
-        keep_h = int(t_h * FADE_KEEP_FRAC)
-        ramp_h = int(t_h * FADE_RAMP_FRAC)
-        new_t_h = keep_h + ramp_h
-        tilted = tilted.crop((0, 0, t_w, new_t_h))
-        # Build a single-column vertical alpha gradient and apply it
-        # (no per-pixel loop now that the page is rectangular).
-        gradient_col = Image.new("L", (1, new_t_h), 0)
+        # Build vertical alpha gradient.
+        gradient_col = Image.new("L", (1, crop_h), 0)
         gc_px = gradient_col.load()
-        for yy in range(new_t_h):
+        for yy in range(crop_h):
             if yy < keep_h:
                 gc_px[0, yy] = 255
             else:
                 gc_px[0, yy] = max(0, int(255 * (1.0 - (yy - keep_h) / max(ramp_h, 1))))
-        new_alpha = gradient_col.resize((t_w, new_t_h))
-        r_ch, g_ch, b_ch, _a_old = tilted.split()
-        tilted = Image.merge("RGBA", (r_ch, g_ch, b_ch, new_alpha))
-        t_h = new_t_h
+        new_alpha = gradient_col.resize((new_w, crop_h))
+        r_ch, g_ch, b_ch, _a_old = page_img.split()
+        page_img = Image.merge("RGBA", (r_ch, g_ch, b_ch, new_alpha))
 
-        # Place page on the chosen side, shifted down a little so the
-        # headlines column starts at roughly the same Y as the masthead
-        # of the paper inside the snapshot.
-        page_y = 80
-        margin = 60
-        if side == "left":
-            page_x = margin
-            text_x0 = page_x + t_w + 80
-            text_x1 = CANVAS_W - margin
-        else:
-            page_x = CANVAS_W - t_w - margin
-            text_x0 = margin
-            text_x1 = page_x - 80
+        # Paste over cream background so the JPG export reads as continuous
+        # with the email's #F6F7F3 page background.
+        canvas = Image.new("RGB", (new_w, crop_h), COLOR_BG)
+        canvas.paste(page_img, (0, 0), page_img)
 
-        canvas.paste(tilted, (page_x, page_y), tilted)
-
-        # 7. Headlines column: small ALL-CAPS kicker with the paper name,
-        #    then the stack of headlines. No leader lines, no dots, no
-        #    lede text. Medium weight (less bold than V2).
-        if not headlines:
-            print(f"  {name}: no headlines extracted — composing without callouts")
-        f_kicker   = _font(28, bold=True)
-        f_headline = _font(46, bold=False)
-        head_line_h = 56
-        block_gap = 42
-        kicker_gap = 36   # gap below the kicker before headlines start
-
-        kicker_y = page_y + 16
-        draw.text((text_x0, kicker_y), masthead,
-                  fill=COLOR_BLACK, font=f_kicker)
-        # Thin rule under the kicker.
-        rule_y = kicker_y + 44
-        draw.line([(text_x0, rule_y), (text_x1, rule_y)],
-                  fill=COLOR_GREY, width=2)
-
-        cur_y = rule_y + kicker_gap
-        for h in headlines:
-            text = h["text"]
-            if text.isupper():
-                text = text.title()
-            head_lines = _wrap_text(draw, text, f_headline, text_x1 - text_x0)
-            for j, line in enumerate(head_lines):
-                draw.text((text_x0, cur_y + j * head_line_h),
-                          line, fill=COLOR_BLACK, font=f_headline)
-            cur_y += len(head_lines) * head_line_h + block_gap
-
-        # 8. Trim canvas to the actual content bottom so each paper's
-        #    composite is as tight as possible — when the four are stacked
-        #    in the email there's no wasted cream gap below the shorter
-        #    papers. We use the max of (headlines column bottom, fading
-        #    page bottom). Subtract block_gap because the last loop
-        #    iteration added one trailing.
-        content_bottom = max(cur_y - block_gap, page_y + t_h)
-        trim_h = min(CANVAS_H, content_bottom + 40)
-        if trim_h < CANVAS_H:
-            canvas = canvas.crop((0, 0, CANVAS_W, trim_h))
-
-        # Save (PNG for the cached/local copy, JPG for the email upload).
         canvas.save(out_path, "PNG", optimize=True)
-        # Copy into screenshots dir so the existing email pipeline finds it.
-        local_copy = SCREENSHOTS_DIR / f"{name}.png"
-        canvas.save(local_copy, "PNG", optimize=True)
-        # And a JPG for upload.
+        canvas.save(SCREENSHOTS_DIR / out_path.name, "PNG", optimize=True)
         jpg_path = out_path.with_suffix(".jpg")
         canvas.save(jpg_path, "JPEG", quality=85, optimize=True)
-        print(f"  {name}: composite saved ({canvas.size[0]}x{canvas.size[1]}, "
-              f"{len(headlines)} headlines)")
+        print(f"  composite saved ({canvas.size[0]}x{canvas.size[1]})")
         return True
     except Exception as e:
         import traceback
-        print(f"  {name}: compose failed: {e}")
+        print(f"  compose failed: {e}")
         traceback.print_exc()
         return False
 
@@ -666,31 +559,92 @@ def _upload_to_bluehost(local_files: list[str]) -> bool:
 # ── Entrypoint ───────────────────────────────────────────────────────
 
 def main():
-    print("Capturing stylized front pages...")
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--no-upload", action="store_true",
+                    help="Skip the Bluehost SFTP step (local preview only).")
+    args = ap.parse_args()
+
+    print("Capturing print-edition front pages (page-only composites)...")
     uploads: list[str] = []
+    papers_data: dict = {}
+
     for paper in PAPERS:
         name = paper["name"]
         slug = paper["slug"]
         print(f"\n[{name}] slug={slug}")
         pdf_path = OUT_DIR / f"{slug}.pdf"
-        if not _download_pdf(slug, pdf_path):
-            continue
+        if not pdf_path.exists():
+            if not _download_pdf(slug, pdf_path):
+                continue
+        else:
+            print(f"  {slug}: PDF already on disk, skipping download")
+
+        # Extract headlines.
+        headlines = _extract_headlines(pdf_path, max_headlines=4)
+        if not headlines:
+            print(f"  {name}: no headlines extracted")
+
+        # Compose page-only image.
         png_path = OUT_DIR / f"{name}.png"
         jpg_path = OUT_DIR / f"{name}.jpg"
-        if _compose(paper, pdf_path, png_path):
-            uploads.append(str(jpg_path))
+        if not _compose_page_image(pdf_path, png_path):
+            continue
+        uploads.append(str(jpg_path))
+
+        # Stash headline data for the sidecar JSON.
+        papers_data[name] = {
+            "masthead": paper["masthead"],
+            "url": paper["url"],
+            "headlines": [{"text": h["text"]} for h in headlines],
+            # carrier fields for the resolver (popped before serialization)
+            "_rss_match": paper["rss_match"],
+            "_domain": paper["domain"],
+            "_paper_cfg": {
+                "internal_search": paper.get("internal_search"),
+                "article_url_re": paper.get("article_url_re"),
+            },
+        }
+
+    # Resolve per-headline article URLs.
+    print("\nResolving per-headline article URLs...")
+    db = _open_pulse_db()
+    if db is None:
+        print("  pulse.db not found — RSS-match step will be skipped")
+    _resolve_article_urls(papers_data, db)
+    if db is not None:
+        db.close()
+
+    # Write sidecar JSON (local + screenshots dir + queued for upload).
+    out_json = {}
+    for name, info in papers_data.items():
+        out_json[name] = {
+            "masthead": info["masthead"],
+            "url": info["url"],
+            "headlines": info["headlines"],
+        }
+    json_path = OUT_DIR / "headlines.json"
+    json_path.write_text(json.dumps(out_json, indent=2, ensure_ascii=False))
+    (SCREENSHOTS_DIR / "headlines.json").write_text(
+        json.dumps(out_json, indent=2, ensure_ascii=False))
+    uploads.append(str(json_path))
+    print(f"\nWrote {json_path}")
 
     if not uploads:
         print("No composites produced — exiting non-zero")
         sys.exit(1)
 
+    if args.no_upload:
+        print("\n--no-upload set; skipping Bluehost SFTP. Local assets in:")
+        print(f"  {OUT_DIR}")
+        print(f"  {SCREENSHOTS_DIR}")
+        return
+
     if _upload_to_bluehost(uploads):
-        print("\nDone. Composites live at:")
+        print("\nDone. Assets live at:")
         for f in uploads:
             print(f"  https://home-economics.us/pulse-screenshots/{os.path.basename(f)}")
     else:
-        # Don't fail the workflow just because upload failed locally —
-        # the screenshots dir still has the PNGs.
         print("Upload step skipped/failed; local PNGs are in", SCREENSHOTS_DIR)
 
 
