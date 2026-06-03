@@ -139,6 +139,19 @@ def _ensure_schema(conn: sqlite3.Connection) -> None:
             stripped_text TEXT,  -- full sentence removed (or '')
             reason TEXT          -- 'HEAD 404' / 'HEAD timeout' / etc.
         );
+
+        -- Cross-run cache for the trigger classifier (added 2026-06-03).
+        -- The classifier runs Opus on ~250 news items per day at ~$0.66/run; many
+        -- items linger in the 24-hour window across multiple runs. Caching by
+        -- item_id eliminates re-classification of items we've already seen.
+        -- Invalidate by bumping CLASSIFIER_VERSION in trigger_classifier.py
+        -- whenever the schema / categories change.
+        CREATE TABLE IF NOT EXISTS trigger_classifier_cache (
+            item_id INTEGER PRIMARY KEY,
+            trigger_type TEXT NOT NULL,
+            classified_at TEXT NOT NULL,
+            classifier_version TEXT NOT NULL DEFAULT 'v1'
+        );
     """)
     conn.commit()
 
