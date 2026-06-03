@@ -924,6 +924,169 @@ def _strip_refusal_meta(briefing: dict) -> dict:
     return briefing
 
 
+# ─── Social-anchored theme rejector ──────────────────────────────────────────
+# Belt-and-braces enforcement of the EVENT-ANCHOR REQUIREMENT prompt rule.
+# Sonnet sometimes promotes a chit-chat cluster of tweets to a full theme even
+# when the rule explicitly forbids it (briefing #137, 2026-06-03: theme #1 was
+# "Tokyo vs Sydney: Does Building Lower Prices?" anchored on
+# "@DrCameronMurray posted Tokyo-vs-Sydney price chart; @michael_wiebe posted
+# Auckland-vs-São Paulo upzoning puzzle"). Deterministic post-process: scan
+# related_news_trigger + platforms for social-only anchors; move rejected
+# themes to conversation_roundups (preserving the topic + a condensed summary)
+# so the discourse isn't lost — it just doesn't get headline treatment.
+_SOCIAL_VERB_PATTERN = re.compile(
+    r"^\s*@\w+\s+(posted|tweeted|argued|flagged|noted|wrote|asked|wondered)\b",
+    re.IGNORECASE,
+)
+_SOCIAL_LEAD_PATTERN = re.compile(
+    r"^\s*(@\w+|\[?@\w+\]?)",
+    re.IGNORECASE,
+)
+_SOCIAL_ONLY_PLATFORM_NAMES = {"twitter", "x", "bluesky", "hackernews", "hn"}
+
+# Words that signal the trigger is referencing a real published event/report
+# even when the platforms list happens to be twitter-only. Used to suppress
+# Test 4 false-positives where the trigger names a real anchor (e.g.,
+# "John Burns Research and Consulting migration analysis", "Realtor.com
+# released its May 2026 report") but the only direct citation Sonnet attached
+# is a tweet that flagged it. The keyword must appear OUTSIDE the @handle span.
+_NEWS_ANCHOR_KEYWORDS = re.compile(
+    r"\b(report|analysis|study|paper|release[ds]?|releasing|"
+    r"published|announce[ds]?|announcing|passed|signed|filed|"
+    r"ruling|ruled|decision|verdict|bill|legislation|"
+    r"investigation|probe|opened|launched|"
+    r"data|figures|index|results|earnings|"
+    r"working paper|press release|whitepaper)\b",
+    re.IGNORECASE,
+)
+
+
+def _trigger_names_news_anchor(trig: str) -> bool:
+    """Detect whether the trigger references a real published event/document
+    even if the platforms list is twitter-only. We strip out @handles first
+    so a string like "@EricFinn flagged John Burns analysis" still trips on
+    'analysis' — the handle is only the messenger, not the anchor.
+    """
+    if not trig:
+        return False
+    stripped = re.sub(r"@\w+", "", trig)
+    return bool(_NEWS_ANCHOR_KEYWORDS.search(stripped))
+
+
+def _theme_is_social_anchored(theme: dict) -> bool:
+    """Return True if a conversation_themes entry fails the event-anchor gate.
+
+    Tests (any one trips the rejection):
+      1. trigger starts with an @handle (with or without bracketing)
+      2. trigger has the "@X posted/argued/tweeted/etc." anchor verb pattern in
+         the first 80 chars
+      3. trigger has 2+ @handles — multi-tweet discourse cluster
+      4. platforms list contains ONLY social sources (no news outlet, no RSS,
+         no Substack — so the only attribution is tweets) AND the trigger
+         doesn't reference an external news anchor (report/analysis/bill/etc.)
+         by name. The AND-clause guards against false positives where the
+         trigger does name a legitimate published event but Sonnet only
+         attached a tweet that flagged it.
+    """
+    trig = (theme.get("related_news_trigger") or "").strip()
+    if _SOCIAL_LEAD_PATTERN.match(trig):
+        return True
+    if _SOCIAL_VERB_PATTERN.search(trig[:80]):
+        return True
+    at_count = len(re.findall(r"@\w+", trig))
+    if at_count >= 2:
+        return True
+    plats = theme.get("platforms") or []
+    plat_names = {
+        (p.get("name") or "").lower()
+        for p in plats
+        if isinstance(p, dict)
+    }
+    if (
+        plat_names
+        and plat_names.issubset(_SOCIAL_ONLY_PLATFORM_NAMES)
+        and not _trigger_names_news_anchor(trig)
+    ):
+        return True
+    return False
+
+
+def _condense_summary_for_roundup(summary: str, max_chars: int = 600) -> str:
+    """Condense a theme summary to roundup length. Preserves inline markdown
+    links by splitting on sentence boundaries (not by char count mid-sentence).
+    """
+    if not summary or not isinstance(summary, str):
+        return summary or ""
+    s = summary.strip()
+    if len(s) <= max_chars:
+        return s
+    # Mask markdown links so dots inside URLs don't break sentence boundaries.
+    link_re = re.compile(r"\[[^\]]+\]\([^)]+\)")
+    placeholders: list[str] = []
+
+    def _mask(m):
+        placeholders.append(m.group(0))
+        return f"\x00LINK{len(placeholders) - 1}\x00"
+
+    masked = link_re.sub(_mask, s)
+    boundary_re = re.compile(r"([.!?][\"'”’]?)(\s+)(?=[A-Z\x00]|$)")
+    marked = boundary_re.sub(lambda m: m.group(1) + "\x01", masked)
+    parts = marked.split("\x01")
+    out = ""
+    for p in parts:
+        candidate = (out + " " + p).strip() if out else p.strip()
+        if len(candidate) > max_chars and out:
+            break
+        out = candidate
+        if len(out) >= max_chars:
+            break
+    for j, link in enumerate(placeholders):
+        out = out.replace(f"\x00LINK{j}\x00", link)
+    return out.strip() or s[:max_chars].rstrip()
+
+
+def _reject_social_anchored_themes(briefing: dict) -> dict:
+    """Deterministic enforcement of the EVENT-ANCHOR rule.
+
+    For each conversation_themes entry, run _theme_is_social_anchored. Themes
+    that fail are moved into conversation_roundups (preserving the topic name
+    and a condensed version of the summary) so the discourse survives without
+    headline treatment. Tracks the rejection count on briefing
+    ['_social_anchor_rejections'] so the dashboard can surface it.
+    """
+    themes = briefing.get("conversation_themes") or []
+    if not themes:
+        briefing.setdefault("_social_anchor_rejections", 0)
+        return briefing
+
+    kept: list[dict] = []
+    rejected: list[dict] = []
+    for theme in themes:
+        if _theme_is_social_anchored(theme):
+            rejected.append(theme)
+        else:
+            kept.append(theme)
+
+    if rejected:
+        if briefing.get("conversation_roundups") is None:
+            briefing["conversation_roundups"] = []
+        for theme in rejected:
+            topic_label = (theme.get("theme") or "").strip() or "Untitled discussion"
+            condensed = _condense_summary_for_roundup(theme.get("summary") or "")
+            briefing["conversation_roundups"].append({
+                "topic": topic_label,
+                "summary": condensed,
+            })
+            logger.info(
+                f"Rejected social-anchored theme moved to roundups: "
+                f"{theme.get('theme')!r}"
+            )
+        briefing["conversation_themes"] = kept
+
+    briefing["_social_anchor_rejections"] = len(rejected)
+    return briefing
+
+
 # Domains where SequenceMatcher / path-only matching is too dangerous because
 # article URLs share long common prefixes (e.g. ft.com/content/<hash>). For
 # these domains we MUST NOT fall back to corpus-fuzzy-matching — we go straight
@@ -2044,6 +2207,14 @@ Generate the daily briefing JSON. LEAD WITH CONVERSATION — what are people deb
         # Drop themes with no housing-topic overlap. Sonnet drifts off-topic
         # toward macro/AI/tech filler when its prompt has a high theme count.
         briefing = _enforce_housing_focused_themes(briefing)
+
+        # Deterministic EVENT-ANCHOR enforcement. The SYSTEM_PROMPT lists
+        # social-only triggers as INVALID, but Sonnet ignores it when the
+        # discourse is rich enough (briefing #137: Tokyo-vs-Sydney). Move
+        # any theme whose anchor is a tweet/handle cluster to roundups
+        # BEFORE URL validation, so any URLs carried into the roundup still
+        # get checked.
+        briefing = _reject_social_anchored_themes(briefing)
 
         # Validate all URLs against the database
         briefing = _validate_briefing_urls(briefing, conn)
