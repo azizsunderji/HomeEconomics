@@ -1002,11 +1002,15 @@ def _theme_is_social_anchored(theme: dict) -> bool:
         for p in plats
         if isinstance(p, dict)
     }
-    if (
-        plat_names
-        and plat_names.issubset(_SOCIAL_ONLY_PLATFORM_NAMES)
-        and not _trigger_names_news_anchor(trig)
-    ):
+    # Test 4: platforms field contains ONLY social sources (no news outlet).
+    # Per user direction 2026-06-03, the previous "but trigger names a news
+    # anchor" exemption is REMOVED — themes like the SF/John Burns migration
+    # one were being preserved because their trigger contained the word
+    # "analysis", but a consultancy publishing an analysis is content
+    # marketing, not news. Real news themes will have an actual news outlet
+    # in their platforms list (e.g., HousingWire, WSJ, Bloomberg), not just
+    # Twitter. So platforms-only-social is now a hard reject signal.
+    if plat_names and plat_names.issubset(_SOCIAL_ONLY_PLATFORM_NAMES):
         return True
     return False
 
