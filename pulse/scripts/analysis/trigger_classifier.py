@@ -34,7 +34,10 @@ logger = logging.getLogger(__name__)
 # Use Opus per the "quality > cost" directive. The classifier is the gatekeeper;
 # false-rejects are expensive (lost news) and false-accepts are expensive
 # (op-eds in the briefing). Worth the marginal cost over Sonnet.
-OPUS_MODEL = "claude-opus-4-7"
+# Bumped 4.7 -> 4.8 on 2026-06-03 — Opus 4.8 dropped on May 28 with 3x lower
+# pricing ($5/M input, $25/M output vs 4.7's $15/$75) AND meaningfully better
+# constraint adherence per Anthropic's release notes.
+OPUS_MODEL = "claude-opus-4-8"
 
 # Cache schema/category version. Bump this whenever the trigger-type taxonomy,
 # the system prompt's classification rules, or the cached payload meaning
