@@ -1132,119 +1132,162 @@ FORBIDDEN_BRIDGE_PATTERN = re.compile(
 )
 
 
-def _strip_forbidden_bridges(briefing: dict) -> dict:
-    """Deterministic enforcement of the FORBIDDEN BRIDGE WORDS rule.
+def _replace_welder_with_paragraph_break(text: str) -> tuple[str, int]:
+    """Replace each FORBIDDEN_BRIDGE phrase + its enclosing connector clause
+    with a paragraph break ("\\n\\n").
 
-    The model frequently welds two unrelated stories into one theme by gluing
-    them with bridge phrases like "Separately,", "On a separate front",
-    "Apart from this", etc. The SYSTEM_PROMPT names these phrases as a hard
-    gate; this post-processor enforces it deterministically.
+    Strategy:
+      1. Find a bridge phrase match (e.g., "Separately,", "The discourse
+         pushed back on local control:").
+      2. Walk BACKWARD from the match to the previous sentence terminator
+         (the period/question mark/exclamation that ends the previous
+         distinct point). Everything between that boundary and the match
+         is the welder clause's lead-in (usually nothing — the welder
+         tends to start a new sentence).
+      3. Walk FORWARD from the match to the first comma/colon/semicolon
+         or sentence-terminator. That marks the END of the welder clause.
+         Everything between START and END is the welder phrase + lead-in
+         (e.g., "Separately, " or "The discourse pushed back on local
+         control: ").
+      4. Replace [START..END) with "\\n\\n". This deletes the welder
+         language and inserts a visual paragraph break so the reader
+         sees two distinct points instead of falsely-connected prose.
 
-    For each conversation_themes entry, scan the summary for any forbidden
-    bridge phrase. If found, truncate the summary at the start of the bridge
-    sentence (the sentence CONTAINING the bridge phrase, plus everything that
-    follows). Move the truncated tail to conversation_roundups if it is
-    >= 100 chars; otherwise drop it silently.
+    Markdown links inside the text are masked first so periods inside
+    URLs don't confuse the sentence-boundary walk.
 
-    Tracks briefing['_forbidden_bridge_strips'] so the dashboard can surface
-    the rate.
+    Returns (new_text, replacement_count). The loop has a safety cap of
+    20 replacements to avoid pathological non-progress.
     """
-    themes = briefing.get("conversation_themes") or []
-    if not themes:
-        briefing.setdefault("_forbidden_bridge_strips", 0)
-        return briefing
+    if not text or not FORBIDDEN_BRIDGE_PATTERN.search(text):
+        return text, 0
 
+    # Mask markdown links so dots inside URLs/anchors don't read as
+    # sentence terminators.
+    link_re = re.compile(r"\[[^\]]+\]\([^)]+\)")
+    placeholders: list[str] = []
+
+    def _mask(m):
+        placeholders.append(m.group(0))
+        return f"\x00LINK{len(placeholders)-1:04d}\x00"
+
+    masked = link_re.sub(_mask, text)
+
+    def _unmask(s: str) -> str:
+        out = s
+        for j, link in enumerate(placeholders):
+            out = out.replace(f"\x00LINK{j:04d}\x00", link)
+        return out
+
+    out = masked
+    count = 0
+    while count < 20:
+        m = FORBIDDEN_BRIDGE_PATTERN.search(out)
+        if not m:
+            break
+        match_start = m.start()
+        match_end = m.end()
+        matched_text = m.group(0)
+
+        # Walk BACKWARD: find the most recent sentence terminator (. ! ?)
+        # before the match. If none, the welder is at the start of the text.
+        clause_start = 0
+        for term in (". ", ".\n", "? ", "?\n", "! ", "!\n"):
+            idx = out.rfind(term, 0, match_start)
+            if idx >= 0:
+                end_of_term = idx + len(term)
+                if end_of_term > clause_start:
+                    clause_start = end_of_term
+
+        # Walk FORWARD to find the end of the welder clause.
+        # Two cases:
+        #   (A) The regex already captured the connector + its terminator
+        #       (e.g., "Separately,"). The matched text ends in a
+        #       terminator character; we just skip any trailing whitespace.
+        #   (B) The regex matched only the lead-in of the welder
+        #       (e.g., "The discourse pushed back" — the rest of the
+        #       clause "on local control:" still needs to be consumed).
+        #       Walk forward for the nearest comma/colon/semicolon
+        #       within a small window, bounded by the next sentence
+        #       terminator (so we never consume real downstream content).
+        if matched_text and matched_text[-1] in ",:;.!?":
+            clause_end = match_end
+        else:
+            window_end = min(match_end + 100, len(out))
+            next_sent_end = -1
+            for term in (". ", ".\n", "? ", "?\n", "! ", "!\n"):
+                idx = out.find(term, match_end)
+                if idx >= 0 and (next_sent_end < 0 or idx < next_sent_end):
+                    next_sent_end = idx
+            if next_sent_end >= 0:
+                window_end = min(window_end, next_sent_end)
+            clause_end = -1
+            for ch in (",", ":", ";"):
+                idx = out.find(ch, match_end, window_end)
+                if idx >= 0 and (clause_end < 0 or idx < clause_end):
+                    clause_end = idx + 1
+            if clause_end < 0:
+                # No clause terminator found within window — drop only the
+                # welder match itself, leave the downstream prose alone.
+                clause_end = match_end
+        # Skip trailing whitespace so the next paragraph starts cleanly.
+        while clause_end < len(out) and out[clause_end] in " \t\n":
+            clause_end += 1
+
+        replacement = "\n\n" if clause_start > 0 else ""
+        new_out = out[:clause_start] + replacement + out[clause_end:]
+        if new_out == out:
+            break
+        out = new_out
+        count += 1
+
+    out = re.sub(r"[ \t]+\n\n", "\n\n", out)
+    out = re.sub(r"\n\n[ \t]+", "\n\n", out)
+    out = re.sub(r"\n{3,}", "\n\n", out)
+    return _unmask(out), count
+
+
+def _strip_forbidden_bridges(briefing: dict) -> dict:
+    """Deterministic enforcement of the BRIDGE WORDS rule.
+
+    The synthesizer is instructed (SYSTEM_PROMPT rule on bridge words) to
+    NEVER use connective phrases ("Separately,", "Meanwhile,", "The
+    discourse pushed back on…", etc.) to weld two distinct points into
+    one paragraph. When it slips and uses one anyway, this post-processor
+    replaces the welder with a paragraph break ("\\n\\n") so the reader
+    sees two distinct points instead of falsely-connected prose.
+
+    Applies to conversation_themes[i].summary AND
+    conversation_roundups[i].summary. Tracks
+    briefing['_forbidden_bridge_strips'] for dashboard surfacing.
+    """
     strip_count = 0
-    for theme in themes:
+
+    for theme in briefing.get("conversation_themes") or []:
         summary = theme.get("summary") or ""
         if not summary:
             continue
-        sentences = _split_sentences_for_validation(summary)
-        if not sentences:
-            continue
-        # Find the first sentence containing a forbidden bridge phrase.
-        bridge_idx: Optional[int] = None
-        bridge_match_text = ""
-        for i, sent in enumerate(sentences):
-            m = FORBIDDEN_BRIDGE_PATTERN.search(sent)
-            if m:
-                bridge_idx = i
-                bridge_match_text = m.group(0)
-                break
-        if bridge_idx is None:
-            continue
-
-        kept_sentences = sentences[:bridge_idx]
-        dropped_sentences = sentences[bridge_idx:]
-        new_summary = " ".join(s.strip() for s in kept_sentences if s.strip()).strip()
-        dropped_text = " ".join(s.strip() for s in dropped_sentences if s.strip()).strip()
-
-        # If the truncation would empty the theme entirely (bridge in first
-        # sentence), leave the theme alone — better an imperfect theme than
-        # an empty one that will be dropped by downstream cleanup.
-        if not new_summary:
-            logger.warning(
-                f"Forbidden bridge {bridge_match_text!r} found at first "
-                f"sentence of theme {theme.get('theme')!r}; leaving theme "
-                "untouched to avoid emptying it"
+        new_summary, n = _replace_welder_with_paragraph_break(summary)
+        if n > 0:
+            theme["summary"] = new_summary
+            strip_count += n
+            logger.info(
+                f"Replaced {n} welder phrase(s) with paragraph breaks in "
+                f"theme {theme.get('theme')!r}"
             )
-            continue
 
-        theme["summary"] = new_summary
-        strip_count += 1
-        logger.info(
-            f"Stripped forbidden bridge {bridge_match_text!r} from theme "
-            f"{theme.get('theme')!r}; tail length={len(dropped_text)}"
-        )
-
-        # Move the tail into roundups if substantial enough to be worth
-        # preserving as standalone discourse.
-        if len(dropped_text) >= 100:
-            if briefing.get("conversation_roundups") is None:
-                briefing["conversation_roundups"] = []
-            original_title = (theme.get("theme") or "").strip() or "Untitled theme"
-            briefing["conversation_roundups"].append({
-                "topic": f"(post-bridge content from {original_title})",
-                "summary": dropped_text,
-            })
-
-    # ── Same treatment for conversation_roundups ──────────────────────────
-    # Roundups by design gather topical discourse with no single news anchor,
-    # but they should still cohere around the topic NAME — not become a junk
-    # drawer for "vaguely housing-related" tweets welded by Separately/etc.
-    roundups = briefing.get("conversation_roundups") or []
-    for roundup in roundups:
+    for roundup in briefing.get("conversation_roundups") or []:
         rsum = roundup.get("summary") or ""
         if not rsum:
             continue
-        rsents = _split_sentences_for_validation(rsum)
-        if not rsents:
-            continue
-        rbridge_idx: Optional[int] = None
-        rbridge_match = ""
-        for i, sent in enumerate(rsents):
-            m = FORBIDDEN_BRIDGE_PATTERN.search(sent)
-            if m:
-                rbridge_idx = i
-                rbridge_match = m.group(0)
-                break
-        if rbridge_idx is None:
-            continue
-        kept = rsents[:rbridge_idx]
-        new_rsum = " ".join(s.strip() for s in kept if s.strip()).strip()
-        if not new_rsum:
-            # Bridge in first sentence — leave alone rather than empty out.
-            logger.warning(
-                f"Forbidden bridge {rbridge_match!r} at first sentence of "
-                f"roundup {roundup.get('topic')!r}; leaving alone"
+        new_rsum, n = _replace_welder_with_paragraph_break(rsum)
+        if n > 0:
+            roundup["summary"] = new_rsum
+            strip_count += n
+            logger.info(
+                f"Replaced {n} welder phrase(s) with paragraph breaks in "
+                f"roundup {roundup.get('topic')!r}"
             )
-            continue
-        roundup["summary"] = new_rsum
-        strip_count += 1
-        logger.info(
-            f"Stripped forbidden bridge {rbridge_match!r} from roundup "
-            f"{roundup.get('topic')!r}"
-        )
 
     briefing["_forbidden_bridge_strips"] = strip_count
     return briefing
@@ -1980,14 +2023,17 @@ NEVER use any of these phrases inside a theme summary. The reader experiences th
         - Different TIME WINDOW (last 30 days of mortgage data vs. 2026-projected escrow shortfall vs. since-2019 trend; today's news vs. "earlier this week" historical context)
         - The transition phrase you would otherwise write requires a hedging noun: "a related X," "a parallel Y," "a similar dynamic," "another dimension of the squeeze," "a connected story" — if you reach for one of these, the bridge isn't real; break instead.
 
-    (b3) DISJUNCTIVE TRANSITIONS *ARE* PARAGRAPH BREAKS, NOT INLINE GESTURES. This is the single most common rule violation. If you reach for ANY of the following transition phrases, that phrase MUST appear at the START of a new paragraph (preceded by `\\n\\n`), NOT buried mid-paragraph. The act of writing the transition is itself the signal that you should have already inserted a paragraph break:
-        - "Separately," / "On a separate track:" / "On a different track:" / "On a parallel track,"
-        - "At the federal level," / "At the state level," / "At the city level," / "On the policy side,"
-        - "Earlier this week," / "Yesterday," / "Last week," (any time-shift transition)
-        - "On a different note," / "Switching to," / "Turning to,"
-        - "Meanwhile," / "Elsewhere," (these are banned inline per (c) anyway, but if you find yourself needing them, the answer is `\\n\\n`)
+    (b3) DISJUNCTIVE TRANSITIONS — DROP THE TRANSITION WORDS, KEEP THE PARAGRAPH BREAK. When you have two distinct points within the same theme or roundup, do NOT use connective transition words at all — even at the start of a new paragraph. Just insert a paragraph break (`\\n\\n`) and start the new paragraph plainly with the next claim. The paragraph break itself signals to the reader "this is a distinct point on the same topic." Adding a transition word on top of the paragraph break ("Separately, X argued..." or "On a separate track, Y noted...") makes the reader think you're claiming a logical relationship between the two points — that's the failure mode. Let the paragraph break stand alone.
 
-    Failure pattern to AVOID: one welded paragraph that read "@analyst-handle's framing that the political moment has shifted to '2026: It's affordability, stupid.' Separately, [a city council member]'s newsletter announced [the mayor]'s executive budget includes an additional $5 billion for affordable housing… At the federal level, [a congressman] appeared on [outlet] to discuss the bipartisan 21st Century ROAD to Housing Act… Earlier this week, Saturday, @handle flagged that the House version of ROAD expands…" — that paragraph contains THREE buried disjunctive transitions ("Separately," "At the federal level," "Earlier this week,") that should have been three paragraph breaks. Required fix: four short paragraphs, one per topic cluster (election politics / NYC city policy / federal legislation / historical context on the federal bill). Each transition starts a new paragraph; none appears mid-sentence.
+    Examples of what to STRIP from the start of a new paragraph (use `\\n\\n` plus the bare claim instead):
+        - "Separately," / "On a separate track:" / "On a different track:" / "On a parallel track,"
+        - "At the federal level," / "At the state level," / "At the city level," / "On the policy side,"  (UNLESS the level-of-government label is genuinely the substantive lede for the new paragraph; in that case rewrite without the bare connective)
+        - "Earlier this week," / "Yesterday," / "Last week," (only fold time-shifts into prose when the time-shift IS the substantive claim; otherwise drop)
+        - "On a different note," / "Switching to," / "Turning to,"
+        - "Meanwhile," / "Elsewhere,"
+        - "The discourse pushed back on," / "The wider conversation," / "More broadly,"
+
+    Failure pattern to AVOID: one welded paragraph that read "@analyst-handle's framing that the political moment has shifted to '2026: It's affordability, stupid.' Separately, [a city council member]'s newsletter announced [the mayor]'s executive budget includes an additional $5 billion for affordable housing… At the federal level, [a congressman] appeared on [outlet] to discuss the bipartisan 21st Century ROAD to Housing Act… Earlier this week, Saturday, @handle flagged that the House version of ROAD expands…" — that paragraph contains THREE buried disjunctive transitions ("Separately," "At the federal level," "Earlier this week,") that should have been three paragraph breaks WITHOUT those transition words. Required fix: four short paragraphs, one per topic cluster (election politics / NYC city policy / federal legislation / historical context on the federal bill). Each new paragraph begins with the substantive claim, NOT a transition word. The blank line between paragraphs IS the transition.
 
     Concrete failure to AVOID: "[a major outlet] calculates the Iran war has cost consumers $41.5bn extra in fuel since late February — $316 per household, with gas at $4.51 nationally. [Another major outlet] details a related squeeze: about 65% of escrow accounts are projected to be short in 2026 because of jumps in property taxes and homeowners insurance, with the average shortfall at $2,157..." — these are two stories welded with "a related squeeze." The Iran-war-→-fuel chain (commodity / bond market / Fed narrative) and the property-tax-and-insurance-→-escrow chain (insurer pricing / county assessments / mortgage servicing) share NO mechanism. Different data, different actors, different time window. REQUIRED FIX: paragraph break before the second outlet — and the new paragraph stands on its own without the "related" framing.
 
