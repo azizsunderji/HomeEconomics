@@ -1106,22 +1106,28 @@ def _reject_social_anchored_themes(briefing: dict) -> dict:
 # continue an event-anchored narrative; only the welded forms ("meanwhile in
 # the discourse", "also today") match here.
 FORBIDDEN_BRIDGE_PATTERN = re.compile(
-    r"\b(?:"
-    r"separately|"
-    r"in a separate (?:development|thread|move|step|effort)|"
-    r"on a separate (?:front|track|note)|"
-    r"on another track|"
-    r"apart from (?:this|the)|"
-    r"meanwhile in the discourse|"
-    r"also today|"
-    r"beyond (?:that|the)|"
-    r"in broader (?:\w+ )?discussion|"
-    r"more broadly|"
-    r"the discourse (?:pushed back|moved on|shifted|turned to)|"
-    r"the wider conversation|"
-    r"on the other side of the country|"
-    r"in a related but distinct"
-    r")\b",
+    # Two forms:
+    # (a) BRIDGE PHRASES that are intrinsically welds. Match anywhere.
+    # (b) ADVERBIAL "separately" only counts as a bridge when used as a
+    #     sentence-leading conjunction with a comma after it ("Separately,").
+    #     Adverbial use mid-sentence ("CT and NY are separately moving on...")
+    #     is legitimate and should not trigger a strip.
+    r"(?:"
+    r"(?<![\w-])separately\s*[,:]|"                          # (b) Separately, / Separately:
+    r"\bin a separate (?:development|thread|move|step|effort)\b|"
+    r"\bon a separate (?:front|track|note)\b|"
+    r"\bon another track\b|"
+    r"\bapart from (?:this|the)\b|"
+    r"\bmeanwhile in the discourse\b|"
+    r"\balso today\b|"
+    r"\bbeyond (?:that|the)\b|"
+    r"\bin broader (?:\w+ )?discussion\b|"
+    r"\bmore broadly\b|"
+    r"\bthe discourse (?:pushed back|moved on|shifted|turned to)\b|"
+    r"\bthe wider conversation\b|"
+    r"\bon the other side of the country\b|"
+    r"\bin a related but distinct\b"
+    r")",
     re.IGNORECASE,
 )
 
@@ -1201,6 +1207,44 @@ def _strip_forbidden_bridges(briefing: dict) -> dict:
                 "topic": f"(post-bridge content from {original_title})",
                 "summary": dropped_text,
             })
+
+    # ── Same treatment for conversation_roundups ──────────────────────────
+    # Roundups by design gather topical discourse with no single news anchor,
+    # but they should still cohere around the topic NAME — not become a junk
+    # drawer for "vaguely housing-related" tweets welded by Separately/etc.
+    roundups = briefing.get("conversation_roundups") or []
+    for roundup in roundups:
+        rsum = roundup.get("summary") or ""
+        if not rsum:
+            continue
+        rsents = _split_sentences_for_validation(rsum)
+        if not rsents:
+            continue
+        rbridge_idx: Optional[int] = None
+        rbridge_match = ""
+        for i, sent in enumerate(rsents):
+            m = FORBIDDEN_BRIDGE_PATTERN.search(sent)
+            if m:
+                rbridge_idx = i
+                rbridge_match = m.group(0)
+                break
+        if rbridge_idx is None:
+            continue
+        kept = rsents[:rbridge_idx]
+        new_rsum = " ".join(s.strip() for s in kept if s.strip()).strip()
+        if not new_rsum:
+            # Bridge in first sentence — leave alone rather than empty out.
+            logger.warning(
+                f"Forbidden bridge {rbridge_match!r} at first sentence of "
+                f"roundup {roundup.get('topic')!r}; leaving alone"
+            )
+            continue
+        roundup["summary"] = new_rsum
+        strip_count += 1
+        logger.info(
+            f"Stripped forbidden bridge {rbridge_match!r} from roundup "
+            f"{roundup.get('topic')!r}"
+        )
 
     briefing["_forbidden_bridge_strips"] = strip_count
     return briefing
@@ -1966,6 +2010,17 @@ NEVER use any of these phrases inside a theme summary. The reader experiences th
 14. MANDATORY SECTIONS. Your JSON output MUST include these keys: conversation_pulse, conversation_themes, conversation_roundups, and paper_of_the_day (when a credible candidate exists; otherwise set paper_of_the_day to null). The substacker_takes, twitter_roundup, and ai_brief fields have been REMOVED — do NOT output them; if you do, they will be discarded. conversation_roundups may be an empty list ONLY if every notable topic of the day cleanly anchors on a single event (rare); usually expect 3-5 entries.
 
 15. CONVERSATION_ROUNDUPS: This section is the home for topical discourse that does NOT have a single named, dated event trigger. The format is ONE coherent paragraph per topic, every claim hyperlinked inline via [text](url), no bullet points. Each summary is 3-6 sentences (max 110 words), observational rather than assertive — describing what the discourse is doing, not breaking news. Mix voices across sources: tweets, Bluesky posts, substacks, and news commentary. Aim for 3-5 roundups per day total, each on a DISTINCT topic — don't make three roundups all about supply. Same housing-economics scope as conversation_themes (housing, urbanism, affordability, demographics, mortgage/credit, labor and regional economies tied to housing). Examples of legitimate roundup topics: "Supply trends across the Sun Belt", "State-level rent-control proposals", "The brokerage / MLS antitrust war", "Insurance pricing in coastal markets", "Office-to-residential conversion progress". The same logical-honesty and citation rules from conversation_themes apply: no fake connective transitions, every attributed claim hyperlinked, named publications get publisher-domain URLs. Do NOT duplicate material already covered in conversation_themes — roundups are STRICTLY for topics that lack a single event anchor. If a roundup would be better as a news theme (i.e., you CAN complete "Today, X did Y" in 15 words), move it to conversation_themes instead.
+
+15b. ROUNDUP TOPIC COHERENCE (HARD GATE). Every voice you cite in a roundup MUST be specifically engaging with the SAME SPECIFIC TOPIC named in the roundup's `topic` field. The roundup is NOT a junk drawer for "voices saying housing-adjacent things today." Concrete test: for each voice you're about to cite, ask "is this voice making an argument that DIRECTLY bears on [the exact topic in the roundup's name], or just on a vaguely-related broader theme?" If just vaguely related, drop the voice.
+
+   FORBIDDEN PATTERNS:
+   - Roundup titled "SF Upzoning and Inclusionary Zoning Reform" → CANNOT include a voice arguing suburbs are subsidized (different argument), or rent-control research (different policy), even though both are "housing-policy adjacent." Those voices belong in DIFFERENT roundups or get dropped.
+   - Roundup titled "Sun Belt insurance pricing" → CANNOT include voices on Midwest property taxes, even though both are "housing-cost adjacent."
+   - Roundup titled "Mortgage rates and Fed expectations" → CANNOT include voices on credit card debt or auto loans, even though all involve interest rates.
+
+   The bridge-words rule applies equally to roundups: never use "Separately," "Meanwhile," "The discourse pushed back on," "More broadly," "Beyond that," etc. as transitions inside a single roundup. If two voices share only a category label (both YIMBY, both housing-adjacent, both real-estate), that is NOT enough — they need to be in actual conversation with each other about the SAME specific question/event.
+
+   If you cannot defend EACH voice's inclusion in the roundup against this test, drop it. Better to have a 3-voice tight roundup than a 6-voice junk drawer.
 
 """
 
