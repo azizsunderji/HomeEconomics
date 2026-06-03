@@ -1293,6 +1293,163 @@ def _strip_forbidden_bridges(briefing: dict) -> dict:
     return briefing
 
 
+# ────────────────────────────────────────────────────────────────────────────
+# Auto-link bare @handles in theme/roundup prose.
+#
+# The SYSTEM_PROMPT requires every cited voice — including historical
+# attributions like "@mikesimonsen flagged Monday" — to be wrapped in a
+# markdown link. The model still occasionally emits a bare @handle (no
+# enclosing link), especially for historical-context citations.
+#
+# Going-forward rule (user directive 2026-06-03): if a handle is mentioned,
+# it MUST be linked, and the link should point to the specific thing being
+# referenced. This post-processor scans summaries for bare @handles, looks
+# the handle up in the items corpus (most recent tweet from that author),
+# and injects a markdown link in place. Falls back to the author's profile
+# URL when the corpus has no matching items.
+# ────────────────────────────────────────────────────────────────────────────
+
+_HANDLE_RE = re.compile(r"(?<![A-Za-z0-9_])(@[A-Za-z0-9_]{2,20})\b")
+_MD_LINK_SPAN_RE = re.compile(r"\[[^\]]+\]\([^)]+\)")
+
+# Weekday names that signal a time-stamped historical attribution. When a
+# bare @handle is followed by one of these within ~40 chars, we try to
+# locate a tweet from that author on that weekday, not just the most recent.
+_WEEKDAY_HINTS = {
+    "monday": 0, "tuesday": 1, "wednesday": 2, "thursday": 3,
+    "friday": 4, "saturday": 5, "sunday": 6,
+}
+
+
+def _lookup_handle_url(
+    conn: sqlite3.Connection, handle: str, weekday_hint: Optional[int] = None
+) -> Optional[str]:
+    """Return the best-fit corpus URL for a @handle, or None if no match.
+
+    Strategy:
+      1. If weekday_hint is provided, prefer the most recent tweet from
+         that author published on that weekday.
+      2. Otherwise, return the most recent tweet from that author.
+      3. If the author has zero items in the corpus, return None — the
+         caller leaves the bare @handle in place (user directive: do NOT
+         fall back to a profile URL; if we can't match a specific cited
+         item, don't manufacture a link).
+    """
+    handle_norm = handle.lower().lstrip("@")
+    if weekday_hint is not None:
+        rows = conn.execute(
+            "SELECT url, published_at FROM items "
+            "WHERE source='twitter' "
+            "  AND lower(author) IN (?, ?) "
+            "  AND url IS NOT NULL AND url != '' "
+            "ORDER BY published_at DESC LIMIT 30",
+            (f"@{handle_norm}", handle_norm),
+        ).fetchall()
+        for r in rows:
+            try:
+                dt = r[1]
+                if not dt:
+                    continue
+                day = datetime.fromisoformat(
+                    dt.replace("Z", "+00:00")
+                ).weekday()
+                if day == weekday_hint:
+                    return r[0]
+            except Exception:
+                continue
+    row = conn.execute(
+        "SELECT url FROM items "
+        "WHERE source='twitter' "
+        "  AND lower(author) IN (?, ?) "
+        "  AND url IS NOT NULL AND url != '' "
+        "ORDER BY published_at DESC LIMIT 1",
+        (f"@{handle_norm}", handle_norm),
+    ).fetchone()
+    if row and row[0]:
+        return row[0]
+    return None
+
+
+def _autolink_bare_handles(
+    briefing: dict, conn: sqlite3.Connection
+) -> dict:
+    """Wrap bare @handles in theme/roundup summaries with markdown links.
+
+    A bare @handle is one that does NOT fall inside an existing
+    [text](url) markdown link span. For each, look up the most recent
+    matching tweet from the author in the items corpus and inject
+    [@handle](url). When a weekday hint immediately follows the handle
+    ("@mikesimonsen flagged Monday"), prefer a tweet from that weekday.
+
+    Tracks briefing['_autolinked_handles'] for surveillance.
+    """
+    linked_count = 0
+
+    def _link_span_ranges(text: str) -> list[tuple[int, int]]:
+        return [(m.start(), m.end()) for m in _MD_LINK_SPAN_RE.finditer(text)]
+
+    def _is_inside_link(pos: int, ranges: list[tuple[int, int]]) -> bool:
+        for s, e in ranges:
+            if s <= pos < e:
+                return True
+        return False
+
+    def _weekday_near(text: str, end: int) -> Optional[int]:
+        # Look at up to 50 chars AFTER the handle for a weekday hint.
+        window = text[end : end + 50].lower()
+        # Match standalone weekday word
+        wm = re.search(r"\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b", window)
+        if wm:
+            return _WEEKDAY_HINTS[wm.group(1)]
+        return None
+
+    def _process(summary: str) -> tuple[str, int]:
+        if not summary or "@" not in summary:
+            return summary, 0
+        link_ranges = _link_span_ranges(summary)
+        bare: list[tuple[int, int, str]] = []
+        for m in _HANDLE_RE.finditer(summary):
+            if _is_inside_link(m.start(), link_ranges):
+                continue
+            bare.append((m.start(), m.end(), m.group(1)))
+        if not bare:
+            return summary, 0
+        out = summary
+        n = 0
+        for start, end, handle in reversed(bare):
+            weekday = _weekday_near(out, end)
+            url = _lookup_handle_url(conn, handle, weekday)
+            if not url:
+                continue
+            replacement = f"[{handle}]({url})"
+            out = out[:start] + replacement + out[end:]
+            n += 1
+        return out, n
+
+    for theme in briefing.get("conversation_themes") or []:
+        s = theme.get("summary", "")
+        new_s, n = _process(s)
+        if n > 0:
+            theme["summary"] = new_s
+            linked_count += n
+            logger.info(
+                f"Auto-linked {n} bare handle(s) in theme {theme.get('theme')!r}"
+            )
+
+    for roundup in briefing.get("conversation_roundups") or []:
+        s = roundup.get("summary", "")
+        new_s, n = _process(s)
+        if n > 0:
+            roundup["summary"] = new_s
+            linked_count += n
+            logger.info(
+                f"Auto-linked {n} bare handle(s) in roundup {roundup.get('topic')!r}"
+            )
+
+    briefing["_autolinked_handles"] = linked_count
+    return briefing
+
+
 # Domains where SequenceMatcher / path-only matching is too dangerous because
 # article URLs share long common prefixes (e.g. ft.com/content/<hash>). For
 # these domains we MUST NOT fall back to corpus-fuzzy-matching — we go straight
@@ -1841,6 +1998,8 @@ Required fix: "[@handle1 offered](handle1-url) a softer read: 'Another solid wee
 If you can't link the second claim to its actual source URL, DROP the attribution entirely and state the underlying fact without naming any author. Never reuse the prior sentence's source via pronoun to cover a claim from a different source. When in doubt, repeat the handle/name — verbosity is always preferable to misattribution.
 
 NO FLOATING EDITORIAL COMMENTARY. Sentences with no inline link and no clear source attribution are forbidden inside theme summaries. Examples of what you MUST NOT write: "Read that again." "Worse than 2008." "Yet sellers are still pricing homes like it's 2021 with 3% rates." "The signal is clear." "This is meaningful." These are your own voice editorializing — even when they feel like natural connective tissue between cited claims. Every sentence in a theme summary must either (a) wrap a cited claim in a hyperlink, or (b) be neutral framing/scene-setting derived directly from the cited material with no new claim of its own. If you find yourself adding a punchy unsourced sentence to make the prose flow better, delete it.
+
+EVERY @HANDLE MUST BE LINKED (HARD GATE). Any time you mention a Twitter/Bluesky handle in theme or roundup prose — whether for a present-day claim ("@dbroockman noted X") OR for a historical reference ("a tension @mikesimonsen flagged Monday", "earlier this week @cayimby argued Y") — the handle MUST be wrapped in a markdown link [@handle](url) pointing to the SPECIFIC tweet/post being referenced. A bare @handle with no link is a hard violation. The same rule applies to all historical attributions: phrases like "Monday, [X warned](url)..." / "Tuesday, [an analyst flagged](url)..." / "earlier this week, [Y argued](url)..." MUST carry the link. If you reference "what someone said last week" or any past event, the actual post/article being referenced MUST be linked inline. NEVER write a historical attribution without the link — the reader cannot verify what you're paraphrasing otherwise. Failure example from 2026-06-03: "...a tension between softening Sun Belt demand and tightening national inventory that @mikesimonsen flagged Monday." — the @mikesimonsen handle had no link and the actual Monday tweet was not linked. Required: "...that [@mikesimonsen flagged Monday](https://twitter.com/mikesimonsen/status/...)."
 
 4d. PRESERVE TECHNICAL PRECISION WHEN PARAPHRASING. When a source uses a specific technical term — especially in housing/economics where similar-sounding terms describe different things — KEEP THAT EXACT TERM. Do not generalize, smooth, or simplify it. The reader is sophisticated and the distinctions matter.
 
@@ -2487,6 +2646,19 @@ Generate the daily briefing JSON. LEAD WITH CONVERSATION — what are people deb
         # and BEFORE URL validation (so any URLs carried into the new
         # roundup entries still get validated).
         briefing = _strip_forbidden_bridges(briefing)
+
+        # Auto-link bare @handles in theme/roundup prose. The model
+        # occasionally drops the markdown link on a cited handle —
+        # especially for historical/"earlier this week" attributions
+        # like "@mikesimonsen flagged Monday" (briefing #137, observed
+        # 2026-06-03). This scans summaries, finds bare @handles outside
+        # any existing link span, and wraps them in [@handle](url) where
+        # the URL points to the most recent matching tweet from the
+        # corpus. If a weekday hint follows the handle, prefer a tweet
+        # from that weekday. If no corpus match exists, leave the bare
+        # @handle in place (user directive: do not fabricate a profile
+        # URL just to satisfy the rule).
+        briefing = _autolink_bare_handles(briefing, conn)
 
         # Validate all URLs against the database
         briefing = _validate_briefing_urls(briefing, conn)
