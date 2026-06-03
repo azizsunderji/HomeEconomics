@@ -1099,6 +1099,113 @@ def _reject_social_anchored_themes(briefing: dict) -> dict:
     return briefing
 
 
+# Regex matching the forbidden bridge phrases listed in the SYSTEM_PROMPT's
+# FORBIDDEN BRIDGE WORDS rule. Each match marks the start of welded
+# post-bridge content that must be peeled off the theme summary. Note: bare
+# \bmeanwhile\b and \balso\b are deliberately excluded — they can legitimately
+# continue an event-anchored narrative; only the welded forms ("meanwhile in
+# the discourse", "also today") match here.
+FORBIDDEN_BRIDGE_PATTERN = re.compile(
+    r"\b(?:"
+    r"separately|"
+    r"in a separate (?:development|thread|move|step|effort)|"
+    r"on a separate (?:front|track|note)|"
+    r"on another track|"
+    r"apart from (?:this|the)|"
+    r"meanwhile in the discourse|"
+    r"also today|"
+    r"beyond (?:that|the)|"
+    r"in broader (?:\w+ )?discussion|"
+    r"more broadly|"
+    r"the discourse (?:pushed back|moved on|shifted|turned to)|"
+    r"the wider conversation|"
+    r"on the other side of the country|"
+    r"in a related but distinct"
+    r")\b",
+    re.IGNORECASE,
+)
+
+
+def _strip_forbidden_bridges(briefing: dict) -> dict:
+    """Deterministic enforcement of the FORBIDDEN BRIDGE WORDS rule.
+
+    The model frequently welds two unrelated stories into one theme by gluing
+    them with bridge phrases like "Separately,", "On a separate front",
+    "Apart from this", etc. The SYSTEM_PROMPT names these phrases as a hard
+    gate; this post-processor enforces it deterministically.
+
+    For each conversation_themes entry, scan the summary for any forbidden
+    bridge phrase. If found, truncate the summary at the start of the bridge
+    sentence (the sentence CONTAINING the bridge phrase, plus everything that
+    follows). Move the truncated tail to conversation_roundups if it is
+    >= 100 chars; otherwise drop it silently.
+
+    Tracks briefing['_forbidden_bridge_strips'] so the dashboard can surface
+    the rate.
+    """
+    themes = briefing.get("conversation_themes") or []
+    if not themes:
+        briefing.setdefault("_forbidden_bridge_strips", 0)
+        return briefing
+
+    strip_count = 0
+    for theme in themes:
+        summary = theme.get("summary") or ""
+        if not summary:
+            continue
+        sentences = _split_sentences_for_validation(summary)
+        if not sentences:
+            continue
+        # Find the first sentence containing a forbidden bridge phrase.
+        bridge_idx: Optional[int] = None
+        bridge_match_text = ""
+        for i, sent in enumerate(sentences):
+            m = FORBIDDEN_BRIDGE_PATTERN.search(sent)
+            if m:
+                bridge_idx = i
+                bridge_match_text = m.group(0)
+                break
+        if bridge_idx is None:
+            continue
+
+        kept_sentences = sentences[:bridge_idx]
+        dropped_sentences = sentences[bridge_idx:]
+        new_summary = " ".join(s.strip() for s in kept_sentences if s.strip()).strip()
+        dropped_text = " ".join(s.strip() for s in dropped_sentences if s.strip()).strip()
+
+        # If the truncation would empty the theme entirely (bridge in first
+        # sentence), leave the theme alone — better an imperfect theme than
+        # an empty one that will be dropped by downstream cleanup.
+        if not new_summary:
+            logger.warning(
+                f"Forbidden bridge {bridge_match_text!r} found at first "
+                f"sentence of theme {theme.get('theme')!r}; leaving theme "
+                "untouched to avoid emptying it"
+            )
+            continue
+
+        theme["summary"] = new_summary
+        strip_count += 1
+        logger.info(
+            f"Stripped forbidden bridge {bridge_match_text!r} from theme "
+            f"{theme.get('theme')!r}; tail length={len(dropped_text)}"
+        )
+
+        # Move the tail into roundups if substantial enough to be worth
+        # preserving as standalone discourse.
+        if len(dropped_text) >= 100:
+            if briefing.get("conversation_roundups") is None:
+                briefing["conversation_roundups"] = []
+            original_title = (theme.get("theme") or "").strip() or "Untitled theme"
+            briefing["conversation_roundups"].append({
+                "topic": f"(post-bridge content from {original_title})",
+                "summary": dropped_text,
+            })
+
+    briefing["_forbidden_bridge_strips"] = strip_count
+    return briefing
+
+
 # Domains where SequenceMatcher / path-only matching is too dangerous because
 # article URLs share long common prefixes (e.g. ft.com/content/<hash>). For
 # these domains we MUST NOT fall back to corpus-fuzzy-matching — we go straight
@@ -1755,6 +1862,34 @@ Label each theme's anchor platforms accurately: use "rss" or "substack" or the n
 
 **SPLIT WELDED-UNRELATED THEMES.** Complement to the consolidation rule above. After drafting, scan each theme: if it has two paragraphs (or two sentence-clusters) describing DIFFERENT mechanisms or DIFFERENT markets, and the only thing linking them is a shared region label, a shared word in the headline, or a contrast frame, they are TWO THEMES, not one. SPLIT them. The diagnostic test: if the transition between the two sub-clusters requires a disjunctive frame ("On a separate track…", "The picture looks different in…", "Meanwhile in [region]…", "By contrast in [market]…", "On the other side of the country…"), that's the model reaching for a bridge between two stories that don't actually belong together. Failure example: combining a "Texas exurb growth driven by permitting regime" story and a "Florida home prices correcting after pandemic overshoot" story under one theme — these are different mechanisms (supply elasticity vs. demand withdrawal), different markets (Texas vs. Florida), and the only link is "both Sunbelt." Correct: two separate themes. Theme paragraphs split with `\\n\\n` are for genuine sub-clusters of ONE story (e.g., permits → starts → completions in the same release window, or rents → income → freeze proposal in the same market), not for two stories sharing a region tag. When in doubt, split. The reader prefers two crisp themes over one welded conglomerate.
 
+**FORBIDDEN BRIDGE WORDS (HARD GATE).** Never use the following transitional phrases INSIDE a single conversation_themes summary. Their presence is proof you are welding two unrelated stories under one theme.
+
+  - "Separately,"
+  - "In a separate development"
+  - "On a separate front"
+  - "On a separate track"
+  - "On another track"
+  - "Apart from this"
+  - "Apart from the [anchor],"
+  - "Meanwhile in the discourse"
+  - "Meanwhile,"  (when followed by a different topic/region/mechanism, not a continuation of the same event)
+  - "Also today"
+  - "Beyond that"
+  - "Beyond the [anchor],"
+  - "In broader [topic] discussion"
+  - "More broadly,"
+  - "The discourse pushed back on"
+  - "The discourse moved on"
+  - "The wider conversation"
+  - "On the other side of the country"
+  - "In a related but distinct thread"
+
+If you find yourself reaching for any of these to transition between paragraphs/sentences in a SINGLE theme summary, that is a hard signal you have two themes, not one. Either:
+  (a) Split into two separate conversation_themes entries (if both anchor on real, distinct news events), OR
+  (b) Move the post-bridge content to conversation_roundups, keeping only the pre-bridge anchor-grounded content in the theme.
+
+NEVER use any of these phrases inside a theme summary. The reader experiences these phrases as the model admitting "I'm welding two unrelated things together." Each is a structural failure.
+
 **ONE QUESTION / ONE MECHANISM PER THEME.** Finer-grain partner to the split rule. Before writing each theme, name the SINGLE question it answers or the SINGLE mechanism it describes (e.g., "Why is Texas the fastest-growing state?" → permitting regime + MUDs; "Why are exurbs winning within metros?" → remote work + cost of space). Every claim in the theme must bear on that specific question/mechanism. Even if two questions share the same data point or the same lead-in observation, if they have different MECHANISMS as answers, they belong in separate themes. Failure example: a "Texas exurbs are #1" theme that mixes (i) the permitting-regime explanation for why Texas dominates state rankings and (ii) the remote-work explanation for why exurbs are absorbing metro growth nationwide. Both answers technically point to Celina being #1 in the data, but they're answering two different questions through two different mechanisms — so they are two themes, not one. The reader's mental model is "one theme = one mechanism = one cause being explained." When you find yourself oscillating between two threads inside one paragraph, that's the model trying to weld two answers under one umbrella because the data overlaps; resist that and split. This rule strengthens 6b in a finer grain — 6b catches two-paragraph welds across markets; this rule catches within-paragraph welds across mechanisms.
 
 **NO CAP ON PLATFORMS PER THEME.** The platforms[] field is not limited to 2-4 entries. If 12 outlets covered a story (multiple major outlets, independent newsletters, local outlets, political press, Twitter threads, etc.), list ALL 12. The 7-entry example in the JSON schema is illustrative, not a ceiling. Same applies to inline source citations in the summary text — cite every outlet that added a distinct angle.
@@ -2239,6 +2374,18 @@ Generate the daily briefing JSON. LEAD WITH CONVERSATION — what are people deb
         # BEFORE URL validation, so any URLs carried into the roundup still
         # get checked.
         briefing = _reject_social_anchored_themes(briefing)
+
+        # Deterministic FORBIDDEN BRIDGE WORDS enforcement. The SYSTEM_PROMPT
+        # forbids ~20 transitional phrases ("Separately,", "On a separate
+        # front", etc.) inside any single theme summary, but the model
+        # routinely ignores it (briefing #136 East NY → SF supervisors via
+        # "Separately, @dbroockman noted..."). This scans each theme summary
+        # for those phrases, truncates at the bridge sentence, and moves the
+        # tail to conversation_roundups. Runs AFTER social-anchor rejection
+        # (so we don't waste cycles on themes that are about to disappear)
+        # and BEFORE URL validation (so any URLs carried into the new
+        # roundup entries still get validated).
+        briefing = _strip_forbidden_bridges(briefing)
 
         # Validate all URLs against the database
         briefing = _validate_briefing_urls(briefing, conn)
