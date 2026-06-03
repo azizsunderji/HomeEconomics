@@ -61,8 +61,8 @@ PAPERS = [
      "side": "left",  "url": "https://www.wsj.com"},
     {"name": "lat", "slug": "CA_LAT", "masthead": "LOS ANGELES TIMES",
      "side": "right", "url": "https://www.latimes.com"},
-    {"name": "wt",  "slug": "DC_WT",  "masthead": "THE WASHINGTON TIMES",
-     "side": "left",  "url": "https://www.washingtontimes.com"},
+    {"name": "hc",  "slug": "TX_HC",  "masthead": "HOUSTON CHRONICLE",
+     "side": "left",  "url": "https://www.houstonchronicle.com"},
 ]
 
 # Brand palette
