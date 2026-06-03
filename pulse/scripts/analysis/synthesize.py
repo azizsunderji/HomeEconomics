@@ -29,6 +29,7 @@ from store import (
 )
 from analysis.convergence import compute_convergence, detect_organic_conversations
 from analysis.arc_tracker import detect_narrative_shifts
+from analysis.trigger_classifier import apply_trigger_filter as _apply_trigger_filter
 
 
 logger = logging.getLogger(__name__)
@@ -1670,6 +1671,24 @@ def generate_daily_briefing(
             logger.info(f"Blocklist filter dropped {dropped} Twitter items from blocklisted authors: {sorted(_bl_lower)}")
     except Exception as e:
         logger.warning(f"Twitter author blocklist filter skipped: {e}")
+
+    # v5 trigger-type classifier: per-article Opus pass that drops items
+    # classified as opinion / retrospective / recap / profile / analysis /
+    # explainer BEFORE synthesis sees them. Catches op-ed patterns (e.g. the
+    # City Journal "Good Cause Eviction" landlord piece in briefing #136) that
+    # otherwise sneak into themes. Scope: news sources only (rss + gmail) —
+    # tweets, bluesky, substacks, hackernews are inherently commentary and are
+    # passed through. On any classifier failure (network, parse, API), the
+    # affected items default to ACCEPT — we never silently lose items.
+    try:
+        before = len(all_items)
+        all_items = _apply_trigger_filter(all_items, client=client)
+        dropped = before - len(all_items)
+        if dropped:
+            logger.info(f"Trigger-type filter dropped {dropped} news items classified as opinion/retrospective/recap/profile/analysis/explainer")
+    except Exception as e:
+        logger.warning(f"Trigger-type classifier skipped (raised {e!r}); all items pass through to synthesis")
+
     # All hand-curated sources (Twitter, Bluesky, RSS) use a low threshold —
     # these are hand-picked accounts/feeds so even off-topic items are worth seeing.
     # Google News and other bulk sources use a higher threshold.
