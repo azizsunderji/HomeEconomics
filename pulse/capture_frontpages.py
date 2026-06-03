@@ -56,11 +56,11 @@ REMOTE_DIR = "public_html/pulse-screenshots"
 # WaPo returns, swap "DC_WT" -> the new slug here.
 PAPERS = [
     {"name": "nyt", "slug": "NY_NYT", "masthead": "THE NEW YORK TIMES",
-     "side": "right", "url": "https://www.nytimes.com"},
+     "side": "left", "url": "https://www.nytimes.com"},
     {"name": "wsj", "slug": "WSJ",    "masthead": "THE WALL STREET JOURNAL",
      "side": "left",  "url": "https://www.wsj.com"},
     {"name": "lat", "slug": "CA_LAT", "masthead": "LOS ANGELES TIMES",
-     "side": "right", "url": "https://www.latimes.com"},
+     "side": "left", "url": "https://www.latimes.com"},
     {"name": "hc",  "slug": "TX_HC",  "masthead": "HOUSTON CHRONICLE",
      "side": "left",  "url": "https://www.houstonchronicle.com"},
 ]
@@ -72,11 +72,10 @@ COLOR_BLUE        = ( 11, 180, 255)  # 0BB4FF
 COLOR_ORANGE      = (244, 116,  59)  # F4743B
 COLOR_GREY        = (180, 175, 168)  # subdued line colour
 
-CANVAS_W, CANVAS_H = 1200, 820
-PAGE_RENDER_DPI    = 220   # PyMuPDF render DPI. 300 is enormous (10MB+) and
-                           # gets resized away anyway; 220 is plenty for the
-                           # ~500px tall tilted page that ends up in the
-                           # composite. Keeps memory low in GHA.
+CANVAS_W, CANVAS_H = 2400, 1640    # 2x for retina-crisp email rendering
+PAGE_RENDER_DPI    = 320           # high enough to keep PDF text sharp after
+                                   # the resize-to-canvas step (the page ends
+                                   # up ~1000px wide in the final composite).
 
 # Font fallbacks. Oracle is brand standard but optional; if absent we
 # fall back to system DejaVu/Helvetica.
@@ -175,20 +174,34 @@ def _extract_headlines(pdf_path: Path, max_headlines: int = 5) -> list[dict]:
     if not spans:
         return []
 
-    # Threshold: keep anything at or above 60% of the max font size — this
-    # captures multi-line headlines whose lines all share the same big size,
-    # plus deck headlines / secondary stories. We aggressively de-dup later.
-    # Some papers (WSJ, Washington Times) have a single huge headline and
-    # then a steep drop-off; if we set the threshold too high we miss every
-    # other story on the page.
-    max_size = max(s["size"] for s in spans)
-    threshold = max_size * 0.55
+    # Threshold: keep anything at or above some fraction of the BIGGEST
+    # JOURNALISM-SIZED font on the page. We compute a "robust max" rather
+    # than the raw max because the front page often has gigantic ad copy
+    # ("AN EVENING WITH THE STARS" / Houston Ballet at 76pt) that would
+    # otherwise drag the headline-detection threshold above the actual
+    # banner headline. The rule: if the largest distinct size is >40%
+    # larger than the second-largest, treat the top as an outlier and
+    # anchor on the second-largest.
+    distinct_sizes = sorted({round(s["size"], 1) for s in spans}, reverse=True)
+    if len(distinct_sizes) >= 2 and distinct_sizes[0] > distinct_sizes[1] * 1.4:
+        robust_max = distinct_sizes[1]
+    else:
+        robust_max = distinct_sizes[0]
+    # 0.50 ratio is more permissive than the old 0.55 — papers with a steep
+    # font-size drop-off (Houston Chronicle, Washington Times) have column
+    # headlines at ~half the banner size. The downstream filters (≥4 words,
+    # ≥24 chars, not all-caps-short) cull the noise this admits.
+    threshold = robust_max * 0.50
     big = [s for s in spans if s["size"] >= threshold]
 
-    # Group adjacent spans that belong to the same headline. Two spans
-    # are in the same group if their font size matches (±10%), they
-    # overlap horizontally (or one's column contains the other's x0),
-    # and they're vertically near (gap < 1.5 * line height).
+    # Group consecutive spans that belong to the same headline. Two
+    # spans are merged only when they're VERY clearly in the same column
+    # — same x-anchor within ~12pt, same font size, and stacked vertically
+    # with no big gap. Newspapers print multiple headlines on the same
+    # baseline in different columns; a generous overlap rule welds those
+    # together into a single garbled "headline" (e.g. the NYT extraction
+    # was producing "Payout Fund Deadly Russian Attack on Kyiv Comes
+    # With…" — three separate stories from three columns merged).
     big.sort(key=lambda s: (s["bbox"][1], s["bbox"][0]))
     groups: list[list[dict]] = []
     for s in big:
@@ -197,14 +210,20 @@ def _extract_headlines(pdf_path: Path, max_headlines: int = 5) -> list[dict]:
             last = g[-1]
             lx0, ly0, lx1, ly1 = last["bbox"]
             sx0, sy0, sx1, sy1 = s["bbox"]
-            same_size = abs(last["size"] - s["size"]) / max(last["size"], 1) < 0.12
+            same_size = abs(last["size"] - s["size"]) / max(last["size"], 1) < 0.10
             vgap = sy0 - ly1
             line_h = (ly1 - ly0) or s["size"]
-            # Horizontal overlap test — these are headlines in a column,
-            # so successive lines start at roughly the same x.
-            hoverlap = (min(lx1, sx1) - max(lx0, sx0)) > -line_h
-            x_aligned = abs(lx0 - sx0) < line_h * 1.5
-            if same_size and vgap < line_h * 1.5 and (hoverlap or x_aligned):
+            # Horizontal: either left edges align (left-aligned column) OR
+            # there's substantial bbox overlap (center-aligned headlines —
+            # NYT specifically lays them out with slight x-shifts between
+            # lines, but the bboxes overlap heavily). The overlap rule is
+            # tight enough that ADJACENT columns (no overlap) won't merge.
+            x_aligned = abs(lx0 - sx0) < 12
+            overlap = max(0, min(lx1, sx1) - max(lx0, sx0))
+            narrower = min(lx1 - lx0, sx1 - sx0) or 1
+            substantial_overlap = (overlap / narrower) >= 0.70
+            if (same_size and 0 <= vgap < line_h * 1.2
+                    and (x_aligned or substantial_overlap)):
                 g.append(s)
                 placed = True
                 break
@@ -234,7 +253,8 @@ def _extract_headlines(pdf_path: Path, max_headlines: int = 5) -> list[dict]:
     heads.sort(key=lambda h: (-h["size"], h["bbox"][1]))
 
     # De-dup near-identical text and obvious non-headlines (mastheads,
-    # page numbers, price/date strings).
+    # page numbers, price/date strings, ALL-CAPS standing labels /
+    # "kickers" like SECTION / MEETING AT THE TOP).
     bad_prefixes = (
         "vol.", "vol ", "no.", "no ", "$", "©", "edition", "designated",
         "high ", "low ", "weather", "index",
@@ -248,6 +268,14 @@ def _extract_headlines(pdf_path: Path, max_headlines: int = 5) -> list[dict]:
         alpha = sum(c.isalpha() for c in t)
         if alpha < len(t) * 0.5:
             continue
+        # Real headlines on a front page are at least 4 words AND >= 24
+        # characters. Below that they're almost always partial fragments
+        # (column wrap artifacts) or standing kickers.
+        if len(t) < 24 or len(t.split()) < 4:
+            continue
+        # ALL-CAPS short strings are section labels / kickers, not headlines.
+        if t.isupper() and len(t) < 40:
+            continue
         key = t.lower()[:40]
         if key in seen:
             continue
@@ -258,6 +286,125 @@ def _extract_headlines(pdf_path: Path, max_headlines: int = 5) -> list[dict]:
         out.append(h)
         if len(out) >= max_headlines:
             break
+
+    # Pass 2: for each surviving headline, find its article's lede.
+    # We open the doc once via fitz blocks (already in `page` above) — but
+    # _extract_headlines doesn't keep the page handle, so we re-open below.
+    for h in out:
+        h["lede"] = _find_lede_blocks(pdf_path, h["bbox"], h["size"])
+    return out
+
+
+def _find_lede_blocks(pdf_path: Path, headline_bbox: tuple, headline_size: float,
+                      max_chars: int = 240) -> str:
+    """Return the article's first ~2 sentences cleanly via block-level layout.
+
+    Strategy:
+      • Use PyMuPDF blocks (which respect column layout) instead of stitching
+        raw spans (which mash adjacent columns together in PDF source order).
+      • A valid lede block sits directly below the headline AND inside the
+        headline's horizontal column (with tight tolerance — no slop into
+        neighbouring columns).
+      • If the immediate block is a byline/dateline, skip and take the next.
+      • Trim to ~2 sentences (or max_chars at last sentence boundary).
+    """
+    import re as _re
+    doc = fitz.open(pdf_path)
+    page = doc[0]
+    hx0, hy0, hx1, hy1 = headline_bbox
+    head_w = hx1 - hx0
+
+    # Pull blocks. Each = (x0, y0, x1, y1, text, block_no, block_type).
+    blocks = page.get_text("blocks")
+
+    # Determine the "first column" under the headline. If the headline spans
+    # >= ~3 typical column widths (e.g. a banner head), the lede is in a
+    # narrow sub-column STARTING at the headline's left edge. Otherwise
+    # the lede block roughly matches the headline width.
+    typical_col_w = min(head_w, 220)
+
+    candidates = []
+    for b in blocks:
+        bx0, by0, bx1, by1, btext, *_ = b
+        if not btext or not btext.strip():
+            continue
+        # Must be BELOW the headline, within ~280pt vertical search.
+        if by0 < hy1 - 2 or by0 > hy1 + 280:
+            continue
+        # Must START inside the headline's horizontal column (with small
+        # left-edge tolerance) — this is what cuts out adjacent-column body.
+        if bx0 < hx0 - 12:
+            continue
+        if bx0 > hx0 + head_w * 0.6:
+            continue
+        # Must be narrower than the headline (otherwise it's likely another
+        # banner-spanning block, e.g. a sub-deck).
+        if bx1 > hx0 + typical_col_w + 30:
+            continue
+        candidates.append((by0, bx0, btext))
+
+    if not candidates:
+        return ""
+
+    candidates.sort()
+
+    # Try each candidate block in vertical order; skip bylines/datelines
+    # and accept the first one that reads as prose.
+    BYLINE_RE = _re.compile(r"^\s*By\s+[A-Z][\w\.\-']+(\s+(and|,)\s+[A-Z][\w\.\-']+)*\s*$",
+                            _re.MULTILINE)
+    SECTION_KICKER_RE = _re.compile(r"^[A-Z][A-Z &]{2,}$")
+
+    accepted = []
+    for _, _, raw in candidates:
+        text = " ".join(raw.split())            # collapse whitespace
+        text = BYLINE_RE.sub("", text).strip()  # drop trailing standalone bylines
+        # Strip leading byline / dateline patterns.
+        text = _re.sub(r"^By\s+[A-Z][\w\.\-']+(\s+(and|,)\s+[A-Z][\w\.\-']+)*\s*", "", text)
+        text = _re.sub(r"^[A-Z][A-Z\s\.\,]{4,40}\s*[\-—–]\s*", "", text)  # "WASHINGTON — "
+        text = _re.sub(r"^[A-Z][A-Z\s]{4,30}\s+", "", text)               # bare ALLCAPS kicker
+
+        # Reject if too short or all-caps section header.
+        if len(text) < 30 or SECTION_KICKER_RE.match(text):
+            continue
+        # Reject if it has the "by X" structure dominating.
+        if len(BYLINE_RE.findall(text)) > 0 and len(text) < 80:
+            continue
+        accepted.append(text)
+        # Stop once we have ~2 sentences (or comfortably enough).
+        if len(" ".join(accepted)) >= max_chars * 0.7:
+            break
+
+    if not accepted:
+        return ""
+
+    full = " ".join(accepted)
+    full = " ".join(full.split())
+
+    # Sentence split — but protect common abbreviations so we don't break
+    # on "U.S.", "Mr.", "Inc.", etc.
+    ABBR = ["U.S.", "U.K.", "U.N.", "E.U.", "D.C.",
+            "Mr.", "Mrs.", "Ms.", "Dr.", "Jr.", "Sr.", "St.",
+            "Inc.", "Co.", "Corp.", "Ltd.", "Gov.", "Sen.", "Rep.",
+            "vs.", "etc.", "i.e.", "e.g.", "No."]
+    SENTINEL = "⦙"  # arbitrary placeholder
+    protected = full
+    for a in ABBR:
+        protected = protected.replace(a, a.replace(".", SENTINEL))
+    sentences = _re.split(r"(?<=[\.\?!])\s+", protected)
+    sentences = [s.replace(SENTINEL, ".") for s in sentences]
+
+    out = ""
+    for s in sentences[:3]:
+        if len(out) + len(s) + 1 > max_chars:
+            break
+        out = (out + " " + s).strip()
+    if not out:
+        truncated = full[:max_chars]
+        last_period = max(truncated.rfind(". "), truncated.rfind("? "), truncated.rfind("! "))
+        if last_period > max_chars // 2:
+            out = truncated[:last_period + 1]
+        else:
+            out = truncated.rsplit(" ", 1)[0] + "…"
     return out
 
 
@@ -360,8 +507,10 @@ def _compose(paper: dict, pdf_path: Path, out_path: Path) -> bool:
         # 2. Extract headlines (PDF coords).
         headlines = _extract_headlines(pdf_path, max_headlines=4)
 
-        # 3. Resize page so it fits in the left/right ~55% of the canvas.
-        target_h = CANVAS_H - 140   # leave room for masthead + date
+        # 3. Resize page so it fits the canvas (no top masthead anymore;
+        #    the paper name now lives as a small kicker over the headline
+        #    column, so the page can use most of the canvas height).
+        target_h = CANVAS_H - 80
         scale = target_h / render_h
         new_w = int(render_w * scale)
         new_h = int(render_h * scale)
@@ -370,118 +519,97 @@ def _compose(paper: dict, pdf_path: Path, out_path: Path) -> bool:
         # Drop a subtle shadow under the page by darkening edges? Skip
         # for V1 — it muddies the look on the cream background.
 
-        # 4. Apply tilt. Alternate the direction slightly so a stack of
-        # the 4 papers has visual variety: papers on the right side of
-        # the canvas tilt backwards (bottom narrows), papers on the left
-        # tilt the same way but the trapezoid sits on the other side of
-        # the canvas. The inset is ~12% for a noticeable but realistic
-        # "laying back" look — much more and the page looks origami'd.
-        tilted, fwd_coeffs = _tilt_page(page_img, tilt_inset_frac=0.12)
+        # 4. No tilt — keep the page flat and crisp so the headlines
+        #    embedded in the snapshot stay legible. Just convert to RGBA
+        #    so the bottom-fade alpha gradient (below) has something
+        #    to write to.
+        tilted = page_img.convert("RGBA")
         t_w, t_h = tilted.size
 
-        # 5. Build canvas.
+        # 5. Build canvas. No centered masthead / date — the paper name
+        #    now lives as a small ALL-CAPS kicker over the headline column.
         canvas = Image.new("RGB", (CANVAS_W, CANVAS_H), COLOR_BG)
         draw = ImageDraw.Draw(canvas)
 
-        # Masthead + date at the top.
-        f_mast = _font(34, bold=True)
-        f_date = _font(16, bold=False)
-        date_str = datetime.now().strftime("%A, %B %-d, %Y").upper()
-        mast_w = draw.textlength(masthead, font=f_mast)
-        draw.text(((CANVAS_W - mast_w) / 2, 22), masthead,
-                  fill=COLOR_BLACK, font=f_mast)
-        date_w = draw.textlength(date_str, font=f_date)
-        draw.text(((CANVAS_W - date_w) / 2, 68), date_str,
-                  fill=(120, 115, 110), font=f_date)
-        # Thin rule under masthead.
-        draw.line([(80, 102), (CANVAS_W - 80, 102)],
-                  fill=COLOR_GREY, width=1)
+        # 6. Crop the page to the top third-ish and fade to cream sooner
+        #    than before. We don't need the full front page visible — just
+        #    enough that the masthead + lead-headline area reads clearly.
+        FADE_KEEP_FRAC = 0.30   # top 30% stays fully opaque
+        FADE_RAMP_FRAC = 0.12   # next 12% ramps from 255 -> 0
+        keep_h = int(t_h * FADE_KEEP_FRAC)
+        ramp_h = int(t_h * FADE_RAMP_FRAC)
+        new_t_h = keep_h + ramp_h
+        tilted = tilted.crop((0, 0, t_w, new_t_h))
+        # Build a single-column vertical alpha gradient and apply it
+        # (no per-pixel loop now that the page is rectangular).
+        gradient_col = Image.new("L", (1, new_t_h), 0)
+        gc_px = gradient_col.load()
+        for yy in range(new_t_h):
+            if yy < keep_h:
+                gc_px[0, yy] = 255
+            else:
+                gc_px[0, yy] = max(0, int(255 * (1.0 - (yy - keep_h) / max(ramp_h, 1))))
+        new_alpha = gradient_col.resize((t_w, new_t_h))
+        r_ch, g_ch, b_ch, _a_old = tilted.split()
+        tilted = Image.merge("RGBA", (r_ch, g_ch, b_ch, new_alpha))
+        t_h = new_t_h
 
-        # Place tilted page.
-        page_y = 130
+        # Place page on the chosen side, shifted down a little so the
+        # headlines column starts at roughly the same Y as the masthead
+        # of the paper inside the snapshot.
+        page_y = 80
+        margin = 60
         if side == "left":
-            page_x = 40
-            text_x0 = page_x + t_w + 60
-            text_x1 = CANVAS_W - 40
+            page_x = margin
+            text_x0 = page_x + t_w + 80
+            text_x1 = CANVAS_W - margin
         else:
-            page_x = CANVAS_W - t_w - 40
-            text_x0 = 40
-            text_x1 = page_x - 60
+            page_x = CANVAS_W - t_w - margin
+            text_x0 = margin
+            text_x1 = page_x - 80
 
         canvas.paste(tilted, (page_x, page_y), tilted)
 
-        # 6. Lay out headline callouts on the opposite side.
+        # 7. Headlines column: small ALL-CAPS kicker with the paper name,
+        #    then the stack of headlines. No leader lines, no dots, no
+        #    lede text. Medium weight (less bold than V2).
         if not headlines:
             print(f"  {name}: no headlines extracted — composing without callouts")
-        f_callout = _font(18, bold=True)
-        f_callout_small = _font(15, bold=True)
-        line_height = 26
-        para_gap = 14
-        # Vertically distribute callouts evenly between page_y and page_y + t_h.
-        n = len(headlines)
-        text_avail_h = t_h - 20
-        slot_h = text_avail_h / max(n, 1)
+        f_kicker   = _font(28, bold=True)
+        f_headline = _font(46, bold=False)
+        head_line_h = 56
+        block_gap = 42
+        kicker_gap = 36   # gap below the kicker before headlines start
 
-        dot_colors = [COLOR_BLUE, COLOR_ORANGE]
-        for i, h in enumerate(headlines):
-            # Anchor point on tilted page (centroid of bbox projected
-            # through the same perspective the page was tilted with).
-            px0, py0, px1, py1 = h["bbox"]
-            # Convert PDF -> render-image coords -> resized-page coords.
-            cx = (px0 + px1) / 2 * (render_w / pdf_w) * scale
-            cy = (py0 + py1) / 2 * (render_h / pdf_h) * scale
-            # Project through tilt.
-            tx, ty = _project_point(cx, cy, fwd_coeffs)
-            anchor_x = page_x + int(tx)
-            anchor_y = page_y + int(ty)
+        kicker_y = page_y + 16
+        draw.text((text_x0, kicker_y), masthead,
+                  fill=COLOR_BLACK, font=f_kicker)
+        # Thin rule under the kicker.
+        rule_y = kicker_y + 44
+        draw.line([(text_x0, rule_y), (text_x1, rule_y)],
+                  fill=COLOR_GREY, width=2)
 
-            # Callout text position.
-            slot_y = page_y + 10 + int(i * slot_h + slot_h / 2)
-            # Wrap headline text into the callout column.
+        cur_y = rule_y + kicker_gap
+        for h in headlines:
             text = h["text"]
-            # Title-case if all caps (some papers shout) — looks softer.
             if text.isupper():
                 text = text.title()
-            font_use = f_callout if n <= 3 else f_callout_small
-            lines = _wrap_text(draw, text, font_use, text_x1 - text_x0 - 30)
-            block_h = len(lines) * line_height
-            text_y = slot_y - block_h // 2
+            head_lines = _wrap_text(draw, text, f_headline, text_x1 - text_x0)
+            for j, line in enumerate(head_lines):
+                draw.text((text_x0, cur_y + j * head_line_h),
+                          line, fill=COLOR_BLACK, font=f_headline)
+            cur_y += len(head_lines) * head_line_h + block_gap
 
-            for j, line in enumerate(lines):
-                tx_draw = text_x0 if side == "right" else text_x1 - draw.textlength(line, font=font_use)
-                draw.text((tx_draw, text_y + j * line_height),
-                          line, fill=COLOR_BLACK, font=font_use)
-
-            # Leader line: from callout edge to anchor on page.
-            if side == "right":
-                callout_endpoint = (text_x0 + (text_x1 - text_x0) // 2 + int((text_x1 - text_x0) * 0.35), slot_y)
-                # Actually simpler: end at left edge of the right-side page
-                callout_endpoint = (text_x1 - 8, slot_y)
-                # ...no, we want the line to start from NEAR the text and
-                # head TOWARD the page. Use the rightmost point of the
-                # text block as the start.
-                rightmost = text_x0
-                for line in lines:
-                    rightmost = max(rightmost, text_x0 + draw.textlength(line, font=font_use))
-                callout_endpoint = (int(rightmost) + 10, slot_y)
-            else:
-                # Text right-aligned; line starts at leftmost text edge.
-                leftmost = text_x1
-                for line in lines:
-                    leftmost = min(leftmost, text_x1 - draw.textlength(line, font=font_use))
-                callout_endpoint = (int(leftmost) - 10, slot_y)
-
-            # Draw leader line (thin black) + small filled dot at page end.
-            draw.line(
-                [callout_endpoint, (anchor_x, anchor_y)],
-                fill=COLOR_BLACK, width=2,
-            )
-            dot_color = dot_colors[i % 2]
-            r = 5
-            draw.ellipse(
-                [anchor_x - r, anchor_y - r, anchor_x + r, anchor_y + r],
-                fill=dot_color, outline=COLOR_BLACK, width=1,
-            )
+        # 8. Trim canvas to the actual content bottom so each paper's
+        #    composite is as tight as possible — when the four are stacked
+        #    in the email there's no wasted cream gap below the shorter
+        #    papers. We use the max of (headlines column bottom, fading
+        #    page bottom). Subtract block_gap because the last loop
+        #    iteration added one trailing.
+        content_bottom = max(cur_y - block_gap, page_y + t_h)
+        trim_h = min(CANVAS_H, content_bottom + 40)
+        if trim_h < CANVAS_H:
+            canvas = canvas.crop((0, 0, CANVAS_W, trim_h))
 
         # Save (PNG for the cached/local copy, JPG for the email upload).
         canvas.save(out_path, "PNG", optimize=True)
