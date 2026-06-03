@@ -327,6 +327,13 @@ def _format_items_for_conversation(items: list[dict], limit: int = 280) -> str:
             source = (item.get("source") or "").lower()
             body = item.get("body") or ""
 
+            # Commentary tag — flagged by the v2 trigger-type classifier.
+            # Items marked `[COMMENTARY]` are social/essay items that pass the
+            # filter but CANNOT anchor a theme on their own; the system prompt
+            # tells Sonnet to cite them only as commentary inside themes
+            # anchored on real news events.
+            commentary_tag = "[COMMENTARY] " if item.get("_trigger_type") == "commentary" else ""
+
             if source in ("twitter", "bluesky", "hackernews"):
                 # Social: 600 chars covers the full tweet/post in almost all cases.
                 # ALL volume signals (likes, retweets, comment count) hidden from
@@ -361,6 +368,7 @@ def _format_items_for_conversation(items: list[dict], limit: int = 280) -> str:
                         )
                 lines.append(
                     f"{prefix}[{item.get('conversation_signal', '?'):>3} conv] "
+                    f"{commentary_tag}"
                     f"{item['_source_display']}: "
                     f"{item['title'][:200]}\n"
                     f"       Topics: {', '.join(topics) if topics else 'unclassified'}\n"
@@ -373,7 +381,7 @@ def _format_items_for_conversation(items: list[dict], limit: int = 280) -> str:
                 # middle of an article, not just the lede.
                 body_preview = body[:3000]
                 lines.append(
-                    f"  {item['_source_display']}: {item['title'][:200]}\n"
+                    f"  {commentary_tag}{item['_source_display']}: {item['title'][:200]}\n"
                     f"       URL: {item.get('url', '')}\n"
                     f"       {body_preview}"
                     f"{' | Stats: ' + '; '.join(stats[:2]) if stats and tier == 2 else ''}"
@@ -1496,6 +1504,9 @@ CRITICAL: Quality over volume. A substantive thread with 4 thoughtful replies is
 
 All sources you receive are valid — Twitter, Bluesky, HN, Substack newsletters, newspaper articles, RSS feeds, institutional research, academic journals. Treat them equally on merit; substance is the only currency. Don't apply different bars to different platforms.
 
+CRITICAL — COMMENTARY ITEMS:
+Items prefixed with `[COMMENTARY]` in the input are social posts or essay-style content (tweets, Bluesky posts, HN threads, individual substack essays) that a pre-synthesis classifier has flagged as discourse on existing news, NOT news events themselves. They CANNOT anchor a conversation_themes entry. They can ONLY be cited as commentary INSIDE a theme whose anchor is a separate non-[COMMENTARY] item — an action_event, official_data release, court ruling, investigation, or breaking news story. If you find yourself wanting to build a theme entirely from [COMMENTARY] items (e.g., three tweets about Tokyo housing without any underlying news article from today), DROP IT — move that discourse to conversation_roundups instead. A theme anchored on a [COMMENTARY] item is a structural lie about what the day's news actually was; the post-processor will reject it.
+
 ## Output Format
 
 Return a JSON object:
@@ -1857,20 +1868,29 @@ def generate_daily_briefing(
     except Exception as e:
         logger.warning(f"Twitter author blocklist filter skipped: {e}")
 
-    # v5 trigger-type classifier: per-article Opus pass that drops items
+    # v5 trigger-type classifier: per-item Opus pass that drops items
     # classified as opinion / retrospective / recap / profile / analysis /
     # explainer BEFORE synthesis sees them. Catches op-ed patterns (e.g. the
     # City Journal "Good Cause Eviction" landlord piece in briefing #136) that
-    # otherwise sneak into themes. Scope: news sources only (rss + gmail) —
-    # tweets, bluesky, substacks, hackernews are inherently commentary and are
-    # passed through. On any classifier failure (network, parse, API), the
-    # affected items default to ACCEPT — we never silently lose items.
+    # otherwise sneak into themes.
+    #
+    # As of v2 (2026-06-03), ALL sources are classified — not just rss+gmail.
+    # Social and essay items typically classify as `commentary`, which is an
+    # ACCEPT category: they pass through to synthesis BUT are tagged with
+    # _trigger_type='commentary' so the synthesizer treats them as commentary
+    # to be cited inside event-anchored themes, never as a theme anchor of
+    # their own. Briefing #137 motivated this — the "Tokyo vs Sydney" theme
+    # was anchored on viral @DrCameronMurray tweets that passed through the
+    # social whitelist unchecked.
+    #
+    # On any classifier failure (network, parse, API), the affected items
+    # default to ACCEPT — we never silently lose items.
     try:
         before = len(all_items)
         all_items = _apply_trigger_filter(all_items, client=client)
         dropped = before - len(all_items)
         if dropped:
-            logger.info(f"Trigger-type filter dropped {dropped} news items classified as opinion/retrospective/recap/profile/analysis/explainer")
+            logger.info(f"Trigger-type filter dropped {dropped} items classified as opinion/retrospective/recap/profile/analysis/explainer")
     except Exception as e:
         logger.warning(f"Trigger-type classifier skipped (raised {e!r}); all items pass through to synthesis")
 
