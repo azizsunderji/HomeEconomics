@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import json
 import logging
+import sqlite3
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -35,6 +36,11 @@ logger = logging.getLogger(__name__)
 # (op-eds in the briefing). Worth the marginal cost over Sonnet.
 OPUS_MODEL = "claude-opus-4-7"
 
+# Cache schema/category version. Bump this whenever the trigger-type taxonomy,
+# the system prompt's classification rules, or the cached payload meaning
+# changes — older cached rows are then ignored automatically.
+CLASSIFIER_VERSION = "v1"
+
 # Sources eligible for classification. Inherently-commentary sources are
 # excluded — classifying a tweet as "opinion" is meaningless.
 NEWS_SOURCES = frozenset({"rss", "gmail"})
@@ -45,6 +51,115 @@ ACCEPT_TRIGGER_TYPES = frozenset({
 REJECT_TRIGGER_TYPES = frozenset({
     "opinion", "retrospective", "recap", "profile", "analysis", "explainer"
 })
+
+
+# Title/feed-level pre-filter: items from feeds whose entire raison d'être is
+# opinion content are classified as 'opinion' WITHOUT a network round-trip.
+# Saves both latency and Opus tokens. Match is exact on feed_name (after
+# whitespace strip). Add new variants here as the feed catalog grows.
+OPINION_FEED_NAMES = {
+    "FT Opinion",
+    "FT Alphaville Opinion",
+    "WSJ Opinion",
+    "NYT Opinion",
+    "New York Times Opinion",
+    "NYT Opinions",
+    "Washington Post Opinions",
+    "WaPo Opinions",
+    "Bloomberg Opinion",
+    "Bloomberg Opinion - Markets",
+    "Bloomberg Opinion - Politics",
+    "City Journal",
+    "Reason",
+    "National Review",
+    "The Atlantic Ideas",
+    "Atlantic Ideas",
+}
+
+
+def _is_obvious_opinion_feed(item: dict) -> bool:
+    feed = (item.get("feed_name") or "").strip()
+    return feed in OPINION_FEED_NAMES
+
+
+# ── Cross-run cache helpers ──────────────────────────────────────────────────
+# The cache lives in the main Pulse SQLite DB (see store.py). We open it
+# lazily here to avoid a hard import cycle (store imports from collectors,
+# trigger_classifier doesn't otherwise need store).
+
+def _open_cache_conn() -> Optional[sqlite3.Connection]:
+    """Open the Pulse SQLite DB used as the cross-run classifier cache.
+
+    Returns None on any failure (path missing, permission issue) — the
+    classifier then degrades cleanly to "no cache" instead of crashing.
+    """
+    try:
+        from store import get_db  # local import: avoid circular at module load
+        return get_db()
+    except Exception as e:
+        logger.warning(f"trigger_classifier: could not open cache DB: {e!r}")
+        return None
+
+
+def _cache_lookup(
+    conn: sqlite3.Connection,
+    item_ids: list[int],
+    version: str,
+) -> dict[int, str]:
+    """Return {item_id: trigger_type} for items already classified at this
+    version. Items not in the cache (or at a stale version) are absent.
+    """
+    if not item_ids:
+        return {}
+    out: dict[int, str] = {}
+    # Chunk to keep the SQL parameter list bounded
+    CHUNK = 500
+    for i in range(0, len(item_ids), CHUNK):
+        chunk = item_ids[i:i + CHUNK]
+        placeholders = ",".join("?" * len(chunk))
+        try:
+            rows = conn.execute(
+                f"SELECT item_id, trigger_type FROM trigger_classifier_cache "
+                f"WHERE classifier_version = ? AND item_id IN ({placeholders})",
+                [version, *chunk],
+            ).fetchall()
+        except Exception as e:
+            logger.warning(f"trigger_classifier: cache lookup failed: {e!r}")
+            return out
+        for r in rows:
+            # sqlite3.Row or tuple — handle both
+            try:
+                out[int(r["item_id"])] = r["trigger_type"]
+            except Exception:
+                out[int(r[0])] = r[1]
+    return out
+
+
+def _cache_insert(
+    conn: sqlite3.Connection,
+    rows: list[tuple[int, str]],
+    version: str,
+) -> int:
+    """Insert/replace classifier results into the cross-run cache.
+
+    rows: list of (item_id, trigger_type). Returns the number of rows written.
+    """
+    if not rows:
+        return 0
+    now = datetime.now(timezone.utc).isoformat()
+    written = 0
+    try:
+        conn.executemany(
+            "INSERT OR REPLACE INTO trigger_classifier_cache "
+            "(item_id, trigger_type, classified_at, classifier_version) "
+            "VALUES (?, ?, ?, ?)",
+            [(int(iid), tt, now, version) for iid, tt in rows],
+        )
+        conn.commit()
+        written = len(rows)
+    except Exception as e:
+        logger.warning(f"trigger_classifier: cache insert failed: {e!r}")
+    return written
 
 
 TRIGGER_TYPE_SYSTEM = """You are a news desk classifier for a US housing-economics daily briefing. Today is {today}.
@@ -170,32 +285,104 @@ def classify_trigger_types(
         return {}
     today = today or datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
-    # Cache by id within a single run — never classify the same item twice
+    # In-run dedup. Three-stage filter follows:
+    #   (1) obvious-opinion feed pre-filter — no API, no cache write
+    #   (2) cross-run SQLite cache lookup
+    #   (3) Opus API call for whatever remains, then cache the result
     cache: dict[int, dict] = {}
-    pending = []
+    candidates: list[dict] = []
     seen_ids: set[int] = set()
     for it in items:
         iid = it.get("id")
         if iid is None or iid in seen_ids:
             continue
         seen_ids.add(iid)
-        pending.append(it)
+        candidates.append(it)
 
+    # Stage 1: opinion-feed pre-filter
+    prefiltered = 0
+    pending: list[dict] = []
+    for it in candidates:
+        if _is_obvious_opinion_feed(it):
+            cache[int(it["id"])] = {
+                "id": it["id"],
+                "trigger_type": "opinion",
+                "justification": f"feed_name pre-filter ({it.get('feed_name','')})",
+                "accept": False,
+            }
+            prefiltered += 1
+        else:
+            pending.append(it)
+    if prefiltered:
+        logger.info(
+            f"trigger_classifier: opinion-feed pre-filter caught {prefiltered} "
+            f"item(s) — no Opus call"
+        )
+
+    # Stage 2: cross-run cache lookup (best-effort; failures degrade silently)
+    cache_conn = _open_cache_conn()
+    cache_hits = 0
+    cached_map: dict[int, str] = {}
+    if cache_conn is not None and pending:
+        cached_map = _cache_lookup(
+            cache_conn, [int(it["id"]) for it in pending], CLASSIFIER_VERSION
+        )
+        if cached_map:
+            still_pending: list[dict] = []
+            for it in pending:
+                iid = int(it["id"])
+                tt = cached_map.get(iid)
+                if tt is None:
+                    still_pending.append(it)
+                    continue
+                accept = tt in ACCEPT_TRIGGER_TYPES
+                cache[iid] = {
+                    "id": iid,
+                    "trigger_type": tt,
+                    "justification": "(from trigger_classifier_cache)",
+                    "accept": accept,
+                }
+                cache_hits += 1
+            pending = still_pending
+    if cache_hits:
+        logger.info(
+            f"trigger_classifier: cross-run cache served {cache_hits} "
+            f"item(s) at version={CLASSIFIER_VERSION}"
+        )
+
+    # Stage 3: Opus on the remainder
     total = len(pending)
     n_batches = (total + batch_size - 1) // batch_size
     logger.info(
-        f"trigger_classifier: classifying {total} items across {n_batches} "
-        f"batch(es) of <={batch_size} via {OPUS_MODEL}"
+        f"trigger_classifier: classifying {total} item(s) via {OPUS_MODEL} "
+        f"across {n_batches} batch(es) of <={batch_size} "
+        f"(prefiltered={prefiltered}, cached={cache_hits})"
     )
 
+    fresh_rows: list[tuple[int, str]] = []
     for bi in range(n_batches):
         batch = pending[bi * batch_size:(bi + 1) * batch_size]
         batch_results = _classify_batch(client, batch, today)
         cache.update(batch_results)
+        for iid, cls in batch_results.items():
+            tt = (cls.get("trigger_type") or "").strip().lower()
+            if tt:
+                fresh_rows.append((int(iid), tt))
         logger.info(
             f"trigger_classifier: batch {bi+1}/{n_batches} classified "
             f"{len(batch_results)}/{len(batch)} items"
         )
+
+    # Write fresh classifications to the cross-run cache. Pre-filtered items
+    # are NOT written (the rule is deterministic from feed_name; re-applying
+    # is free).
+    if cache_conn is not None and fresh_rows:
+        written = _cache_insert(cache_conn, fresh_rows, CLASSIFIER_VERSION)
+        if written:
+            logger.info(
+                f"trigger_classifier: wrote {written} fresh classification(s) "
+                f"to trigger_classifier_cache (version={CLASSIFIER_VERSION})"
+            )
     return cache
 
 
