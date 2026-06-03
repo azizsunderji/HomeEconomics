@@ -37,9 +37,12 @@ logger = logging.getLogger(__name__)
 # Upgraded 2026-06-03 per user direction — synthesis is where editorial
 # judgment lives; Opus's better rule adherence reduces drift on the new
 # directionality/stay-on-event/brokerage rules.
-# max_tokens=32768 is preserved: Opus 4.7's max output cap is the same 32K
-# as Sonnet 4.6, so the existing streaming call needs no parameter change.
-MODEL = "claude-opus-4-7"
+# Bumped to 4.8 same day — 4.8 dropped 2026-05-28 with 3x lower pricing
+# ($5/M in, $25/M out vs 4.7's $15/$75) AND Anthropic's release notes claim
+# meaningfully better reasoning + 4x less likely to let unsupported claims
+# slip past. Directly relevant to our editorial-judgment use case.
+# max_tokens=32768 is preserved: Opus's max output cap is the same 32K.
+MODEL = "claude-opus-4-8"
 
 # Two-tier system:
 # Tier 1: All current conversation and journalism — competes equally for themes
