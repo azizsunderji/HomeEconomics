@@ -34,7 +34,12 @@ from analysis.trigger_classifier import apply_trigger_filter as _apply_trigger_f
 
 logger = logging.getLogger(__name__)
 
-MODEL = "claude-sonnet-4-6"  # Sonnet 4.6 has native 1M context; 4.5 only had 200K
+# Upgraded 2026-06-03 per user direction — synthesis is where editorial
+# judgment lives; Opus's better rule adherence reduces drift on the new
+# directionality/stay-on-event/brokerage rules.
+# max_tokens=32768 is preserved: Opus 4.7's max output cap is the same 32K
+# as Sonnet 4.6, so the existing streaming call needs no parameter change.
+MODEL = "claude-opus-4-7"
 
 # Two-tier system:
 # Tier 1: All current conversation and journalism — competes equally for themes
