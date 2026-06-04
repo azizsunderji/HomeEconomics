@@ -90,6 +90,69 @@ def _md_links(text: str) -> str:
     return ''.join(result)
 
 
+# Source-type → (icon, label) lookup for the cited-sources box.
+_SOURCE_TYPE_META = {
+    "rss":         ("\U0001F4F0", "RSS"),       # 📰
+    "gmail":       ("✉️",  "Email"),  # ✉️
+    "twitter":     ("\U0001F426", "Twitter"),   # 🐦
+    "bluesky":     ("\U0001F98B", "Bluesky"),   # 🦋
+    "substack":    ("\U0001F4DD", "Substack"),  # 📝
+    "reddit":      ("\U0001F7E0", "Reddit"),    # 🟠
+    "hackernews":  ("\U0001F7E7", "HN"),        # 🟧
+    "web":         ("\U0001F310", "Web"),       # 🌐
+}
+_SOURCE_TYPE_ORDER = [
+    "rss", "gmail", "twitter", "bluesky", "substack",
+    "reddit", "hackernews", "web",
+]
+
+
+def _render_cited_sources_box(cited_sources: dict) -> str:
+    """Render the per-type list of cited sources with icons.
+
+    Layout, one row per non-empty type:
+        📰 RSS (N): SourceA(c) · SourceB(c) · SourceC ...
+    Where N is the unique-source count for that type and the trailing
+    `(c)` after a name appears only when that source was cited more
+    than once.
+
+    Returns an empty string when cited_sources is empty.
+    """
+    if not cited_sources:
+        return ""
+    rows = []
+    for typ in _SOURCE_TYPE_ORDER:
+        names_map = cited_sources.get(typ) or {}
+        if not names_map:
+            continue
+        icon, label = _SOURCE_TYPE_META.get(typ, ("\U0001F310", typ.title()))
+        unique_count = len(names_map)
+        sorted_names = sorted(
+            names_map.items(), key=lambda x: (-x[1], x[0].lower())
+        )
+        parts = []
+        for name, n in sorted_names:
+            esc_name = _esc(name)
+            parts.append(f"{esc_name} ({n})" if n > 1 else esc_name)
+        joined = " &middot; ".join(parts)
+        rows.append(
+            '<div style="margin: 0 0 4px 0;">'
+            f'<span style="font-weight: 600; color: #555;">{icon} {label}'
+            f' ({unique_count}):</span> '
+            f'<span style="color: #777;">{joined}</span>'
+            '</div>'
+        )
+    if not rows:
+        return ""
+    return (
+        '<table width="100%" cellpadding="0" cellspacing="0"><tr>'
+        '<td bgcolor="#FFFFFF" style="background-color: #fff; padding: 10px 14px; '
+        'border-radius: 4px; font-size: 14px; line-height: 1.55; color: #777;">'
+        + "".join(rows) +
+        '</td></tr></table>'
+    )
+
+
 def _format_number(n) -> str:
     """Format a number with commas, handling non-numeric gracefully."""
     try:
@@ -241,11 +304,10 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
     top_theme = themes[0]["theme"][:60] if themes else "Daily Conversation"
     theme_count = len(themes)
 
-    # Source breakdown
-    source_breakdown = stats.get("source_breakdown", {})
-    source_str = " &middot; ".join(
-        f"{k}: {v}" for k, v in sorted(source_breakdown.items(), key=lambda x: -x[1])
-    ) if source_breakdown else ""
+    # Cited-sources breakdown (icon-grouped, replaces the old ingested
+    # source_breakdown). Falls back to nothing — old briefings without
+    # cited_sources just won't show the box.
+    cited_sources_html = _render_cited_sources_box(stats.get("cited_sources") or {})
 
     # Build HTML — table-based centering for Gmail
     html = f"""<!DOCTYPE html>
@@ -297,13 +359,9 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
 """
         html += _spacer(24)
 
-    # ── SOURCE BREAKDOWN ──
-    if source_str:
-        html += f"""<table width="100%" cellpadding="0" cellspacing="0"><tr>
-<td bgcolor="#FFFFFF" style="background-color: #fff; padding: 8px 12px; border-radius: 4px; font-size: 15px; color: #999;">
-  <span style="font-weight: 600; color: #888;">Sources:</span> {source_str}
-</td></tr></table>
-"""
+    # ── CITED SOURCES (grouped by type, with icons) ──
+    if cited_sources_html:
+        html += cited_sources_html
         html += _spacer(24)
 
     # ── FRONT PAGES — side-by-side print snapshot + clickable headlines ──
