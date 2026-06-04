@@ -153,6 +153,24 @@ def _render_cited_sources_box(cited_sources: dict) -> str:
     )
 
 
+def _normalize_headline_caps(text: str) -> str:
+    """Convert SHOUTY ALL-CAPS print headlines (NYT lead-line style) to
+    title case so the front-pages section reads uniformly. Leaves
+    naturally mixed-case headlines untouched.
+
+    Threshold: >70% of letters uppercase → title-case it. Uses
+    str.title() which is reasonably robust for headline-style content:
+    `'U.S. FALLS BEHIND'.lower().title()` → `"U.S. Falls Behind"`.
+    """
+    letters = [c for c in text if c.isalpha()]
+    if not letters:
+        return text
+    upper_count = sum(1 for c in letters if c.isupper())
+    if upper_count / len(letters) > 0.7:
+        return text.lower().title()
+    return text
+
+
 def _format_number(n) -> str:
     """Format a number with commas, handling non-numeric gracefully."""
     try:
@@ -393,22 +411,26 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
             # Headline <li> stack — clickable when article_url is non-null.
             li_items = []
             for h in heads:
-                hl_text = _esc(h.get("text", "")).strip()
-                if not hl_text:
+                raw_text = (h.get("text") or "").strip()
+                if not raw_text:
                     continue
+                # User feedback 2026-06-04: drop the shouty all-caps
+                # NYT-style lead-headline casing; title-case it instead
+                # so all headlines read the same.
+                hl_text = _esc(_normalize_headline_caps(raw_text))
                 article_url = h.get("article_url") or ""
                 if article_url:
                     li_items.append(
-                        f'<li style="margin: 0 0 14px 0;">'
+                        f'<li style="margin: 0 0 10px 0;">'
                         f'<a href="{article_url}" target="_blank" '
                         f'style="color: #3D3733; text-decoration: none; '
-                        f'font-size: 22px; font-weight: 500; line-height: 1.35;">'
+                        f'font-size: 16px; font-weight: 400; line-height: 1.35;">'
                         f'{hl_text}</a></li>'
                     )
                 else:
                     li_items.append(
-                        f'<li style="margin: 0 0 14px 0; color: #3D3733; '
-                        f'font-size: 22px; font-weight: 500; line-height: 1.35;">'
+                        f'<li style="margin: 0 0 10px 0; color: #3D3733; '
+                        f'font-size: 16px; font-weight: 400; line-height: 1.35;">'
                         f'{hl_text}</li>'
                     )
             headline_list = (
