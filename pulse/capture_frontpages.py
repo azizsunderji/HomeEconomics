@@ -345,7 +345,10 @@ def _compose_page_image(pdf_path: Path, out_path: Path) -> bool:
         page_img = page_img.resize((new_w, new_h), Image.LANCZOS).convert("RGBA")
 
         # Crop to top portion and fade to cream at the bottom.
-        FADE_KEEP_FRAC = 0.30
+        # User feedback 2026-06-04: previous 0.30 + 0.12 made the page
+        # snapshot feel cramped — bumped fully-visible region to 0.55
+        # so the snapshot extends well into the page body.
+        FADE_KEEP_FRAC = 0.55
         FADE_RAMP_FRAC = 0.12
         keep_h = int(new_h * FADE_KEEP_FRAC)
         ramp_h = int(new_h * FADE_RAMP_FRAC)
