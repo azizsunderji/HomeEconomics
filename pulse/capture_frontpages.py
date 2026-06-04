@@ -11,9 +11,9 @@ Pipeline (per paper):
      the print page, faded to cream at the bottom. NO masthead or
      headline text rendered into the image — that all moves to the
      email's HTML side-by-side layout (see email_briefing.py).
-  4. Resolve a per-headline article URL via a two-layer cascade:
-        L1: RSS match against pulse.db (free)
-        L2: Brave Search API ($5/1k requests + $5/mo free credit)
+  4. Headlines render as plain text — no per-headline URL resolution
+     (print-vs-digital headline paraphrasing made automated matching
+     too unreliable; user opted to ship without links 2026-06-03).
   5. Emit a sidecar JSON `headlines.json` with masthead/url/headlines
      [{text, article_url}] so email_briefing.py can render clickable
      headline links next to the page snapshot.
@@ -38,7 +38,6 @@ from difflib import SequenceMatcher
 from pathlib import Path
 
 import fitz  # PyMuPDF
-import requests
 from PIL import Image, ImageDraw, ImageFont
 
 logger = logging.getLogger(__name__)
@@ -294,174 +293,27 @@ def _rss_match_url(con: sqlite3.Connection, rss_where: str, headline: str
     return best_u, best_r
 
 
-# ── Layer 2: Brave Search API ────────────────────────────────────────
-#
-# Brave Search ships a proper search API: $5 per 1000 requests with a free
-# $5/month credit (covers ~450/month, comfortably more than we need).
-# Replaces an earlier Google-via-Browserbase scraper that hit CAPTCHA
-# pages after ~10 queries — Google fingerprints Browserbase's browser
-# regardless of proxy IP, and Browserbase's `advanced_stealth` flag is
-# Enterprise-only.
-
-_BRAVE_ENDPOINT = "https://api.search.brave.com/res/v1/web/search"
-_BRAVE_FRESHNESS_DAYS = 4
-
-
-def _brave_search_url(paper: dict, paper_domain: str,
-                      headline: str) -> str | None:
-    """Resolve an article URL by querying the Brave Search API for
-    `<headline> site:<paper_domain>` and picking the first result that
-    (a) matches the paper's article URL pattern AND (b) is fresh.
-
-    Freshness check: URL paths with /YYYY/MM/DD/ or /YYYY-MM-DD/ are
-    parsed and required to be within _BRAVE_FRESHNESS_DAYS of today.
-    URLs without a date (e.g., Houston Chronicle's slug-based scheme)
-    fall back to Brave's `age` field — "X hours ago" / "X days ago" /
-    "1 week ago" are accepted; older is rejected.
-
-    Returns None when no result clears both gates — caller leaves the
-    headline as plain text (user directive: better unlinked than
-    linked to a stale or wrong article).
-    """
-    api_key = os.environ.get("BRAVE_API_KEY", "")
-    if not api_key:
-        logger.warning("BRAVE_API_KEY not set — skipping search resolution")
-        return None
-    pattern = paper.get("article_url_re")
-    if not pattern or not paper_domain:
-        return None
-
-    # Strip punctuation that confuses Brave's tokenizer ("$1.8" → "1.8",
-    # quotes/apostrophes → space). Keep word chars, hyphens, periods,
-    # and spaces.
-    cleaned = re.sub(r"[^\w\s.\-]", " ", headline)
-    cleaned = re.sub(r"\s+", " ", cleaned).strip()
-    query = f"{cleaned} site:{paper_domain}"
-
-    try:
-        r = requests.get(
-            _BRAVE_ENDPOINT,
-            params={"q": query, "count": 10, "country": "us"},
-            headers={
-                "X-Subscription-Token": api_key,
-                "Accept": "application/json",
-            },
-            timeout=12,
-        )
-    except Exception as e:
-        logger.warning(f"brave search request failed for {headline!r}: {e}")
-        return None
-    if r.status_code != 200:
-        logger.warning(
-            f"brave search status {r.status_code} for {headline!r}: "
-            f"{r.text[:160]}"
-        )
-        return None
-    try:
-        results = r.json().get("web", {}).get("results", []) or []
-    except Exception as e:
-        logger.warning(f"brave search JSON parse failed: {e}")
-        return None
-
-    today = datetime.now().date()
-    _date_re = re.compile(r"/(\d{4})/(\d{2})/(\d{2})/|/(\d{4})-(\d{2})-(\d{2})/")
-
-    def _is_article_url(u: str) -> bool:
-        if not re.match(pattern, u):
-            return False
-        if "/search" in u or u.endswith("/"):
-            return False
-        if "?mod=nav" in u or "?mod=wsjheader" in u or "?mod=wsjfooter" in u:
-            return False
-        return True
-
-    for res in results:
-        url = (res.get("url") or "").strip()
-        if not url or not _is_article_url(url):
-            continue
-        url_clean = url.split("#")[0]
-
-        m_dt = _date_re.search(url_clean)
-        if m_dt:
-            try:
-                yy = int(m_dt.group(1) or m_dt.group(4))
-                mm = int(m_dt.group(2) or m_dt.group(5))
-                dd = int(m_dt.group(3) or m_dt.group(6))
-                url_date = date(yy, mm, dd)
-                if 0 <= (today - url_date).days <= _BRAVE_FRESHNESS_DAYS:
-                    return url_clean
-                continue  # dated but stale; keep looking
-            except Exception:
-                pass
-
-        # No date in URL — use Brave's `age` field as a freshness signal.
-        age = (res.get("age") or "").lower()
-        if any(t in age for t in ("hour", "day", "today", "yesterday")):
-            return url_clean
-        if "1 week" in age or "week ago" in age:
-            return url_clean
-        # Older — skip and look at the next result.
-
-    return None
-
-
 def _resolve_article_urls(papers_data: dict, db: sqlite3.Connection | None
                           ) -> dict:
-    """Populate {article_url} on each headline via a two-layer cascade.
+    """Set article_url=None on every headline so the renderer falls back
+    to plain text.
 
-      L1 RSS    — free, low hit rate today but cheap to keep
-      L2 Brave  — Brave Search API, $5/1000 with $5/mo free credit
-                  (~$0/run at our volume of ~450 queries/month)
+    Per user directive 2026-06-03: print-vs-digital headline paraphrasing
+    makes automated URL resolution too unreliable to ship. Brave Search
+    + Browserbase-scraped Google + DDG all hit either coverage gaps
+    (Brave doesn't index paywalled WSJ articles) or CAPTCHA walls. The
+    decision: just show headlines as plain text.
 
-    No fake-URL fallback: when both layers miss, article_url is set to
-    None and the renderer leaves the headline as plain text. Per user
-    directive: better unlinked than linked to the wrong article.
-
-    Returns a stats dict: {paper: {rss, brave, unlinked: int}}.
+    Stats are kept for back-compat with the print/log surface.
     """
     stats: dict = {}
-    brave_calls = 0
-
     for slug, info in papers_data.items():
-        s = {"rss": 0, "brave": 0, "unlinked": 0}
-        rss_where = info.pop("_rss_match", "")
-        domain = info.pop("_domain", "")
-        paper_cfg = info.pop("_paper_cfg", {})
-
+        info.pop("_rss_match", None)
+        info.pop("_domain", None)
+        info.pop("_paper_cfg", None)
         for h in info["headlines"]:
-            text = h["text"]
-            url = None
-
-            # L1 — RSS corpus match (free)
-            if db is not None and rss_where:
-                u, r = _rss_match_url(db, rss_where, text)
-                if u and r >= RSS_MATCH_THRESHOLD:
-                    url = u
-                    s["rss"] += 1
-                    print(f"  [{slug}] rss-match r={r:.2f} {text[:50]!r}")
-
-            # L2 — Brave Search API
-            if url is None and paper_cfg:
-                brave_calls += 1
-                u = _brave_search_url(paper_cfg, domain, text)
-                if u:
-                    url = u
-                    s["brave"] += 1
-                    print(f"  [{slug}] brave-hit {text[:50]!r}")
-                    print(f"    -> {url[:120]}")
-
-            if url is None:
-                s["unlinked"] += 1
-
-            h["article_url"] = url  # None means render as plain text
-
-        stats[slug] = s
-        print(f"  [{slug}] resolution: rss={s['rss']} brave={s['brave']} "
-              f"unlinked={s['unlinked']}")
-
-    # Brave: $5 per 1000 queries → $0.005 per call
-    cost = brave_calls * 0.005
-    print(f"  totals: brave={brave_calls} (est. cost ${cost:.3f})")
+            h["article_url"] = None
+        stats[slug] = {"rss": 0, "brave": 0, "unlinked": len(info["headlines"])}
     return stats
 
 
