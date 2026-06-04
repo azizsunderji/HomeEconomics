@@ -90,16 +90,16 @@ def _md_links(text: str) -> str:
     return ''.join(result)
 
 
-# Source-type → (icon, label) lookup for the cited-sources box.
-_SOURCE_TYPE_META = {
-    "rss":         ("\U0001F4F0", "RSS"),       # 📰
-    "gmail":       ("✉️",  "Email"),  # ✉️
-    "twitter":     ("\U0001F426", "Twitter"),   # 🐦
-    "bluesky":     ("\U0001F98B", "Bluesky"),   # 🦋
-    "substack":    ("\U0001F4DD", "Substack"),  # 📝
-    "reddit":      ("\U0001F7E0", "Reddit"),    # 🟠
-    "hackernews":  ("\U0001F7E7", "HN"),        # 🟧
-    "web":         ("\U0001F310", "Web"),       # 🌐
+# Source-type → label lookup for the cited-sources box.
+_SOURCE_TYPE_LABEL = {
+    "rss":         "RSS",
+    "gmail":       "Email",
+    "twitter":     "Twitter",
+    "bluesky":     "Bluesky",
+    "substack":    "Substack",
+    "reddit":      "Reddit",
+    "hackernews":  "HN",
+    "web":         "Web",
 }
 _SOURCE_TYPE_ORDER = [
     "rss", "gmail", "twitter", "bluesky", "substack",
@@ -108,13 +108,13 @@ _SOURCE_TYPE_ORDER = [
 
 
 def _render_cited_sources_box(cited_sources: dict) -> str:
-    """Render the per-type list of cited sources with icons.
+    """Render the per-type list of cited sources, no icons.
 
     Layout, one row per non-empty type:
-        📰 RSS (N): SourceA(c) · SourceB(c) · SourceC ...
-    Where N is the unique-source count for that type and the trailing
-    `(c)` after a name appears only when that source was cited more
-    than once.
+        RSS (N): SourceA (c) · SourceB (c) · SourceC ...
+
+    N is the unique-source count for that type and the trailing `(c)`
+    after a name appears only when that source was cited more than once.
 
     Returns an empty string when cited_sources is empty.
     """
@@ -125,7 +125,7 @@ def _render_cited_sources_box(cited_sources: dict) -> str:
         names_map = cited_sources.get(typ) or {}
         if not names_map:
             continue
-        icon, label = _SOURCE_TYPE_META.get(typ, ("\U0001F310", typ.title()))
+        label = _SOURCE_TYPE_LABEL.get(typ, typ.title())
         unique_count = len(names_map)
         sorted_names = sorted(
             names_map.items(), key=lambda x: (-x[1], x[0].lower())
@@ -137,7 +137,7 @@ def _render_cited_sources_box(cited_sources: dict) -> str:
         joined = " &middot; ".join(parts)
         rows.append(
             '<div style="margin: 0 0 4px 0;">'
-            f'<span style="font-weight: 600; color: #555;">{icon} {label}'
+            f'<span style="font-weight: 600; color: #555;">{label}'
             f' ({unique_count}):</span> '
             f'<span style="color: #777;">{joined}</span>'
             '</div>'
