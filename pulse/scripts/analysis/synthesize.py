@@ -1293,6 +1293,111 @@ def _strip_forbidden_bridges(briefing: dict) -> dict:
     return briefing
 
 
+# Sentence-leading time-shift phrases that should start a new paragraph.
+_TIME_SHIFT_LEAD_RE = re.compile(
+    r"^\s*(?:"
+    r"Earlier this week|Earlier in the week|Earlier this month|"
+    r"Last week|Last month|This morning|This afternoon|This week|"
+    r"Yesterday|This evening|Last night|Tonight|"
+    r"Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|"
+    r"In (?:January|February|March|April|May|June|July|August|"
+    r"September|October|November|December)"
+    r")\s*,",
+    re.IGNORECASE,
+)
+
+
+def _enforce_paragraph_breaks(briefing: dict) -> dict:
+    """Insert `\\n\\n` paragraph breaks into theme/roundup summaries so
+    prose reads as several short paragraphs instead of one wall of text.
+
+    Rules (applied at every sentence boundary, in order):
+      1. Break BEFORE a sentence that starts with a markdown link
+         `[text](url)` when the current paragraph already has 2+
+         sentences. (A new linked voice → new paragraph.)
+      2. Break BEFORE a sentence whose leading clause is a time-shift
+         phrase ("Earlier this week,", "Monday,", etc.).
+      3. Hard cap: a paragraph never runs longer than 3 sentences. If
+         we'd start a 4th sentence in the same paragraph, break first.
+
+    Respects existing `\\n\\n` breaks in the source text.
+
+    The user explicitly asked for short, readable paragraphs (2026-06-04
+    feedback: "the news paragraphs never have para breaks…why? it should
+    break them apart like a natural writer"). The prompt-rule equivalent
+    of this (added the previous day) is being ignored by the model —
+    this post-processor enforces the structure deterministically.
+    """
+    inserts = 0
+
+    def _break_long_paragraph(text: str) -> tuple[str, int]:
+        # _split_sentences_for_validation masks markdown links so dots in
+        # URLs/anchor text don't cause spurious sentence boundaries.
+        sentences = _split_sentences_for_validation(text)
+        if len(sentences) <= 1:
+            return text, 0
+        out_paragraphs: list[str] = []
+        current: list[str] = []
+        local_inserts = 0
+        for i, raw in enumerate(sentences):
+            sent = raw.strip()
+            if not sent:
+                continue
+            if current:
+                starts_with_link = sent.startswith("[")
+                has_time_shift = bool(_TIME_SHIFT_LEAD_RE.match(sent))
+                at_ceiling = len(current) >= 3
+                if (
+                    (starts_with_link and len(current) >= 2)
+                    or has_time_shift
+                    or at_ceiling
+                ):
+                    out_paragraphs.append(" ".join(current))
+                    current = []
+                    local_inserts += 1
+            current.append(sent)
+        if current:
+            out_paragraphs.append(" ".join(current))
+        return "\n\n".join(out_paragraphs), local_inserts
+
+    def _process(summary: str) -> tuple[str, int]:
+        if not summary or len(summary) < 80:
+            return summary, 0
+        paragraphs = re.split(r"\n{2,}", summary)
+        rebuilt: list[str] = []
+        local_inserts = 0
+        for para in paragraphs:
+            new_para, n = _break_long_paragraph(para.strip())
+            local_inserts += n
+            rebuilt.append(new_para)
+        return "\n\n".join(rebuilt), local_inserts
+
+    for theme in briefing.get("conversation_themes") or []:
+        s = theme.get("summary") or ""
+        new_s, n = _process(s)
+        if n > 0:
+            theme["summary"] = new_s
+            inserts += n
+            logger.info(
+                f"inserted {n} paragraph break(s) in theme "
+                f"{theme.get('theme')!r}"
+            )
+
+    for roundup in briefing.get("conversation_roundups") or []:
+        s = roundup.get("summary") or ""
+        new_s, n = _process(s)
+        if n > 0:
+            roundup["summary"] = new_s
+            inserts += n
+            logger.info(
+                f"inserted {n} paragraph break(s) in roundup "
+                f"{roundup.get('topic')!r}"
+            )
+
+    briefing["_paragraph_breaks_inserted"] = inserts
+    return briefing
+
+
 # ────────────────────────────────────────────────────────────────────────────
 # Auto-link bare @handles in theme/roundup prose.
 #
@@ -2858,6 +2963,16 @@ Generate the daily briefing JSON. LEAD WITH CONVERSATION — what are people deb
         # and BEFORE URL validation (so any URLs carried into the new
         # roundup entries still get validated).
         briefing = _strip_forbidden_bridges(briefing)
+
+        # Deterministic paragraph-break enforcement. User feedback
+        # 2026-06-04: "the news paragraphs never have para breaks…why? it
+        # should break them apart like a natural writer." The prompt rule
+        # added the previous day is being ignored by the model. This
+        # post-processor inserts \\n\\n at sentence boundaries when a
+        # paragraph hits >3 sentences, when a new linked attribution
+        # arrives after 2+ sentences, or when a time-shift transition
+        # starts. Renderer already converts \\n\\n to <br><br>.
+        briefing = _enforce_paragraph_breaks(briefing)
 
         # Auto-link bare @handles in theme/roundup prose. The model
         # occasionally drops the markdown link on a cited handle —
