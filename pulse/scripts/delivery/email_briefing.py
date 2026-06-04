@@ -409,8 +409,10 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
             heads = paper.get("headlines", []) or []
 
             # Headline <li> stack — clickable when article_url is non-null.
+            # Cap at 3 per paper so the column height roughly matches the
+            # page snapshot (user feedback 2026-06-04: keep vertically compact).
             li_items = []
-            for h in heads:
+            for h in heads[:3]:
                 raw_text = (h.get("text") or "").strip()
                 if not raw_text:
                     continue
