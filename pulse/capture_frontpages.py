@@ -33,7 +33,7 @@ import sys
 import time
 import urllib.parse
 import urllib.request
-from datetime import datetime, date
+from datetime import datetime, date, timedelta, timezone
 from difflib import SequenceMatcher
 from pathlib import Path
 
@@ -107,8 +107,16 @@ RSS_MATCH_THRESHOLD = 0.65
 # ── PDF fetching ─────────────────────────────────────────────────────
 
 def _download_pdf(slug: str, dst: Path) -> bool:
-    """Download today's PDF for `slug`. Returns True on success."""
-    day = datetime.now().day  # non-padded — Freedom Forum uses "pdf3" not "pdf03"
+    """Download today's PDF for `slug`. Returns True on success.
+
+    Day is computed in US Eastern time, not UTC. The 9pm-ET manual-trigger
+    run lands at ~01:00 UTC (next calendar day in UTC); using UTC there
+    fetches `pdf{tomorrow}/...` which 404s because Freedom Forum hasn't
+    published tomorrow's print yet (saw this hit briefing #138 — all 4
+    papers 404, front-pages section came out empty).
+    """
+    et_now = datetime.now(timezone.utc) - timedelta(hours=4)  # ET ≈ UTC-4 (summer); off by 1 hr DST edges is OK
+    day = et_now.day  # non-padded — Freedom Forum uses "pdf3" not "pdf03"
     url = f"https://cdn.freedomforum.org/dfp/pdf{day}/{slug}.pdf"
     req = urllib.request.Request(
         url,
