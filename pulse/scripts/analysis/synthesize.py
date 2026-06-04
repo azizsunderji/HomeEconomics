@@ -1309,6 +1309,174 @@ def _strip_forbidden_bridges(briefing: dict) -> dict:
 # URL when the corpus has no matching items.
 # ────────────────────────────────────────────────────────────────────────────
 
+# ────────────────────────────────────────────────────────────────────────────
+# Cited-sources breakdown for the email header.
+# ────────────────────────────────────────────────────────────────────────────
+
+# Small lookup of common publication domains → display names. Anything
+# not in this map shows as the bare domain root. Extend as needed.
+_DOMAIN_PUBLICATION = {
+    "nytimes.com": "NYT",
+    "wsj.com": "WSJ",
+    "bloomberg.com": "Bloomberg",
+    "ft.com": "Financial Times",
+    "washingtonpost.com": "Washington Post",
+    "theglobeandmail.com": "Globe and Mail",
+    "reuters.com": "Reuters",
+    "cnbc.com": "CNBC",
+    "politico.com": "Politico",
+    "axios.com": "Axios",
+    "vox.com": "Vox",
+    "theatlantic.com": "The Atlantic",
+    "city-journal.org": "City Journal",
+    "nber.org": "NBER",
+    "aei.org": "AEI",
+    "newyorkfed.org": "NY Fed",
+    "federalreserve.gov": "Federal Reserve",
+    "housingwire.com": "HousingWire",
+    "brickunderground.com": "Brick Underground",
+    "costar.com": "CoStar",
+    "redfin.com": "Redfin",
+    "zillow.com": "Zillow",
+    "realtor.com": "Realtor",
+    "altosresearch.com": "Altos Research",
+    "calculatedrisk.com": "Calculated Risk",
+    "mansionglobal.com": "Mansion Global",
+    "marketwatch.com": "MarketWatch",
+    "ap.org": "AP",
+    "apnews.com": "AP",
+    "npr.org": "NPR",
+    "bbc.com": "BBC",
+    "guardian.co.uk": "The Guardian",
+    "theguardian.com": "The Guardian",
+    "economist.com": "The Economist",
+    "semafor.com": "Semafor",
+    "heatmap.news": "Heatmap",
+    "noahpinion.blog": "Noahpinion",
+    "stratechery.com": "Stratechery",
+    "nakedcapitalism.com": "Naked Capitalism",
+}
+
+
+def _domain_root(url: str) -> str:
+    """Strip subdomains down to root (e.g.
+    'libertystreeteconomics.newyorkfed.org' → 'newyorkfed.org'). Handles
+    common two-part TLDs (.co.uk) heuristically."""
+    try:
+        d = urlparse(url).netloc.lower().removeprefix("www.")
+        parts = d.split(".")
+        if len(parts) >= 3 and parts[-2] in ("co", "com", "org", "gov", "ac"):
+            return ".".join(parts[-3:])
+        if len(parts) >= 2:
+            return ".".join(parts[-2:])
+        return d
+    except Exception:
+        return ""
+
+
+def _classify_url_only(url: str) -> tuple[str, str]:
+    """URL-only fallback when an item isn't in the corpus. Returns
+    (source_type, display_name)."""
+    try:
+        d = urlparse(url).netloc.lower().removeprefix("www.")
+        path = urlparse(url).path or ""
+    except Exception:
+        return "web", "?"
+    if "twitter.com" in d or d == "x.com" or d.endswith(".x.com"):
+        parts = path.lstrip("/").split("/")
+        handle = parts[0] if parts and parts[0] else "?"
+        return "twitter", f"@{handle}"
+    if "bsky.app" in d or "bsky.social" in d:
+        parts = path.lstrip("/").split("/")
+        if parts and parts[0] == "profile" and len(parts) > 1:
+            return "bluesky", f"@{parts[1]}"
+        return "bluesky", f"@{parts[0]}" if parts and parts[0] else "@?"
+    if d.endswith(".substack.com"):
+        sub = d[:-len(".substack.com")]
+        return "substack", sub.capitalize()
+    if "reddit.com" in d:
+        m = re.match(r"/r/([^/]+)", path)
+        return "reddit", f"r/{m.group(1)}" if m else "Reddit"
+    if "news.ycombinator.com" in d:
+        return "hackernews", "HN"
+    root = _domain_root(url)
+    return "web", _DOMAIN_PUBLICATION.get(root, root)
+
+
+def _compute_cited_sources(briefing: dict, conn: sqlite3.Connection) -> dict:
+    """Walk every markdown-linked URL in the briefing prose + theme
+    platforms[], classify each by source-type and display name, and
+    return grouped counts:
+        { "rss":      { "HousingWire": 3, "NY Fed": 2, ... },
+          "twitter":  { "@cayimby": 2, "@dbroockman": 1, ... },
+          ... }
+
+    URLs are looked up in the items table first (gives source-type +
+    feed_name/author); fall back to URL-host classification when an
+    item isn't in the corpus.
+    """
+    cited_url_re = re.compile(r"\[[^\]]+\]\(([^)]+)\)")
+    urls: list[str] = []
+    urls.extend(cited_url_re.findall(briefing.get("conversation_pulse", "") or ""))
+    for t in briefing.get("conversation_themes", []) or []:
+        urls.extend(cited_url_re.findall(t.get("summary", "") or ""))
+        for p in t.get("platforms", []) or []:
+            u = (p.get("url") or "").strip()
+            if u:
+                urls.append(u)
+    for r in briefing.get("conversation_roundups", []) or []:
+        urls.extend(cited_url_re.findall(r.get("summary", "") or ""))
+    paper = briefing.get("paper_of_the_day") or {}
+    if isinstance(paper, dict):
+        u = (paper.get("url") or "").strip()
+        if u:
+            urls.append(u)
+
+    grouped: dict[str, dict[str, int]] = {}
+    for url in urls:
+        if not url:
+            continue
+        try:
+            row = conn.execute(
+                "SELECT source, author, feed_name FROM items "
+                "WHERE url = ? LIMIT 1",
+                (url,),
+            ).fetchone()
+        except Exception:
+            row = None
+
+        if row:
+            src_type = (row["source"] or "web").lower()
+            if src_type in ("twitter", "bluesky"):
+                display = (row["author"] or "").strip()
+                if display and not display.startswith("@"):
+                    display = "@" + display
+                if not display:
+                    _, display = _classify_url_only(url)
+            elif src_type in ("rss", "substack", "gmail"):
+                display = (row["feed_name"] or "").strip()
+                if not display:
+                    _, display = _classify_url_only(url)
+            elif src_type == "reddit":
+                display = (row["feed_name"] or "").strip()
+                if not display:
+                    _, display = _classify_url_only(url)
+            elif src_type == "hackernews":
+                display = "HN"
+            else:
+                _, display = _classify_url_only(url)
+                src_type = "web"
+        else:
+            src_type, display = _classify_url_only(url)
+
+        if not display:
+            display = "?"
+        grouped.setdefault(src_type, {})
+        grouped[src_type][display] = grouped[src_type].get(display, 0) + 1
+
+    return grouped
+
+
 _HANDLE_RE = re.compile(r"(?<![A-Za-z0-9_])(@[A-Za-z0-9_]{2,20})\b")
 _MD_LINK_SPAN_RE = re.compile(r"\[[^\]]+\]\([^)]+\)")
 
@@ -2001,6 +2169,42 @@ NO FLOATING EDITORIAL COMMENTARY. Sentences with no inline link and no clear sou
 
 EVERY @HANDLE MUST BE LINKED (HARD GATE). Any time you mention a Twitter/Bluesky handle in theme or roundup prose — whether for a present-day claim ("@dbroockman noted X") OR for a historical reference ("a tension @mikesimonsen flagged Monday", "earlier this week @cayimby argued Y") — the handle MUST be wrapped in a markdown link [@handle](url) pointing to the SPECIFIC tweet/post being referenced. A bare @handle with no link is a hard violation. The same rule applies to all historical attributions: phrases like "Monday, [X warned](url)..." / "Tuesday, [an analyst flagged](url)..." / "earlier this week, [Y argued](url)..." MUST carry the link. If you reference "what someone said last week" or any past event, the actual post/article being referenced MUST be linked inline. NEVER write a historical attribution without the link — the reader cannot verify what you're paraphrasing otherwise. Failure example from 2026-06-03: "...a tension between softening Sun Belt demand and tightening national inventory that @mikesimonsen flagged Monday." — the @mikesimonsen handle had no link and the actual Monday tweet was not linked. Required: "...that [@mikesimonsen flagged Monday](https://twitter.com/mikesimonsen/status/...)."
 
+BREAK INTO PARAGRAPHS LIKE A HUMAN WRITES (HARD GATE — TOP COMPLAINT 2026-06-03). Theme and roundup summaries are NOT walls of text. They MUST be broken into multiple short paragraphs separated by `\\n\\n` whenever the prose covers more than one distinct point, voice, or sub-topic.
+
+Concrete rules for paragraph breaks inside conversation_themes[i].summary AND conversation_roundups[i].summary:
+
+  (1) NO PARAGRAPH MAY RUN LONGER THAN ~3 SENTENCES OR ~75 WORDS. If your draft paragraph has 4+ sentences, find the natural break point and split. Each paragraph should fit on a phone screen without scrolling.
+
+  (2) A NEW VOICE = A NEW PARAGRAPH. Every time you introduce a new author/handle/outlet that wasn't the subject of the previous sentence, start a new paragraph. Example: a paragraph ending with "[@cayimby reported](url) the bill passed" and the next claim citing @dbroockman — `\\n\\n` between them, then `[@dbroockman noted](url) ...`.
+
+  (3) A NEW DATA POINT FROM A NEW SOURCE = A NEW PARAGRAPH. Even when the topic is the same (e.g., insurance pricing), if one paragraph cites HousingWire and the next cites NY Fed, those are two paragraphs. The shared topic does not make them one paragraph.
+
+  (4) A TIME-SHIFT = A NEW PARAGRAPH. "Earlier this week," / "Monday," / "Tuesday," — anything moving between today's lede and historical context starts a new paragraph. DON'T weld today's news and earlier-this-week context into one paragraph.
+
+  (5) A NEW LEVEL OF GOVERNMENT, NEW MECHANISM, OR NEW MARKET = A NEW PARAGRAPH. Federal → state → local: separate paragraphs. Supply story → demand story: separate paragraphs. National data → regional data: separate paragraphs.
+
+  (6) THE BLANK LINE IS THE TRANSITION. Do NOT write a transitional word at the start of the new paragraph (no "Separately,", "Meanwhile,", "On a separate track,", etc.). The blank line between paragraphs is itself the transition. Start each new paragraph with the substantive claim — a name, a number, a verb.
+
+Write the way a thoughtful human journalist writes for a daily newsletter: short paragraphs, each one a discrete beat. A theme/roundup summary with 3-5 voices or sub-points should be 3-5 short paragraphs, not one mega-paragraph.
+
+CONCRETE FAILURE EXAMPLE (briefing #138, the kind of wall-of-text the reader explicitly complained about — DO NOT DO THIS):
+
+  "Florida's housing pain is broadening. [CNBC reported](url1) Lennar slashed margins to clear inventory while [HousingWire flagged](url2) PulteGroup is opening a new community in Volusia County despite the slowdown — a bet on long-term migration even as near-term sales weaken. [@SteveSaretsky noted](url3) Florida's existing-home inventory hit a decade high. [@PHfloor warned](url4) that Tampa rents are now falling year-over-year, the first metro to flip negative since 2022. Earlier this week, [Inman covered](url5) NAR's revised settlement timeline pushing implementation to Q4. [@cayimby argued](url6) the bigger picture is overbuilding in coastal markets while the interior lags."
+
+REQUIRED FIX (same content, broken like a human writes):
+
+  "Florida's housing pain is broadening. [CNBC reported](url1) Lennar slashed margins to clear inventory, while [HousingWire flagged](url2) PulteGroup opening a new community in Volusia County — a bet on long-term migration even as near-term sales weaken.
+
+  [@SteveSaretsky noted](url3) Florida's existing-home inventory hit a decade high. [@PHfloor warned](url4) that Tampa rents are now falling year-over-year, the first metro to flip negative since 2022.
+
+  Earlier this week, [Inman covered](url5) NAR's revised settlement timeline pushing implementation to Q4.
+
+  [@cayimby argued](url6) the bigger picture is overbuilding in coastal markets while the interior lags."
+
+That fix took ONE mega-paragraph and produced four short paragraphs, each a discrete beat: builder strategy / inventory & rent data / NAR timeline / the bigger-picture take. Each one a discrete beat on the same theme. No transition words; the blank lines do the work.
+
+Apply this rule to EVERY theme summary and EVERY roundup summary. If your draft has any paragraph running 4+ sentences, you have not yet finished writing it.
+
 4d. PRESERVE TECHNICAL PRECISION WHEN PARAPHRASING. When a source uses a specific technical term — especially in housing/economics where similar-sounding terms describe different things — KEEP THAT EXACT TERM. Do not generalize, smooth, or simplify it. The reader is sophisticated and the distinctions matter.
 
 Housing pipeline (most common trap):
@@ -2670,6 +2874,14 @@ Generate the daily briefing JSON. LEAD WITH CONVERSATION — what are people deb
         briefing["stats_summary"]["total_items_analyzed"] = len(all_items)
         briefing["stats_summary"]["conversation_items"] = len(conversation_items)
         briefing["stats_summary"]["platforms_active"] = len(set(i["source"] for i in all_items))
+
+        # CITED-sources breakdown — sources that actually appear in the
+        # briefing's markdown links (not just everything we ingested).
+        # Grouped by source-type with named publications inside. Lookup
+        # each cited URL in the items table to get its source-type +
+        # display name; URL-only classification fallback for publisher
+        # URLs the model added by hand (e.g., bloomberg.com, ft.com).
+        briefing["stats_summary"]["cited_sources"] = _compute_cited_sources(briefing, conn)
 
         # Attach collection errors for email transparency
         if collection_errors:
