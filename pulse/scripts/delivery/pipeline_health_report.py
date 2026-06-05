@@ -199,70 +199,123 @@ def _parse_opml(path: str) -> list[dict]:
 # ── Stage probes ───────────────────────────────────────────────────────
 
 def probe_twitter(stage: Stage, conn: sqlite3.Connection) -> None:
-    cutoff = _last_24h_iso(24)
+    """Twitter scrape health.
+
+    The actual scrape is `apidojo/twitter-list-scraper` against two
+    Twitter Lists maintained ON TWITTER (PULSE_LIST_ID and
+    SUPER_SMART_LIST_ID). config.py's TWITTER_ACCOUNTS / AI_ROUNDUP_ACCOUNTS
+    / SUPER_SMART_HANDLES lists are vestigial and NOT what gets scraped.
+
+    Real signals: items captured, distinct authors, run errors, and
+    "previously-active accounts now silent" (authors who tweeted in the
+    last 60d but not the last 14d — likely dormant or deactivated).
+    """
+    cutoff_24h = _last_24h_iso(24)
+    cutoff_14d = _last_24h_iso(24 * 14)
+    cutoff_60d = _last_24h_iso(24 * 60)
+
     row = conn.execute(
         "SELECT COUNT(*) AS c, COUNT(DISTINCT author) AS authors "
         "FROM items WHERE source='twitter' AND collected_at >= ?",
-        (cutoff,),
+        (cutoff_24h,),
     ).fetchone()
     items = row["c"]
-    authors = row["authors"]
-    expected_handles = set()
-    if _cfg is not None:
-        for name in ("TWITTER_ACCOUNTS", "AI_ROUNDUP_ACCOUNTS", "SUPER_SMART_HANDLES"):
-            try:
-                v = getattr(_cfg, name)
-                expected_handles.update(h.lower() for h in (v or []))
-            except Exception:
-                pass
+    authors_24h = row["authors"]
 
-    seen_handles: set[str] = set()
-    for r in conn.execute(
-        "SELECT DISTINCT LOWER(REPLACE(author,'@','')) AS h "
-        "FROM items WHERE source='twitter' AND collected_at >= ?",
-        (cutoff,),
-    ).fetchall():
-        if r["h"]:
-            seen_handles.add(r["h"])
-    expected_covered = (
-        len(expected_handles & seen_handles) if expected_handles else 0
-    )
-    missing_expected = (
-        sorted(expected_handles - seen_handles) if expected_handles else []
-    )
+    # SuperSmart-tagged items (subset captured by the SUPER_SMART_LIST scrape).
+    super_smart_24h = conn.execute(
+        "SELECT COUNT(*) c, COUNT(DISTINCT author) a "
+        "FROM items WHERE source='twitter' AND collected_at >= ? "
+        "AND platform_tags LIKE '%super_smart%'",
+        (cutoff_24h,),
+    ).fetchone()
 
-    # Apify spend / errors from collection_runs
-    err_rows = conn.execute(
-        "SELECT started_at, error FROM collection_runs "
-        "WHERE source='twitter' AND started_at >= ? AND error != '' "
-        "ORDER BY started_at DESC LIMIT 5",
-        (cutoff,),
-    ).fetchall()
+    # Apify list IDs being scraped (from the collector module's constants).
+    pulse_list_id = "2046263290972582212"
+    super_smart_list_id = os.environ.get("SUPER_SMART_LIST_ID", "2053622551553744939")
+    list_max_items = 750
+    try:
+        import importlib
+        _tw = importlib.import_module("collectors.twitter_apify")
+        pulse_list_id = getattr(_tw, "PULSE_LIST_ID", pulse_list_id)
+        super_smart_list_id = getattr(_tw, "SUPER_SMART_LIST_ID", super_smart_list_id) or super_smart_list_id
+        list_max_items = getattr(_tw, "LIST_MAX_ITEMS", list_max_items)
+    except Exception:
+        pass
+
+    # Detect previously-active accounts now silent: authors who appeared
+    # in the last 60d but NOT the last 14d.
+    active_60d = {
+        r["h"] for r in conn.execute(
+            "SELECT DISTINCT LOWER(REPLACE(author,'@','')) AS h "
+            "FROM items WHERE source='twitter' AND collected_at >= ?",
+            (cutoff_60d,),
+        ).fetchall() if r["h"]
+    }
+    active_14d = {
+        r["h"] for r in conn.execute(
+            "SELECT DISTINCT LOWER(REPLACE(author,'@','')) AS h "
+            "FROM items WHERE source='twitter' AND collected_at >= ?",
+            (cutoff_14d,),
+        ).fetchall() if r["h"]
+    }
+    went_silent = active_60d - active_14d
+
+    # Apify run errors (collection_runs is best-effort — may not exist).
+    err_rows: list = []
+    try:
+        err_rows = conn.execute(
+            "SELECT started_at, error FROM collection_runs "
+            "WHERE source='twitter' AND started_at >= ? AND error != '' "
+            "ORDER BY started_at DESC LIMIT 5",
+            (cutoff_24h,),
+        ).fetchall()
+    except Exception:
+        pass
 
     stage.row("Items collected (24h)", _fmt_int(items))
-    stage.row("Distinct authors (24h)", _fmt_int(authors))
+    stage.row("Distinct authors (24h)", _fmt_int(authors_24h))
     stage.row(
-        "Configured handles covered",
-        f"{expected_covered} / {len(expected_handles)}" if expected_handles
-        else "config not readable",
+        "Active authors (last 60d → last 14d)",
+        f"{len(active_60d)} → {len(active_14d)}"
+    )
+    stage.row(
+        "Pulse list scraped",
+        f"twitter list_id={pulse_list_id}  budget={list_max_items} tweets/run"
+    )
+    stage.row(
+        "SuperSmart list scraped",
+        f"list_id={super_smart_list_id}  ({super_smart_24h['c']} items / "
+        f"{super_smart_24h['a']} authors today)"
     )
     if err_rows:
-        stage.row("Recent errors", len(err_rows))
+        stage.row("Apify errors (24h)", len(err_rows))
         for r in err_rows[:3]:
             stage.note(f"{r['started_at'][:16]}: {(r['error'] or '')[:160]}")
 
-    if items == 0:
-        stage.set(STATUS_BROKEN, "0 tweets collected in 24h")
-    elif items < 200 or (expected_handles and expected_covered < len(expected_handles) * 0.5):
-        stage.set(STATUS_WARN, f"only {_fmt_int(items)} items / {expected_covered} of {len(expected_handles)} handles")
-    else:
-        stage.headline = f"{_fmt_int(items)} items from {authors} authors"
+    if went_silent:
+        # Only flag if it's a notable count — a handful of dormant accounts
+        # is normal; >25 suggests something systemic.
+        sample = ", ".join(sorted(went_silent)[:8])
+        if len(went_silent) > 8:
+            sample += f", +{len(went_silent) - 8} more"
+        stage.note(
+            f"{len(went_silent)} account(s) tweeted within the last 60d but "
+            f"have been silent for 14+ days (likely dormant / deactivated / "
+            f"removed from the Twitter list): {sample}"
+        )
 
-    if missing_expected and stage.status != STATUS_BROKEN:
-        sample = ", ".join(missing_expected[:8])
-        if len(missing_expected) > 8:
-            sample += f", +{len(missing_expected) - 8} more"
-        stage.note(f"{len(missing_expected)} configured handle(s) returned 0 items in 24h: {sample}")
+    if items == 0:
+        stage.set(STATUS_BROKEN, "0 tweets captured in 24h — scrape failed")
+    elif items < 200:
+        stage.set(STATUS_WARN, f"only {_fmt_int(items)} items captured (expected ~750–3000)")
+    elif err_rows:
+        stage.set(STATUS_WARN, f"{len(err_rows)} Apify error(s) in last 24h")
+    else:
+        stage.headline = (
+            f"{_fmt_int(items)} items from {authors_24h} authors "
+            f"({super_smart_24h['c']} SuperSmart)"
+        )
 
 
 def probe_bluesky(stage: Stage, conn: sqlite3.Connection) -> None:
