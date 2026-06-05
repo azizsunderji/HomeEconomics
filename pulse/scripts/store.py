@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sqlite3
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
@@ -10,7 +11,23 @@ from typing import Optional
 
 from collectors import PulseItem
 
-DEFAULT_DB_PATH = Path(__file__).parent.parent / "data" / "pulse.db"
+# Canonical Dropbox path (where the user's local synth + dashboards write).
+# GHA rclones it down to the workspace `pulse/data/pulse.db` before pulse
+# jobs run, then writes back at the end. Scripts launched directly against
+# the in-repo default on the user's Mac would otherwise read the stale
+# workspace copy synced from the last GHA push. Honor a PULSE_DB env var
+# override (GHA sets this explicitly so the script-side default never
+# matters in production).
+_CANONICAL_DROPBOX_DB = Path("/Users/azizsunderji/Dropbox/Home Economics/Data/Pulse/pulse.db")
+_IN_REPO_FALLBACK = Path(__file__).parent.parent / "data" / "pulse.db"
+DEFAULT_DB_PATH = Path(
+    os.environ.get(
+        "PULSE_DB",
+        str(_CANONICAL_DROPBOX_DB)
+        if _CANONICAL_DROPBOX_DB.exists()
+        else str(_IN_REPO_FALLBACK),
+    )
+)
 
 
 def get_db(db_path: Optional[Path] = None) -> sqlite3.Connection:
