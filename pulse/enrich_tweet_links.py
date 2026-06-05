@@ -36,7 +36,14 @@ from urllib.parse import urlparse
 
 from playwright.async_api import async_playwright
 
-DB_PATH = Path(__file__).parent / "data" / "pulse.db"
+DB_PATH = Path(
+    os.environ.get(
+        "PULSE_DB",
+        "/Users/azizsunderji/Dropbox/Home Economics/Data/Pulse/pulse.db"
+        if Path("/Users/azizsunderji/Dropbox/Home Economics/Data/Pulse/pulse.db").exists()
+        else str(Path(__file__).parent / "data" / "pulse.db"),
+    )
+)
 LOG_PATH = Path("/tmp/pulse_enrich_tweet_links.log")
 
 # Domains we DON'T want to enrich — they're either useless (image hosts,
