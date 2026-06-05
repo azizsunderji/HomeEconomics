@@ -15,6 +15,7 @@ Usage: python fetch_journal_abstracts.py [--dry-run]
 from __future__ import annotations
 
 import argparse
+import os
 import asyncio
 import logging
 import re
@@ -31,7 +32,14 @@ try:
 except ImportError:
     browser_cookie3 = None
 
-DB_PATH = Path(__file__).parent / "data" / "pulse.db"
+DB_PATH = Path(
+    os.environ.get(
+        "PULSE_DB",
+        "/Users/azizsunderji/Dropbox/Home Economics/Data/Pulse/pulse.db"
+        if Path("/Users/azizsunderji/Dropbox/Home Economics/Data/Pulse/pulse.db").exists()
+        else str(Path(__file__).parent / "data" / "pulse.db"),
+    )
+)
 LOG_PATH = Path("/tmp/pulse_journal_abstracts.log")
 
 _CHROME_BASE = "/Users/azizsunderji/Library/Application Support/Google/Chrome"
