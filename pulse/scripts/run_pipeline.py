@@ -574,6 +574,51 @@ def cmd_synthesize(args):
             f"Journal pool (30d): {len(pool)} housing-relevant papers "
             f"(skipped {skipped_non_housing} non-housing)"
         )
+
+        # Exclude papers already shown as Paper of the Day in the last
+        # 14 days. The base rotation advances only 5/day so the same
+        # paper sits in 5 consecutive daily slices, and when the model
+        # judges it "best of 5" it gets picked every one of those days
+        # (user-flagged 2026-06-05: same Binder paper shipped in #137,
+        # #138, #139, #141). This exclusion guarantees no repeat within
+        # 14 days while preserving the model's editorial pick.
+        recently_used: set[str] = set()
+        try:
+            import sqlite3 as _excl_sqlite3
+            import json as _excl_json
+            with _excl_sqlite3.connect(str(DB_PATH)) as _excl_conn:
+                rows_excl = _excl_conn.execute(
+                    "SELECT content_json FROM briefings "
+                    "WHERE created_at >= datetime('now', '-14 days') "
+                    "AND briefing_type LIKE 'daily%'"
+                ).fetchall()
+            for (cj,) in rows_excl:
+                try:
+                    b_excl = _excl_json.loads(cj)
+                    p_excl = b_excl.get("paper_of_the_day") or {}
+                    if isinstance(p_excl, list):
+                        p_excl = p_excl[0] if p_excl else {}
+                    t_excl = (p_excl.get("title") or "").strip().lower()
+                    if t_excl:
+                        recently_used.add(t_excl)
+                except Exception:
+                    continue
+        except Exception as _excl_e:
+            logger.warning(
+                f"recent-paper exclusion lookup failed: {_excl_e}"
+            )
+
+        if recently_used:
+            before_excl = len(pool)
+            pool = [
+                p for p in pool
+                if (p.get("title") or "").strip().lower() not in recently_used
+            ]
+            logger.info(
+                f"Excluded {before_excl - len(pool)} paper(s) shown in last "
+                f"14 days; pool now {len(pool)}"
+            )
+
         # Stable ordering so rotation is deterministic
         pool.sort(key=lambda x: (x.get("title") or "").lower())
 
