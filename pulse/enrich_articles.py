@@ -29,7 +29,23 @@ except ImportError:
     # Only needed for local Chrome-cookie mode; cloud mode uses Browserbase.
     browser_cookie3 = None
 
-DB_PATH = Path(__file__).parent / "data" / "pulse.db"
+import os as _os_db
+
+# Match the canonical resolution used by v2_runner.py and
+# capture_frontpages.py: prefer the PULSE_DB env var (set by GHA to the
+# workspace path; set locally to the canonical Dropbox path), fall back
+# to the in-repo data/ copy if neither is set.
+#
+# Without this override, local runs of enrich_articles.py silently
+# pointed at the stale pulse/data/pulse.db Dropbox-sync copy (last
+# updated whenever GHA last pushed). That made it look like there were
+# zero items to enrich locally, masking the real cross-source extension.
+DB_PATH = Path(_os_db.environ.get(
+    "PULSE_DB",
+    "/Users/azizsunderji/Dropbox/Home Economics/Data/Pulse/pulse.db"
+    if Path("/Users/azizsunderji/Dropbox/Home Economics/Data/Pulse/pulse.db").exists()
+    else str(Path(__file__).parent / "data" / "pulse.db"),
+))
 LOG_PATH = Path("/tmp/pulse_enrich.log")
 
 _CHROME_BASE = "/Users/azizsunderji/Library/Application Support/Google/Chrome"
@@ -69,22 +85,53 @@ def _get_db() -> sqlite3.Connection:
 
 
 def _get_items_to_enrich(conn: sqlite3.Connection, hours: int, limit: int) -> list[dict]:
-    """Find recent RSS/news items to enrich with full article text."""
+    """Find recent items needing article-body enrichment.
+
+    Was previously restricted to source='rss'. Extended 2026-06-05 to
+    cover gmail (newsletter teasers with a 'read more' link), substack
+    (publishers serve only excerpts in RSS), and hackernews (item URL
+    points at the linked story). Filters out housekeeping URLs
+    (subscribe / unsubscribe / preferences / mail.google.com) so we
+    don't waste a Browserbase session on a manage-subscription page.
+
+    Also adds an SQL-level body-length filter: items whose body is
+    already >= MIN_BODY_LEN chars are presumed enriched (either from
+    the publisher's full-text RSS or a prior run) and skipped, instead
+    of being fetched then thrown out.
+    """
     from datetime import datetime, timezone, timedelta
     cutoff = (datetime.now(timezone.utc) - timedelta(hours=hours)).isoformat()
+    # The body-length gate applies only to RSS and HN. For those sources
+    # `body` IS the article-excerpt content, so a long body means we
+    # already have full text. For gmail + substack, `body` is the
+    # newsletter text and `url` points to the linked article — we want
+    # to fetch the article body regardless of how chatty the newsletter
+    # body is.
     rows = conn.execute("""
         SELECT id, url, title, body, source, feed_name, relevance_score
         FROM items
-        WHERE source = 'rss'
+        WHERE source IN ('rss', 'gmail', 'substack', 'hackernews')
           AND collected_at >= ?
           AND url != ''
           AND url NOT LIKE 'https://t.co/%'
           AND url NOT LIKE 'https://x.com/%'
           AND url NOT LIKE 'https://news.google.com/%'
+          AND url NOT LIKE 'https://mail.google.com/%'
+          AND url NOT LIKE 'https://substack.com/redirect/%'
+          AND url NOT LIKE '%/unsubscribe%'
+          AND url NOT LIKE '%/manage_subscription%'
+          AND url NOT LIKE '%/email-preferences%'
+          AND url NOT LIKE '%/preferences%'
+          AND url NOT LIKE '%action=unsubscribe%'
+          AND (
+            source IN ('gmail', 'substack')
+            OR (source IN ('rss', 'hackernews')
+                AND LENGTH(COALESCE(body, '')) < ?)
+          )
           AND platform_tags NOT LIKE '%Journals%'
         ORDER BY COALESCE(relevance_score, 0) DESC
         LIMIT ?
-    """, (cutoff, limit)).fetchall()
+    """, (cutoff, MIN_BODY_LEN, limit)).fetchall()
     return [dict(r) for r in rows]
 
 
