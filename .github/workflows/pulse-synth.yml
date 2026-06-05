@@ -39,6 +39,8 @@ jobs:
       BROWSERBASE_PROJECT_ID: ${{ secrets.BROWSERBASE_PROJECT_ID }}
       BROWSERBASE_CONTEXT_ID: ${{ secrets.BROWSERBASE_CONTEXT_ID }}
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      GMAIL_IMAP_USER: ${{ secrets.GMAIL_IMAP_USER }}
+      GMAIL_IMAP_PASSWORD: ${{ secrets.GMAIL_IMAP_PASSWORD }}
       SFTP_HOST: ${{ secrets.SFTP_HOST }}
       SFTP_USER: ${{ secrets.SFTP_USER }}
       SFTP_KEY: ${{ secrets.SFTP_KEY }}
