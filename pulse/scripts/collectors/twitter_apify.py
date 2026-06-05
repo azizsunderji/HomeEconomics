@@ -48,7 +48,14 @@ SUPER_SMART_LIST_ID = os.environ.get("SUPER_SMART_LIST_ID", "2053622551553744939
 SUPER_SMART_MAX_ITEMS = 200  # smaller budget — list is curated short
 
 # DB path for budget tracking (same DB as pulse data, synced via rclone)
-_DB_PATH = Path(__file__).parent.parent.parent / "data" / "pulse.db"
+_DB_PATH = Path(
+    os.environ.get(
+        "PULSE_DB",
+        "/Users/azizsunderji/Dropbox/Home Economics/Data/Pulse/pulse.db"
+        if Path("/Users/azizsunderji/Dropbox/Home Economics/Data/Pulse/pulse.db").exists()
+        else str(Path(__file__).parent.parent.parent / "data" / "pulse.db"),
+    )
+)
 
 
 def _get_db() -> sqlite3.Connection:
