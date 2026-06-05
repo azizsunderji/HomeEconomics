@@ -63,6 +63,13 @@ def run_collectors(conn, sources: list[str] | None = None) -> dict:
         "substack": lambda: __import__("collectors.rss_substacks", fromlist=["collect"]).collect(),
         "twitter": lambda: __import__("collectors.twitter_apify", fromlist=["collect"]).collect(),
         "gmail": lambda: __import__("collectors.gmail", fromlist=["collect"]).collect(),
+        # Personal Gmail (aziz.sunderji@gmail.com) via IMAP. Workspace
+        # account is handled by `gmail` above (OAuth); the personal one
+        # cannot use OAuth because the Internal OAuth app is Workspace-
+        # only. Skips cleanly if GMAIL_IMAP_PASSWORD is unset.
+        "gmail_personal": lambda: __import__(
+            "collectors.gmail_imap", fromlist=["collect_personal_gmail_imap"]
+        ).collect_personal_gmail_imap(),
     }
 
     # Filter to requested sources
