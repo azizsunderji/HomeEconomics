@@ -1293,6 +1293,104 @@ def _strip_forbidden_bridges(briefing: dict) -> dict:
     return briefing
 
 
+# ────────────────────────────────────────────────────────────────────────────
+# Substack URL unwrapping.
+#
+# Substack delivery emails wrap article URLs in tracking redirects:
+#   https://substack.com/redirect/2/<base64-of-{"e":"<actual-url>"}>
+# where the "e" inner URL is typically a /subscribe page whose `next` query
+# parameter holds the actual article URL. Synth gets the redirect URL,
+# can't tell what the underlying article is, and won't surface clean
+# citation links. Worse, the model often skips the citation entirely when
+# the URL looks ugly.
+#
+# This unwraps such URLs at synthesis time so the model sees + cites the
+# real article URL.
+# ────────────────────────────────────────────────────────────────────────────
+
+import base64 as _base64_su
+import urllib.parse as _urlparse_su
+
+_SUBSTACK_REDIRECT_RE = re.compile(
+    r"^https?://substack\.com/redirect/\d+/([A-Za-z0-9+/=_-]+)"
+)
+_URL_TRACKING_PARAMS = {
+    "utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term",
+    "r", "next", "s", "publication_id", "post_id", "triedRedirect",
+    "isFreemail", "token",
+}
+
+
+def _strip_tracking_params(url: str) -> str:
+    try:
+        parts = _urlparse_su.urlsplit(url)
+        q = [
+            (k, v) for k, v in _urlparse_su.parse_qsl(parts.query)
+            if k not in _URL_TRACKING_PARAMS
+        ]
+        new_q = _urlparse_su.urlencode(q)
+        return _urlparse_su.urlunsplit(
+            (parts.scheme, parts.netloc, parts.path, new_q, "")
+        )
+    except Exception:
+        return url
+
+
+def unwrap_substack_redirect(url: str) -> str:
+    """Decode a Substack tracking-redirect URL to the underlying article
+    URL. Returns the input URL unchanged when it isn't a Substack redirect
+    or when decoding fails."""
+    if not url:
+        return url
+    m = _SUBSTACK_REDIRECT_RE.match(url)
+    if not m:
+        return url
+    blob = m.group(1)
+    b = blob + "=" * ((4 - len(blob) % 4) % 4)
+    try:
+        decoded = _base64_su.b64decode(
+            b, altchars=b"-_", validate=False
+        ).decode("utf-8", "replace")
+    except Exception:
+        return url
+    # The decoded blob is JSON followed by Substack's JWT signature
+    # (".<sig>"). Truncate at the first closing brace and parse.
+    end = decoded.find("}")
+    if end < 0:
+        return url
+    try:
+        data = json.loads(decoded[: end + 1])
+    except Exception:
+        return url
+    inner = (data.get("e") or "").strip()
+    if not inner.startswith("http"):
+        return url
+    # Prefer the `next` param when present — that's the actual article
+    # URL the subscribe wall would redirect to after sign-in.
+    try:
+        inner_parts = _urlparse_su.urlsplit(inner)
+        qs = dict(_urlparse_su.parse_qsl(inner_parts.query))
+        nxt = (qs.get("next") or "").strip()
+        if nxt.startswith("http"):
+            return _strip_tracking_params(nxt)
+    except Exception:
+        pass
+    return _strip_tracking_params(inner)
+
+
+def unwrap_item_urls(items: list[dict]) -> int:
+    """Walk a list of item dicts, unwrap any Substack-redirect URLs in
+    place. Returns the count of URLs that were changed."""
+    changed = 0
+    for it in items:
+        u = it.get("url") or ""
+        new_u = unwrap_substack_redirect(u)
+        if new_u != u:
+            it["url"] = new_u
+            changed += 1
+    return changed
+
+
 # Sentence-leading time-shift phrases that should start a new paragraph.
 _TIME_SHIFT_LEAD_RE = re.compile(
     r"^\s*(?:"
@@ -2559,6 +2657,15 @@ def generate_daily_briefing(
 
     # Gather all inputs
     all_items = get_items_since(conn, hours=24, min_relevance=0)
+
+    # Unwrap Substack tracking-redirect URLs to the underlying article
+    # URLs. Without this, citations point to .../substack.com/redirect/...
+    # which the model treats as unciteable and frequently drops entirely
+    # (user-flagged 2026-06-05 case: Aziz's own Luxury Boom post used as
+    # roundup anchor but not cited because the URL was a redirect blob).
+    _unwrapped = unwrap_item_urls(all_items)
+    if _unwrapped:
+        logger.info(f"unwrapped {_unwrapped} substack redirect URL(s) before synth")
     # Apply Twitter author blocklist at synthesis time. The same blocklist
     # gates new tweets from being collected (twitter_apify.py), but pre-existing
     # items already in the DB from earlier collection runs would otherwise leak
