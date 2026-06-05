@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 import json
+import os
 import sqlite3
 import re
 from datetime import datetime, timezone, timedelta
@@ -9,7 +10,14 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 from pathlib import Path
 from urllib.parse import urlparse
 
-DB_PATH = Path(__file__).parent.parent / "data" / "pulse.db"
+DB_PATH = Path(
+    os.environ.get(
+        "PULSE_DB",
+        "/Users/azizsunderji/Dropbox/Home Economics/Data/Pulse/pulse.db"
+        if Path("/Users/azizsunderji/Dropbox/Home Economics/Data/Pulse/pulse.db").exists()
+        else str(Path(__file__).parent.parent / "data" / "pulse.db"),
+    )
+)
 TEMPLATE = """<!DOCTYPE html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Institutional Signal Triage</title>
