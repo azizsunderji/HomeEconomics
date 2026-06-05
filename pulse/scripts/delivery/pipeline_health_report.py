@@ -460,52 +460,109 @@ def probe_rss_journals(stage: Stage, conn: sqlite3.Connection) -> None:
 
 
 def probe_gmail_workspace(stage: Stage, conn: sqlite3.Connection) -> None:
+    """Workspace OAuth health.
+
+    The /email skill says ~/.gmail_token.json is canonical and the env
+    vars are fallbacks. In the user's setup the Workspace token actually
+    lives inside the GMAIL_TOKENS array (alongside a now-broken personal
+    token). So this probe collects candidates from ALL sources (file +
+    GMAIL_TOKEN + GMAIL_TOKENS array) and reports ✓ if ANY of them
+    refreshes successfully AND identifies as aziz@home-economics.us.
+    Each candidate is probed independently — one broken candidate does
+    NOT short-circuit the rest.
+    """
+    import base64 as _b64
+
     cutoff = _last_24h_iso(24)
-    # Workspace items come through gmail collector — source='gmail' or 'substack'.
-    # We can't perfectly distinguish workspace vs IMAP via the items table.
-    # Use a heuristic: GMAIL_TOKEN test = workspace, GMAIL_IMAP* = personal.
-    token_blob = os.environ.get("GMAIL_TOKEN") or os.environ.get("GMAIL_TOKENS") or ""
-    token_status = "not set"
-    refresh_ok = False
-    if token_blob:
+
+    sources_tried: list[str] = []
+    candidates: list[tuple[str, dict]] = []  # (label, token-dict)
+
+    # 1. Canonical file (per /email skill)
+    token_file = Path.home() / ".gmail_token.json"
+    if token_file.exists():
+        sources_tried.append("~/.gmail_token.json")
+        try:
+            candidates.append(("~/.gmail_token.json", json.loads(token_file.read_text())))
+        except Exception as e:
+            stage.note(f"~/.gmail_token.json parse failed: {e}")
+
+    # 2. GMAIL_TOKEN env (single account)
+    raw_single = os.environ.get("GMAIL_TOKEN", "").strip()
+    if raw_single:
+        sources_tried.append("GMAIL_TOKEN")
         try:
             try:
-                data = json.loads(token_blob)
+                d = json.loads(raw_single)
             except json.JSONDecodeError:
-                import base64
-                data = json.loads(base64.b64decode(token_blob))
-            tokens = data if isinstance(data, list) else [data]
-            for t in tokens:
-                try:
-                    resp = httpx.post(
-                        "https://oauth2.googleapis.com/token",
-                        data={
-                            "client_id": t.get("client_id", ""),
-                            "client_secret": t.get("client_secret", ""),
-                            "refresh_token": t.get("refresh_token", ""),
-                            "grant_type": "refresh_token",
-                        },
-                        timeout=HTTP_TIMEOUT,
-                    )
-                    if resp.status_code == 200:
-                        refresh_ok = True
-                        token_status = "refresh OK"
-                    else:
-                        token_status = f"refresh HTTP {resp.status_code}: {resp.text[:120]}"
-                        break
-                except Exception as e:
-                    token_status = f"refresh failed: {type(e).__name__}: {e}"
-                    break
+                d = json.loads(_b64.b64decode(raw_single))
+            candidates.append(("GMAIL_TOKEN", d))
         except Exception as e:
-            token_status = f"GMAIL_TOKEN parse failed: {e}"
+            stage.note(f"GMAIL_TOKEN parse failed: {e}")
 
-    # Items: gmail + substack from IMAP accounts excluded would be ideal; fallback
+    # 3. GMAIL_TOKENS env (account array)
+    raw_multi = os.environ.get("GMAIL_TOKENS", "").strip()
+    if raw_multi:
+        sources_tried.append("GMAIL_TOKENS")
+        try:
+            try:
+                arr = json.loads(raw_multi)
+            except json.JSONDecodeError:
+                arr = json.loads(_b64.b64decode(raw_multi))
+            if isinstance(arr, list):
+                for i, t in enumerate(arr):
+                    candidates.append((f"GMAIL_TOKENS[{i}]", t))
+            elif isinstance(arr, dict):
+                candidates.append(("GMAIL_TOKENS", arr))
+        except Exception as e:
+            stage.note(f"GMAIL_TOKENS parse failed: {e}")
+
+    # Try each candidate; succeed on first that returns the Workspace addr.
+    workspace_ok = False
+    refresh_failures: list[str] = []
+    profile_failures: list[str] = []
+    found_emails: list[str] = []
+    for label, t in candidates:
+        try:
+            r = httpx.post(
+                "https://oauth2.googleapis.com/token",
+                data={
+                    "client_id": t.get("client_id", ""),
+                    "client_secret": t.get("client_secret", ""),
+                    "refresh_token": t.get("refresh_token", ""),
+                    "grant_type": "refresh_token",
+                },
+                timeout=HTTP_TIMEOUT,
+            )
+            if r.status_code != 200:
+                refresh_failures.append(f"{label}: HTTP {r.status_code}")
+                continue
+            access_tok = r.json().get("access_token")
+            if not access_tok:
+                refresh_failures.append(f"{label}: no access_token in response")
+                continue
+            pr = httpx.get(
+                "https://gmail.googleapis.com/gmail/v1/users/me/profile",
+                headers={"Authorization": f"Bearer {access_tok}"},
+                timeout=HTTP_TIMEOUT,
+            )
+            if pr.status_code != 200:
+                profile_failures.append(f"{label}: profile HTTP {pr.status_code}")
+                continue
+            addr = (pr.json().get("emailAddress") or "").lower()
+            found_emails.append(f"{label}→{addr}")
+            if addr == "aziz@home-economics.us":
+                workspace_ok = True
+                break  # success — Workspace token found
+        except Exception as e:
+            refresh_failures.append(f"{label}: {type(e).__name__}: {e}")
+
+    # Items in last 24h via the OAuth-Gmail path (exclude IMAP-sourced).
     items_count = conn.execute(
         "SELECT COUNT(*) c FROM items WHERE source IN ('gmail','substack') "
         "AND collected_at >= ? AND source_id NOT LIKE 'imap_%'",
         (cutoff,),
     ).fetchone()["c"]
-
     top_senders = conn.execute(
         "SELECT author, COUNT(*) c FROM items WHERE source IN ('gmail','substack') "
         "AND collected_at >= ? AND source_id NOT LIKE 'imap_%' "
@@ -513,20 +570,28 @@ def probe_gmail_workspace(stage: Stage, conn: sqlite3.Connection) -> None:
         (cutoff,),
     ).fetchall()
 
-    stage.row("OAuth status", token_status)
+    stage.row("Token sources checked", ", ".join(sources_tried) or "(none)")
+    stage.row("Candidates probed", _fmt_int(len(candidates)))
+    if found_emails:
+        stage.note(f"Identified accounts: {', '.join(found_emails)}")
+    if refresh_failures:
+        stage.note(f"Refresh failures: {'; '.join(refresh_failures[:3])}")
+    if profile_failures:
+        stage.note(f"Profile failures: {'; '.join(profile_failures[:3])}")
     stage.row("Items (24h, workspace)", _fmt_int(items_count))
     if top_senders:
         senders = ", ".join(f"{(r['author'] or '?')[:40]} ({r['c']})" for r in top_senders[:6])
         stage.note(f"Top senders (24h): {senders}")
 
-    if not token_blob:
-        stage.set(STATUS_BROKEN, "GMAIL_TOKEN / GMAIL_TOKENS not set")
-    elif not refresh_ok:
-        stage.set(STATUS_BROKEN, "OAuth refresh failed")
+    if not candidates:
+        stage.set(STATUS_BROKEN, "no Gmail OAuth token candidates found anywhere")
+    elif not workspace_ok:
+        stage.set(STATUS_BROKEN,
+                  "no candidate returned aziz@home-economics.us — Workspace token bad / missing")
     elif items_count == 0:
-        stage.set(STATUS_WARN, "OAuth OK but 0 items in 24h")
+        stage.set(STATUS_WARN, "Workspace OAuth OK but 0 items collected in 24h")
     else:
-        stage.headline = f"{_fmt_int(items_count)} items, refresh OK"
+        stage.headline = f"{_fmt_int(items_count)} items, Workspace token OK"
 
 
 def probe_gmail_imap(stage: Stage, conn: sqlite3.Connection) -> None:
