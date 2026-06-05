@@ -173,6 +173,17 @@ def load_corpus(conn: sqlite3.Connection, hours: int = DEFAULT_LOOKBACK_HOURS,
              for r in rows]
     logger.info(f"loaded {len(items)} raw items in last {hours}h")
 
+    # Unwrap Substack tracking-redirect URLs to the underlying article
+    # URLs (synthesize.py has the impl; we import to keep the unwrap
+    # rule defined in exactly one place).
+    try:
+        from analysis.synthesize import unwrap_item_urls as _unwrap
+        n_unwrapped = _unwrap(items)
+        if n_unwrapped:
+            logger.info(f"unwrapped {n_unwrapped} substack redirect URL(s)")
+    except Exception as _e:
+        logger.warning(f"substack-URL unwrap unavailable: {_e}")
+
     # Aggregate threads: consecutive same-author tweets/bsky posts within
     # THREAD_AGGREGATION_WINDOW_MIN of each other become one synthetic item.
     items = _aggregate_threads(items)
