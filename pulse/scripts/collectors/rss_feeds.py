@@ -75,7 +75,7 @@ def _parse_date(entry: dict) -> Optional[datetime]:
 def collect(
     opml_path: str = DEFAULT_OPML_PATH,
     max_per_feed: int = 25,
-    max_age_hours: int = 24,
+    max_age_hours: int = 72,
 ) -> list[PulseItem]:
     """Fetch all feeds from OPML and collect recent entries.
 
@@ -106,9 +106,90 @@ def collect(
         except Exception:
             return u
 
+    # ──────────────────────────────────────────────────────────────────
+    # Why we don't call `feedparser.parse(url)` directly:
+    # feedparser's built-in HTTP fetcher silently fails on some publisher
+    # endpoints (e.g. seattletimes.com returns "mismatched tag" / 0
+    # entries even though the body parses fine when fetched with httpx).
+    # We route every feed through httpx with a real UA + follow_redirects,
+    # then pass the bytes to feedparser. That fixed Seattle Times +
+    # several other publisher feeds going dark in the pipeline.
+    #
+    # Brookings (and a handful of other XML feeds) ship malformed entity
+    # references like `&hellip;` that the XML parser flags as undefined.
+    # _sanitize_xml_entities() converts those bad `&…;` sequences to
+    # safe HTML-numeric escapes so feedparser can keep going.
+    # ──────────────────────────────────────────────────────────────────
+    import httpx as _httpx
+    import re as _re_rss
+    # Browser-like UA — seattletimes.com and a handful of other publishers
+    # 403 anything that looks like a script/bot. Real desktop UA gets through.
+    _UA = (
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/124.0.0.0 Safari/537.36"
+    )
+    _XML_BAD_ENTITY_RE = _re_rss.compile(
+        r"&(?!(?:amp|lt|gt|quot|apos|#\d+|#x[0-9a-fA-F]+);)([A-Za-z][A-Za-z0-9]*);"
+    )
+    _XML_BARE_AMP_RE = _re_rss.compile(r"&(?!#?\w+;)")
+
+    def _sanitize_xml_entities(b: bytes) -> bytes:
+        """Replace undefined named entities and bare `&` so an XML parser
+        that doesn't ship the HTML DTD can still parse the document.
+
+        - `&hellip;` / `&nbsp;` / other HTML-only entities → `&amp;hellip;`
+          etc. (escape the ampersand so the parser sees the text intact)
+        - bare `&` not followed by a known entity → `&amp;`
+        Both transformations are conservative: known XML entities (amp,
+        lt, gt, quot, apos) and numeric entities (`&#123;`, `&#x7B;`)
+        pass through untouched.
+        """
+        try:
+            text = b.decode("utf-8", errors="replace")
+        except Exception:
+            return b
+        text = _XML_BAD_ENTITY_RE.sub(r"&amp;\1;", text)
+        text = _XML_BARE_AMP_RE.sub("&amp;", text)
+        return text.encode("utf-8", errors="replace")
+
     for feed_info in feeds:
         try:
-            parsed = feedparser.parse(feed_info["url"])
+            # Fetch via httpx (lets us swap UA, follow redirects, and
+            # handle quirks consistently across feeds).
+            try:
+                r = _httpx.get(
+                    feed_info["url"],
+                    timeout=20,
+                    follow_redirects=True,
+                    headers={"User-Agent": _UA, "Accept": "application/rss+xml, application/atom+xml, application/xml;q=0.9, */*;q=0.8"},
+                )
+            except Exception as fetch_err:
+                logger.warning(
+                    f"Feed fetch failed for '{feed_info['title']}': {fetch_err}"
+                )
+                continue
+            if r.status_code != 200:
+                logger.warning(
+                    f"Feed '{feed_info['title']}' returned HTTP {r.status_code}"
+                )
+                continue
+
+            raw_bytes = r.content
+            parsed = feedparser.parse(raw_bytes)
+
+            # Retry with entity sanitization if the first pass bozo'd
+            # AND returned no entries (typical XML-undefined-entity case).
+            if parsed.bozo and not parsed.entries:
+                sanitized = _sanitize_xml_entities(raw_bytes)
+                if sanitized != raw_bytes:
+                    parsed_retry = feedparser.parse(sanitized)
+                    if parsed_retry.entries:
+                        logger.info(
+                            f"Feed '{feed_info['title']}' recovered after "
+                            f"entity sanitization: {len(parsed_retry.entries)} entries"
+                        )
+                        parsed = parsed_retry
 
             if parsed.bozo and not parsed.entries:
                 logger.warning(f"Feed error for '{feed_info['title']}': {parsed.bozo_exception}")
