@@ -13,6 +13,7 @@ Usage:
 from __future__ import annotations
 
 import logging
+import os
 import sqlite3
 from datetime import date
 from pathlib import Path
@@ -20,7 +21,14 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-_DB_PATH = Path(__file__).parent.parent.parent / "data" / "pulse.db"
+_DB_PATH = Path(
+    os.environ.get(
+        "PULSE_DB",
+        "/Users/azizsunderji/Dropbox/Home Economics/Data/Pulse/pulse.db"
+        if Path("/Users/azizsunderji/Dropbox/Home Economics/Data/Pulse/pulse.db").exists()
+        else str(Path(__file__).parent.parent.parent / "data" / "pulse.db"),
+    )
+)
 
 # Pricing per million tokens, in cents (so we store as integers)
 # Source: anthropic.com/pricing as of 2026-05
