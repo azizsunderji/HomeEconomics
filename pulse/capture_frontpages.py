@@ -345,15 +345,15 @@ def _compose_page_image(pdf_path: Path, out_path: Path) -> bool:
         page_img = page_img.resize((new_w, new_h), Image.LANCZOS).convert("RGBA")
 
         # Crop to top portion and fade to cream at the bottom.
-        # User feedback 2026-06-04 (second pass): image must end where the
-        # headline list ends. Measured live render: image at 270px wide
-        # was 285px tall, but masthead + 3 headlines text content is only
-        # ~145px on average. Need image ≈ headline text height. 0.20 keep
-        # + 0.08 ramp = ~0.28 of native page height gives ~145px image
-        # height — close enough to the natural variation in headline
-        # wrapping (124-167px across papers).
-        FADE_KEEP_FRAC = 0.20
-        FADE_RAMP_FRAC = 0.08
+        # With the responsive stacked-on-mobile layout the image and
+        # headlines no longer compete for height on mobile (image goes
+        # above headlines at full width), so we tune the crop for the
+        # desktop side-by-side case: image at 270px wide → ~155px tall,
+        # matches the desktop headline column. Mobile renders the same
+        # image at ~390px wide (full bleed), ~224px tall — fits nicely
+        # above the headlines stack.
+        FADE_KEEP_FRAC = 0.30
+        FADE_RAMP_FRAC = 0.10
         keep_h = int(new_h * FADE_KEEP_FRAC)
         ramp_h = int(new_h * FADE_RAMP_FRAC)
         crop_h = keep_h + ramp_h
