@@ -180,7 +180,7 @@ jobs:
       - name: Enrich articles via Browserbase
         if: steps.guard.outputs.should_run == 'true'
         working-directory: pulse
-        run: python enrich_articles.py --hours 24 --limit 150
+        run: python enrich_articles.py --hours 36 --limit 300
 
       - name: Enrich t.co links inside high-relevance tweets
         if: steps.guard.outputs.should_run == 'true'
