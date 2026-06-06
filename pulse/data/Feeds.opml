@@ -66,7 +66,6 @@
       <outline xmlUrl="https://rss.app/feeds/dyOmestbKGqbPYfU.xml" text="Housing policy in America" type="rss" htmlUrl="https://www.vox.com/housing" title="Housing policy in America" />
       <outline xmlUrl="https://www.latimes.com/business/realestate/rss2.0.xml" title="LA Times Real Estate" htmlUrl="https://www.latimes.com" type="rss" text="LA Times Real Estate" />
       <outline type="rss" title="City Journal" xmlUrl="https://feeds.feedburner.com/city-journal" htmlUrl="https://www.city-journal.org" text="City Journal" />
-      <outline htmlUrl="https://www.edwardconard.com/blog/" xmlUrl="https://www.edwardconard.com/feed/" type="rss" title="Edward Conard — Housing" text="Edward Conard — Housing" />
       <outline title="CoStar" type="rss" xmlUrl="https://rss.app/feeds/zSB2Za8WwpSvjb2z.xml" htmlUrl="https://www.costar.com/search?label=CoStar%20Insight" text="CoStar" />
       <outline type="rss" text="Gothamist: New York City Local News, Food, Arts &amp; Events" htmlUrl="https://gothamist.com/staff/david-brand" xmlUrl="https://rss.app/feeds/8q4JaNc99LWhqdjx.xml" title="Gothamist: New York City Local News, Food, Arts &amp; Events" />
       <outline text="Eye On Housing" title="Eye On Housing" type="rss" xmlUrl="https://eyeonhousing.org/feed/" htmlUrl="https://eyeonhousing.org" />

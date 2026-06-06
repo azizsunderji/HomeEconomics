@@ -7,16 +7,44 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import re
 import time
 from datetime import datetime, timezone
 from typing import Optional
 
 import feedparser
+import httpx
 
 from collectors import PulseItem
 from config import COMPETITOR_SUBSTACKS
 
 logger = logging.getLogger(__name__)
+
+# Browser-like UA — substack.com and several publisher domains 403 anything
+# that looks like a script/bot. The plain `feedparser.parse(url)` path uses
+# python-feedparser/X.X as the UA and gets silently blocked by ~25 of our
+# substack feeds. Routing through httpx with this UA recovers them.
+_UA = (
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/124.0.0.0 Safari/537.36"
+)
+_XML_BAD_ENTITY_RE = re.compile(
+    r"&(?!(?:amp|lt|gt|quot|apos|#\d+|#x[0-9a-fA-F]+);)([A-Za-z][A-Za-z0-9]*);"
+)
+_XML_BARE_AMP_RE = re.compile(r"&(?!#?\w+;)")
+
+
+def _sanitize_xml_entities(b: bytes) -> bytes:
+    """Replace undefined named entities and bare `&` so an XML parser
+    that doesn't ship the HTML DTD can still parse the document."""
+    try:
+        text = b.decode("utf-8", errors="replace")
+    except Exception:
+        return b
+    text = _XML_BAD_ENTITY_RE.sub(r"&amp;\1;", text)
+    text = _XML_BARE_AMP_RE.sub("&amp;", text)
+    return text.encode("utf-8", errors="replace")
 
 
 def _parse_date(entry: dict) -> Optional[datetime]:
@@ -46,7 +74,41 @@ def collect(
 
     for name, feed_url in substacks:
         try:
-            parsed = feedparser.parse(feed_url)
+            # Fetch via httpx with a real browser UA — feedparser's built-in
+            # fetcher gets blocked by substack.com and many publisher domains.
+            # Round-1 fix to rss_feeds.py never made it here.
+            try:
+                r = httpx.get(
+                    feed_url,
+                    timeout=20,
+                    follow_redirects=True,
+                    headers={
+                        "User-Agent": _UA,
+                        "Accept": "application/rss+xml, application/atom+xml, application/xml;q=0.9, */*;q=0.8",
+                    },
+                )
+            except Exception as fetch_err:
+                logger.warning(f"Substack fetch failed for '{name}': {fetch_err}")
+                continue
+
+            if r.status_code != 200:
+                logger.warning(f"Substack '{name}' returned HTTP {r.status_code}")
+                continue
+
+            raw_bytes = r.content
+            parsed = feedparser.parse(raw_bytes)
+
+            # Retry with entity sanitization if first pass bozo'd and got nothing.
+            if parsed.bozo and not parsed.entries:
+                sanitized = _sanitize_xml_entities(raw_bytes)
+                if sanitized != raw_bytes:
+                    parsed_retry = feedparser.parse(sanitized)
+                    if parsed_retry.entries:
+                        logger.info(
+                            f"Substack '{name}' recovered after entity sanitization: "
+                            f"{len(parsed_retry.entries)} entries"
+                        )
+                        parsed = parsed_retry
 
             if parsed.bozo and not parsed.entries:
                 logger.warning(f"Feed error for '{name}': {parsed.bozo_exception}")
@@ -64,10 +126,8 @@ def collect(
                 # Extract body — Substacks usually provide full HTML in content
                 body = ""
                 if "content" in entry and entry["content"]:
-                    import re
                     body = re.sub(r"<[^>]+>", "", entry["content"][0].get("value", "")).strip()[:3000]
                 elif "summary" in entry:
-                    import re
                     body = re.sub(r"<[^>]+>", "", entry["summary"]).strip()[:3000]
 
                 item = PulseItem(
