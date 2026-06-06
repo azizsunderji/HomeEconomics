@@ -733,31 +733,53 @@ def probe_press_mentions(stage: Stage, conn: sqlite3.Connection) -> None:
 # ── Enrichment ─────────────────────────────────────────────────────────
 
 def probe_article_enrichment(stage: Stage, conn: sqlite3.Connection) -> None:
+    """Enrichment status across all sources `enrich_articles.py` targets.
+
+    Was RSS-only until 2026-06-05; now covers rss + gmail + substack +
+    hackernews per the broadened scope. The probe matches what the
+    script actually targets so this section doesn't under-report.
+    """
     cutoff = _last_24h_iso(24)
+    SOURCES = ('rss', 'gmail', 'substack', 'hackernews')
+    src_in = "(" + ", ".join(f"'{s}'" for s in SOURCES) + ")"
+
     enriched = conn.execute(
-        "SELECT COUNT(*) c FROM items WHERE source='rss' "
-        "AND collected_at >= ? AND LENGTH(body) >= 500",
+        f"SELECT COUNT(*) c FROM items WHERE source IN {src_in} "
+        f"AND collected_at >= ? AND LENGTH(COALESCE(body,'')) >= 500",
         (cutoff,),
     ).fetchone()["c"]
     teaser = conn.execute(
-        "SELECT COUNT(*) c FROM items WHERE source='rss' "
-        "AND collected_at >= ? AND LENGTH(body) < 500",
+        f"SELECT COUNT(*) c FROM items WHERE source IN {src_in} "
+        f"AND collected_at >= ? AND LENGTH(COALESCE(body,'')) < 500",
         (cutoff,),
     ).fetchone()["c"]
     high_rel_no_body = conn.execute(
-        "SELECT COUNT(*) c FROM items WHERE source='rss' "
-        "AND collected_at >= ? AND relevance_score >= 60 AND LENGTH(body) < 500",
+        f"SELECT COUNT(*) c FROM items WHERE source IN {src_in} "
+        f"AND collected_at >= ? AND COALESCE(relevance_score,0) >= 60 "
+        f"AND LENGTH(COALESCE(body,'')) < 500",
         (cutoff,),
     ).fetchone()["c"]
-    stage.row("RSS items enriched (body ≥500 chars)", _fmt_int(enriched))
-    stage.row("RSS items still teaser-length", _fmt_int(teaser))
+    # Per-source breakdown so we can spot which channel is lagging.
+    per_src = {}
+    for s in SOURCES:
+        per_src[s] = conn.execute(
+            "SELECT COUNT(*) c FROM items WHERE source = ? "
+            "AND collected_at >= ? AND LENGTH(COALESCE(body,'')) >= 500",
+            (s, cutoff),
+        ).fetchone()["c"]
+
+    stage.row("Items enriched (body ≥500 chars, all sources)", _fmt_int(enriched))
+    stage.row("Items still teaser-length", _fmt_int(teaser))
     stage.row("High-relevance & still teaser", _fmt_int(high_rel_no_body))
     total = enriched + teaser
     pct = (enriched / total * 100) if total else 0
     stage.row("Enrichment rate", f"{pct:.0f}%")
+    stage.note("Per-source enriched (24h): " + " · ".join(
+        f"{s}={_fmt_int(per_src[s])}" for s in SOURCES
+    ))
     if total == 0:
-        stage.set(STATUS_WARN, "no RSS items to enrich")
-    elif high_rel_no_body > 20:
+        stage.set(STATUS_WARN, "no items to enrich")
+    elif high_rel_no_body > 30:
         stage.set(STATUS_WARN, f"{high_rel_no_body} high-relevance items missing body")
     else:
         stage.headline = f"{_fmt_int(enriched)} enriched, {pct:.0f}%"
