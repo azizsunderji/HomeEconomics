@@ -180,15 +180,29 @@ def main() -> None:
         with open(Path(args.debug_dir) / "v2_briefing.json", "w") as f:
             json.dump(v2, f, indent=2, default=str)
 
+    email_ok = False
     if not args.no_send:
-        ok = send_v2_email(v2, args.to, v1_id)
-        if not ok:
+        email_ok = send_v2_email(v2, args.to, v1_id)
+        if not email_ok:
             sys.exit(1)
     else:
         print("--no-send set; skipping email")
 
     if not args.no_store:
         v2_id = store_v2_briefing(conn, v2)
+        # Mark email_sent so the pipeline-health diagnostic stops
+        # flagging the v2 row as "briefing exists but not sent" (it does
+        # send, this column just wasn't being updated).
+        if email_ok:
+            try:
+                conn.execute(
+                    "UPDATE briefings SET email_sent = 1, email_sent_at = ? "
+                    "WHERE id = ?",
+                    (datetime.now(timezone.utc).isoformat(), v2_id),
+                )
+                conn.commit()
+            except Exception as _e:
+                logger.warning(f"failed to mark v2 briefing email_sent: {_e}")
         print(f"stored v2 briefing as id={v2_id}")
     else:
         print("--no-store set; skipping persistence")
