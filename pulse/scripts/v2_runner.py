@@ -84,10 +84,9 @@ def send_v2_email(v2_briefing: dict, to: str, source_v1_id: int) -> bool:
     if not api_key:
         logger.error("RESEND_API_KEY not set")
         return False
-    # v2 keeps the cited-sources box — that's the "diagnostic" surface the
-    # user moved from the main email 2026-06-05. v1's render now hides it
-    # by default; v2 explicitly opts in.
-    html, top_theme, theme_count = render_briefing_html(v2_briefing, with_sources_box=True)
+    # User 2026-06-06: hide the cited-sources box from v2 too. It'll
+    # surface in the daily pipeline-health diagnostic email instead.
+    html, top_theme, theme_count = render_briefing_html(v2_briefing, with_sources_box=False)
     date = v2_briefing.get("date") or datetime.now(timezone.utc).strftime("%b %d")
     subject = f"[Pulse V2 clusters] {top_theme} | vs #{source_v1_id} | {date}"
     if theme_count <= 1:
