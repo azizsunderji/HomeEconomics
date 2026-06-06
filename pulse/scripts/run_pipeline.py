@@ -591,16 +591,20 @@ def cmd_synthesize(args):
         # 14 days while preserving the model's editorial pick.
         recently_used: set[str] = set()
         try:
-            import sqlite3 as _excl_sqlite3
             import json as _excl_json
-            with _excl_sqlite3.connect(str(DB_PATH)) as _excl_conn:
-                rows_excl = _excl_conn.execute(
-                    "SELECT content_json FROM briefings "
-                    "WHERE created_at >= datetime('now', '-14 days') "
-                    "AND briefing_type LIKE 'daily%'"
-                ).fetchall()
-            for (cj,) in rows_excl:
+            # Reuse the already-open conn — the previous version tried
+            # sqlite3.connect(str(DB_PATH)) but DB_PATH isn't imported in
+            # this module, which raised NameError, hit the bare except
+            # below, and silently left recently_used empty. That's why
+            # the Binder paper kept repeating despite the rotation fix.
+            rows_excl = conn.execute(
+                "SELECT content_json FROM briefings "
+                "WHERE created_at >= datetime('now', '-14 days') "
+                "AND briefing_type LIKE 'daily%'"
+            ).fetchall()
+            for row_excl in rows_excl:
                 try:
+                    cj = row_excl["content_json"] if hasattr(row_excl, "keys") else row_excl[0]
                     b_excl = _excl_json.loads(cj)
                     p_excl = b_excl.get("paper_of_the_day") or {}
                     if isinstance(p_excl, list):
@@ -610,6 +614,7 @@ def cmd_synthesize(args):
                         recently_used.add(t_excl)
                 except Exception:
                     continue
+            logger.info(f"recent-paper exclusion set has {len(recently_used)} title(s)")
         except Exception as _excl_e:
             logger.warning(
                 f"recent-paper exclusion lookup failed: {_excl_e}"
