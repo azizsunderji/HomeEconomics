@@ -212,6 +212,17 @@ jobs:
           PULSE_DB: ${{ github.workspace }}/pulse/data/pulse.db
         run: python v2_runner.py --max-roundups 5 --to aziz@home-economics.us || echo "V2 run failed — continuing without"
 
+      - name: Send daily pipeline-health diagnostic email
+        # Stage-by-stage health report covering collection, enrichment,
+        # synthesis, front pages, and delivery. Goes only to aziz@... so
+        # he can spot anything broken in tomorrow's run. Failure here is
+        # informational only — never takes down the v1 or v2 send.
+        if: steps.guard.outputs.should_run == 'true'
+        working-directory: pulse/scripts
+        env:
+          PULSE_DB: ${{ github.workspace }}/pulse/data/pulse.db
+        run: python delivery/pipeline_health_report.py --to aziz@home-economics.us || echo "Health report failed — continuing without"
+
       - name: Push DB back to Dropbox
         # Run even on failure, but only if the guard let us proceed past the check.
         if: always() && steps.guard.outputs.should_run == 'true'
