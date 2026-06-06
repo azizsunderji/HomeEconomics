@@ -282,11 +282,16 @@ def _section_heading(text: str) -> str:
     )
 
 
-def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
+def render_briefing_html(briefing: dict, with_sources_box: bool = False) -> tuple[str, str, int]:
     """Render a conversation briefing dict as styled HTML email.
 
     Uses table-based layout for Gmail compatibility (Gmail strips <body>
     styles and ignores background on plain <div>s).
+
+    `with_sources_box=False` (default) hides the cited-sources box at the
+    top — user wanted it pulled out of the v1 production email
+    2026-06-05. v2_runner.py passes True so the v2 diagnostic email he
+    gets keeps showing it.
 
     Returns (html, top_theme_label, theme_count).
     """
@@ -322,15 +327,31 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
     top_theme = themes[0]["theme"][:60] if themes else "Daily Conversation"
     theme_count = len(themes)
 
-    # Cited-sources breakdown (icon-grouped, replaces the old ingested
-    # source_breakdown). Falls back to nothing — old briefings without
-    # cited_sources just won't show the box.
-    cited_sources_html = _render_cited_sources_box(stats.get("cited_sources") or {})
+    # Cited-sources breakdown (icon-grouped). Hidden in the v1 production
+    # email per user 2026-06-05; visible only when the caller explicitly
+    # opts in (v2_runner.py sets with_sources_box=True).
+    cited_sources_html = (
+        _render_cited_sources_box(stats.get("cited_sources") or {})
+        if with_sources_box else ""
+    )
 
     # Build HTML — table-based centering for Gmail
     html = f"""<!DOCTYPE html>
 <html>
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+/* Stack the front-pages 2-col rows on narrow viewports so the image
+   goes full-bleed above the headlines instead of cramming side-by-side. */
+@media screen and (max-width: 600px) {{
+  .fp-row {{ display: block !important; }}
+  .fp-cell {{ display: block !important; width: 100% !important; padding: 0 !important; }}
+  .fp-cell-img {{ padding-bottom: 14px !important; }}
+  .fp-cell img {{ max-width: 100% !important; width: 100% !important; height: auto !important; }}
+}}
+</style>
+</head>
 <body style="margin: 0; padding: 0; background-color: #F6F7F3;">
 <center>
 <table width="100%" cellpadding="0" cellspacing="0" bgcolor="#F6F7F3" style="background-color: #F6F7F3;">
@@ -440,12 +461,11 @@ def render_briefing_html(briefing: dict) -> tuple[str, str, int]:
                 f'{"".join(li_items)}</ul>'
             )
 
-            html += f"""<table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 24px;"><tr>
-<td width="45%" valign="top" style="padding-right: 16px;">
+            html += f"""<table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 24px;"><tr class="fp-row">
+<td class="fp-cell fp-cell-img" width="45%" valign="top" style="padding-right: 16px;">
   <a href="{paper_url}" target="_blank"><img src="https://home-economics.us/pulse-screenshots/{slug}.jpg?v={_cb}" alt="{_esc(masthead)} front page" width="100%" style="width: 100%; max-width: 270px; height: auto; display: block;"/></a>
 </td>
-<td width="55%" valign="top">
-  <div style="font-size: 14px; color: #888; text-transform: uppercase; letter-spacing: 1.5px; margin: 0 0 10px 0; border-bottom: 1px solid #ccc; padding-bottom: 6px; font-family: {FONT};">{_esc(masthead)}</div>
+<td class="fp-cell" width="55%" valign="top">
   {headline_list}
 </td>
 </tr></table>
