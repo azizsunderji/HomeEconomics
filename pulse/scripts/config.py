@@ -276,21 +276,6 @@ TWITTER_ACCOUNTS = [
 TWITTER_AUTHOR_BLOCKLIST = {
     "lymanstoneky",
     "jonbrooks",
-    "nickgerli1",
-}
-
-# Cross-source content deny list. Applied at classification time: any item
-# whose author, title, body, or feed_name contains one of these substrings
-# (case-insensitive) gets relevance_score=0 and content_type='denylisted',
-# so it never reaches synthesis. Covers tweets BY a person, tweets MENTIONING
-# them, gmail newsletters from them, articles quoting them, etc.
-#
-# Use sparingly. This is a hard filter — there is no override path. Reserved
-# for sources the user has explicitly declared persona non grata.
-CONTENT_DENY_LIST = {
-    "nickgerli1",
-    "nick gerli",
-    "reventure",
 }
 
 # AI Roundup accounts: shown in a separate "AI Roundup" section in the email.
