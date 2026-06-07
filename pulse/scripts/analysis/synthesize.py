@@ -165,10 +165,10 @@ def _format_items_for_conversation(items: list[dict], limit: int = 280) -> str:
     # equal terms loses because tweets feel complete while truncated articles
     # feel incomplete — so Sonnet picks tweets. The reserve fixes that.
     MAX_PER_AUTHOR_SOCIAL = 8  # per-author cap is now per-THREAD, not per-tweet:
-                                # threads (CSElmendorf's 14-tweet CA housing analysis,
-                                # nickgerli1's 12-tweet Seattle correction) need all
-                                # their tweets in Sonnet's view to make sense as a
-                                # coherent argument. Sonnet collapses them into one
+                                # long threads (e.g. CSElmendorf's 14-tweet CA
+                                # housing analyses) need all their tweets in
+                                # Sonnet's view to make sense as a coherent
+                                # argument. Sonnet collapses them into one
                                 # summary per author downstream (see prompt rule 12d).
                                 # Cap at 8/author to prevent runaway thread spam.
     SUPER_SMART_RESERVED_SLOTS = 80  # guaranteed seats for SuperSmart-tagged items —
@@ -813,12 +813,9 @@ def _dedup_cross_theme_citations(briefing: dict) -> dict:
     an earlier theme. Does NOT drop whole themes (that's Pass A, which was
     too aggressive — disabled per 2026-05-11 user feedback). This catches the
     real failure mode: the same fact (same tweet URL) showing up verbatim in
-    two themes' prose. Example caught 2026-05-13:
-    Theme 4: "Earlier this week, @nickgerli1 noted that existing home sales
-              over the first four months of 2026 were the lowest since 2009"
-    Theme 5: "Yesterday, @nickgerli1 flagged that early 2026 existing-home
-              sales were the weakest since 2009"
-    Both link to the same status URL — Pass B keeps the first, strips the second.
+    two themes' prose, where one author's stat gets paraphrased into two
+    nominally-different themes that both link back to the same status URL.
+    Pass B keeps the first mention, strips the second.
     """
     themes = briefing.get("conversation_themes", []) or []
     if not themes:
@@ -3043,8 +3040,8 @@ Generate the daily briefing JSON. LEAD WITH CONVERSATION — what are people deb
 
         # Cross-theme citation dedup IS enabled — catches the case where the
         # SAME tweet/fact is re-cited in two themes' prose (different topics,
-        # same supporting voice). User feedback 2026-05-13: @nickgerli1's
-        # "existing home sales since 2009" fact appeared verbatim in two themes.
+        # same supporting voice). The failure mode was a single author's stat
+        # appearing verbatim in two themes that linked to the same status URL.
         briefing = _dedup_cross_theme_citations(briefing)
 
         # Drop themes with no housing-topic overlap. Sonnet drifts off-topic

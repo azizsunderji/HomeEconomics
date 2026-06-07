@@ -23,11 +23,28 @@ from typing import Optional
 import anthropic
 
 from store import get_db, get_unclassified, update_classification, update_conversation_classification
+from config import CONTENT_DENY_LIST
 
 logger = logging.getLogger(__name__)
 
 MODEL = "claude-haiku-4-5-20251001"
 MAX_BATCH_SIZE = 20  # Items per API call (batched in prompt)
+
+# Pre-lowered deny patterns for fast substring matching.
+_DENY_PATTERNS = tuple(p.lower() for p in CONTENT_DENY_LIST)
+
+
+def is_content_denied(item: dict) -> bool:
+    """True if any deny-list substring appears in author/title/body/feed_name."""
+    if not _DENY_PATTERNS:
+        return False
+    haystack = " ".join((
+        item.get("author") or "",
+        item.get("title") or "",
+        item.get("body") or "",
+        item.get("feed_name") or "",
+    )).lower()
+    return any(p in haystack for p in _DENY_PATTERNS)
 
 
 def _load_topic_weights() -> dict:
@@ -240,6 +257,28 @@ def run_classification(
 
     unclassified = get_unclassified(conn, limit=max_items)
     logger.info(f"Found {len(unclassified)} unclassified items")
+
+    # Pre-filter against the cross-source deny list. Denied items get
+    # relevance_score=0 + content_type='denylisted' so they're stored
+    # (preserving audit trail) but never reach synthesis. Saves Haiku
+    # tokens too — we don't pay to classify what we'll discard.
+    denied = [it for it in unclassified if is_content_denied(it)]
+    if denied:
+        logger.info(f"Deny-list dropped {len(denied)} items pre-classification")
+        for it in denied:
+            try:
+                update_classification(
+                    conn, item_id=it["id"], topics=[], relevance_score=0,
+                    entities=[], extracted_stats=[], sentiment="neutral",
+                )
+                update_conversation_classification(
+                    conn, item_id=it["id"], content_type="denylisted",
+                    conversation_signal=0, verifiable_claims=[],
+                )
+            except Exception as e:
+                logger.warning(f"Failed to mark denied item {it.get('id')}: {e}")
+        denied_ids = {it["id"] for it in denied}
+        unclassified = [it for it in unclassified if it["id"] not in denied_ids]
 
     def _apply_classifications(classifications: list[dict]) -> set[int]:
         """Apply classification results to DB. Returns set of classified item IDs."""
