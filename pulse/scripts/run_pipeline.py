@@ -589,6 +589,24 @@ def cmd_synthesize(args):
         # (user-flagged 2026-06-05: same Binder paper shipped in #137,
         # #138, #139, #141). This exclusion guarantees no repeat within
         # 14 days while preserving the model's editorial pick.
+        #
+        # Title-canonicalization gotcha: NBER's feed prepends/appends
+        # author lists like "<title> -- by <authors>" but the title
+        # stored in briefings.paper_of_the_day.title is already cleaned
+        # by Sonnet. Compare canonical forms on BOTH sides so the
+        # exclusion actually matches (user re-flagged 2026-06-07: same
+        # Binder paper shipped again on 2026-06-06 and 2026-06-07
+        # despite the previous fix — root cause was this string mismatch).
+        import re as _canon_re
+        _author_suffix_re = _canon_re.compile(
+            r"\s*(?:--|—|-)\s*by\s+[A-Z].*$", _canon_re.IGNORECASE
+        )
+
+        def _canonical_title(t: str) -> str:
+            t = (t or "").strip()
+            t = _author_suffix_re.sub("", t).strip()
+            return t.lower()
+
         recently_used: set[str] = set()
         try:
             import json as _excl_json
@@ -609,7 +627,7 @@ def cmd_synthesize(args):
                     p_excl = b_excl.get("paper_of_the_day") or {}
                     if isinstance(p_excl, list):
                         p_excl = p_excl[0] if p_excl else {}
-                    t_excl = (p_excl.get("title") or "").strip().lower()
+                    t_excl = _canonical_title(p_excl.get("title") or "")
                     if t_excl:
                         recently_used.add(t_excl)
                 except Exception:
@@ -624,7 +642,7 @@ def cmd_synthesize(args):
             before_excl = len(pool)
             pool = [
                 p for p in pool
-                if (p.get("title") or "").strip().lower() not in recently_used
+                if _canonical_title(p.get("title") or "") not in recently_used
             ]
             logger.info(
                 f"Excluded {before_excl - len(pool)} paper(s) shown in last "
