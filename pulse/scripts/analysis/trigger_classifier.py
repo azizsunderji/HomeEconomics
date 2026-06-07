@@ -6,11 +6,9 @@ analysis/explainer are dropped before synthesis sees them. Items classified
 as action_event/investigation/official_data/court/breaking_news/commentary
 pass through.
 
-Validated on briefing #136 corpus: catches the City Journal landlord op-ed
-("Good Cause Eviction Is Hiking NYC Rents") pattern that would otherwise
-sneak into themes. Briefing #137 motivated the scope expansion: the
-"Tokyo vs Sydney" theme was anchored on a viral @DrCameronMurray tweet
-because tweets passed through unfiltered.
+Validated against a prior corpus: catches the landlord op-ed pattern
+that would otherwise sneak into themes. Scope expanded after a viral
+single-tweet anchor slipped through unfiltered tweets into a theme.
 
 Scope: ALL sources are classified (rss, gmail, twitter, bluesky, substack,
 hackernews). Social/essay items typically classify as `commentary` — an
@@ -177,28 +175,28 @@ Choose EXACTLY ONE trigger_type per item from this list:
 
 ACCEPT (these pass through to synthesis):
   - action_event: A specific concrete action happened today or in the last 3 days that the article reports on. A bill cleared a chamber. A deal was announced/closed. A company filed for IPO. An appointment was made. A product was launched (only if from a non-brokerage, non-content-marketing source). A ruling was issued.
-  - investigation: The article itself REVEALS new factual information via original reporting. The reporting IS the event (e.g., WSJ investigation into Allstate paying $0 on claims; Reuters discovers a pattern of mortgage discrimination).
-  - official_data: Release of official government or institutional data — BLS, Census, Fed, NAR/MBA official reports, court records.
+  - investigation: The article itself REVEALS new factual information via original reporting. The reporting IS the event (e.g., a major outlet's investigation that uncovers a corporate misconduct pattern; a wire service that discovers a systemic discrimination pattern).
+  - official_data: Release of official government or institutional data — federal statistical agencies, central-bank releases, trade-association reports, court records.
   - court: A court filing, ruling, settlement, or charge.
   - breaking_news: An unambiguous news event happening right now (a crash, a disaster, a death of a public figure).
   - commentary: A tweet, social post, substack essay, or newsletter that COMMENTS on something. Includes opinion threads, hot takes, observations, analysis on existing data. CRITICAL: commentary items pass through to synthesis but they are NOT eligible to anchor a theme. They can only be cited AS commentary IN themes that are anchored on real news events (action_event / investigation / official_data / court / breaking_news).
 
 REJECT (dropped before synthesis):
-  - opinion: Op-eds, columns from named opinion sections — "argues", "critiques", "says", "thinks". Author's perspective on known facts, not new facts. Even if from a major outlet (NYT op-ed, FT opinion, City Journal piece) — still opinion.
+  - opinion: Op-eds, columns from named opinion sections — "argues", "critiques", "says", "thinks". Author's perspective on known facts, not new facts. Even if from a major outlet's opinion vertical — still opinion.
   - retrospective: "[N] years later", "looking back at", "the rise and fall of", "anniversary", "what happened to", "a decade after". The trigger event being referenced is OLD even if the publication is new.
-  - recap: The article's news hook can be paraphrased as "[X published/released/announced] something" where X is itself a brokerage/platform/research org NOT doing news (Redfin study, Zillow forecast, Realtor.com survey, HomeLight report). Third-party reporting of brokerage content marketing → still recap → still NOT news.
+  - recap: The article's news hook can be paraphrased as "[X published/released/announced] something" where X is itself a brokerage/platform/research org NOT doing news (a brokerage study, a real-estate-platform forecast, a listing-portal survey, an ibuyer report). Third-party reporting of brokerage content marketing → still recap → still NOT news.
   - profile: Article profiles a person, company, or place without breaking news. "Meet X", "the rise of Y", "inside Z".
-  - analysis: General commentary on known trends without naming a specific event. From a CONSULTANCY or research firm (John Burns Research, Green Street Advisors, RCLCO, Yardi Matrix, etc.) — almost always analysis. Subtle distinction from `commentary`: commentary is on social media or in a personal essay; analysis is published as a formal "report" / "outlook" from a firm with a vested interest in the topic.
+  - analysis: General commentary on known trends without naming a specific event. From a CONSULTANCY, research firm, or data vendor publishing its own "outlook" / "monitor" / "quarterly report" — almost always analysis. Subtle distinction from `commentary`: commentary is on social media or in a personal essay; analysis is published as a formal "report" / "outlook" from a firm with a vested interest in the topic.
   - explainer: "What is X?", "how does Y work?", "your guide to Z".
 
 KEY DISTINCTION — `commentary` vs `opinion` vs `analysis`:
   - SOCIAL items (twitter, bluesky, hackernews) and INDIVIDUAL substack/newsletter ESSAYS are `commentary` (ACCEPT). They survive the filter but get flagged so the synthesizer cites them AS commentary inside event-anchored themes.
-  - Items from named OPINION sections of news outlets (NYT Opinion, WSJ Opinion, FT Opinion, City Journal, Bloomberg Opinion, etc.) are `opinion` (REJECT).
+  - Items from named OPINION sections of news outlets (any major newspaper's opinion vertical) are `opinion` (REJECT).
   - Items from CONSULTANCIES / research firms publishing their own "research report" are `analysis` (REJECT).
 
 SOURCE HINTS:
   - source='twitter', source='bluesky', source='hackernews' items are almost always `commentary`. Default them to `commentary` unless the post itself ANNOUNCES a real news event (a company / organization / person who IS the news is making a statement — e.g., a Fed official tweeting a policy decision, a CEO tweeting an acquisition, a regulator tweeting an enforcement action). In those rare cases use `breaking_news` / `action_event` / `official_data` as appropriate.
-  - source='substack' is nuanced: a substacker writing an opinion essay or hot take is `commentary`; a substacker like Calculated Risk republishing a chart with NEW official data (BLS / Census / Fed release) is closer to `official_data` relay. Judge by whether the item conveys a fresh authoritative event or is the writer's reflection on something.
+  - source='substack' is nuanced: a substacker writing an opinion essay or hot take is `commentary`; a substacker republishing a chart that conveys NEW official data from a federal statistical agency, central bank, or trade-association release is closer to `official_data` relay. Judge by whether the item conveys a fresh authoritative event or is the writer's reflection on something.
   - source='rss' and source='gmail' items: apply the full taxonomy. These can be any category. Tighten the opinion/recap/analysis gates here — REJECTs from these sources are the bulk of the value the classifier adds.
 
 When unclear, look at the body. If it has a "new" paragraph that introduces a specific event from today/yesterday → action_event / official_data / etc. If the body is reflection/argument/recap of someone else's content from a news/opinion outlet → REJECT. If it's a social post or essay reacting to known facts → `commentary`.
@@ -208,9 +206,9 @@ For each item, output its `id`, a `trigger_type` (one of the 12 labels above), a
 Return ONLY a JSON object with this structure:
 {{
   "classifications": [
-    {{"id": 12345, "trigger_type": "action_event", "justification": "Berkshire Hathaway announced acquisition of Taylor Morrison in $8.5B deal", "accept": true}},
-    {{"id": 12346, "trigger_type": "opinion", "justification": "City Journal op-ed critiquing LA mansion tax effects on housing", "accept": false}},
-    {{"id": 12347, "trigger_type": "commentary", "justification": "@DrCameronMurray tweet comparing Tokyo and Sydney housing supply", "accept": true}}
+    {{"id": 12345, "trigger_type": "action_event", "justification": "Major-conglomerate acquisition of a national homebuilder in a multi-billion-dollar deal", "accept": true}},
+    {{"id": 12346, "trigger_type": "opinion", "justification": "Outlet op-ed critiquing a metro-level housing tax", "accept": false}},
+    {{"id": 12347, "trigger_type": "commentary", "justification": "Tweet comparing housing-supply records across two international metros", "accept": true}}
   ]
 }}
 
