@@ -429,7 +429,11 @@ def render_briefing_html(briefing: dict, with_sources_box: bool = False) -> tupl
             paper_url = paper.get("url", default_url)
             heads = paper.get("headlines", []) or []
 
-            # Headline <li> stack — clickable when article_url is non-null.
+            # Headline stack — bold text + square bullet (▪), clickable
+            # when article_url is non-null. User feedback 2026-06-07.
+            # Built as flat <div>s rather than <ul>/<li> because
+            # list-style:square renders inconsistently across email
+            # clients; a literal ▪ glyph is reliable.
             # Cap at 3 per paper so the column height roughly matches the
             # page snapshot (user feedback 2026-06-04: keep vertically compact).
             li_items = []
@@ -442,24 +446,23 @@ def render_briefing_html(briefing: dict, with_sources_box: bool = False) -> tupl
                 # so all headlines read the same.
                 hl_text = _esc(_normalize_headline_caps(raw_text))
                 article_url = h.get("article_url") or ""
+                bullet = ('<span style="color: #3D3733; margin-right: 8px;">'
+                          '&#9642;</span>')
                 if article_url:
                     li_items.append(
-                        f'<li style="margin: 0 0 10px 0;">'
-                        f'<a href="{article_url}" target="_blank" '
+                        f'<div style="margin: 0 0 10px 0; color: #3D3733; '
+                        f'font-size: 16px; font-weight: 700; line-height: 1.35;">'
+                        f'{bullet}<a href="{article_url}" target="_blank" '
                         f'style="color: #3D3733; text-decoration: none; '
-                        f'font-size: 16px; font-weight: 400; line-height: 1.35;">'
-                        f'{hl_text}</a></li>'
+                        f'font-weight: 700;">{hl_text}</a></div>'
                     )
                 else:
                     li_items.append(
-                        f'<li style="margin: 0 0 10px 0; color: #3D3733; '
-                        f'font-size: 16px; font-weight: 400; line-height: 1.35;">'
-                        f'{hl_text}</li>'
+                        f'<div style="margin: 0 0 10px 0; color: #3D3733; '
+                        f'font-size: 16px; font-weight: 700; line-height: 1.35;">'
+                        f'{bullet}{hl_text}</div>'
                     )
-            headline_list = (
-                f'<ul style="list-style: none; padding: 0; margin: 0;">'
-                f'{"".join(li_items)}</ul>'
-            )
+            headline_list = "".join(li_items)
 
             html += f"""<table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 24px;"><tr class="fp-row">
 <td class="fp-cell fp-cell-img" width="45%" valign="top" style="padding-right: 16px;">

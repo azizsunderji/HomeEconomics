@@ -208,6 +208,73 @@ def _extract_headlines(pdf_path: Path, max_headlines: int = 5) -> list[dict]:
         if not placed:
             groups.append([s])
 
+    # ── Column-split headline repair ──────────────────────────────────
+    # Newspapers sometimes set a single headline in two columns side by
+    # side (e.g. LA Times "Establishment Democrats eke / out leads but /
+    # at crossroads" laid out as two stacked columns). The x-aligned
+    # grouping above splits these into two pseudo-headlines, then the
+    # email renders them as separate (truncated, nonsensical) lines.
+    #
+    # Detect "twin columns": same font size, heavily overlapping Y
+    # range, non-overlapping X range with a small horizontal gap. When
+    # found, merge the two groups and re-sort spans by (y, x) so the
+    # reading order is row-by-row left-to-right.
+    def _bbox(g):
+        return (min(x["bbox"][0] for x in g), min(x["bbox"][1] for x in g),
+                max(x["bbox"][2] for x in g), max(x["bbox"][3] for x in g))
+
+    merged = True
+    while merged:
+        merged = False
+        for i in range(len(groups)):
+            for j in range(i + 1, len(groups)):
+                ga, gb = groups[i], groups[j]
+                size_a = sum(s["size"] for s in ga) / len(ga)
+                size_b = sum(s["size"] for s in gb) / len(gb)
+                if abs(size_a - size_b) / max(size_a, size_b) > 0.05:
+                    continue
+                ax0, ay0, ax1, ay1 = _bbox(ga)
+                bx0, by0, bx1, by1 = _bbox(gb)
+                # Y-range overlap ratio (against the shorter group).
+                y_overlap = max(0, min(ay1, by1) - max(ay0, by0))
+                y_min_h = min(ay1 - ay0, by1 - by0) or 1
+                if y_overlap / y_min_h < 0.80:
+                    continue
+                # X-ranges must be disjoint (column-split, not overlapping).
+                if not (ax1 <= bx0 or bx1 <= ax0):
+                    continue
+                # Horizontal gap modest relative to the wider column width.
+                # Two unrelated side-by-side headlines usually have a wider
+                # gutter or vertical rule between them.
+                gap = bx0 - ax1 if ax1 <= bx0 else ax0 - bx1
+                wider_w = max(ax1 - ax0, bx1 - bx0)
+                if gap > wider_w * 0.3:
+                    continue
+                # Same number of spans AND the spans line up row-by-row
+                # (matched y positions). This is the strong signal that
+                # the two groups are actually columns of one headline,
+                # not two independent stories.
+                if len(ga) != len(gb):
+                    continue
+                ga_sorted = sorted(ga, key=lambda s: s["bbox"][1])
+                gb_sorted = sorted(gb, key=lambda s: s["bbox"][1])
+                rows_aligned = all(
+                    abs(ga_sorted[k]["bbox"][1] - gb_sorted[k]["bbox"][1]) < 8
+                    for k in range(len(ga_sorted))
+                )
+                if not rows_aligned:
+                    continue
+                # Merge: combine spans, sort by (y, x), so the joiner
+                # below produces row-by-row reading order.
+                groups[i] = sorted(ga + gb,
+                                   key=lambda s: (round(s["bbox"][1], 1),
+                                                  s["bbox"][0]))
+                groups.pop(j)
+                merged = True
+                break
+            if merged:
+                break
+
     heads = []
     for g in groups:
         text = " ".join(x["text"] for x in g).strip()
