@@ -461,19 +461,27 @@ def render_briefing_html(briefing: dict, with_sources_box: bool = False) -> tupl
                 article_url = h.get("article_url") or ""
                 bullet = ('<span style="color: #3D3733; margin-right: 8px;">'
                           '&#9642;</span>')
+                # Hanging-indent style — when the headline wraps to a
+                # second line, padding-left+text-indent keeps the wrapped
+                # text aligned under the first character after the
+                # bullet rather than the page margin. User feedback
+                # 2026-06-08.
+                hanging = (
+                    "margin: 0 0 10px 0; color: #3D3733; "
+                    "font-size: 16px; font-weight: 700; "
+                    "line-height: 1.35; padding-left: 18px; "
+                    "text-indent: -18px;"
+                )
                 if article_url:
                     li_items.append(
-                        f'<div style="margin: 0 0 10px 0; color: #3D3733; '
-                        f'font-size: 16px; font-weight: 700; line-height: 1.35;">'
+                        f'<div style="{hanging}">'
                         f'{bullet}<a href="{article_url}" target="_blank" '
                         f'style="color: #3D3733; text-decoration: none; '
                         f'font-weight: 700;">{hl_text}</a></div>'
                     )
                 else:
                     li_items.append(
-                        f'<div style="margin: 0 0 10px 0; color: #3D3733; '
-                        f'font-size: 16px; font-weight: 700; line-height: 1.35;">'
-                        f'{bullet}{hl_text}</div>'
+                        f'<div style="{hanging}">{bullet}{hl_text}</div>'
                     )
             headline_list = "".join(li_items)
 

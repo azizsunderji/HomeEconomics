@@ -166,6 +166,115 @@ def _get_cookies(url: str) -> list[dict]:
     ]
 
 
+# ── Outbound hyperlink extraction (NEW 2026-06-08) ──────────────────────
+# When we enrich an article we also capture every outbound <a href> inside
+# the article body. The synth pipeline can use those as secondary
+# references — "the WSJ piece also linked to the Maine moratorium" type
+# additions. User feedback 2026-06-08.
+
+from urllib.parse import urljoin as _urljoin, urlparse as _urlparse
+
+_ARTICLE_CONTAINER_PATTERNS = [
+    r'<article[^>]*>(.*?)</article>',
+    r'<div[^>]*\bdata-component="body"[^>]*>(.*?)</div>\s*<div[^>]*\bdata-component="(?:footer|recommended)"',
+    r'<div[^>]*\bclass="[^"]*\bbody-content\b[^"]*"[^>]*>(.*?)</div>',
+    r'<div[^>]*\bclass="[^"]*\bbody-copy\b[^"]*"[^>]*>(.*?)</div>',
+    r'<section[^>]*\bclass="[^"]*\bbody-(?:content|copy)\b[^"]*"[^>]*>(.*?)</section>',
+    r'<div[^>]*\bclass="[^"]*\barticle-body\b[^"]*"[^>]*>(.*?)</div>',
+    r'<div[^>]*\bclass="[^"]*\bstory-body\b[^"]*"[^>]*>(.*?)</div>',
+    r'<div[^>]*\bclass="[^"]*\bpost-content\b[^"]*"[^>]*>(.*?)</div>',
+    r'<div[^>]*\bclass="[^"]*\barticle__body\b[^"]*"[^>]*>(.*?)</div>',
+    r'<div[^>]*\bclass="[^"]*\bcontent-body\b[^"]*"[^>]*>(.*?)</div>',
+    r'<main[^>]*>(.*?)</main>',
+]
+
+_LINK_DROP_PATH_PARTS = (
+    "/author/", "/byline/", "/tag/", "/tags/", "/topic/", "/topics/",
+    "/category/", "/section/", "/share/", "/newsletter", "/subscribe",
+    "/account/", "/login", "/signin", "/privacy", "/terms", "/cookie",
+    "/about-us", "/contact", "/rss",
+)
+_LINK_DROP_DOMAIN_FRAGMENTS = (
+    "twitter.com/intent", "facebook.com/sharer", "linkedin.com/share",
+    "reddit.com/submit", "whatsapp.com/send", "instagram.com/share",
+)
+
+
+def _extract_article_links(html: str, base_url: str,
+                           max_links: int = 25) -> list[dict]:
+    """Pull outbound <a href> links from inside the article body.
+
+    Returns a list of {anchor_text, url, domain, internal} dicts, deduped
+    by URL. Filters out nav/share/topic/author pages and same-domain
+    links that don't look like articles.
+    """
+    article_html = html
+    for pattern in _ARTICLE_CONTAINER_PATTERNS:
+        m = re.search(pattern, html, re.DOTALL | re.IGNORECASE)
+        if m and len(m.group(1)) > 200:
+            article_html = m.group(1)
+            break
+
+    base_domain = _urlparse(base_url).netloc.lower().replace("www.", "")
+    seen = set()
+    out: list[dict] = []
+    for m in re.finditer(
+        r'<a\b[^>]*\bhref="([^"]+)"[^>]*>(.*?)</a>',
+        article_html, re.DOTALL | re.IGNORECASE
+    ):
+        raw = (m.group(1) or "").strip()
+        if not raw or raw.startswith(("#", "mailto:", "javascript:", "tel:")):
+            continue
+        if any(d in raw for d in _LINK_DROP_DOMAIN_FRAGMENTS):
+            continue
+        if raw.startswith("//"):
+            absolute = "https:" + raw
+        elif raw.startswith("/"):
+            absolute = _urljoin(base_url, raw)
+        elif raw.startswith(("http://", "https://")):
+            absolute = raw
+        else:
+            absolute = _urljoin(base_url, raw)
+        try:
+            parsed = _urlparse(absolute)
+        except ValueError:
+            continue
+        if not parsed.netloc:
+            continue
+        domain = parsed.netloc.lower().replace("www.", "")
+        path = parsed.path.lower()
+        if any(p in path for p in _LINK_DROP_PATH_PARTS):
+            continue
+        if domain == base_domain:
+            looks_like_article = (
+                re.search(r"/\d{4}/\d{2}/\d{2}/", path)
+                or re.search(r"/\d{4}/", path)
+                or re.search(r"/[a-z0-9-]+-[a-z0-9]+/?$", path)
+                or path.endswith(".html")
+            )
+            if not looks_like_article:
+                continue
+        anchor_html = m.group(2) or ""
+        anchor_text = re.sub(r"<[^>]+>", "", anchor_html).strip()
+        anchor_text = re.sub(r"\s+", " ", anchor_text)
+        if not anchor_text or len(anchor_text) < 2:
+            continue
+        anchor_text = anchor_text[:140]
+        key = absolute.split("#")[0].rstrip("/")
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append({
+            "anchor_text": anchor_text,
+            "url": absolute,
+            "domain": domain,
+            "internal": domain == base_domain,
+        })
+        if len(out) >= max_links:
+            break
+    return out
+
+
 def _extract_article_text(html: str) -> str:
     """Extract main article body from rendered HTML."""
     # Strip script/style/nav/header/footer blocks
@@ -339,9 +448,14 @@ async def _try_archive_ph(context, original_url: str) -> str:
             except Exception: pass
 
 
-async def _enrich_batch(items: list[dict], dry_run: bool = False) -> dict[str, str]:
-    """Fetch full text for a batch of items. Returns {item_id: full_text}."""
-    results: dict[str, str] = {}
+async def _enrich_batch(items: list[dict], dry_run: bool = False) -> dict[str, dict]:
+    """Fetch full text + outbound hyperlinks for a batch of items.
+
+    Returns {item_id: {"body": str, "links": list[dict]}}. Items where
+    body extraction failed are omitted entirely. Items where body
+    succeeded but link extraction returned nothing get an empty links
+    list."""
+    results: dict[str, dict] = {}
 
     async with async_playwright() as p:
         browser, mode = await _connect_browser(p)
@@ -392,6 +506,10 @@ async def _enrich_batch(items: list[dict], dry_run: bool = False) -> dict[str, s
                 html = await page.content()
 
                 text = _extract_article_text(html)
+                # NEW 2026-06-08: also pull outbound hyperlinks from
+                # inside the article body. Used by the synth pipeline as
+                # secondary references the writer can cite.
+                links = _extract_article_links(html, url)
 
                 if len(text) < 200:
                     # Try archive.ph fallback (Browserbase only — local Chrome
@@ -403,8 +521,10 @@ async def _enrich_batch(items: list[dict], dry_run: bool = False) -> dict[str, s
                         archive_text = await _try_archive_ph(context, url)
                         if archive_text:
                             archive_text = archive_text[:8000]
-                            results[item_id] = archive_text
-                            logger.info(f"  OK-ARCHIVE ({len(archive_text)}c) {domain}: {title}")
+                            results[item_id] = {"body": archive_text,
+                                                "links": links}
+                            logger.info(f"  OK-ARCHIVE ({len(archive_text)}c, "
+                                        f"{len(links)} links) {domain}: {title}")
                             await asyncio.sleep(1.5)
                             continue
                     logger.info(f"  THIN ({len(text)}c) {domain}: {title}")
@@ -412,8 +532,8 @@ async def _enrich_batch(items: list[dict], dry_run: bool = False) -> dict[str, s
 
                 # Cap at 8000 chars — enough for synthesis, not a memory hog
                 text = text[:8000]
-                results[item_id] = text
-                logger.info(f"  OK ({len(text)}c) {domain}: {title}")
+                results[item_id] = {"body": text, "links": links}
+                logger.info(f"  OK ({len(text)}c, {len(links)} links) {domain}: {title}")
 
                 # Brief pause between requests to the same domain
                 await asyncio.sleep(1.5)
@@ -435,14 +555,30 @@ async def _enrich_batch(items: list[dict], dry_run: bool = False) -> dict[str, s
     return results
 
 
-def _update_db(conn: sqlite3.Connection, enriched: dict[str, str]) -> int:
-    """Write enriched bodies back to pulse.db."""
+def _update_db(conn: sqlite3.Connection,
+                enriched: dict[str, dict]) -> int:
+    """Write enriched bodies AND outbound links back to pulse.db.
+
+    enriched value is a dict {"body": str, "links": list[dict]}. The
+    links column is stored as JSON. Skips columns the DB doesn't
+    have (e.g., older deployments without the enrich_links column)."""
+    import json as _json
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(items)").fetchall()}
+    has_links_col = "enrich_links" in cols
     updated = 0
-    for item_id, text in enriched.items():
-        conn.execute(
-            "UPDATE items SET body = ? WHERE id = ?",
-            (text, item_id),
-        )
+    for item_id, payload in enriched.items():
+        body = payload.get("body", "") if isinstance(payload, dict) else payload
+        links = payload.get("links", []) if isinstance(payload, dict) else []
+        if has_links_col:
+            conn.execute(
+                "UPDATE items SET body = ?, enrich_links = ? WHERE id = ?",
+                (body, _json.dumps(links) if links else None, item_id),
+            )
+        else:
+            conn.execute(
+                "UPDATE items SET body = ? WHERE id = ?",
+                (body, item_id),
+            )
         updated += 1
     conn.commit()
     return updated

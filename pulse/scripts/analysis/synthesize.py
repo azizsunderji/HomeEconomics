@@ -380,11 +380,33 @@ def _format_items_for_conversation(items: list[dict], limit: int = 280) -> str:
                 # give the LLM 3000 chars of content — enough for the substantive
                 # middle of an article, not just the lede.
                 body_preview = body[:3000]
+                # Outbound hyperlinks captured during article enrichment
+                # (NEW 2026-06-08). When the article author links to a
+                # secondary reference inside their piece, that URL is a
+                # legitimate citation target for the synthesizer to use.
+                enrich_block = ""
+                links_raw = item.get("enrich_links")
+                if links_raw:
+                    try:
+                        links = json.loads(links_raw) if isinstance(links_raw, str) else links_raw
+                        if links:
+                            enrich_lines = ["       Secondary refs (article's own outbound links — cite when relevant):"]
+                            for link in links[:5]:
+                                if not link.get("url"):
+                                    continue
+                                enrich_lines.append(
+                                    f"         - \"{(link.get('anchor_text') or '')[:120]}\" -> {link.get('url')}"
+                                )
+                            if len(enrich_lines) > 1:
+                                enrich_block = "\n" + "\n".join(enrich_lines)
+                    except (json.JSONDecodeError, TypeError):
+                        pass
                 lines.append(
                     f"  {commentary_tag}{item['_source_display']}: {item['title'][:200]}\n"
                     f"       URL: {item.get('url', '')}\n"
                     f"       {body_preview}"
                     f"{' | Stats: ' + '; '.join(stats[:2]) if stats and tier == 2 else ''}"
+                    f"{enrich_block}"
                 )
             count += 1
 
@@ -2222,6 +2244,8 @@ Your job: surface the day's most substantive and interesting content for a daily
 CRITICAL: Quality over volume. A substantive thread with 4 thoughtful replies is FAR more valuable than anonymous comments saying "economy is rigged." Prioritize substantive discussions over populist venting. Do NOT preferentially feature any specific Twitter or Bluesky account — every voice in the input competes on merit. What matters is what was said, not who said it.
 
 All sources you receive are valid — Twitter, Bluesky, HN, Substack newsletters, newspaper articles, RSS feeds, institutional research, academic journals. Treat them equally on merit; substance is the only currency. Don't apply different bars to different platforms.
+
+SECONDARY REFERENCES (NEW 2026-06-08). Some long-form items in the input include a "Secondary refs" block listing outbound hyperlinks the article's author embedded inside the piece (e.g., a Wall Street Journal piece on data centers might link to a Pew survey, a Maine moratorium story, and a Gallup poll). When relevant, you MAY cite those URLs inside themes/roundups using normal `[anchor text](url)` markdown — they add depth and let the reader follow the article's own evidentiary trail. Rules: (a) only cite a secondary ref when it adds genuine substance to a sentence, never as padding; (b) use the original anchor text exactly as listed (it's the article author's phrasing, not invented); (c) the primary item's URL still takes precedence — secondary refs are an OPTIONAL extra layer; (d) skip nav-style refs that point to topic pages or section indexes — only cite refs that point to specific stories, reports, or data releases.
 
 CRITICAL — PRIVACY (HARD GATE):
 You may receive items that originated in private email correspondence. ANY item that is a reply chain or forward — recognizable by a subject starting with "Re:", "Fwd:", or "Fw:", OR by a body containing quoted-reply patterns ("On <date>, <name> <email> wrote:", "From: ... Sent: ... To: ...", multiple lines beginning with ">"), OR by being addressed/signed person-to-person — is PRIVATE CORRESPONDENCE. You MUST NOT quote it, paraphrase it, or attribute claims from it. You MUST NOT include the names, email addresses, or claims of any private-correspondence participants in the briefing. Skip the item entirely. This rule overrides every other rule (topical relevance, voice diversity, citation count). When in doubt about whether an item is public news or private email, drop it.
