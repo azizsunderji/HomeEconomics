@@ -2510,9 +2510,10 @@ Coverage rules:
        - A government action (bill cleared the [chamber]; agency Z issued a ruling)
        - A data release ([trade association / brokerage / federal statistical agency] released X data showing Y)
        - A court filing or ruling
-       - A named research paper or institutional report ([working paper series #####, think-tank report titled Z])
      If you cannot complete the sentence "Today, [specific entity] [specific action] [specific thing]" in 15 words or fewer, it is NOT a news theme. Move the material to conversation_roundups instead.
-     INVALID as themes (move to conversation_roundups):
+     INVALID as themes (move to conversation_roundups or, for papers, to paper_of_the_day):
+       - Academic research papers, working papers, peer-reviewed journal articles — these are NOT news. They have their own dedicated `paper_of_the_day` slot (see rule 5c). DO NOT anchor a News Theme on a working-paper release, no matter how interesting the findings. Even if one analyst summarizes the paper substantively, it doesn't become news — it's a paper with a commenter.
+       - Institutional reports (think-tank reports, policy-shop white papers) UNLESS the report is the subject of independent multi-source news coverage today. A think-tank releasing a report with only the report's own author or one quoted analyst is NOT a news theme — route to roundups.
        - Tweets across multiple states/cities discussing a topic without a single named trigger
        - Retrospectives, anniversary investigations, "look back at" pieces with no new news hook
        - General topical discourse ("housing supply is doing X" without naming a specific report)
