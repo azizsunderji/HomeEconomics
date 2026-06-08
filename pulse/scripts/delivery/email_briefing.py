@@ -459,8 +459,14 @@ def render_briefing_html(briefing: dict, with_sources_box: bool = False) -> tupl
                 # so all headlines read the same.
                 hl_text = _esc(_normalize_headline_caps(raw_text))
                 article_url = h.get("article_url") or ""
-                bullet = ('<span style="color: #3D3733; margin-right: 8px;">'
-                          '&#9642;</span>')
+                # Bullet: small hollow square. U+25AB (▫) is rendered as
+                # an outlined small square in every major email client's
+                # default font stack. Shrinking font-size to 11px keeps
+                # it visually subordinate to the 16px headline text.
+                # User feedback 2026-06-08: "make the bullets smaller
+                # and hollow."
+                bullet = ('<span style="color: #3D3733; margin-right: 8px; '
+                          'font-size: 11px;">&#9643;</span>')
                 # Hanging-indent style — when the headline wraps to a
                 # second line, padding-left+text-indent keeps the wrapped
                 # text aligned under the first character after the
