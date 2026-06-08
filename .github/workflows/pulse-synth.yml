@@ -212,6 +212,17 @@ jobs:
           PULSE_DB: ${{ github.workspace }}/pulse/data/pulse.db
         run: python v2_runner.py --max-roundups 5 --to aziz@home-economics.us || echo "V2 run failed — continuing without"
 
+      - name: Run V3.1 hybrid roundups + send comparison email
+        # v3.1 reads the v1 briefing the synthesis step just wrote and
+        # sends a parallel email with two-stage Haiku sub-clustering +
+        # Opus per-cluster writing + 6-day historical context. Failures
+        # here MUST NOT take down the v1 or v2 send — wrap in `|| true`.
+        if: steps.guard.outputs.should_run == 'true'
+        working-directory: pulse/scripts
+        env:
+          PULSE_DB: ${{ github.workspace }}/pulse/data/pulse.db
+        run: python v3_1_runner.py --to aziz@home-economics.us || echo "V3.1 run failed — continuing without"
+
       - name: Send daily pipeline-health diagnostic email
         # Stage-by-stage health report covering collection, enrichment,
         # synthesis, front pages, and delivery. Goes only to aziz@... so
