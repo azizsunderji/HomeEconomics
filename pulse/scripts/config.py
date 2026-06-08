@@ -379,13 +379,23 @@ TWITTER_DAILY_BUDGET_CENTS = 200  # $2/day max Apify spend (1 batch, no sweep)
 
 TWITTER_VIP_ACCOUNTS = []  # Removed — all accounts earn placement on merit
 
-# "SuperSmart" handles — any tweet from these accounts gets tagged
-# platform_tags=['super_smart'] regardless of which scrape captured it, AND
-# bypasses the TWITTER_MIN_LIKES floor and synthesis relevance threshold.
-# This is the SOURCE OF TRUTH for SuperSmart membership; the separate Apify
-# scrape of the Twitter list (id 2053622551553744939) is a complement (catches
-# accounts not on the Pulse list at all). To add/remove: edit this set + the
-# Twitter list.
+# Master switch for the SuperSmart amplification mechanism. When False
+# (default 2026-06-08), no items get the super_smart tag at intake, no
+# author-membership shortcut applies, and the dedicated SuperSmart-list
+# Twitter scrape is skipped — every handle competes on merit (engagement
+# + relevance) like any other voice. Set True to re-enable the original
+# behavior (the SUPER_SMART_HANDLES roster below is preserved so it can
+# be reinstated without rebuilding the list).
+SUPER_SMART_ENABLED = False
+
+# "SuperSmart" handles — when SUPER_SMART_ENABLED is True, any tweet
+# from these accounts gets tagged platform_tags=['super_smart']
+# regardless of which scrape captured it, AND bypasses the
+# TWITTER_MIN_LIKES floor and synthesis relevance threshold. This is
+# the SOURCE OF TRUTH for SuperSmart membership; the separate Apify
+# scrape of the Twitter list (id 2053622551553744939) is a complement
+# (catches accounts not on the Pulse list at all). To add/remove: edit
+# this set + the Twitter list.
 SUPER_SMART_HANDLES = {
     "phfloor",
     "pmcondon2",

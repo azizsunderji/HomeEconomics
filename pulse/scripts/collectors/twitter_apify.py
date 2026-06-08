@@ -26,6 +26,7 @@ from config import (
     TWITTER_DAILY_BUDGET_CENTS,
     TWITTER_AUTHOR_BLOCKLIST,
     SUPER_SMART_HANDLES,
+    SUPER_SMART_ENABLED,
 )
 
 logger = logging.getLogger(__name__)
@@ -251,7 +252,9 @@ def _convert_raw_tweets(
         # SuperSmart-list scrape (which only captures accounts on that list).
         author_obj = tweet.get("author", {})
         author_handle = (author_obj.get("userName", "") if isinstance(author_obj, dict) else str(author_obj)).lower()
-        is_super_smart_author = author_handle in SUPER_SMART_HANDLES
+        is_super_smart_author = (
+            SUPER_SMART_ENABLED and author_handle in SUPER_SMART_HANDLES
+        )
         # super_smart param: from the dedicated SuperSmart-list scrape
         # OR the author is on the handle set (regardless of source)
         is_super_smart = super_smart or is_super_smart_author
@@ -341,10 +344,15 @@ def collect(
 
     # Phase 1: SuperSmart list scrape FIRST so its tweets get the super_smart
     # tag — if a tweet appears on both lists, the SuperSmart version wins
-    # (Pulse's pass below skips already-seen IDs).
+    # (Pulse's pass below skips already-seen IDs). Gated on
+    # SUPER_SMART_ENABLED: when False (default 2026-06-08), the dedicated
+    # list scrape is skipped entirely so no items inherit the
+    # bypass-relevance-floor tag.
     seen_ids: set[str] = set()
     items: list[PulseItem] = []
-    if SUPER_SMART_LIST_ID:
+    if not SUPER_SMART_ENABLED:
+        logger.info("SuperSmart disabled (SUPER_SMART_ENABLED=False) — skipping list scrape")
+    elif SUPER_SMART_LIST_ID:
         try:
             ss_raw = _run_actor(list_id=SUPER_SMART_LIST_ID, max_items=SUPER_SMART_MAX_ITEMS)
             ss_items = _convert_raw_tweets(ss_raw, min_likes=0, super_smart=True, seen_ids=seen_ids)
