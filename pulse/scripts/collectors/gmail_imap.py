@@ -50,6 +50,7 @@ from config import (
     GMAIL_JUNK_TITLE_PATTERNS,
     GMAIL_NEWSLETTER_SENDERS,
     INSTITUTIONAL_SENDER_ALLOWLIST,
+    is_personal_correspondence,
 )
 
 logger = logging.getLogger(__name__)
@@ -153,6 +154,15 @@ def _should_drop(sender: str, subject: str) -> bool:
     sender_lower = (sender or "").lower()
     title_lower = (subject or "").lower()
 
+    # PRIVACY GATE (FIRST, HARD). Reject personal correspondence at
+    # intake — reply chains, the user's own sent items, and mail from
+    # personal-email domains never enter the corpus. See
+    # config.is_personal_correspondence for the rules. 2026-06-08
+    # incident: an Aziz<->Mike Fellman email debate about Yglesias /
+    # Erdmann was synthesized into a public briefing theme.
+    if is_personal_correspondence(sender, subject):
+        return True
+
     # Skip Pulse's own emails
     if "onboarding@resend.dev" in sender_lower or "pulse@home-economics" in sender_lower:
         return True
@@ -162,9 +172,6 @@ def _should_drop(sender: str, subject: str) -> bool:
         or "fw: pulse:" in title_lower
         or "re: pulse:" in title_lower
     ):
-        return True
-    # Skip Aziz's own outbound
-    if "aziz@home-economics.us" in sender_lower or "aziz.sunderji@gmail.com" in sender_lower:
         return True
 
     # Allowlist wins — if matched, keep

@@ -16,6 +16,7 @@ import anthropic
 import httpx
 
 from collectors.gmail import _get_all_access_tokens, _thread_id_to_gmail_url_for_account
+from config import is_personal_correspondence
 
 logger = logging.getLogger(__name__)
 
@@ -115,6 +116,14 @@ def get_starred_emails(pick: int = 5, pool_size: int = 50) -> list[dict]:
             date_str = _extract_header(msg_headers, "Date")
             snippet = msg.get("snippet", "")
             thread_id = msg.get("threadId", msg_ref.get("threadId", ""))
+
+            # PRIVACY GATE. Even though the user explicitly starred this
+            # message, drop it if it looks like personal correspondence
+            # (reply chain, the user's own sent items, personal-email
+            # domains). The starred section is rendered into the
+            # briefing email — anything quoted there must be safe.
+            if is_personal_correspondence(sender, subject):
+                continue
 
             # Build Gmail deep link with authuser for the correct account
             gmail_url = _thread_id_to_gmail_url_for_account(thread_id, email_address)

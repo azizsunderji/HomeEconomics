@@ -403,6 +403,69 @@ SUPER_SMART_HANDLES = {
 # ── Gmail configuration ──────────────────────────────────────────────────────
 GMAIL_SENDER_WHITELIST = []  # No whitelist — let Haiku classify everything in the inbox
 
+# Personal-email domains. Anything from these MUST be rejected at intake
+# unless it's also matched by an explicit institutional / newsletter
+# allowlist below. Without this guard the IMAP collector ingested
+# personal reply chains (e.g. Aziz<->Mike Fellman housing-policy email
+# debate) and the synthesizer wove the private content into a public
+# briefing theme — major privacy leak (2026-06-08).
+PERSONAL_EMAIL_DOMAINS = {
+    "gmail.com", "yahoo.com", "hotmail.com", "outlook.com", "icloud.com",
+    "aol.com", "comcast.net", "sbcglobal.net", "verizon.net", "msn.com",
+    "live.com", "me.com", "mac.com", "ymail.com", "rocketmail.com",
+    "att.net", "cox.net", "earthlink.net", "frontier.com", "mindspring.com",
+    "protonmail.com", "proton.me", "fastmail.com", "fastmail.fm",
+    "tutanota.com", "hey.com", "duck.com",
+}
+
+# The user's own email addresses. Replies/sent items from these must
+# never be ingested as briefing content.
+USER_OWN_EMAIL_ADDRESSES = {
+    "aziz.sunderji@gmail.com",
+    "aziz@home-economics.us",
+}
+
+
+def is_personal_correspondence(sender: str, subject: str) -> bool:
+    """True if the email looks like private correspondence and must NOT
+    be ingested. Apply this as the FIRST gate in any Gmail collector.
+
+    Rules (any one triggers rejection):
+      1. Sender address is the user's own (their own sent items).
+      2. Subject starts with Re:/Fwd:/Fw: (reply chain or forward — by
+         definition private correspondence).
+      3. Sender domain is a personal-email provider (gmail.com,
+         yahoo.com, etc.) AND not matched by an institutional/newsletter
+         allowlist.
+
+    Note: this filter is intentionally stricter than the existing
+    blocklist-based filter. The blocklist defaulted to ACCEPT-unless-
+    blocked; that's the wrong default for personal email. This is
+    REJECT-unless-explicitly-allowed.
+    """
+    import re as _re_pe
+    sender_lower = (sender or "").lower()
+    subject_lower = (subject or "").lower().strip()
+
+    # Rule 1: user's own addresses
+    if any(addr in sender_lower for addr in USER_OWN_EMAIL_ADDRESSES):
+        return True
+
+    # Rule 2: reply chain / forward
+    if subject_lower.startswith(("re:", "fwd:", "fw:")):
+        return True
+
+    # Rule 3: personal-email domain
+    m = _re_pe.search(r'<([^>]+@[^>]+?)>', sender or "") \
+        or _re_pe.search(r'([^\s<]+@[^\s>]+)', sender or "")
+    if m:
+        addr = m.group(1).lower().strip("<>")
+        domain = addr.split("@")[-1].split(">")[0].strip()
+        if domain in PERSONAL_EMAIL_DOMAINS:
+            return True
+
+    return False
+
 GMAIL_LABELS = ["INBOX"]
 GMAIL_MAX_RESULTS = 250  # bumped 2026-05-07: 50 was too tight for high-volume inbox; institutional newsletters (Urban Institute, Thesis Driven, etc.) were getting cut off when daily volume spiked above the cap
 

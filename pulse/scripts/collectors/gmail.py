@@ -22,6 +22,7 @@ from collectors import PulseItem
 from config import (
     GMAIL_SENDER_WHITELIST, GMAIL_LABELS, GMAIL_MAX_RESULTS,
     GMAIL_JUNK_SENDER_PATTERNS, GMAIL_JUNK_TITLE_PATTERNS,
+    is_personal_correspondence,
     INSTITUTIONAL_SENDER_ALLOWLIST, GMAIL_NEWSLETTER_SENDERS,
     GMAIL_AI_HEADLINE_SENDERS,
 )
@@ -385,6 +386,18 @@ def collect(
                     subject = _extract_header(headers, "Subject")
                     sender = _extract_header(headers, "From")
                     date_str = _extract_header(headers, "Date")
+
+                    # PRIVACY GATE (FIRST, HARD). Reject personal
+                    # correspondence at intake — reply chains, the user's
+                    # own sent items, and mail from personal-email
+                    # domains never enter the corpus. See
+                    # config.is_personal_correspondence for the rules.
+                    # 2026-06-08 incident: an Aziz<->Mike Fellman email
+                    # debate about Yglesias / Erdmann was synthesized
+                    # into a public briefing theme.
+                    if is_personal_correspondence(sender, subject):
+                        skipped_whitelist += 1
+                        continue
 
                     # Filter by sender whitelist — skip emails not from whitelisted senders
                     # This avoids wasting Haiku classification tokens on personal emails
