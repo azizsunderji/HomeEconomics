@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 import logging
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from pathlib import Path  # noqa: F401  (used by _load_front_pages_json)
 
 import httpx
@@ -411,22 +411,35 @@ def render_briefing_html(briefing: dict, with_sources_box: bool = False) -> tupl
     # kicker + headline stack on right (~55%). Each headline is its own
     # clickable <a> when article_url is non-null; otherwise plain text.
     _cb = datetime.now(timezone.utc).strftime("%Y%m%d%H")
+    # FreedomForum hosts the day's PDF of each paper's printed front page
+    # at https://cdn.freedomforum.org/dfp/pdf{day}/{slug}.pdf — the
+    # canonical "go look at the actual printed edition" link. Computing
+    # `day` in US Eastern time so that the link matches what the email
+    # actually shows (the email is sent on the ET calendar day).
+    _et_now = datetime.now(timezone.utc) - timedelta(hours=4)  # ET ≈ UTC-4
+    _ff_day = _et_now.day
     _papers_order = [
-        ("nyt", "The New York Times",     "https://www.nytimes.com"),
-        ("wsj", "The Wall Street Journal", "https://www.wsj.com"),
-        ("lat", "Los Angeles Times",      "https://www.latimes.com"),
-        ("hc",  "Houston Chronicle",      "https://www.houstonchronicle.com"),
+        # (slug, label, default_url, freedom-forum slug)
+        ("nyt", "The New York Times",     "https://www.nytimes.com",          "NY_NYT"),
+        ("wsj", "The Wall Street Journal", "https://www.wsj.com",             "NY_WSJ"),
+        ("lat", "Los Angeles Times",      "https://www.latimes.com",          "CA_LAT"),
+        ("hc",  "Houston Chronicle",      "https://www.houstonchronicle.com", "TX_HC"),
     ]
     front_pages_data = _load_front_pages_json()
     if front_pages_data:
         html += _section_heading("On the Front Pages")
         html += _spacer(14)
-        for slug, label, default_url in _papers_order:
+        for slug, label, default_url, ff_slug in _papers_order:
             paper = front_pages_data.get(slug)
             if not paper:
                 continue
             masthead = paper.get("masthead", label.upper())
-            paper_url = paper.get("url", default_url)
+            # Image now links to the source PDF of today's printed front
+            # page (Freedom Forum's daily archive), per user feedback
+            # 2026-06-08 — "let me see the actual front page."
+            paper_url = (
+                f"https://cdn.freedomforum.org/dfp/pdf{_ff_day}/{ff_slug}.pdf"
+            )
             heads = paper.get("headlines", []) or []
 
             # Headline stack — bold text + square bullet (▪), clickable
