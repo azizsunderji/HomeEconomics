@@ -1858,6 +1858,28 @@ _VALIDATOR_UA = (
 )
 
 
+# Common abbreviations whose trailing period must NOT be treated as a
+# sentence boundary. Failure case caught 2026-06-09: prose
+# "...then-Gov. Rockefeller and then-Mayor Lindsay broke ground..."
+# was being split at "Gov." into two pseudo-sentences, and the paragraph
+# enforcer then inserted a `\\n\\n` mid-sentence so the email rendered
+# "then-Gov." at the end of one paragraph and "Rockefeller..." at the
+# start of the next.
+_ABBREVIATIONS = (
+    "Gov", "Sen", "Rep", "Mr", "Mrs", "Ms", "Dr",
+    "Sr", "Jr", "Inc", "Ltd", "Co", "Corp",
+    "St", "Rd", "Ave", "Mt", "Pres", "Vice",
+    "Vol", "Hon", "Vs", "Adm", "Gen", "Col",
+    "Capt", "Lt", "Cpl", "Sgt", "Pvt", "Ft",
+    "Rev", "Maj", "Brig", "Cmdr", "Pfc",
+    "Assn", "Bros", "Dist", "Esq", "Univ",
+    "No",  # "No. 1"
+)
+_ABBREV_PERIOD_RE = re.compile(
+    r"\b(" + "|".join(_ABBREVIATIONS) + r")\.",
+)
+
+
 def _split_sentences_for_validation(text: str) -> list[str]:
     """Split text into sentences, masking [text](url) markdown links so dots
     inside URLs or link anchors don't trigger false sentence boundaries.
@@ -1867,7 +1889,12 @@ def _split_sentences_for_validation(text: str) -> list[str]:
     terminator and the trailing whitespace, e.g. 'scheme.' Yesterday — without
     this, a stripped sentence that ends inside a quotation would swallow the
     next legitimate sentence (caught 2026-05-30: WaPo strip was swallowing
-    the next NYT citation)."""
+    the next NYT citation).
+
+    Also masks the trailing period of common abbreviations ("Gov.", "Sen.",
+    "Inc." etc.) so a phrase like "then-Gov. Rockefeller" doesn't split
+    at "Gov." and trigger a spurious paragraph break before "Rockefeller"
+    (caught 2026-06-09)."""
     if not text:
         return []
     link_re = re.compile(r"\[[^\]]+\]\([^)]+\)")
@@ -1878,6 +1905,9 @@ def _split_sentences_for_validation(text: str) -> list[str]:
         return f"\x00LINK{len(placeholders)-1}\x00"
 
     masked = link_re.sub(_mask, text)
+    # Mask abbreviation periods so the boundary regex skips them.
+    # `\x02` is the placeholder; restored to `.` at the end.
+    masked = _ABBREV_PERIOD_RE.sub(lambda m: m.group(1) + "\x02", masked)
     # Use a sub-with-marker trick instead of pure split, so we can match
     # the optional closing quote as part of the boundary while preserving
     # it on the end of the preceding sentence.
@@ -1889,8 +1919,10 @@ def _split_sentences_for_validation(text: str) -> list[str]:
     raw_parts = marked.split("\x01")
     out = []
     for p in raw_parts:
+        # Restore link placeholders + abbreviation periods.
         for j, link in enumerate(placeholders):
             p = p.replace(f"\x00LINK{j}\x00", link)
+        p = p.replace("\x02", ".")
         out.append(p.strip())
     return [p for p in out if p]
 
