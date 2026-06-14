@@ -45,7 +45,7 @@ MIN_CLUSTER_SIZE = 3
 MAX_ROUNDUPS = 5
 
 OPENAI_EMBED_MODEL = "text-embedding-3-small"
-HOUSING_CHECK_MODEL = "claude-haiku-4-5"
+HOUSING_CHECK_MODEL = "claude-haiku-4-5-20251001"
 ROUNDUP_WRITE_MODEL = "claude-opus-4-7"  # Opus is expensive; tune to taste
 
 # Filter thresholds
@@ -399,6 +399,11 @@ def is_housing_relevant(cluster: Cluster, anthropic_client=None) -> bool:
             messages=[{"role": "user", "content": user}],
         )
         text = (resp.content[0].text or "").strip().upper()
+        try:
+            from analysis.anthropic_spend import record_usage as _rec_usage
+            _rec_usage(HOUSING_CHECK_MODEL, resp.usage)
+        except Exception:
+            pass
         return text.startswith("Y")
     except Exception as e:
         logger.warning(f"housing-check failed for cluster {cluster.cluster_id}: {e}")
@@ -458,6 +463,11 @@ def write_roundup(cluster: Cluster, anthropic_client=None) -> Optional[Roundup]:
             system=ROUNDUP_WRITE_SYSTEM,
             messages=[{"role": "user", "content": user}],
         )
+        try:
+            from analysis.anthropic_spend import record_usage as _rec_usage
+            _rec_usage(ROUNDUP_WRITE_MODEL, resp.usage)
+        except Exception:
+            pass
     except Exception as e:
         logger.warning(f"writer failed for cluster {cluster.cluster_id}: {e}")
         return None

@@ -7,9 +7,12 @@ name: Pulse Health Dashboard
 # (same account as the daily Pulse briefing — RESEND_API_KEY secret).
 
 on:
-  workflow_run:
-    workflows: ["Pulse Daily Synthesis & Email"]
-    types: [completed]
+  # Disabled 2026-06-14: user only wants the detailed "Pulse Pipeline Health"
+  # email (from pulse-synth.yml). The short digest from this workflow is
+  # redundant. Manual trigger preserved in case we want to revive it.
+  # workflow_run:
+  #   workflows: ["Pulse Daily Synthesis & Email"]
+  #   types: [completed]
   workflow_dispatch:
 
 jobs:

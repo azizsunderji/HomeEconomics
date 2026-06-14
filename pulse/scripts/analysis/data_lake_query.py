@@ -287,6 +287,11 @@ FRED data is live and always current. NEVER say "data not available" for macro c
             max_tokens=4096,
             messages=[{"role": "user", "content": prompt}],
         )
+        try:
+            from analysis.anthropic_spend import record_usage as _rec_usage
+            _rec_usage(MODEL, response.usage)
+        except Exception:
+            pass
         text = response.content[0].text.strip()
 
         # Parse JSON from response — handle code blocks

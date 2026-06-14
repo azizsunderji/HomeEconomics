@@ -47,6 +47,9 @@ PRICING_CENTS_PER_MTOK = {
     "claude-opus-4-7": {
         "input": 1500, "cache_write": 1875, "cache_read": 150, "output": 7500,
     },
+    "claude-opus-4-8": {
+        "input": 500, "cache_write": 625, "cache_read": 50, "output": 2500,
+    },
 }
 
 

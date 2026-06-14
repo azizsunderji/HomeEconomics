@@ -251,6 +251,11 @@ def _classify_batch(
             system=TRIGGER_TYPE_SYSTEM.format(today=today),
             messages=[{"role": "user", "content": user}],
         )
+        try:
+            from analysis.anthropic_spend import record_usage as _rec_usage
+            _rec_usage(OPUS_MODEL, resp.usage)
+        except Exception:
+            pass
     except Exception as e:
         logger.warning(
             f"trigger_classifier: Opus API call failed for batch of {len(batch)}: {e}. "

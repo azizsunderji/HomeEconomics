@@ -395,6 +395,11 @@ def is_us_housing_relevant(cluster: Cluster,
             messages=[{"role": "user", "content": user}],
         )
         text = (resp.content[0].text if resp.content else "").strip().upper()
+        try:
+            from analysis.anthropic_spend import record_usage as _rec_usage
+            _rec_usage(US_HOUSING_CHECK_MODEL, resp.usage)
+        except Exception:
+            pass
         return text.startswith("YES")
     except Exception as e:
         logger.warning(f"US-housing check failed: {e}")
@@ -436,6 +441,11 @@ def subcluster_by_shared_story(
             messages=[{"role": "user", "content": user}],
         )
         text = resp.content[0].text if resp.content else ""
+        try:
+            from analysis.anthropic_spend import record_usage as _rec_usage
+            _rec_usage(SUBCLUSTER_MODEL, resp.usage)
+        except Exception:
+            pass
     except Exception as e:
         logger.warning(f"cluster {cluster.cluster_id} subcluster Haiku failed: {e}")
         return [cluster]
@@ -551,6 +561,12 @@ def write_roundup_for_cluster(
         ) as stream:
             for text in stream.text_stream:
                 response_text += text
+            try:
+                _final = stream.get_final_message()
+                from analysis.anthropic_spend import record_usage as _rec_usage
+                _rec_usage(OPUS_MODEL, _final.usage)
+            except Exception:
+                pass
         response_text = response_text.strip()
     except Exception as e:
         logger.warning(f"cluster {cluster.cluster_id} Sonnet call failed: {e}")

@@ -1488,13 +1488,6 @@ STAGE_DEFINITIONS = [
         probe_v1_cited_sources,
     ),
     (
-        "5.1", "V2 synthesis (clustering)",
-        "Embedding-based clustering pipeline that produces v2 roundups. "
-        "Stats come straight from _v2_meta.stats. v2 ships alongside v1 for "
-        "comparison.",
-        probe_v2,
-    ),
-    (
         "6.1", "Front pages — local artifacts",
         "Freedom Forum PDFs are downloaded, headlines extracted, page snapshots "
         "rendered, and a headlines.json sidecar written. Local artifact "
@@ -1513,13 +1506,6 @@ STAGE_DEFINITIONS = [
         "Reads the latest daily briefing's email_sent + email_sent_at to "
         "verify Resend delivery + DB acknowledgement.",
         probe_v1_email,
-    ),
-    (
-        "7.2", "V2 email send",
-        "Reads the latest daily_v2_clustered briefing. v2_runner doesn't "
-        "currently mark the briefing as emailed in the DB, so a WARN here is "
-        "informational, not a true failure.",
-        probe_v2_email,
     ),
 ]
 
