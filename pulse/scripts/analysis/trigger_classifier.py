@@ -248,7 +248,11 @@ def _classify_batch(
         resp = client.messages.create(
             model=OPUS_MODEL,
             max_tokens=8000,
-            system=TRIGGER_TYPE_SYSTEM.format(today=today),
+            system=[{
+                "type": "text",
+                "text": TRIGGER_TYPE_SYSTEM.format(today=today),
+                "cache_control": {"type": "ephemeral"},
+            }],
             messages=[{"role": "user", "content": user}],
         )
         try:

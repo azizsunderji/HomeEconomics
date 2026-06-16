@@ -202,21 +202,21 @@ jobs:
         working-directory: pulse/scripts
         run: python run_pipeline.py synthesize
 
-      - name: Run V2 clustering roundups + send comparison email
-        # v2 reads the v1 briefing the synthesis step just wrote and sends
-        # a parallel email with clustering-based roundups for A/B comparison.
-        # Failures here MUST NOT take down the v1 send — wrap in `|| true`.
-        if: steps.guard.outputs.should_run == 'true'
-        working-directory: pulse/scripts
-        env:
-          PULSE_DB: ${{ github.workspace }}/pulse/data/pulse.db
-        run: python v2_runner.py --max-roundups 5 --to aziz@home-economics.us || echo "V2 run failed — continuing without"
+      # V2 disabled 2026-06-16: user is not using v2 comparison output.
+      # Code preserved (v2_runner.py + dependencies untouched) in case we
+      # want to revive A/B comparison later. Re-enable by uncommenting.
+      # - name: Run V2 clustering roundups + send comparison email
+      #   if: steps.guard.outputs.should_run == 'true'
+      #   working-directory: pulse/scripts
+      #   env:
+      #     PULSE_DB: ${{ github.workspace }}/pulse/data/pulse.db
+      #   run: python v2_runner.py --max-roundups 5 --to aziz@home-economics.us || echo "V2 run failed — continuing without"
 
       - name: Run V3.1 hybrid roundups + send comparison email
         # v3.1 reads the v1 briefing the synthesis step just wrote and
         # sends a parallel email with two-stage Haiku sub-clustering +
         # Opus per-cluster writing + 6-day historical context. Failures
-        # here MUST NOT take down the v1 or v2 send — wrap in `|| true`.
+        # here MUST NOT take down the v1 send — wrap in `|| true`.
         if: steps.guard.outputs.should_run == 'true'
         working-directory: pulse/scripts
         env:

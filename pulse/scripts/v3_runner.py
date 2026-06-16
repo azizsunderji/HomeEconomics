@@ -239,7 +239,11 @@ def write_roundup_for_cluster(
         with anthropic_client.messages.stream(
             model=SONNET_MODEL,
             max_tokens=4096,
-            system=system_prompt,
+            system=[{
+                "type": "text",
+                "text": system_prompt,
+                "cache_control": {"type": "ephemeral"},
+            }],
             messages=[{"role": "user", "content": user_content}],
         ) as stream:
             for text in stream.text_stream:
