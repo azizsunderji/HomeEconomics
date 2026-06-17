@@ -223,16 +223,27 @@ jobs:
           PULSE_DB: ${{ github.workspace }}/pulse/data/pulse.db
         run: python v3_1_runner.py --to aziz@home-economics.us || echo "V3.1 run failed — continuing without"
 
-      - name: Send daily pipeline-health diagnostic email
+      - name: Send daily pipeline-health diagnostic email (v1)
         # Stage-by-stage health report covering collection, enrichment,
-        # synthesis, front pages, and delivery. Goes only to aziz@... so
+        # v1 synthesis, front pages, and v1 delivery. Goes only to aziz@... so
         # he can spot anything broken in tomorrow's run. Failure here is
-        # informational only — never takes down the v1 or v2 send.
+        # informational only — never takes down the v1 send.
         if: steps.guard.outputs.should_run == 'true'
         working-directory: pulse/scripts
         env:
           PULSE_DB: ${{ github.workspace }}/pulse/data/pulse.db
-        run: python delivery/pipeline_health_report.py --to aziz@home-economics.us || echo "Health report failed — continuing without"
+        run: python delivery/pipeline_health_report.py --variant v1 --to aziz@home-economics.us || echo "Health report (v1) failed — continuing without"
+
+      - name: Send daily pipeline-health diagnostic email (v3.1)
+        # Parallel health report focused on v3.1's hybrid synthesis pipeline:
+        # corpus filter, embedding+clustering, US-housing check, sub-clustering,
+        # coherence gate, historical context, per-cluster Opus writing.
+        # Same upstream collectors/enrichment/front-pages probes as v1.
+        if: steps.guard.outputs.should_run == 'true'
+        working-directory: pulse/scripts
+        env:
+          PULSE_DB: ${{ github.workspace }}/pulse/data/pulse.db
+        run: python delivery/pipeline_health_report.py --variant v3 --to aziz@home-economics.us || echo "Health report (v3.1) failed — continuing without"
 
       - name: Push DB back to Dropbox
         # Run even on failure, but only if the guard let us proceed past the check.

@@ -967,6 +967,27 @@ def _latest_v2(conn: sqlite3.Connection):
     ).fetchone()
 
 
+def _latest_v3_1(conn: sqlite3.Connection):
+    return conn.execute(
+        "SELECT id, created_at, content_json, email_sent, email_sent_at "
+        "FROM briefings WHERE briefing_type='daily_v3_1_hybrid' "
+        "ORDER BY id DESC LIMIT 1"
+    ).fetchone()
+
+
+def _v3_1_stats(conn: sqlite3.Connection) -> tuple[Any, dict]:
+    """Return (latest_v3_1_row, stats_dict). stats may be empty if missing."""
+    row = _latest_v3_1(conn)
+    if not row:
+        return None, {}
+    try:
+        cj = json.loads(row["content_json"])
+    except Exception:
+        return row, {}
+    meta = cj.get("_v3_1_meta") or {}
+    return row, (meta.get("stats") or {})
+
+
 def probe_v1_pool(stage: Stage, conn: sqlite3.Connection) -> None:
     row = _latest_v1(conn)
     if not row:
@@ -1173,6 +1194,166 @@ def probe_v1_cited_sources(stage: Stage, conn: sqlite3.Connection) -> None:
         stage.headline = f"{total_unique} unique sources cited"
 
 
+# ── V3.1 (hybrid: HDBSCAN + Haiku sub-cluster + Opus per-cluster) ──────
+
+def probe_v3_1_filter(stage: Stage, conn: sqlite3.Connection) -> None:
+    row, stats = _v3_1_stats(conn)
+    if not row:
+        stage.set(STATUS_BROKEN, "no v3.1 briefing exists")
+        return
+    if not stats:
+        stage.set(STATUS_BROKEN, "v3.1 briefing has no _v3_1_meta.stats")
+        return
+    n = stats.get("items_after_filter", 0)
+    stage.row("Latest v3.1 briefing id", row["id"])
+    stage.row("Created at", row["created_at"])
+    stage.row("Lookback hours", stats.get("lookback_hours", "?"))
+    stage.row("Items after v3.1 filter", _fmt_int(n))
+    if n == 0:
+        stage.set(STATUS_BROKEN, "0 items after filter — corpus empty")
+    elif n < 200:
+        stage.set(STATUS_BROKEN, f"only {n} items after filter — corpus very thin")
+    elif n < 500:
+        stage.set(STATUS_WARN, f"{n} items after filter — possibly thin")
+    else:
+        stage.headline = f"{_fmt_int(n)} items kept"
+
+
+def probe_v3_1_clustering(stage: Stage, conn: sqlite3.Connection) -> None:
+    row, stats = _v3_1_stats(conn)
+    if not row or not stats:
+        stage.set(STATUS_BROKEN, "no v3.1 stats available")
+        return
+    n_clusters = stats.get("clusters_total", 0)
+    seconds = stats.get("embed_cluster_seconds", 0)
+    min_size = stats.get("min_cluster_size", "?")
+    stage.row("Total clusters (HDBSCAN)", _fmt_int(n_clusters))
+    stage.row("Min cluster size", min_size)
+    stage.row("Embed + cluster seconds", f"{seconds:.1f}s")
+    if n_clusters == 0:
+        stage.set(STATUS_BROKEN, "HDBSCAN produced 0 clusters")
+    elif n_clusters < 20:
+        stage.set(STATUS_WARN, f"only {n_clusters} clusters — low diversity")
+    else:
+        stage.headline = f"{n_clusters} clusters in {seconds:.0f}s"
+    if seconds > 60:
+        stage.note(f"embed+cluster runtime {seconds:.1f}s is slow (>60s); investigate OpenAI/HDBSCAN bottleneck")
+
+
+def probe_v3_1_housing_check(stage: Stage, conn: sqlite3.Connection) -> None:
+    row, stats = _v3_1_stats(conn)
+    if not row or not stats:
+        stage.set(STATUS_BROKEN, "no v3.1 stats available")
+        return
+    n_total = stats.get("clusters_total", 0)
+    n_housing = stats.get("us_housing_clusters", 0)
+    pct = (100.0 * n_housing / n_total) if n_total else 0
+    stage.row("Clusters kept (US-housing-relevant)", f"{_fmt_int(n_housing)} of {_fmt_int(n_total)} ({pct:.0f}%)")
+    if n_housing == 0:
+        stage.set(STATUS_BROKEN, "0 housing-relevant clusters — Haiku check rejected all")
+    elif n_housing < 5:
+        stage.set(STATUS_WARN, f"only {n_housing} housing-relevant clusters")
+    elif n_total and n_housing / n_total < 0.10:
+        stage.set(STATUS_WARN, f"only {pct:.0f}% of clusters kept — check may be too strict")
+    else:
+        stage.headline = f"{n_housing}/{n_total} housing-relevant"
+
+
+def probe_v3_1_subclustering(stage: Stage, conn: sqlite3.Connection) -> None:
+    row, stats = _v3_1_stats(conn)
+    if not row or not stats:
+        stage.set(STATUS_BROKEN, "no v3.1 stats available")
+        return
+    n_housing = stats.get("us_housing_clusters", 0)
+    n_sub = stats.get("sub_clusters_total", 0)
+    stage.row("Sub-clusters from Haiku split", _fmt_int(n_sub))
+    stage.row("Source housing clusters", _fmt_int(n_housing))
+    if n_sub == 0 and n_housing > 0:
+        stage.set(STATUS_BROKEN, "sub-clustering produced 0 sub-clusters from housing input")
+    elif n_housing and n_sub < n_housing:
+        stage.set(STATUS_WARN, f"sub-clusters ({n_sub}) < housing clusters ({n_housing}) — Haiku may be collapsing too much")
+    else:
+        stage.headline = f"{n_sub} sub-clusters from {n_housing} housing groups"
+
+
+def probe_v3_1_coherence(stage: Stage, conn: sqlite3.Connection) -> None:
+    row, stats = _v3_1_stats(conn)
+    if not row or not stats:
+        stage.set(STATUS_BROKEN, "no v3.1 stats available")
+        return
+    n_sub = stats.get("sub_clusters_total", 0)
+    n_coh = stats.get("coherent_clusters", 0)
+    pct = (100.0 * n_coh / n_sub) if n_sub else 0
+    stage.row("Coherent sub-clusters (≥2 authors AND ≥2 sources)", f"{_fmt_int(n_coh)} of {_fmt_int(n_sub)} ({pct:.0f}%)")
+    if n_coh == 0:
+        stage.set(STATUS_BROKEN, "0 sub-clusters passed coherence gate")
+    elif n_sub and n_coh / n_sub < 0.3:
+        stage.set(STATUS_WARN, f"only {pct:.0f}% of sub-clusters coherent — gate may be too strict")
+    else:
+        stage.headline = f"{n_coh}/{n_sub} coherent ({pct:.0f}%)"
+
+
+def probe_v3_1_historical(stage: Stage, conn: sqlite3.Connection) -> None:
+    row, stats = _v3_1_stats(conn)
+    if not row or not stats:
+        stage.set(STATUS_BROKEN, "no v3.1 stats available")
+        return
+    n = stats.get("historical_pool_size", 0)
+    stage.row("Past 6-day historical pool size", _fmt_int(n))
+    stage.note("Used per-cluster via embedding similarity to weave 6-day arc into roundups")
+    if n == 0:
+        stage.set(STATUS_WARN, "historical pool empty — no past-week context available")
+    elif n < 100:
+        stage.set(STATUS_WARN, f"only {n} historical items — thin pool")
+    else:
+        stage.headline = f"{_fmt_int(n)} historical items"
+
+
+def probe_v3_1_writing(stage: Stage, conn: sqlite3.Connection) -> None:
+    row, stats = _v3_1_stats(conn)
+    if not row or not stats:
+        stage.set(STATUS_BROKEN, "no v3.1 stats available")
+        return
+    cj = json.loads(row["content_json"])
+    roundups = cj.get("conversation_roundups") or []
+    n_written = stats.get("roundups_written", len(roundups))
+    n_coh = stats.get("coherent_clusters", 0)
+    max_r = stats.get("max_roundups", "?")
+    seconds = stats.get("pipeline_seconds", 0)
+    stage.row("Roundups written (Opus per-cluster)", f"{_fmt_int(n_written)} of {_fmt_int(n_coh)} coherent")
+    stage.row("Max roundups cap", max_r)
+    stage.row("Full pipeline seconds", f"{seconds:.0f}s")
+    for i, r in enumerate(roundups[:10]):
+        stage.note(f"{i+1}. {r.get('topic','')[:160]}")
+    if n_written == 0:
+        stage.set(STATUS_BROKEN, "Opus wrote 0 roundups")
+    elif n_coh and n_written < n_coh * 0.5:
+        stage.set(STATUS_WARN, f"only {n_written}/{n_coh} coherent clusters produced roundups — Opus failures or skips")
+    else:
+        stage.headline = f"{n_written} roundups"
+    if seconds > 600:
+        stage.note(f"pipeline runtime {seconds:.0f}s exceeds 10min — slow")
+
+
+def probe_v3_1_email(stage: Stage, conn: sqlite3.Connection) -> None:
+    row = _latest_v3_1(conn)
+    if not row:
+        stage.set(STATUS_BROKEN, "no v3.1 briefing exists")
+        return
+    sent = bool(row["email_sent"])
+    sent_at = row["email_sent_at"] or ""
+    stage.row("Briefing id", row["id"])
+    stage.row("Created at", row["created_at"])
+    stage.row("email_sent", "yes" if sent else "no")
+    stage.row("email_sent_at", sent_at or "(never)")
+    if not sent:
+        # v3_1_runner sends via Resend but may not update the DB flag.
+        # Treat absence as WARN, not BROKEN.
+        stage.set(STATUS_WARN, "v3.1 briefing exists but email_sent flag not set in DB")
+    else:
+        stage.headline = f"sent at {sent_at[:16]}"
+
+
 # ── V2 (clustering) ────────────────────────────────────────────────────
 
 def probe_v2(stage: Stage, conn: sqlite3.Connection) -> None:
@@ -1331,7 +1512,9 @@ def probe_db(stage: Stage, db_path: str, conn: sqlite3.Connection) -> None:
 
 # ── Build the report ───────────────────────────────────────────────────
 
-STAGE_DEFINITIONS = [
+# Upstream stages — feed both v1 and v3.1 reports. Collectors, enrichment,
+# classifiers, front pages. Anything that runs BEFORE the synthesis fork.
+UPSTREAM_STAGES = [
     # (key, title, prose, probe_fn)
     (
         "1.1", "Twitter via Apify",
@@ -1439,6 +1622,26 @@ STAGE_DEFINITIONS = [
         probe_blocklist,
     ),
     (
+        "6.1", "Front pages — local artifacts",
+        "Freedom Forum PDFs are downloaded, headlines extracted, page snapshots "
+        "rendered, and a headlines.json sidecar written. Local artifact "
+        "presence indicates the capture step ran.",
+        probe_frontpages_local,
+    ),
+    (
+        "6.3", "Front pages — Bluehost SFTP upload",
+        "The page snapshots + headlines.json are uploaded to Bluehost so the "
+        "email can reference them by URL. A live HTTP probe checks the "
+        "uploaded headlines.json is fresh and parseable.",
+        probe_frontpages_remote,
+    ),
+]
+
+
+# v1 synthesis-specific stages. Replace these with V3_1_SYNTH_STAGES when
+# auditing the v3.1 pipeline instead.
+V1_SYNTH_STAGES = [
+    (
         "4.1", "V1 synthesis — item pool",
         "Inputs to the v1 Sonnet synth call. Source breakdown, total items, "
         "and conversation items measure pipeline width into the LLM.",
@@ -1488,20 +1691,6 @@ STAGE_DEFINITIONS = [
         probe_v1_cited_sources,
     ),
     (
-        "6.1", "Front pages — local artifacts",
-        "Freedom Forum PDFs are downloaded, headlines extracted, page snapshots "
-        "rendered, and a headlines.json sidecar written. Local artifact "
-        "presence indicates the capture step ran.",
-        probe_frontpages_local,
-    ),
-    (
-        "6.3", "Front pages — Bluehost SFTP upload",
-        "The page snapshots + headlines.json are uploaded to Bluehost so the "
-        "email can reference them by URL. A live HTTP probe checks the "
-        "uploaded headlines.json is fresh and parseable.",
-        probe_frontpages_remote,
-    ),
-    (
         "7.1", "V1 email send",
         "Reads the latest daily briefing's email_sent + email_sent_at to "
         "verify Resend delivery + DB acknowledgement.",
@@ -1510,9 +1699,75 @@ STAGE_DEFINITIONS = [
 ]
 
 
-def build_stages(conn: sqlite3.Connection, db_path: str) -> list[Stage]:
+# v3.1 synthesis-specific stages. Replaces V1_SYNTH_STAGES when running
+# the health report with `--variant v3`. All probes read from the latest
+# briefing of type 'daily_v3_1_hybrid' and its _v3_1_meta.stats payload.
+V3_1_SYNTH_STAGES = [
+    (
+        "4.1", "V3.1 synthesis — Corpus filter",
+        "Loose v3.1 filter on the 24h corpus (allows rel≥70 short items "
+        "that v1's stricter filter drops). 'items_after_filter' is the "
+        "pool fed into the embedder.",
+        probe_v3_1_filter,
+    ),
+    (
+        "4.2", "V3.1 synthesis — HDBSCAN clustering",
+        "OpenAI text-embedding-3-small (1536-dim) → HDBSCAN with cosine "
+        "distance. Produces topic clusters; embed+cluster runtime captured.",
+        probe_v3_1_clustering,
+    ),
+    (
+        "4.3", "V3.1 synthesis — US-housing check",
+        "Haiku classifies each cluster YES/NO for US-housing relevance. "
+        "Off-topic clusters dropped here; passing share is the keep rate.",
+        probe_v3_1_housing_check,
+    ),
+    (
+        "4.4", "V3.1 synthesis — Sub-clustering",
+        "Haiku splits each housing-relevant cluster by SHARED STORY "
+        "(event, argument, or shared data/claim). One topic cluster can "
+        "become multiple sub-clusters.",
+        probe_v3_1_subclustering,
+    ),
+    (
+        "4.5", "V3.1 synthesis — Coherence gate",
+        "Programmatic gate (≥2 authors AND ≥2 sources). Single-voice "
+        "sub-clusters are rejected so single-handle threads can't anchor "
+        "a roundup.",
+        probe_v3_1_coherence,
+    ),
+    (
+        "4.6", "V3.1 synthesis — Historical context pool",
+        "Past 6-day items (rel≥60) loaded once, embedded once. Each "
+        "cluster's roundup gets its own top-8 by embedding similarity to "
+        "the cluster centroid.",
+        probe_v3_1_historical,
+    ),
+    (
+        "4.7", "V3.1 synthesis — Per-cluster Opus writing",
+        "Opus 4-8 writes each coherent sub-cluster's roundup. Counts how "
+        "many roundups actually got written, with cap from max_roundups.",
+        probe_v3_1_writing,
+    ),
+    (
+        "7.1", "V3.1 email send",
+        "Reads the latest daily_v3_1_hybrid briefing's email_sent + "
+        "email_sent_at to verify Resend delivery + DB acknowledgement.",
+        probe_v3_1_email,
+    ),
+]
+
+
+def build_stages(conn: sqlite3.Connection, db_path: str,
+                 variant: str = "v1") -> list[Stage]:
+    """Run all probes and return Stage objects in display order.
+
+    variant="v1" (default) → upstream + V1 synthesis probes.
+    variant="v3" → upstream + V3.1 synthesis probes.
+    """
+    synth_stages = V3_1_SYNTH_STAGES if variant == "v3" else V1_SYNTH_STAGES
     stages: list[Stage] = []
-    for key, title, prose, probe in STAGE_DEFINITIONS:
+    for key, title, prose, probe in UPSTREAM_STAGES + synth_stages:
         st = Stage(key, f"{key} — {title}", prose)
         _safe(st, lambda s, fn=probe: fn(s, conn))
         stages.append(st)
@@ -1724,6 +1979,9 @@ def main() -> int:
     p = argparse.ArgumentParser()
     p.add_argument("--to", default=DEFAULT_TO)
     p.add_argument("--db", default=DEFAULT_DB)
+    p.add_argument("--variant", default="v1", choices=["v1", "v3"],
+                   help="Which synthesis pipeline to audit: v1 (default) or "
+                        "v3 (v3.1 hybrid).")
     p.add_argument("--dry-run", action="store_true",
                    help="Write HTML to /tmp/health_report.html and skip Resend.")
     p.add_argument("--out", default="/tmp/health_report.html")
@@ -1736,10 +1994,11 @@ def main() -> int:
     conn = sqlite3.connect(args.db)
     conn.row_factory = sqlite3.Row
 
-    stages = build_stages(conn, args.db)
+    stages = build_stages(conn, args.db, variant=args.variant)
     date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     html, n_broken, n_degraded = render_html(stages, date_str)
-    subject = f"[Pulse Pipeline Health] {date_str} — {n_broken} broken, {n_degraded} degraded"
+    variant_tag = "v3.1" if args.variant == "v3" else "v1"
+    subject = f"[Pulse Pipeline Health · {variant_tag}] {date_str} — {n_broken} broken, {n_degraded} degraded"
 
     Path(args.out).write_text(html)
     logger.info(f"Wrote report to {args.out}")
