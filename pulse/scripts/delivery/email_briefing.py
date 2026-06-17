@@ -651,14 +651,30 @@ def render_briefing_html(briefing: dict, with_sources_box: bool = False) -> tupl
             source_name = _esc(mention.get('source', ''))
             date_str = _esc(mention.get('date', ''))
 
+            # Link BOTH source and headline to the article URL. Mail clients
+            # auto-linkify domain-shaped text ("housingnotes.com") but not
+            # publication names ("The Free Press"), which made the linking
+            # look inconsistent. Explicit anchors fix that.
             if url:
-                headline_link = f'<a href="{url}" target="_blank" style="color: #3D3733; text-decoration: none;">{headline_text}</a>'
+                source_html = (
+                    f'<a href="{url}" target="_blank" '
+                    f'style="color: #0BB4FF; text-decoration: none; '
+                    f'font-weight: 600; font-size: 15px;">{source_name}</a>'
+                )
+                headline_link = (
+                    f'<a href="{url}" target="_blank" '
+                    f'style="color: #3D3733; text-decoration: none;">{headline_text}</a>'
+                )
             else:
+                source_html = (
+                    f'<span style="font-weight: 600; color: #0BB4FF; '
+                    f'font-size: 15px;">{source_name}</span>'
+                )
                 headline_link = headline_text
 
             html += f"""<table width="100%" cellpadding="0" cellspacing="0"><tr>
 <td style="font-size: 17px; padding: 4px 0; border-bottom: 1px solid #f0f0f0; line-height: 1.45;">
-  <span style="font-weight: 600; color: #0BB4FF; font-size: 15px;">{source_name}</span>
+  {source_html}
   {headline_link}
   {f'<span style="color: #888; font-size: 15px;"> ({date_str})</span>' if date_str else ''}
 </td></tr></table>
