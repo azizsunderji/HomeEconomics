@@ -784,9 +784,10 @@ def main() -> None:
     # Stage 9: build briefing, render, send
     v3 = build_v3_briefing(v1, roundups, conn, stats)
 
+    email_ok = False
     if not args.no_send:
-        ok = send_v3_email(v3, args.to, v1_id)
-        if not ok:
+        email_ok = send_v3_email(v3, args.to, v1_id)
+        if not email_ok:
             sys.exit(1)
     else:
         print("--no-send set; skipping email")
@@ -794,14 +795,17 @@ def main() -> None:
     if not args.no_store:
         cols = {r[1] for r in conn.execute("PRAGMA table_info(briefings)").fetchall()}
         if "briefing_type" in cols:
+            now_iso = datetime.now(timezone.utc).isoformat()
             cur = conn.execute(
-                "INSERT INTO briefings (briefing_type, content_json, created_at) "
-                "VALUES ('daily_v3_1_hybrid', ?, ?)",
-                (json.dumps(v3, default=str),
-                 datetime.now(timezone.utc).isoformat()),
+                "INSERT INTO briefings (briefing_type, content_json, created_at, "
+                "email_sent, email_sent_at) "
+                "VALUES ('daily_v3_1_hybrid', ?, ?, ?, ?)",
+                (json.dumps(v3, default=str), now_iso,
+                 1 if email_ok else 0,
+                 now_iso if email_ok else None),
             )
             conn.commit()
-            print(f"stored v3 briefing as id={cur.lastrowid}")
+            print(f"stored v3 briefing as id={cur.lastrowid} (email_sent={int(email_ok)})")
 
 
 if __name__ == "__main__":

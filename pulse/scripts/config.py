@@ -138,12 +138,14 @@ COMPETITOR_SUBSTACKS = [
     ("Ben Carlson", "https://awealthofcommonsense.com/feed/"),
     ("Matthew Yglesias - Slow Boring", "https://www.slowboring.com/feed"),
     ("Noah Smith - Noahpinion", "https://www.noahpinion.blog/feed"),
-    ("Lance Lambert - ResiClub", "https://www.resiclub.com/feed"),
+    # Removed 2026-06-17: resiclub.com/feed returns 404 — Lance Lambert appears to have moved.
+    #   ("Lance Lambert - ResiClub", "https://www.resiclub.com/feed"),
     ("Conor Sen - Bloomberg Opinion", "https://www.bloomberg.com/authors/ATA2uaN4m4A/conor-sen.rss"),
     ("Employ America", "https://www.employamerica.org/feed"),
     ("Matthew Klein - The Overshoot", "https://theovershoot.co/feed"),
     ("Ernie Tedeschi", "https://www.stripeeconomics.com/feed"),
-    ("Jason Furman", "https://jasonfurman.substack.com/feed"),
+    # Removed 2026-06-17: feed parses but entries have no `published`/`updated` timestamps, so the 72h filter drops everything. Investigate.
+    #   ("Jason Furman", "https://jasonfurman.substack.com/feed"),
     ("Ethan Mollick - One Useful Thing", "https://www.oneusefulthing.org/feed"),
     # AI
     ("Ben Thompson - Stratechery", "https://stratechery.com/feed"),

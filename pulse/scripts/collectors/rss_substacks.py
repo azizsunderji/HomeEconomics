@@ -1,12 +1,25 @@
 """Competitor Substack collector.
 
 Fetches RSS feeds from a curated list of economics/housing Substacks.
+
+Two fetch paths:
+  1. Browserbase (preferred when BROWSERBASE_API_KEY is set). Substack.com's
+     CDN aggressively 403s GitHub Actions IP ranges even with a browser UA.
+     Routing through Browserbase's residential-IP sessions recovers ~9
+     newsletters/day we'd otherwise lose in production.
+  2. httpx (fallback for local dev or when BB is unavailable). Same browser
+     UA as before.
+
+A single BB session is opened for the entire substack batch and reused
+across all feeds — far cheaper than per-feed session creation.
 """
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import logging
+import os
 import re
 import time
 from datetime import datetime, timezone
@@ -59,6 +72,66 @@ def _parse_date(entry: dict) -> Optional[datetime]:
     return None
 
 
+async def _fetch_via_browserbase(urls: list[str]) -> dict[str, bytes]:
+    """Open ONE Browserbase session, fetch every substack RSS URL through
+    the browser context's HTTP client, return raw bytes per URL.
+
+    Bypasses substack.com's CDN-level IP block on GitHub Actions runners.
+    Missing keys = failed fetch (logged); caller falls back to httpx.
+    """
+    out: dict[str, bytes] = {}
+    try:
+        from playwright.async_api import async_playwright
+        # Reuse enrich_articles' session helper to keep BB config in one place.
+        import sys
+        from pathlib import Path
+        sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+        from enrich_articles import _create_browserbase_session
+    except Exception as e:
+        logger.warning(f"Browserbase substack import failed: {e}")
+        return out
+
+    session = _create_browserbase_session()
+    if session is None:
+        return out
+
+    async with async_playwright() as p:
+        try:
+            browser = await p.chromium.connect_over_cdp(session.connect_url)
+            ctx = browser.contexts[0]
+            req = ctx.request
+            for url in urls:
+                try:
+                    resp = await req.get(
+                        url,
+                        headers={
+                            "User-Agent": _UA,
+                            "Accept": (
+                                "application/rss+xml, application/atom+xml, "
+                                "application/xml;q=0.9, */*;q=0.8"
+                            ),
+                        },
+                        timeout=20000,
+                    )
+                    if resp.status == 200:
+                        out[url] = await resp.body()
+                    else:
+                        logger.info(
+                            f"BB substack '{url}': HTTP {resp.status}"
+                        )
+                except Exception as e:
+                    logger.warning(
+                        f"BB substack '{url}' fetch error: {type(e).__name__}: {e}"
+                    )
+            try:
+                await browser.close()
+            except Exception:
+                pass
+        except Exception as e:
+            logger.warning(f"BB substack session failed: {e}")
+    return out
+
+
 def collect(
     substacks: list[tuple[str, str]] | None = None,
     max_per_feed: int = 5,
@@ -72,30 +145,46 @@ def collect(
     items = []
     cutoff = datetime.now(timezone.utc).timestamp() - (max_age_hours * 3600)
 
+    # Browserbase batch pre-fetch: substack.com 403s GitHub Actions IPs even
+    # with a browser UA. We open ONE BB session and fetch all feeds through
+    # it; anything that succeeds skips the httpx path below.
+    bb_bytes: dict[str, bytes] = {}
+    if os.environ.get("BROWSERBASE_API_KEY"):
+        try:
+            urls_to_fetch = [feed_url for _, feed_url in substacks]
+            bb_bytes = asyncio.run(_fetch_via_browserbase(urls_to_fetch))
+            logger.info(
+                f"Browserbase substack pass: {len(bb_bytes)} of "
+                f"{len(urls_to_fetch)} feeds fetched"
+            )
+        except Exception as e:
+            logger.warning(f"Browserbase substack pass crashed: {e}")
+
     for name, feed_url in substacks:
         try:
-            # Fetch via httpx with a real browser UA — feedparser's built-in
-            # fetcher gets blocked by substack.com and many publisher domains.
-            # Round-1 fix to rss_feeds.py never made it here.
-            try:
-                r = httpx.get(
-                    feed_url,
-                    timeout=20,
-                    follow_redirects=True,
-                    headers={
-                        "User-Agent": _UA,
-                        "Accept": "application/rss+xml, application/atom+xml, application/xml;q=0.9, */*;q=0.8",
-                    },
-                )
-            except Exception as fetch_err:
-                logger.warning(f"Substack fetch failed for '{name}': {fetch_err}")
-                continue
+            raw_bytes = bb_bytes.get(feed_url)
 
-            if r.status_code != 200:
-                logger.warning(f"Substack '{name}' returned HTTP {r.status_code}")
-                continue
+            # httpx fallback for any URL Browserbase didn't get.
+            if raw_bytes is None:
+                try:
+                    r = httpx.get(
+                        feed_url,
+                        timeout=20,
+                        follow_redirects=True,
+                        headers={
+                            "User-Agent": _UA,
+                            "Accept": "application/rss+xml, application/atom+xml, application/xml;q=0.9, */*;q=0.8",
+                        },
+                    )
+                except Exception as fetch_err:
+                    logger.warning(f"Substack fetch failed for '{name}': {fetch_err}")
+                    continue
 
-            raw_bytes = r.content
+                if r.status_code != 200:
+                    logger.warning(f"Substack '{name}' returned HTTP {r.status_code}")
+                    continue
+
+                raw_bytes = r.content
             parsed = feedparser.parse(raw_bytes)
 
             # Retry with entity sanitization if first pass bozo'd and got nothing.

@@ -655,6 +655,14 @@ def cmd_synthesize(args):
         # Rotation: day_index * 5 % N, picking 5 contiguous from sorted pool
         day_idx = datetime.now(timezone.utc).toordinal()
         journal_items = []
+        # Per-source breakdown of abstract acquisition. Drives the
+        # pipeline-health probe (4 ways an abstract can land, or fail).
+        abs_stats = {
+            "rss_body_hits": 0,
+            "doi_hits": 0,
+            "bb_hits": 0,
+            "misses": 0,
+        }
         if pool:
             # Lazy-import abstract fetchers so they only load when needed
             try:
@@ -682,6 +690,8 @@ def cmd_synthesize(args):
                 body = _re_j.sub(r"Publication date:.*?Author\(s\):[^\n]*", "", body).strip()
                 body = _re_j.sub(r"Volume \d+, Issue \d+.*?\.\s*$", "", body).strip()
                 abstract = body[:1500] if len(body) > 80 else ""
+                if abstract:
+                    abs_stats["rss_body_hits"] += 1
 
                 # If RSS body had no usable abstract, fetch one inline via DOI →
                 # OpenAlex/Semantic Scholar/CrossRef → title search. This keeps
@@ -706,6 +716,7 @@ def cmd_synthesize(args):
                             fetched = ""
                     if fetched:
                         abstract = fetched[:1500]
+                        abs_stats["doi_hits"] += 1
                         logger.info(f"  inline-abstract ({len(abstract)}c) {title[:60]}")
                     else:
                         logger.info(f"  inline-abstract MISS {title[:60]}")
@@ -768,6 +779,7 @@ def cmd_synthesize(args):
                                 got = _j_extract_abs(html)
                                 if got:
                                     j["abstract"] = got[:1500]
+                                    abs_stats["bb_hits"] += 1
                                     logger.info(f"  inline-abstract-bb ({len(got)}c) {(j.get('title') or '')[:60]}")
                                 else:
                                     logger.info(f"  inline-abstract-bb MISS {(j.get('title') or '')[:60]}")
@@ -827,7 +839,14 @@ def cmd_synthesize(args):
             except Exception as e:
                 logger.warning(f"Haiku abstract condensation failed: {e}")
 
+        # Finalize abstract-coverage stats: anything still without a
+        # usable abstract counts as a miss.
+        abs_stats["misses"] = sum(
+            1 for j in journal_items if len((j.get("abstract") or "").strip()) < 80
+        )
+        abs_stats["picks_total"] = len(journal_items)
         briefing["_journal_articles"] = journal_items
+        briefing["_journal_abstract_stats"] = abs_stats
 
         # Headlines
         headline_items = []

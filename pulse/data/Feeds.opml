@@ -73,7 +73,7 @@
       <outline text="Bloomberg Wealth" title="Bloomberg Wealth" type="rss" xmlUrl="https://feeds.bloomberg.com/wealth/news.rss" htmlUrl="https://www.bloomberg.com/wealth" />
       <outline text="NYT The Upshot" title="NYT The Upshot" type="rss" xmlUrl="https://rss.nytimes.com/services/xml/rss/nyt/Upshot.xml" htmlUrl="https://www.nytimes.com/section/upshot" />
       <outline text="CNBC Real Estate" title="CNBC Real Estate" type="rss" xmlUrl="https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&amp;id=10000115" htmlUrl="https://www.cnbc.com/real-estate/" />
-      <outline text="Brookings Institution" title="Brookings Institution" type="rss" xmlUrl="https://www.brookings.edu/feed/" htmlUrl="https://www.brookings.edu" />
+      <!-- Brookings Institution removed 2026-06-17: /feed/ now redirects to HTML homepage. Try https://www.brookings.edu/articles/feed/ as a replacement after verification. -->
       <outline text="Census Economic Indicators" title="Census Economic Indicators" type="rss" xmlUrl="https://www.census.gov/economic-indicators/indicator.xml" htmlUrl="https://www.census.gov" />
       <outline text="Federal Reserve Press Releases" title="Federal Reserve Press Releases" type="rss" xmlUrl="https://www.federalreserve.gov/feeds/press_all.xml" htmlUrl="https://www.federalreserve.gov" />
       <outline text="Freddie Mac Blog" title="Freddie Mac Blog" type="rss" xmlUrl="https://www.freddiemac.com/blog/feed" htmlUrl="https://www.freddiemac.com/blog" />
@@ -123,7 +123,7 @@
       <outline text="Journal of Regional Science" title="Journal of Regional Science" type="rss" htmlUrl="https://onlinelibrary.wiley.com/journal/14679787" xmlUrl="https://onlinelibrary.wiley.com/feed/14679787/most-recent" />
       <outline text="Journal of Real Estate Finance and Economics" title="Journal of Real Estate Finance and Economics" type="rss" htmlUrl="https://link.springer.com/journal/11146" xmlUrl="https://link.springer.com/search.rss?facet-content-type=Article&amp;facet-journal-id=11146" />
       <outline text="Annals of Regional Science" title="Annals of Regional Science" type="rss" htmlUrl="https://link.springer.com/journal/168" xmlUrl="https://link.springer.com/search.rss?facet-content-type=Article&amp;facet-journal-id=168" />
-      <outline text="NBER New Working Papers" title="NBER New Working Papers" type="rss" xmlUrl="https://www.nber.org/rss/new.xml" htmlUrl="https://www.nber.org" />
+      <!-- NBER New Working Papers removed 2026-06-17: 403 from cloud IPs regardless of UA. Investigate https://www.nber.org/papers/feed.xml as a replacement. -->
     </outline>
     <outline text="Housing Reporters" title="Housing Reporters">
       <outline text="Alert: Craig Karmin Wsj" title="Alert: Craig Karmin Wsj" type="rss" xmlUrl="https://www.google.com/alerts/feeds/09511781838648137995/3763469762738633076" />

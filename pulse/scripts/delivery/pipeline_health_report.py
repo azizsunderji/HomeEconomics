@@ -452,14 +452,17 @@ def _probe_rss_subset(
 
 
 def probe_rss_news(stage: Stage, conn: sqlite3.Connection) -> None:
+    # Read the OPML the COLLECTOR actually uses (collectors/rss_feeds.py).
+    # Probes previously read legacy OPMLs that listed ~80 feeds the
+    # collector never tries — those silent counts were noise, not signal.
     feeds: list[dict] = []
-    opml_paths = [
-        _SCRIPTS_DIR.parent / "HomeEconomicsRSS.opml",
-        _SCRIPTS_DIR.parent / "FeedsApr20.opml",
-    ]
-    for p in opml_paths:
-        if p.exists():
-            feeds.extend(_parse_opml(str(p)))
+    try:
+        from collectors.rss_feeds import DEFAULT_OPML_PATH, parse_opml as _collector_parse_opml
+        from pathlib import Path as _Path
+        if _Path(DEFAULT_OPML_PATH).exists():
+            feeds = _collector_parse_opml(DEFAULT_OPML_PATH)
+    except Exception as e:
+        stage.note(f"Could not import collector OPML: {e}")
     # News feeds = anything NOT in Journals / Twitter / Substack folders
     news_feeds = [
         f for f in feeds
@@ -753,10 +756,24 @@ def probe_article_enrichment(stage: Stage, conn: sqlite3.Connection) -> None:
         f"AND collected_at >= ? AND LENGTH(COALESCE(body,'')) < 500",
         (cutoff,),
     ).fetchone()["c"]
+    # Subtract domains the enricher deliberately skips — counting them
+    # against the alarm produces a chronic false-positive. Mirror
+    # enrich_articles.SKIP_DOMAINS so the two stay in sync.
+    try:
+        from enrich_articles import SKIP_DOMAINS as _ENRICH_SKIP_DOMAINS
+        _skip = set(_ENRICH_SKIP_DOMAINS)
+    except Exception:
+        _skip = {
+            "google.com", "google.news.com", "t.co", "twitter.com", "x.com",
+            "linkedin.com", "facebook.com", "costar.com",
+        }
+    _skip_clause = "AND " + " AND ".join(
+        f"COALESCE(url,'') NOT LIKE '%{d}%'" for d in sorted(_skip)
+    ) if _skip else ""
     high_rel_no_body = conn.execute(
         f"SELECT COUNT(*) c FROM items WHERE source IN {src_in} "
         f"AND collected_at >= ? AND COALESCE(relevance_score,0) >= 60 "
-        f"AND LENGTH(COALESCE(body,'')) < 500",
+        f"AND LENGTH(COALESCE(body,'')) < 500 {_skip_clause}",
         (cutoff,),
     ).fetchone()["c"]
     # Per-source breakdown so we can spot which channel is lagging.
@@ -807,26 +824,50 @@ def probe_tweet_link_enrichment(stage: Stage, conn: sqlite3.Connection) -> None:
 
 
 def probe_journal_abstracts(stage: Stage, conn: sqlite3.Connection) -> None:
-    cutoff = _last_24h_iso(24 * 7)
-    with_abs = conn.execute(
-        "SELECT COUNT(*) c FROM items WHERE feed_priority='journal' "
-        "AND collected_at >= ? AND LENGTH(body) >= 400",
-        (cutoff,),
-    ).fetchone()["c"]
-    without_abs = conn.execute(
-        "SELECT COUNT(*) c FROM items WHERE feed_priority='journal' "
-        "AND collected_at >= ? AND LENGTH(body) < 400",
-        (cutoff,),
-    ).fetchone()["c"]
-    stage.row("Journal items with abstract (7d)", _fmt_int(with_abs))
-    stage.row("Journal items without abstract (7d)", _fmt_int(without_abs))
-    total = with_abs + without_abs
-    if total == 0:
-        stage.set(STATUS_WARN, "no journal items to enrich")
-    elif without_abs > with_abs:
-        stage.set(STATUS_WARN, "majority of journal items missing abstracts")
+    """Track abstract coverage on TODAY'S 5 picked journal items.
+
+    Reads from the latest v1 briefing's _journal_articles (the actual
+    picks shown to readers) + _journal_abstract_stats (per-source
+    breakdown wired in run_pipeline.py). The earlier version of this
+    probe checked items.body which structurally never carries abstracts
+    for ScienceDirect/Wiley/Springer and fired WARN every day — that was
+    a false alarm.
+    """
+    row = _latest_v1(conn)
+    if not row:
+        stage.set(STATUS_BROKEN, "no v1 briefing to read journal picks from")
+        return
+    try:
+        cj = json.loads(row["content_json"])
+    except Exception as e:
+        stage.set(STATUS_BROKEN, f"v1 briefing JSON unparseable: {e}")
+        return
+    picks = cj.get("_journal_articles") or []
+    stats = cj.get("_journal_abstract_stats") or {}
+
+    with_abs = sum(1 for j in picks if len((j.get("abstract") or "").strip()) >= 80)
+    n_picks = len(picks) or stats.get("picks_total", 0)
+    stage.row("Today's picks", _fmt_int(n_picks))
+    stage.row("Picks with usable abstract", f"{with_abs} of {n_picks}")
+    if stats:
+        stage.row("Abstract from RSS body", stats.get("rss_body_hits", 0))
+        stage.row("Abstract via DOI/OpenAlex/Crossref/title", stats.get("doi_hits", 0))
+        stage.row("Abstract via Browserbase fallback", stats.get("bb_hits", 0))
+        stage.row("Picks still missing abstract", stats.get("misses", 0))
+    # Per-pick detail so it's easy to see which one(s) failed
+    for i, j in enumerate(picks):
+        alen = len((j.get("abstract") or "").strip())
+        flag = "✓" if alen >= 80 else "✗"
+        title = (j.get("title") or "")[:90]
+        stage.note(f"{flag} [{alen}c abs] {title}")
+    if n_picks == 0:
+        stage.set(STATUS_WARN, "no journal picks today — paper-of-the-day will be thin")
+    elif with_abs == 0:
+        stage.set(STATUS_BROKEN, f"0 of {n_picks} picks have abstracts — fetcher is broken")
+    elif with_abs < n_picks:
+        stage.set(STATUS_WARN, f"{n_picks - with_abs} of {n_picks} picks missing abstract")
     else:
-        stage.headline = f"{_fmt_int(with_abs)} with abstract"
+        stage.headline = f"{with_abs}/{n_picks} picks have abstracts"
 
 
 def probe_dedup(stage: Stage, conn: sqlite3.Connection) -> None:
