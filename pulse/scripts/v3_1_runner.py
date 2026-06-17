@@ -526,10 +526,12 @@ def write_roundup_for_cluster(
     cluster: Cluster,
     historical: Optional[list] = None,
     anthropic_client: Optional[anthropic.Anthropic] = None,
+    v1_themes: Optional[list[dict]] = None,
 ) -> Optional[dict]:
     """Sonnet writes ONE conversation_roundups entry for this cluster
     (or returns None to skip). v3.1: also accepts historical items (past
-    6 days, related by embedding similarity)."""
+    6 days, related by embedding similarity), and v1_themes (the news
+    themes v1 already covered today — used to suppress overlap)."""
     if anthropic_client is None:
         anthropic_client = anthropic.Anthropic()
 
@@ -542,11 +544,34 @@ def write_roundup_for_cluster(
         f"none apply):\n{_format_items_for_sonnet(historical, max_body=600)}"
         if historical else ""
     )
+    # v3.1's email keeps v1's News Themes section above the roundups, so
+    # any roundup that re-tells a v1 theme is straight duplication. Hand
+    # the v1 theme topics to the writer and let it skip clusters that
+    # overlap with a theme the reader has already read.
+    v1_themes_block = ""
+    if v1_themes:
+        themes_listed = "\n".join(
+            f"  - {(t.get('theme') or '').strip()}" for t in v1_themes
+            if (t.get('theme') or '').strip()
+        )
+        if themes_listed:
+            v1_themes_block = (
+                f"\n\nV1 NEWS THEMES ALREADY COVERED TODAY (do NOT duplicate):\n"
+                f"{themes_listed}\n"
+                f"If this cluster's anchor substantially overlaps with any of "
+                f"the above (same event, same release, same data point, even "
+                f"with a different framing), return "
+                f"{{\"skip\": true, \"reason\": \"dup v1 theme: <theme name>\"}} "
+                f"instead of writing. The roundups section is for discourse "
+                f"and debate the reader hasn't already read above — not a "
+                f"re-narration of today's headline news."
+            )
     user_content = (
         f"Cluster ID: {cluster.cluster_id} (size={cluster.size})\n\n"
         f"TODAY'S CLUSTER ITEMS (cite these as primary content):\n"
         f"{_format_cluster_for_sonnet(cluster)}"
-        f"{hist_block}\n\n"
+        f"{hist_block}"
+        f"{v1_themes_block}\n\n"
         f"Write the conversation_roundups entry for this cluster, "
         f"or return {{\"skip\": true, \"reason\": \"...\"}}."
     )
@@ -754,8 +779,14 @@ def main() -> None:
     stats["historical_pool_size"] = len(hist_items)
 
     # Stage 8: Opus writes ONE conversation_roundups entry per coherent
-    # sub-cluster, with historical context attached.
-    print(f"writing roundups for {len(coherent)} coherent sub-clusters (Opus per cluster + historical)...")
+    # sub-cluster, with historical context attached. v1's news themes are
+    # passed in so the writer can skip clusters that duplicate them.
+    v1_themes_for_dedup = v1.get("conversation_themes") or []
+    print(
+        f"writing roundups for {len(coherent)} coherent sub-clusters "
+        f"(Opus per cluster + historical + v1-theme dedup against "
+        f"{len(v1_themes_for_dedup)} v1 themes)..."
+    )
     roundups: list[dict] = []
     for i, c in enumerate(coherent):
         # Compute the cluster's centroid embedding from today's corpus
@@ -767,13 +798,17 @@ def main() -> None:
         )
         ctx_label = f"+{len(ctx_items)} hist" if ctx_items else "no hist"
         print(f"  [{i+1}/{len(coherent)}] sub-cluster {c.cluster_id} n={c.size} {ctx_label} -> Opus...")
-        r = write_roundup_for_cluster(c, historical=ctx_items, anthropic_client=anth)
+        r = write_roundup_for_cluster(
+            c, historical=ctx_items, anthropic_client=anth,
+            v1_themes=v1_themes_for_dedup,
+        )
         if r is not None:
             roundups.append(r)
             print(f"    OK: '{r.get('topic', '?')[:60]}'")
         else:
             print(f"    skipped")
     stats["roundups_written"] = len(roundups)
+    stats["v1_themes_at_dedup_time"] = len(v1_themes_for_dedup)
     stats["pipeline_seconds"] = round(time.time() - t0, 1)
 
     print(f"\n=== v3.1 stats: {json.dumps(stats, indent=2)} ===\n")
