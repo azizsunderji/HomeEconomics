@@ -28,7 +28,7 @@ from typing import Optional
 import feedparser
 import httpx
 
-from collectors import PulseItem
+from collectors import PulseItem, record_collector_error
 from config import COMPETITOR_SUBSTACKS
 
 logger = logging.getLogger(__name__)
@@ -177,10 +177,16 @@ def collect(
                         },
                     )
                 except Exception as fetch_err:
+                    record_collector_error("substack", fetch_err, context=f"feed={name}")
                     logger.warning(f"Substack fetch failed for '{name}': {fetch_err}")
                     continue
 
                 if r.status_code != 200:
+                    record_collector_error(
+                        "substack",
+                        RuntimeError(f"HTTP {r.status_code}"),
+                        context=f"feed={name}",
+                    )
                     logger.warning(f"Substack '{name}' returned HTTP {r.status_code}")
                     continue
 
@@ -200,6 +206,11 @@ def collect(
                         parsed = parsed_retry
 
             if parsed.bozo and not parsed.entries:
+                record_collector_error(
+                    "substack",
+                    parsed.bozo_exception or RuntimeError("feed parse failed"),
+                    context=f"feed={name}",
+                )
                 logger.warning(f"Feed error for '{name}': {parsed.bozo_exception}")
                 continue
 
@@ -239,6 +250,7 @@ def collect(
             logger.info(f"Substack '{name}': {len(parsed.entries[:max_per_feed])} entries")
 
         except Exception as e:
+            record_collector_error("substack", e, context=f"feed={name}")
             logger.warning(f"Error fetching Substack '{name}': {e}")
             continue
 

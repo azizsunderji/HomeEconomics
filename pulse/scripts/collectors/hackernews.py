@@ -11,7 +11,7 @@ from datetime import datetime, timezone, timedelta
 
 import httpx
 
-from collectors import PulseItem
+from collectors import PulseItem, record_collector_error
 from config import HN_MIN_SCORE, HN_KEYWORDS
 
 logger = logging.getLogger(__name__)
@@ -119,6 +119,7 @@ def collect(
             logger.info(f"HN '{keyword}': {len(stories)} stories found")
 
         except Exception as e:
+            record_collector_error("hackernews", e, context=f"keyword={keyword}")
             logger.error(f"Error searching HN for '{keyword}': {e}")
             continue
 

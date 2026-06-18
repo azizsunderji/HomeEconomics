@@ -3,9 +3,68 @@
 from __future__ import annotations
 
 import hashlib
+import logging
+import os
+import sqlite3
 from dataclasses import dataclass, field, asdict
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Optional
+
+_collectors_logger = logging.getLogger(__name__)
+
+
+def _resolve_db_path() -> Path:
+    """Same logic as analysis.anthropic_spend — env override > Dropbox > repo."""
+    env = os.environ.get("PULSE_DB")
+    if env:
+        return Path(env)
+    canonical = Path("/Users/azizsunderji/Dropbox/Home Economics/Data/Pulse/pulse.db")
+    if canonical.exists():
+        return canonical
+    return Path(__file__).parent.parent.parent / "data" / "pulse.db"
+
+
+def record_collector_error(source: str, exc: BaseException,
+                           context: str = "") -> None:
+    """Persist a collector exception so silent swallow becomes visible.
+
+    Without this, an `except Exception: continue` block hides upstream
+    failures (e.g. Algolia /search returning 400, substack 403s, RSS feed
+    bozo errors). The pipeline-health probe reads this table to surface
+    "N collector errors logged in 24h" alongside the item count.
+
+    Fail-safe: any error inside this function is swallowed itself —
+    accounting must never break collection.
+    """
+    try:
+        db_path = _resolve_db_path()
+        db_path.parent.mkdir(parents=True, exist_ok=True)
+        conn = sqlite3.connect(str(db_path))
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS collector_errors (
+                ts TEXT NOT NULL,
+                source TEXT NOT NULL,
+                error_type TEXT NOT NULL,
+                message TEXT NOT NULL,
+                context TEXT DEFAULT ''
+            )
+        """)
+        conn.execute(
+            "INSERT INTO collector_errors (ts, source, error_type, message, context) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (
+                datetime.now(timezone.utc).isoformat(),
+                source,
+                type(exc).__name__,
+                str(exc)[:500],
+                str(context)[:500],
+            ),
+        )
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        _collectors_logger.debug(f"record_collector_error swallowed: {e}")
 
 
 @dataclass

@@ -172,6 +172,41 @@ def _last_24h_iso(hours: int = 24) -> str:
     return (datetime.now(timezone.utc) - timedelta(hours=hours)).isoformat()
 
 
+def _collector_error_summary(conn: sqlite3.Connection, source: str,
+                             hours: int = 24) -> tuple[int, list[str]]:
+    """Return (count, sample_messages) from collector_errors for one source.
+
+    Catches the silent-swallow pattern where a collector's except block
+    only calls logger.warning — production GHA logs are not queryable, so
+    a recurring upstream failure (e.g. Algolia 400, substack 403) hides
+    until someone reads the run log. The collector_errors table now
+    records each swallow; this helper surfaces it in the health email.
+    """
+    try:
+        cutoff = _last_24h_iso(hours)
+        row = conn.execute(
+            "SELECT COUNT(*) c FROM collector_errors "
+            "WHERE source = ? AND ts >= ?",
+            (source, cutoff),
+        ).fetchone()
+        n = row["c"] if row else 0
+        sample: list[str] = []
+        if n:
+            for r in conn.execute(
+                "SELECT error_type, message, context FROM collector_errors "
+                "WHERE source = ? AND ts >= ? ORDER BY ts DESC LIMIT 5",
+                (source, cutoff),
+            ).fetchall():
+                msg = (r["message"] or "")[:120]
+                ctx = (r["context"] or "")[:80]
+                ctx_str = f" [{ctx}]" if ctx else ""
+                sample.append(f"{r['error_type']}: {msg}{ctx_str}")
+        return n, sample
+    except Exception:
+        # Table may not exist yet (first run after migration).
+        return 0, []
+
+
 def _parse_opml(path: str) -> list[dict]:
     """Minimal OPML parser — returns [{title, folder, url}, ...]."""
     feeds: list[dict] = []
@@ -293,6 +328,11 @@ def probe_twitter(stage: Stage, conn: sqlite3.Connection) -> None:
         for r in err_rows[:3]:
             stage.note(f"{r['started_at'][:16]}: {(r['error'] or '')[:160]}")
 
+    n_err, err_samples = _collector_error_summary(conn, "twitter", 24)
+    stage.row("Collector errors logged (24h)", _fmt_int(n_err))
+    if err_samples:
+        stage.note("Recent errors: " + " · ".join(err_samples[:3]))
+
     if went_silent:
         # Only flag if it's a notable count — a handful of dormant accounts
         # is normal; >25 suggests something systemic.
@@ -335,10 +375,16 @@ def probe_bluesky(stage: Stage, conn: sqlite3.Connection) -> None:
     stage.row("Items collected (24h)", _fmt_int(items))
     stage.row("Distinct authors (24h)", _fmt_int(authors))
     stage.row("Configured accounts", _fmt_int(len(expected)))
+    n_err, err_samples = _collector_error_summary(conn, "bluesky", 24)
+    stage.row("Collector errors logged (24h)", _fmt_int(n_err))
+    if err_samples:
+        stage.note("Recent errors: " + " · ".join(err_samples[:3]))
     if items == 0:
         stage.set(STATUS_BROKEN, "0 Bluesky posts collected in 24h")
     elif items < 50 or (expected and authors < max(5, len(expected) * 0.4)):
         stage.set(STATUS_WARN, f"low volume: {items} items / {authors} authors")
+    elif n_err > 0:
+        stage.set(STATUS_WARN, f"{n_err} collector errors logged in 24h")
     else:
         stage.headline = f"{_fmt_int(items)} items from {authors} authors"
 
@@ -351,8 +397,14 @@ def probe_hackernews(stage: Stage, conn: sqlite3.Connection) -> None:
     ).fetchone()
     items = row["c"]
     stage.row("Items collected (24h)", _fmt_int(items))
+    n_err, err_samples = _collector_error_summary(conn, "hackernews", 24)
+    stage.row("Collector errors logged (24h)", _fmt_int(n_err))
+    if err_samples:
+        stage.note("Recent errors: " + " · ".join(err_samples[:3]))
     if items == 0:
         stage.set(STATUS_WARN, "0 HN stories collected")
+    elif n_err > 0:
+        stage.set(STATUS_WARN, f"{n_err} collector errors logged in 24h")
     else:
         stage.headline = f"{_fmt_int(items)} stories"
 
@@ -440,6 +492,16 @@ def _probe_rss_subset(
             sample += f", +{len(silent_14d) - 8} more"
         stage.note(f"Expected feeds silent ≥14d (likely broken/renamed): {sample}")
 
+    # Soft-fail errors logged by the collector (HTTP non-200, exception,
+    # bozo feed, etc.). Without this row a silent swallow inside the
+    # collector's try/except is invisible until the count threshold
+    # alarm fires.
+    err_source = "substack" if source_filter == "substack" else "rss"
+    n_err, err_samples = _collector_error_summary(conn, err_source, 24)
+    stage.row("Collector errors logged (24h)", _fmt_int(n_err))
+    if err_samples:
+        stage.note("Recent errors: " + " · ".join(err_samples[:3]))
+
     if total_items == 0:
         stage.set(STATUS_BROKEN, f"0 {source_filter} items in 24h")
     elif expected_titles and len(silent_14d) > max(10, len(expected_titles) * 0.25):
@@ -447,6 +509,8 @@ def _probe_rss_subset(
             STATUS_WARN,
             f"{len(silent_14d)} of {len(expected_titles)} expected feeds silent 14d+",
         )
+    elif n_err > 0:
+        stage.set(STATUS_WARN, f"{n_err} collector errors logged in 24h")
     else:
         stage.headline = f"{_fmt_int(total_items)} items, {len(seen_titles)} feeds active"
 

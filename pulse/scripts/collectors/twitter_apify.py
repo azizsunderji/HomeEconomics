@@ -20,7 +20,7 @@ from pathlib import Path
 
 import httpx
 
-from collectors import PulseItem
+from collectors import PulseItem, record_collector_error
 from config import (
     TWITTER_MIN_LIKES,
     TWITTER_DAILY_BUDGET_CENTS,
@@ -196,6 +196,7 @@ def _run_actor(list_id: str = PULSE_LIST_ID, max_items: int = LIST_MAX_ITEMS) ->
                     logger.error(f"Apify run {run_id} did not finish (final status: {final.get('status')})")
                     return []
             except Exception as e:
+                record_collector_error("twitter", e, context=f"apify_run={run_id} (final check)")
                 logger.error(f"Apify run {run_id} final check failed: {e}")
                 return []
         final_run_data = last_good or {}
@@ -359,6 +360,7 @@ def collect(
             logger.info(f"SuperSmart list: {len(ss_items)} items (from {len(ss_raw)} raw)")
             items.extend(ss_items)
         except Exception as e:
+            record_collector_error("twitter", e, context="supersmart_scrape")
             logger.warning(f"SuperSmart scrape failed: {e}")
     else:
         logger.info("SuperSmart list not configured (SUPER_SMART_LIST_ID env var unset)")

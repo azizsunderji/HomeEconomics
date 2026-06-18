@@ -16,7 +16,7 @@ import time
 
 import feedparser
 
-from collectors import PulseItem
+from collectors import PulseItem, record_collector_error
 
 logger = logging.getLogger(__name__)
 
@@ -165,11 +165,17 @@ def collect(
                     headers={"User-Agent": _UA, "Accept": "application/rss+xml, application/atom+xml, application/xml;q=0.9, */*;q=0.8"},
                 )
             except Exception as fetch_err:
+                record_collector_error("rss", fetch_err, context=f"feed={feed_info['title']}")
                 logger.warning(
                     f"Feed fetch failed for '{feed_info['title']}': {fetch_err}"
                 )
                 continue
             if r.status_code != 200:
+                record_collector_error(
+                    "rss",
+                    RuntimeError(f"HTTP {r.status_code}"),
+                    context=f"feed={feed_info['title']}",
+                )
                 logger.warning(
                     f"Feed '{feed_info['title']}' returned HTTP {r.status_code}"
                 )
@@ -192,6 +198,11 @@ def collect(
                         parsed = parsed_retry
 
             if parsed.bozo and not parsed.entries:
+                record_collector_error(
+                    "rss",
+                    parsed.bozo_exception or RuntimeError("feed parse failed"),
+                    context=f"feed={feed_info['title']}",
+                )
                 logger.warning(f"Feed error for '{feed_info['title']}': {parsed.bozo_exception}")
                 continue
 
@@ -243,6 +254,7 @@ def collect(
                 logger.debug(f"Feed '{feed_info['title']}': {count} entries")
 
         except Exception as e:
+            record_collector_error("rss", e, context=f"feed={feed_info['title']}")
             logger.warning(f"Error fetching feed '{feed_info['title']}': {e}")
             continue
 

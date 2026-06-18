@@ -17,7 +17,7 @@ from datetime import datetime, timezone, timedelta
 
 import httpx
 
-from collectors import PulseItem
+from collectors import PulseItem, record_collector_error
 from config import (
     BLUESKY_SEARCH_TERMS, BLUESKY_MAX_PER_QUERY,
     BLUESKY_ACCOUNTS,
@@ -162,6 +162,7 @@ def collect(
             logger.info(f"Bluesky @{account}: {count} posts")
             time.sleep(REQUEST_DELAY)
         except Exception as e:
+            record_collector_error("bluesky", e, context=f"account=@{account}")
             logger.error(f"Error fetching Bluesky @{account}: {e}")
             continue
 
@@ -184,6 +185,7 @@ def collect(
                 logger.info(f"Bluesky search '{term}': {count} posts")
                 time.sleep(REQUEST_DELAY)
             except Exception as e:
+                record_collector_error("bluesky", e, context=f"search_term={term}")
                 logger.error(f"Error searching Bluesky for '{term}': {e}")
                 continue
     else:
