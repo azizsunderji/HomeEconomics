@@ -20,9 +20,17 @@ HN_SEARCH_API = "https://hn.algolia.com/api/v1"
 
 
 def _search_stories(query: str, min_points: int = 20, hours_back: int = 24) -> list[dict]:
-    """Search HN stories via Algolia API."""
+    """Search HN stories via Algolia API.
+
+    Uses /search_by_date instead of /search — Algolia removed `points`
+    from the numericAttributesForFiltering on /search at some point,
+    breaking the old call with a 400 (which caused 0 items collected
+    starting around 2026-06-17). /search_by_date still allows it, and
+    sorting by date is the right semantics for a 24h-window search
+    anyway.
+    """
     cutoff = int((datetime.now(timezone.utc) - timedelta(hours=hours_back)).timestamp())
-    url = f"{HN_SEARCH_API}/search"
+    url = f"{HN_SEARCH_API}/search_by_date"
     params = {
         "query": query,
         "tags": "story",
