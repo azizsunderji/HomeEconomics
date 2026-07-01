@@ -197,10 +197,13 @@ jobs:
         working-directory: pulse
         run: python capture_frontpages.py || echo "Screenshots failed — continuing without"
 
-      - name: Run synthesis + send email
+      - name: Run synthesis (store v1 briefing as v3.1 scaffold; no v1 email)
+        # Computes + stores the v1 briefing so v3.1 can reuse its News Themes /
+        # paper / pulse scaffold, but --no-email suppresses the redundant v1
+        # email. We now send only the v3.1 email. (v1 email retired 2026-06-30.)
         if: steps.guard.outputs.should_run == 'true'
         working-directory: pulse/scripts
-        run: python run_pipeline.py synthesize
+        run: python run_pipeline.py synthesize --no-email
 
       # V2 disabled 2026-06-16: user is not using v2 comparison output.
       # Code preserved (v2_runner.py + dependencies untouched) in case we
@@ -223,16 +226,9 @@ jobs:
           PULSE_DB: ${{ github.workspace }}/pulse/data/pulse.db
         run: python v3_1_runner.py --to aziz@home-economics.us || echo "V3.1 run failed — continuing without"
 
-      - name: Send daily pipeline-health diagnostic email (v1)
-        # Stage-by-stage health report covering collection, enrichment,
-        # v1 synthesis, front pages, and v1 delivery. Goes only to aziz@... so
-        # he can spot anything broken in tomorrow's run. Failure here is
-        # informational only — never takes down the v1 send.
-        if: steps.guard.outputs.should_run == 'true'
-        working-directory: pulse/scripts
-        env:
-          PULSE_DB: ${{ github.workspace }}/pulse/data/pulse.db
-        run: python delivery/pipeline_health_report.py --variant v1 --to aziz@home-economics.us || echo "Health report (v1) failed — continuing without"
+      # v1 health-report step retired 2026-06-30 alongside the v1 email. The
+      # v3.1 health report below runs the same upstream collectors/enrichment/
+      # front-pages probes, so v1's was redundant once we stopped sending v1.
 
       - name: Send daily pipeline-health diagnostic email (v3.1)
         # Parallel health report focused on v3.1's hybrid synthesis pipeline:
