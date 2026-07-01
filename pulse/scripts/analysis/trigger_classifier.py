@@ -33,13 +33,16 @@ import anthropic
 logger = logging.getLogger(__name__)
 
 
-# Use Opus per the "quality > cost" directive. The classifier is the gatekeeper;
-# false-rejects are expensive (lost news) and false-accepts are expensive
-# (op-eds in the briefing). Worth the marginal cost over Sonnet.
-# Bumped 4.7 -> 4.8 on 2026-06-03 — Opus 4.8 dropped on May 28 with 3x lower
-# pricing ($5/M input, $25/M output vs 4.7's $15/$75) AND meaningfully better
-# constraint adherence per Anthropic's release notes.
-OPUS_MODEL = "claude-opus-4-8"
+# The classifier is the gatekeeper for the News Themes: false-rejects lose
+# news, false-accepts let op-eds/recap into the briefing.
+# History: ran on Sonnet, then Opus 4.7, then Opus 4.8 (2026-06-03, "quality >
+# cost"). But this runs ~1,700 items/day in ~19 batches, so on Opus it became
+# the single largest line item — it roughly tripled daily Anthropic spend
+# (~$2 -> ~$7/day) when it landed on Opus mid-June. Reverted to Haiku on
+# 2026-06-30 to restore the old cost (~$3-4/day saved). It only feeds v1's
+# News Themes; v3.1's Conversations don't use it. Watch the News Themes
+# quality for a few days — if the gate degrades, step back up to Opus 4.8.
+CLASSIFIER_MODEL = "claude-haiku-4-5-20251001"
 
 # Cache schema/category version. Bump this whenever the trigger-type taxonomy,
 # the system prompt's classification rules, or the cached payload meaning
@@ -246,7 +249,7 @@ def _classify_batch(
     )
     try:
         resp = client.messages.create(
-            model=OPUS_MODEL,
+            model=CLASSIFIER_MODEL,
             max_tokens=8000,
             system=[{
                 "type": "text",
@@ -257,7 +260,7 @@ def _classify_batch(
         )
         try:
             from analysis.anthropic_spend import record_usage as _rec_usage
-            _rec_usage(OPUS_MODEL, resp.usage)
+            _rec_usage(CLASSIFIER_MODEL, resp.usage)
         except Exception:
             pass
     except Exception as e:
@@ -383,7 +386,7 @@ def classify_trigger_types(
     total = len(pending)
     n_batches = (total + batch_size - 1) // batch_size
     logger.info(
-        f"trigger_classifier: classifying {total} item(s) via {OPUS_MODEL} "
+        f"trigger_classifier: classifying {total} item(s) via {CLASSIFIER_MODEL} "
         f"across {n_batches} batch(es) of <={batch_size} "
         f"(prefiltered={prefiltered}, cached={cache_hits})"
     )

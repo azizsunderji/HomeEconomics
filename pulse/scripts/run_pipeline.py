@@ -987,10 +987,15 @@ def cmd_synthesize(args):
         from store import update_briefing_content
         update_briefing_content(conn, briefing["_briefing_id"], briefing)
 
-    # Email
-    logger.info("Phase 5: Email delivery")
-    from delivery.email_briefing import send_email
-    email_sent = send_email(briefing)
+    # Email — skip the send when --no-email (the v1 briefing is already stored
+    # above for v3.1's scaffold; we just don't want the v1 email in the inbox).
+    if getattr(args, "no_email", False):
+        logger.info("Phase 5: Email delivery SKIPPED (--no-email); briefing stored for v3.1 scaffold")
+        email_sent = False
+    else:
+        logger.info("Phase 5: Email delivery")
+        from delivery.email_briefing import send_email
+        email_sent = send_email(briefing)
 
     if email_sent and "_briefing_id" in briefing:
         mark_briefing_emailed(conn, briefing["_briefing_id"])
@@ -1118,6 +1123,12 @@ def main():
             sub.add_argument(
                 "--sources", nargs="*",
                 help="Specific sources to collect from (default: all)"
+            )
+        if name == "synthesize":
+            sub.add_argument(
+                "--no-email", action="store_true",
+                help="Compute + store the v1 briefing (v3.1 reuses it as its "
+                     "scaffold) but don't send the v1 email.",
             )
 
     parser.add_argument("--verbose", "-v", action="store_true", help="Debug logging")
