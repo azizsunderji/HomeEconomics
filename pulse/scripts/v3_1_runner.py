@@ -287,6 +287,110 @@ def coherence_check(cluster: Cluster,
 
 
 # ────────────────────────────────────────────────────────────────────────
+# v3.1 — merge same-author, same-topic sub-clusters
+# ────────────────────────────────────────────────────────────────────────
+
+# Two sub-clusters get folded into one roundup when they share a dominant
+# author AND are topically adjacent (centroid cosine >= threshold). This stops
+# a single account or campaign from anchoring several roundups in one email —
+# e.g. California YIMBY (+ its own staff) carrying SB 79, SB 1116, and more as
+# separate items. Tuned against text-embedding-3-small centroids.
+MERGE_MIN_CENTROID_COS = 0.55
+
+
+def _is_mergeable_author(a: str) -> bool:
+    """Only individual social accounts (@handle) and email newsletter/research
+    senders ("Name <x@y.com>") drive merges. Multi-story news-outlet domains
+    (costar.com, housingwire) and bare RSS bylines do NOT — an outlet
+    legitimately publishes many distinct stories, and stapling them into one
+    roundup muddles real coverage. This targets advocacy voices flooding the
+    email, not news volume."""
+    a = (a or "").strip().lower()
+    if a.startswith("@"):
+        return True
+    if "<" in a and "@" in a and ">" in a:  # "name <x@y.com>" sender format
+        return True
+    return False
+
+
+def _dominant_authors(c: Cluster) -> set:
+    """The modal author(s) of a cluster — those tied for most items. In the
+    small sub-clusters here that's usually just the loudest 1-2 voices."""
+    from collections import Counter
+    cnt = Counter((it.author or "").strip().lower()
+                  for it in c.items if (it.author or "").strip())
+    if not cnt:
+        return set()
+    top = max(cnt.values())
+    return {a for a, n in cnt.items() if n == top}
+
+
+def _cluster_centroid(c: Cluster, embs, id_to_row):
+    """Unit-normalized mean embedding of a cluster's items (or None)."""
+    rows = [id_to_row[it.id] for it in c.items if it.id in id_to_row]
+    if not rows:
+        return None
+    v = embs[rows].mean(axis=0)
+    norm = float(np.linalg.norm(v))
+    return v / norm if norm else None
+
+
+def merge_adjacent_clusters(sub_clusters, embs, id_to_row):
+    """Union sub-clusters that share a dominant author AND sit in the same
+    topic area (centroid cosine >= MERGE_MIN_CENTROID_COS). Returns the merged
+    cluster list and a log of every same-author pair considered (for
+    transparency/threshold tuning)."""
+    n = len(sub_clusters)
+    doms = [_dominant_authors(c) for c in sub_clusters]
+    cents = [_cluster_centroid(c, embs, id_to_row) for c in sub_clusters]
+    parent = list(range(n))
+
+    def find(x):
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+
+    log = []
+    for i in range(n):
+        for j in range(i + 1, n):
+            # Only merge on shared authors that are individual accounts or
+            # newsletter senders — never on shared news-outlet domains.
+            shared = {a for a in (doms[i] & doms[j]) if _is_mergeable_author(a)}
+            if not shared or cents[i] is None or cents[j] is None:
+                continue
+            cos = float(cents[i] @ cents[j])
+            merged = cos >= MERGE_MIN_CENTROID_COS
+            log.append({"a": sub_clusters[i].cluster_id,
+                        "b": sub_clusters[j].cluster_id,
+                        "shared_authors": sorted(shared),
+                        "cos": round(cos, 3), "merged": merged})
+            if merged:
+                ri, rj = find(i), find(j)
+                if ri != rj:
+                    parent[max(ri, rj)] = min(ri, rj)
+
+    groups = {}
+    for idx in range(n):
+        groups.setdefault(find(idx), []).append(idx)
+
+    out = []
+    for _, idxs in sorted(groups.items()):
+        if len(idxs) == 1:
+            out.append(sub_clusters[idxs[0]])
+            continue
+        seen, items = set(), []
+        for idx in idxs:
+            for it in sub_clusters[idx].items:
+                if it.id not in seen:
+                    seen.add(it.id)
+                    items.append(it)
+        out.append(Cluster(cluster_id=min(sub_clusters[k].cluster_id for k in idxs),
+                            items=items))
+    return out, log
+
+
+# ────────────────────────────────────────────────────────────────────────
 # v3.1 — per-cluster historical context (Past 6 Days)
 # ────────────────────────────────────────────────────────────────────────
 
@@ -757,6 +861,17 @@ def main() -> None:
             sub_clusters.append(sub)
     print(f"sub-clusters: {len(sub_clusters)}")
     stats["sub_clusters_total"] = len(sub_clusters)
+
+    # Stage 5b (NEW): merge same-author + same-topic sub-clusters so a single
+    # account/campaign can't anchor multiple roundups (e.g. CA YIMBY's SB 79 +
+    # SB 1116). Runs before the coherence gate and the Opus writes.
+    pre_merge = len(sub_clusters)
+    sub_clusters, merge_log = merge_adjacent_clusters(sub_clusters, embs, id_to_row)
+    for e in merge_log:
+        tag = "MERGED" if e["merged"] else "below-thresh"
+        print(f"  [{tag}] {e['a']} + {e['b']} shared={e['shared_authors']} cos={e['cos']}")
+    print(f"sub-clusters after author/topic merge: {len(sub_clusters)} (was {pre_merge})")
+    stats["sub_clusters_after_merge"] = len(sub_clusters)
 
     # Stage 6 (NEW v3.1): pre-write coherence gate.
     print(f"coherence-gating {len(sub_clusters)} sub-clusters...")
