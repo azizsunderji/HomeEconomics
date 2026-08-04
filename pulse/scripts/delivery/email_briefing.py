@@ -75,12 +75,15 @@ def _md_links(text: str) -> str:
     Also converts double-newlines (\\n\\n) into paragraph breaks (<br><br>) so
     the synthesizer can use them to separate distinct points within a theme."""
     import re
-    parts = re.split(r'(\[[^\]]+\]\([^)]+\))', str(text))
+    # Anchor text may contain one level of nested brackets, e.g.
+    # "[[HousingWire] reported](url)" — the model sometimes brackets source names.
+    anchor = r'(?:[^\[\]]|\[[^\]]*\])+'
+    parts = re.split(rf'(\[{anchor}\]\([^)]+\))', str(text))
     result = []
     for part in parts:
-        m = re.match(r'\[([^\]]+)\]\(([^)]+)\)', part)
+        m = re.fullmatch(rf'\[({anchor})\]\(([^)]+)\)', part)
         if m:
-            link_text = _esc(m.group(1))
+            link_text = _esc(m.group(1).replace('[', '').replace(']', ''))
             url = m.group(2)
             result.append(f'<a href="{url}" target="_blank" style="color: #0BB4FF; text-decoration: none;">{link_text}</a>')
         else:
