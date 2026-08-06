@@ -36,7 +36,7 @@ DEFAULT_DB = os.environ.get(
     "PULSE_DB", "/Users/azizsunderji/Dropbox/Home Economics/Data/Pulse/pulse.db"
 )
 DEFAULT_TO = "aziz@home-economics.us"
-EMAIL_FROM = "Pulse V2 <onboarding@resend.dev>"
+EMAIL_FROM = "Pulse V2 <pulse@home-economics.us>"
 
 
 def load_briefing(conn: sqlite3.Connection,

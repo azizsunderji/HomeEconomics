@@ -69,7 +69,7 @@ DEFAULT_DB = os.environ.get(
     "/Users/azizsunderji/Dropbox/Home Economics/Data/Pulse/pulse.db",
 )
 DEFAULT_TO = "aziz@home-economics.us"
-EMAIL_FROM = "Pulse Health <onboarding@resend.dev>"
+EMAIL_FROM = "Pulse Health <pulse@home-economics.us>"
 HTTP_TIMEOUT = 10  # seconds — every probe MUST set a timeout
 
 # Brand palette

@@ -64,7 +64,7 @@ DEFAULT_DB = os.environ.get(
     "PULSE_DB", "/Users/azizsunderji/Dropbox/Home Economics/Data/Pulse/pulse.db"
 )
 DEFAULT_TO = "aziz@home-economics.us"
-EMAIL_FROM = "Pulse V3.1 <onboarding@resend.dev>"
+EMAIL_FROM = "Pulse V3.1 <pulse@home-economics.us>"
 OPUS_MODEL = "claude-opus-4-8"  # writer (match v1)
 
 HAIKU_MODEL = "claude-haiku-4-5-20251001"

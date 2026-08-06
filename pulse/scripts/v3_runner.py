@@ -60,7 +60,7 @@ DEFAULT_DB = os.environ.get(
     "PULSE_DB", "/Users/azizsunderji/Dropbox/Home Economics/Data/Pulse/pulse.db"
 )
 DEFAULT_TO = "aziz@home-economics.us"
-EMAIL_FROM = "Pulse V3 <onboarding@resend.dev>"
+EMAIL_FROM = "Pulse V3 <pulse@home-economics.us>"
 SONNET_MODEL = "claude-opus-4-8"  # match v1
 
 SUBCLUSTER_MODEL = "claude-haiku-4-5-20251001"

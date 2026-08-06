@@ -32,7 +32,7 @@ from urllib import request, error
 
 
 DEFAULT_TO = "aziz@home-economics.us"
-DEFAULT_FROM = "Pulse Health <onboarding@resend.dev>"
+DEFAULT_FROM = "Pulse Health <pulse@home-economics.us>"
 RESEND_API = "https://api.resend.com/emails"
 
 # Brand palette (see Home Economics CLAUDE.md)

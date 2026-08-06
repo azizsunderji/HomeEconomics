@@ -608,7 +608,7 @@ CONVERGENCE_ALERT_THRESHOLD = 4  # Platforms required for push alert
 
 # ── Delivery ──────────────────────────────────────────────────────────────────
 EMAIL_TO = "aziz@home-economics.us"
-EMAIL_FROM = "Pulse <onboarding@resend.dev>"
+EMAIL_FROM = "Pulse <pulse@home-economics.us>"
 
 # ── Source weights (conversation pivot) ───────────────────────────────────────
 # Higher weight = more prominent in briefing. Conversation sources dominate.
