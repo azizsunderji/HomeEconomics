@@ -448,17 +448,76 @@ async def _try_archive_ph(context, original_url: str) -> str:
             except Exception: pass
 
 
-async def _enrich_batch(items: list[dict], dry_run: bool = False) -> dict[str, dict]:
+# ── Paywall auth probe ─────────────────────────────────────────────────
+# Sites the Browserbase context should be logged into. Expired cookies
+# don't fail loudly — thin fetches just drift to the archive.ph fallback —
+# so each run checks the homepages directly and records the result for
+# the pipeline health report. Markers match against lowercased body text;
+# a site is logged_out only when ALL logged-out markers are present.
+PAYWALL_AUTH_SITES = [
+    # (site, url, logged_out_markers, logged_in_markers)
+    ("nytimes.com", "https://www.nytimes.com/", ["log in", "subscribe for"], []),
+    ("ft.com", "https://www.ft.com/", ["sign in"], ["myft", "my account"]),
+    ("wsj.com", "https://www.wsj.com/", ["sign in"], ["sign out"]),
+]
+
+
+async def _check_paywall_auth(context) -> list[dict]:
+    """Probe login state for subscription sites in the Browserbase context.
+
+    Returns [{site, status, detail}] with status logged_in / logged_out /
+    unknown. A page under 500 chars didn't render → unknown. A rendered
+    page with a logged-in marker, or without the full logged-out marker
+    set, counts as logged_in."""
+    rows: list[dict] = []
+    for site, url, out_markers, in_markers in PAYWALL_AUTH_SITES:
+        page = None
+        try:
+            page = await context.new_page()
+            await page.goto(url, wait_until="domcontentloaded", timeout=30000)
+            await page.wait_for_timeout(4000)
+            text = (await page.inner_text("body")).lower()
+            hits_out = [m for m in out_markers if m in text]
+            hits_in = [m for m in in_markers if m in text]
+            if len(text) < 500:
+                status = "unknown"
+            elif hits_in:
+                status = "logged_in"
+            elif len(hits_out) == len(out_markers):
+                status = "logged_out"
+            else:
+                status = "logged_in"
+            detail = f"in={hits_in} out={hits_out} len={len(text)}"
+        except Exception as e:
+            status, detail = "unknown", f"{type(e).__name__}: {e}"[:200]
+        finally:
+            if page is not None:
+                try: await page.close()
+                except Exception: pass
+        logger.info(f"  AUTH {site}: {status} ({detail[:100]})")
+        rows.append({"site": site, "status": status, "detail": detail})
+    return rows
+
+
+async def _enrich_batch(items: list[dict], dry_run: bool = False
+                        ) -> tuple[dict[str, dict], list[dict]]:
     """Fetch full text + outbound hyperlinks for a batch of items.
 
-    Returns {item_id: {"body": str, "links": list[dict]}}. Items where
-    body extraction failed are omitted entirely. Items where body
-    succeeded but link extraction returned nothing get an empty links
-    list."""
+    Returns ({item_id: {"body": str, "links": list[dict], "mode": str}},
+    paywall_auth_rows). Items where body extraction failed are omitted
+    entirely. Items where body succeeded but link extraction returned
+    nothing get an empty links list. mode is "direct" or "archive"."""
     results: dict[str, dict] = {}
+    auth_rows: list[dict] = []
 
     async with async_playwright() as p:
         browser, mode = await _connect_browser(p)
+
+        if mode == "browserbase":
+            try:
+                auth_rows = await _check_paywall_auth(browser.contexts[0])
+            except Exception as e:
+                logger.warning(f"paywall auth probe failed: {e}")
 
         for item in items:
             url = item["url"]
@@ -522,7 +581,8 @@ async def _enrich_batch(items: list[dict], dry_run: bool = False) -> dict[str, d
                         if archive_text:
                             archive_text = archive_text[:8000]
                             results[item_id] = {"body": archive_text,
-                                                "links": links}
+                                                "links": links,
+                                                "mode": "archive"}
                             logger.info(f"  OK-ARCHIVE ({len(archive_text)}c, "
                                         f"{len(links)} links) {domain}: {title}")
                             await asyncio.sleep(1.5)
@@ -532,7 +592,8 @@ async def _enrich_batch(items: list[dict], dry_run: bool = False) -> dict[str, d
 
                 # Cap at 8000 chars — enough for synthesis, not a memory hog
                 text = text[:8000]
-                results[item_id] = {"body": text, "links": links}
+                results[item_id] = {"body": text, "links": links,
+                                    "mode": "direct"}
                 logger.info(f"  OK ({len(text)}c, {len(links)} links) {domain}: {title}")
 
                 # Brief pause between requests to the same domain
@@ -552,7 +613,7 @@ async def _enrich_batch(items: list[dict], dry_run: bool = False) -> dict[str, d
 
         await browser.close()
 
-    return results
+    return results, auth_rows
 
 
 def _update_db(conn: sqlite3.Connection,
@@ -564,24 +625,52 @@ def _update_db(conn: sqlite3.Connection,
     have (e.g., older deployments without the enrich_links column)."""
     import json as _json
     cols = {r[1] for r in conn.execute("PRAGMA table_info(items)").fetchall()}
+    if "enrich_mode" not in cols:
+        # direct vs archive.ph fallback — lets the health report spot a
+        # subscribed domain drifting to 100% fallback (expired cookies)
+        try:
+            conn.execute("ALTER TABLE items ADD COLUMN enrich_mode TEXT")
+            cols.add("enrich_mode")
+        except sqlite3.OperationalError:
+            pass
     has_links_col = "enrich_links" in cols
+    has_mode_col = "enrich_mode" in cols
     updated = 0
     for item_id, payload in enriched.items():
         body = payload.get("body", "") if isinstance(payload, dict) else payload
         links = payload.get("links", []) if isinstance(payload, dict) else []
+        emode = payload.get("mode") if isinstance(payload, dict) else None
+        sets, vals = ["body = ?"], [body]
         if has_links_col:
-            conn.execute(
-                "UPDATE items SET body = ?, enrich_links = ? WHERE id = ?",
-                (body, _json.dumps(links) if links else None, item_id),
-            )
-        else:
-            conn.execute(
-                "UPDATE items SET body = ? WHERE id = ?",
-                (body, item_id),
-            )
+            sets.append("enrich_links = ?")
+            vals.append(_json.dumps(links) if links else None)
+        if has_mode_col and emode:
+            sets.append("enrich_mode = ?")
+            vals.append(emode)
+        conn.execute(
+            f"UPDATE items SET {', '.join(sets)} WHERE id = ?",
+            (*vals, item_id),
+        )
         updated += 1
     conn.commit()
     return updated
+
+
+def _save_auth_status(conn: sqlite3.Connection, rows: list[dict]) -> None:
+    """Record paywall login-state checks for the pipeline health report."""
+    from datetime import datetime, timezone
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS paywall_auth ("
+        "site TEXT, checked_at TEXT, status TEXT, detail TEXT)"
+    )
+    now = datetime.now(timezone.utc).isoformat()
+    for r in rows:
+        conn.execute(
+            "INSERT INTO paywall_auth (site, checked_at, status, detail) "
+            "VALUES (?, ?, ?, ?)",
+            (r["site"], now, r["status"], r["detail"]),
+        )
+    conn.commit()
 
 
 def main():
@@ -602,13 +691,19 @@ def main():
         logger.info("Nothing to enrich.")
         return
 
-    enriched = asyncio.run(_enrich_batch(items, dry_run=args.dry_run))
+    enriched, auth_rows = asyncio.run(_enrich_batch(items, dry_run=args.dry_run))
+
+    if auth_rows:
+        logger.info("Paywall auth: " + ", ".join(
+            f"{r['site']}={r['status']}" for r in auth_rows))
 
     if args.dry_run:
         logger.info(f"Dry run — would update {len(enriched)} items")
     else:
         updated = _update_db(conn, enriched)
         logger.info(f"Updated {updated} items in pulse.db")
+        if auth_rows:
+            _save_auth_status(conn, auth_rows)
 
     elapsed = time.time() - t0
     logger.info(f"Enrichment complete in {elapsed:.0f}s — {len(enriched)}/{len(items)} items enriched")

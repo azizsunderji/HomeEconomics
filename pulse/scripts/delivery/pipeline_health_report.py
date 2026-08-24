@@ -799,6 +799,48 @@ def probe_press_mentions(stage: Stage, conn: sqlite3.Connection) -> None:
 
 # ── Enrichment ─────────────────────────────────────────────────────────
 
+def probe_paywall_auth(stage: Stage, conn: sqlite3.Connection) -> None:
+    """Login state for subscription sites inside the Browserbase context.
+
+    enrich_articles.py loads the nyt/wsj/ft homepages each run and records
+    the result in paywall_auth. Expired cookies never failed loudly before
+    — thin fetches just drifted to the archive.ph fallback and still
+    counted as enriched (caught 2026-08-24: NYT + WSJ had been logged out
+    with no flag). Re-login via a Browserbase live-view session on the
+    persistent context.
+    """
+    try:
+        rows = conn.execute(
+            "SELECT site, status, detail, MAX(checked_at) AS checked_at "
+            "FROM paywall_auth GROUP BY site ORDER BY site"
+        ).fetchall()
+    except sqlite3.OperationalError:
+        stage.set(STATUS_WARN, "no paywall_auth table — enrichment hasn't run with the probe yet")
+        return
+    if not rows:
+        stage.set(STATUS_WARN, "no auth checks recorded yet")
+        return
+    stale_cutoff = _last_24h_iso(48)
+    logged_out, unknown, stale = [], [], []
+    for r in rows:
+        stage.row(r["site"], f"{r['status']} (checked {r['checked_at'][:16]}Z)")
+        if r["status"] == "logged_out":
+            logged_out.append(r["site"])
+        elif r["status"] == "unknown":
+            unknown.append(r["site"])
+        if r["checked_at"] < stale_cutoff:
+            stale.append(r["site"])
+    if logged_out:
+        stage.set(STATUS_WARN, "logged out: " + ", ".join(logged_out) +
+                  " — re-login via Browserbase live view")
+    elif stale:
+        stage.set(STATUS_WARN, "auth check stale (>48h): " + ", ".join(stale))
+    elif unknown:
+        stage.set(STATUS_WARN, "auth state unknown: " + ", ".join(unknown))
+    else:
+        stage.headline = "all subscription sites logged in"
+
+
 def probe_article_enrichment(stage: Stage, conn: sqlite3.Connection) -> None:
     """Enrichment status across all sources `enrich_articles.py` targets.
 
@@ -858,10 +900,47 @@ def probe_article_enrichment(stage: Stage, conn: sqlite3.Connection) -> None:
     stage.note("Per-source enriched (24h): " + " · ".join(
         f"{s}={_fmt_int(per_src[s])}" for s in SOURCES
     ))
+
+    # Archive.ph fallback share by domain (last 72h). A subscribed site
+    # drifting toward 100% fallback means its login cookies expired — the
+    # fetch still "succeeds" via archive.ph, so only this ratio (and the
+    # paywall-auth probe) reveals it. enrich_mode is written by
+    # enrich_articles.py since 2026-08-24; older rows have NULL.
+    drifted: list[str] = []
+    try:
+        mode_rows = conn.execute(
+            f"SELECT url, enrich_mode FROM items WHERE source IN {src_in} "
+            f"AND collected_at >= ? AND enrich_mode IS NOT NULL",
+            (_last_24h_iso(72),),
+        ).fetchall()
+    except sqlite3.OperationalError:
+        mode_rows = []
+    if mode_rows:
+        from urllib.parse import urlparse as _urlparse
+        per_dom: dict[str, list[int]] = {}
+        for r in mode_rows:
+            dom = (_urlparse(r["url"] or "").netloc or "").lower()
+            dom = dom.removeprefix("www.")
+            counts = per_dom.setdefault(dom, [0, 0])
+            counts[0] += 1
+            if r["enrich_mode"] == "archive":
+                counts[1] += 1
+        SUBSCRIBED = ("nytimes.com", "wsj.com", "ft.com",
+                      "bloomberg.com", "economist.com")
+        for dom in SUBSCRIBED:
+            tot, arch = per_dom.get(dom, [0, 0])
+            if tot:
+                stage.row(f"archive.ph fallback — {dom}", f"{arch}/{tot}")
+            if tot >= 3 and arch / tot >= 0.8:
+                drifted.append(f"{dom} ({arch}/{tot})")
+
     if total == 0:
         stage.set(STATUS_WARN, "no items to enrich")
     elif high_rel_no_body > 30:
         stage.set(STATUS_WARN, f"{high_rel_no_body} high-relevance items missing body")
+    elif drifted:
+        stage.set(STATUS_WARN, "archive.ph fallback dominating (login cookies "
+                  "likely expired): " + ", ".join(drifted))
     else:
         stage.headline = f"{_fmt_int(enriched)} enriched, {pct:.0f}%"
 
@@ -1680,6 +1759,14 @@ UPSTREAM_STAGES = [
         "Press mentions for Home Economics (RSS-ish), plus emails starred in "
         "any inbox flow as high-signal items into the synthesis pool.",
         probe_press_mentions,
+    ),
+    (
+        "2.0", "Paywall auth (Browserbase context)",
+        "Login state for subscription sites (NYT/WSJ/FT) inside the "
+        "persistent Browserbase context, probed by enrich_articles.py each "
+        "run. Expired cookies don't fail loudly — fetches drift to the "
+        "archive.ph fallback — so this is the direct check.",
+        probe_paywall_auth,
     ),
     (
         "2.1", "Article body enrichment (Browserbase)",
