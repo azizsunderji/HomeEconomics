@@ -24,6 +24,7 @@ import argparse
 import json
 import logging
 import os
+import re
 import sqlite3
 import sys
 import xml.etree.ElementTree as ET
@@ -1271,6 +1272,16 @@ def probe_v1_roundups(stage: Stage, conn: sqlite3.Connection) -> None:
         stage.headline = f"{len(roundups)} roundups"
 
 
+# NBER-style feed titles append "-- by <authors>"; briefing titles are
+# model-cleaned. Canonicalize both sides so repeat detection matches
+# (mirrors _canonical_paper_title in run_pipeline.py).
+_PAPER_AUTHOR_SUFFIX_RE = re.compile(r"\s*(?:--|—|-)\s*by\s+[A-Z].*$", re.IGNORECASE)
+
+
+def _canonical_paper_title(t: str) -> str:
+    return _PAPER_AUTHOR_SUFFIX_RE.sub("", (t or "").strip()).strip().lower()
+
+
 def probe_v1_paper(stage: Stage, conn: sqlite3.Connection) -> None:
     row = _latest_v1(conn)
     if not row:
@@ -1279,13 +1290,19 @@ def probe_v1_paper(stage: Stage, conn: sqlite3.Connection) -> None:
     cj = json.loads(row["content_json"])
     paper = cj.get("paper_of_the_day") or None
     # Build the list of previously-picked paper titles from last 14d.
+    # Exclude rows from the SAME calendar day as the latest briefing (not
+    # just the same id) — a manual same-day re-run writes a second 'daily'
+    # row with the same pick, which is not a reader-facing repeat.
     cutoff = (datetime.now(timezone.utc) - timedelta(days=14)).isoformat()
+    today_key = (row["created_at"] or "")[:10]
     prev_titles: list[str] = []
     for r in conn.execute(
-        "SELECT content_json FROM briefings WHERE briefing_type='daily' "
+        "SELECT created_at, content_json FROM briefings WHERE briefing_type='daily' "
         "AND created_at >= ? AND id != ? ORDER BY id DESC",
         (cutoff, row["id"]),
     ).fetchall():
+        if today_key and (r["created_at"] or "")[:10] == today_key:
+            continue
         try:
             cj_prev = json.loads(r["content_json"])
             p = cj_prev.get("paper_of_the_day") or None
@@ -1300,6 +1317,25 @@ def probe_v1_paper(stage: Stage, conn: sqlite3.Connection) -> None:
         stage.row("Publication", paper.get("publication", ""))
         stage.row("URL", (paper.get("url") or "")[:120])
         stage.headline = f"\"{(paper.get('title') or '')[:60]}\""
+        # Repeat detection: WARN when today's pick matches any prior
+        # 14-day pick (today's own row is already excluded from
+        # prev_titles by the id != ? clause above). A repeat means both
+        # the prompt guard and the deterministic swap in cmd_synthesize
+        # failed — the reader saw the same paper twice.
+        canon_today = _canonical_paper_title(paper.get("title") or "")
+        repeats = [t for t in prev_titles if _canonical_paper_title(t) == canon_today]
+        if canon_today and repeats:
+            stage.set(
+                STATUS_WARN,
+                f"REPEAT paper-of-the-day — today's pick already ran "
+                f"{len(repeats)} time(s) in the prior 14 days",
+            )
+            stage.note(
+                "Repeat pick: today's paper "
+                f"\"{(paper.get('title') or '')[:120]}\" matches a prior "
+                "14-day pick. The anti-repeat guard (prompt block + "
+                "deterministic swap in cmd_synthesize) did not hold."
+            )
     else:
         stage.row("Today's paper", "(none picked)")
         stage.set(STATUS_WARN, "no paper-of-the-day picked")

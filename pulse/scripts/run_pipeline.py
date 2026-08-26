@@ -32,6 +32,67 @@ from analysis.crosswalk import build_index
 logger = logging.getLogger("pulse")
 
 
+# ── Paper-of-the-day repeat protection ─────────────────────────────────
+# Canonicalization + 14-day lookback shared by the pre-synthesis prompt
+# guard and the deterministic post-check in cmd_synthesize.
+#
+# Title-canonicalization gotcha: NBER's feed appends author lists like
+# "<title> -- by <authors>" but the title stored in
+# briefings.paper_of_the_day.title is already cleaned by the model.
+# Canonicalize BOTH sides so comparisons actually match (user re-flagged
+# 2026-06-07: same Binder paper shipped repeatedly despite an earlier
+# fix — root cause was this string mismatch).
+import re as _re_paper
+
+_PAPER_AUTHOR_SUFFIX_RE = _re_paper.compile(
+    r"\s*(?:--|—|-)\s*by\s+[A-Z].*$", _re_paper.IGNORECASE
+)
+
+
+def _canonical_paper_title(t: str) -> str:
+    t = (t or "").strip()
+    t = _PAPER_AUTHOR_SUFFIX_RE.sub("", t).strip()
+    return t.lower()
+
+
+def _recent_paper_picks(conn, days: int = 14) -> tuple[set, list]:
+    """Paper-of-the-day picks from daily briefings in the last `days` days.
+
+    Returns (canonical_title_set, display_titles). MUST be called BEFORE
+    generate_daily_briefing() runs — that function saves today's briefing
+    row before returning, so a later call would include today's own pick
+    and the repeat post-check would always fire.
+    """
+    canonical: set = set()
+    display: list = []
+    # date(created_at) < date('now') excludes any briefing already stored
+    # TODAY (UTC) — normally none exist at synthesis time, but a manual
+    # same-day re-run would otherwise see this morning's own pick as
+    # "recently used" and spuriously swap it.
+    rows = conn.execute(
+        "SELECT content_json FROM briefings "
+        "WHERE created_at >= datetime('now', ?) "
+        "AND date(created_at) < date('now') "
+        "AND briefing_type LIKE 'daily%'",
+        (f"-{int(days)} days",),
+    ).fetchall()
+    for row in rows:
+        try:
+            cj = row["content_json"] if hasattr(row, "keys") else row[0]
+            b = json.loads(cj)
+            p = b.get("paper_of_the_day") or {}
+            if isinstance(p, list):
+                p = p[0] if p else {}
+            raw_title = (p.get("title") or "").strip()
+            canon = _canonical_paper_title(raw_title)
+            if canon and canon not in canonical:
+                canonical.add(canon)
+                display.append(raw_title)
+        except Exception:
+            continue
+    return canonical, display
+
+
 def _collect_source(conn, source_name: str, collect_fn, **kwargs) -> tuple[int, int]:
     """Run a single collector with logging."""
     run_id = log_collection_start(conn, source_name)
@@ -483,7 +544,23 @@ def cmd_synthesize(args):
     # Synthesize
     logger.info("Phase 4: Synthesis")
     from analysis.synthesize import generate_daily_briefing
-    briefing = generate_daily_briefing(conn)
+
+    # Build the 14-day paper-of-the-day exclusion set BEFORE synthesis.
+    # generate_daily_briefing() saves today's briefing row before it
+    # returns, so computing this set afterwards would include today's own
+    # pick and the deterministic post-check below would always fire. The
+    # titles feed (a) a prompt guard inside generate_daily_briefing and
+    # (b) the deterministic swap after the journal pool is built.
+    try:
+        recent_paper_canon, recent_paper_titles = _recent_paper_picks(conn)
+        logger.info(f"recent-paper exclusion set has {len(recent_paper_canon)} title(s)")
+    except Exception as _rp_e:
+        logger.warning(f"recent-paper exclusion lookup failed: {_rp_e}")
+        recent_paper_canon, recent_paper_titles = set(), []
+
+    briefing = generate_daily_briefing(
+        conn, recently_used_paper_titles=recent_paper_titles
+    )
 
     if "error" in briefing:
         logger.error(f"Synthesis failed: {briefing['error']}")
@@ -590,64 +667,153 @@ def cmd_synthesize(args):
         # #138, #139, #141). This exclusion guarantees no repeat within
         # 14 days while preserving the model's editorial pick.
         #
-        # Title-canonicalization gotcha: NBER's feed prepends/appends
-        # author lists like "<title> -- by <authors>" but the title
-        # stored in briefings.paper_of_the_day.title is already cleaned
-        # by Sonnet. Compare canonical forms on BOTH sides so the
-        # exclusion actually matches (user re-flagged 2026-06-07: same
-        # Binder paper shipped again on 2026-06-06 and 2026-06-07
-        # despite the previous fix — root cause was this string mismatch).
-        import re as _canon_re
-        _author_suffix_re = _canon_re.compile(
-            r"\s*(?:--|—|-)\s*by\s+[A-Z].*$", _canon_re.IGNORECASE
-        )
-
-        def _canonical_title(t: str) -> str:
-            t = (t or "").strip()
-            t = _author_suffix_re.sub("", t).strip()
-            return t.lower()
-
-        recently_used: set[str] = set()
-        try:
-            import json as _excl_json
-            # Reuse the already-open conn — the previous version tried
-            # sqlite3.connect(str(DB_PATH)) but DB_PATH isn't imported in
-            # this module, which raised NameError, hit the bare except
-            # below, and silently left recently_used empty. That's why
-            # the Binder paper kept repeating despite the rotation fix.
-            rows_excl = conn.execute(
-                "SELECT content_json FROM briefings "
-                "WHERE created_at >= datetime('now', '-14 days') "
-                "AND briefing_type LIKE 'daily%'"
-            ).fetchall()
-            for row_excl in rows_excl:
-                try:
-                    cj = row_excl["content_json"] if hasattr(row_excl, "keys") else row_excl[0]
-                    b_excl = _excl_json.loads(cj)
-                    p_excl = b_excl.get("paper_of_the_day") or {}
-                    if isinstance(p_excl, list):
-                        p_excl = p_excl[0] if p_excl else {}
-                    t_excl = _canonical_title(p_excl.get("title") or "")
-                    if t_excl:
-                        recently_used.add(t_excl)
-                except Exception:
-                    continue
-            logger.info(f"recent-paper exclusion set has {len(recently_used)} title(s)")
-        except Exception as _excl_e:
-            logger.warning(
-                f"recent-paper exclusion lookup failed: {_excl_e}"
-            )
-
-        if recently_used:
+        # The canonical-title set (recent_paper_canon) is computed BEFORE
+        # generate_daily_briefing() above — see _recent_paper_picks() —
+        # so it contains only PRIOR days' picks, not today's just-saved
+        # row. That property is what makes the deterministic post-check
+        # below sound.
+        if recent_paper_canon:
             before_excl = len(pool)
             pool = [
                 p for p in pool
-                if _canonical_title(p.get("title") or "") not in recently_used
+                if _canonical_paper_title(p.get("title") or "") not in recent_paper_canon
             ]
             logger.info(
                 f"Excluded {before_excl - len(pool)} paper(s) shown in last "
                 f"14 days; pool now {len(pool)}"
             )
+
+        # ── Deterministic Paper-of-the-Day repeat post-check ──
+        # The prompt-side guard ("PAPERS ALREADY FEATURED" block passed
+        # into generate_daily_briefing) is advisory — the model can and
+        # does ignore it (same paper shipped 4 days running through
+        # 2026-08-26). If today's pick canonicalizes into the 14-day set,
+        # swap in the highest-relevance paper from the pool (which already
+        # excludes every recently-used title). If the pool is empty, set
+        # paper_of_the_day to None — email_briefing.py omits the section
+        # when the field is null/missing.
+        try:
+            import re as _re_swap
+            potd = briefing.get("paper_of_the_day") or {}
+            if isinstance(potd, list):
+                potd = potd[0] if potd else {}
+            potd_title = (potd.get("title") or "") if isinstance(potd, dict) else ""
+            potd_canon = _canonical_paper_title(potd_title)
+            if potd_canon and potd_canon in recent_paper_canon:
+                # Candidates in descending relevance. The replacement must
+                # ship with a usable summary — prefer the highest-relevance
+                # candidate whose RSS body survives boilerplate cleanup;
+                # otherwise try the same free, non-LLM DOI/title abstract
+                # fetchers the rotation loop below uses (OpenAlex /
+                # Semantic Scholar / CrossRef — no new API-calling step)
+                # on the top few; only then accept an empty summary (the
+                # template renders title/meta/link fine without one).
+                candidates = sorted(
+                    pool, key=lambda p: -(p.get("relevance_score") or 0)
+                )
+
+                def _sw_clean_body(item: dict) -> str:
+                    b = item.get("body", "") or ""
+                    b = _re_swap.sub(r"Publication date:.*?Author\(s\):[^\n]*", "", b).strip()
+                    b = _re_swap.sub(r"Volume \d+, Issue \d+.*?\.\s*$", "", b).strip()
+                    return b
+
+                def _sw_truncate(text: str) -> str:
+                    s = text[:900]
+                    if len(text) > 900:
+                        s = s.rsplit(" ", 1)[0] + "…"
+                    return s
+
+                replacement = None
+                r_summary = ""
+                for cand in candidates:
+                    b = _sw_clean_body(cand)
+                    if len(b) >= 80:
+                        replacement, r_summary = cand, _sw_truncate(b)
+                        break
+                if replacement is None and candidates:
+                    try:
+                        import httpx as _httpx_swap
+                        sys.path.insert(0, str(Path(__file__).parent.parent))
+                        from fetch_journal_abstracts import (
+                            _extract_doi as _sw_extract_doi,
+                            _fetch_abstract_by_doi as _sw_fetch_doi,
+                            _fetch_abstract_by_title as _sw_fetch_title,
+                        )
+                        with _httpx_swap.Client(headers={
+                            "User-Agent": "Pulse Briefing <aziz@home-economics.us>"
+                        }, timeout=15) as _sw_client:
+                            for cand in candidates[:5]:
+                                _sw_url = cand.get("url") or ""
+                                _sw_title = _PAPER_AUTHOR_SUFFIX_RE.sub(
+                                    "", (cand.get("title") or "").strip()
+                                ).strip()
+                                fetched = ""
+                                _sw_doi = _sw_extract_doi(_sw_url) if _sw_url else None
+                                if _sw_doi:
+                                    try:
+                                        fetched = _sw_fetch_doi(_sw_doi, _sw_client) or ""
+                                    except Exception:
+                                        fetched = ""
+                                if not fetched and _sw_title:
+                                    try:
+                                        fetched = _sw_fetch_title(
+                                            _re_swap.sub(r"<[^>]+>", "", _sw_title).strip(),
+                                            _sw_client,
+                                        ) or ""
+                                    except Exception:
+                                        fetched = ""
+                                if fetched:
+                                    replacement, r_summary = cand, _sw_truncate(fetched)
+                                    break
+                    except Exception as _sw_abs_e:
+                        logger.warning(f"swap-paper abstract fetch failed: {_sw_abs_e}")
+                if replacement is None and candidates:
+                    # No candidate yielded a summary — take the top-relevance
+                    # one anyway rather than repeating or dropping the section.
+                    replacement = candidates[0]
+                    r_summary = ""
+
+                if replacement is None:
+                    logger.warning(
+                        f"Paper of the Day repeat detected ('{potd_title[:80]}' "
+                        "already featured within 14 days) and no unused candidate "
+                        "in 30-day pool — dropping the section for today"
+                    )
+                    briefing["paper_of_the_day"] = None
+                else:
+                    raw_t = (replacement.get("title") or "").strip()
+                    r_title = _PAPER_AUTHOR_SUFFIX_RE.sub("", raw_t).strip()
+                    # NBER-style titles embed the author list after "-- by"
+                    m_auth = _re_swap.search(
+                        r"(?:--|—)\s*by\s+(.+)$", raw_t, _re_swap.IGNORECASE
+                    )
+                    r_authors = (
+                        m_auth.group(1).strip() if m_auth
+                        else (replacement.get("author") or "").strip()
+                    )
+                    r_authors = " ".join(r_authors.split())  # collapse newlines
+                    r_pub = (replacement.get("feed_name") or "").replace(
+                        "ScienceDirect Publication: ", ""
+                    ).replace("ScienceDirect: ", "")
+                    r_date = (replacement.get("published_at") or "")[:10]
+                    briefing["paper_of_the_day"] = {
+                        "title": r_title,
+                        "authors": r_authors,
+                        "publication": r_pub,
+                        "url": replacement.get("url", "") or "",
+                        "date": r_date,
+                        "summary": r_summary,
+                        "key_finding": "",
+                    }
+                    logger.warning(
+                        f"Paper of the Day repeat detected — swapped "
+                        f"'{potd_title[:80]}' (featured within 14 days) for "
+                        f"'{r_title[:80]}' (relevance "
+                        f"{replacement.get('relevance_score') or 0})"
+                    )
+        except Exception as _swap_e:
+            logger.warning(f"Paper-of-the-day repeat post-check failed: {_swap_e}")
 
         # Stable ordering so rotation is deterministic
         pool.sort(key=lambda x: (x.get("title") or "").lower())

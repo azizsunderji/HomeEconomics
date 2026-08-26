@@ -2712,8 +2712,15 @@ NEVER use any of these phrases inside a theme summary. The reader experiences th
 def generate_daily_briefing(
     conn: sqlite3.Connection,
     client: Optional[anthropic.Anthropic] = None,
+    recently_used_paper_titles: Optional[list] = None,
 ) -> dict:
     """Generate the full daily briefing (conversation-focused).
+
+    `recently_used_paper_titles`: titles of papers featured as Paper of
+    the Day in recent briefings (last 14 days). When provided, they are
+    injected into the prompt as a do-not-pick list so the model doesn't
+    re-select a paper it already featured. Default (None) preserves the
+    prior behavior for callers that don't track this.
 
     Returns structured briefing dict.
     """
@@ -2925,6 +2932,25 @@ def generate_daily_briefing(
         f"{len(convergence)} convergence topics"
     )
 
+    # Prompt guard against Paper-of-the-Day repeats: list the papers
+    # featured in the last 14 days as an explicit do-not-pick block,
+    # analogous to RECENTLY LED THEMES. cmd_synthesize passes these in;
+    # a deterministic post-check there backstops this if the model
+    # ignores the instruction (it repeated the same paper 4 days running
+    # through 2026-08-26).
+    recently_used_papers_block = ""
+    if recently_used_paper_titles:
+        _paper_lines = "\n".join(f"- {t}" for t in recently_used_paper_titles)
+        recently_used_papers_block = f"""
+## PAPERS ALREADY FEATURED (LAST 14 DAYS) — DO NOT PICK ANY OF THESE AS PAPER OF THE DAY
+Each paper below already ran as Paper of the Day within the last 14 days. Do NOT select any of them again, even if one looks like today's strongest candidate — pick the best paper NOT on this list, or set paper_of_the_day to null if no other credible candidate exists.
+
+{_paper_lines}
+"""
+        logger.info(
+            f"Paper-of-the-day do-not-pick list: {len(recently_used_paper_titles)} title(s) injected into prompt"
+        )
+
     user_content = f"""## Today's Collected Items — {len(all_items)} total, {len(relevant_items)} above relevance threshold, {len(conversation_items)} with active conversation
 When citing a tweet or Bluesky post, use the @handle exactly as it appears — do NOT translate to a real name or guess who the person is.
 
@@ -2948,7 +2974,7 @@ These are the conversation_themes from prior daily briefings. Treat this list as
 4. If a topic appeared in BOTH prior briefings already, deprioritize it heavily today — it has had its run unless there is a major new event.
 
 {_format_recent_themes(recent_briefing_themes)}
-
+{recently_used_papers_block}
 ## Cross-Platform Convergence (topics appearing on 3+ platforms)
 
 {json.dumps(convergence[:10], indent=2, default=str) if convergence else "No convergence detected."}
