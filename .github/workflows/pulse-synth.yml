@@ -224,7 +224,13 @@ jobs:
         working-directory: pulse/scripts
         env:
           PULSE_DB: ${{ github.workspace }}/pulse/data/pulse.db
-        run: python v3_1_runner.py --to aziz@home-economics.us || echo "V3.1 run failed — continuing without"
+          # Subscriber-mode send: recipients come from Clerk
+          # (public_metadata.pulseNewsletter.subscribed). If CLERK_SECRET_KEY
+          # is missing or the fetch fails, the runner falls back to sending
+          # only to aziz@home-economics.us (previous behavior).
+          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+          PULSE_UNSUB_SECRET: ${{ secrets.PULSE_UNSUB_SECRET }}
+        run: python v3_1_runner.py || echo "V3.1 run failed — continuing without"
 
       # v1 health-report step retired 2026-06-30 alongside the v1 email. The
       # v3.1 health report below runs the same upstream collectors/enrichment/

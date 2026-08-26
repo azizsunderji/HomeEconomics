@@ -53,6 +53,8 @@ from analysis.roundup_clustering import (
 from analysis.synthesize import SYSTEM_PROMPT as V1_SYSTEM_PROMPT
 from analysis.synthesize import _compute_cited_sources
 from delivery.email_briefing import render_briefing_html
+from delivery.subscribers import get_subscribers, make_unsubscribe_url
+from delivery.variants import make_free_variant, scrub_archive_links
 from datetime import timedelta
 import numpy as np
 
@@ -769,36 +771,206 @@ def build_v3_briefing(v1: dict, v3_roundups: list[dict],
     return v3
 
 
-def send_v3_email(v3: dict, to: str, source_v1_id: int) -> bool:
-    api_key = os.environ.get("RESEND_API_KEY", "")
-    if not api_key:
-        logger.error("RESEND_API_KEY not set")
-        return False
-    html, top_theme, theme_count = render_briefing_html(v3, with_sources_box=False)
+def _render_variants(v3: dict) -> tuple[str, str, str]:
+    """Render the briefing once, then derive the two tier variants:
+    premium = archive.ph-scrubbed HTML with working links; free =
+    premium HTML with every external link rewritten to the upgrade
+    wall (no source URLs leak). Also returns the top theme for the
+    subscriber-facing subject line."""
+    html, top_theme, _theme_count = render_briefing_html(
+        v3, with_sources_box=False)
+    premium_html = scrub_archive_links(html)
+    free_html = make_free_variant(premium_html)
+    return premium_html, free_html, top_theme or ""
+
+
+# CAN-SPAM requires a valid physical postal address in every commercial
+# email. Set before launch; while empty the footer shows only the
+# unsubscribe link.
+PULSE_POSTAL_ADDRESS = ""
+
+
+def _with_unsub_footer(html: str, unsub_url: str | None) -> str:
+    """Append the compliance footer (visible unsubscribe link + postal
+    address) just before </body>. The List-Unsubscribe headers alone do
+    not satisfy CAN-SPAM — the message body needs a visible opt-out."""
+    parts = []
+    if unsub_url:
+        parts.append(
+            f'<a href="{unsub_url}" style="color:#888888;">Unsubscribe</a>'
+        )
+    if PULSE_POSTAL_ADDRESS:
+        parts.append(PULSE_POSTAL_ADDRESS)
+    if not parts:
+        return html
+    footer = (
+        '<div style="max-width:600px;margin:24px auto 0;padding:16px 0 24px;'
+        'border-top:1px solid #e8e8e8;font-size:12px;color:#888888;'
+        'text-align:center;">'
+        "You&rsquo;re receiving Pulse at this address. "
+        + " &middot; ".join(parts)
+        + "</div>"
+    )
+    idx = html.lower().rfind("</body>")
+    if idx == -1:
+        return html + footer
+    return html[:idx] + footer + html[idx:]
+
+
+def _v3_subject(v3: dict, source_v1_id: int) -> str:
+    """Diagnostic subject for --to test sends only."""
     date = v3.get("date") or datetime.now(timezone.utc).strftime("%b %d")
     n_roundups = len(v3.get("conversation_roundups") or [])
-    subject = (
+    return (
         f"[Pulse V3.1] {n_roundups} roundups · subcluster+coherence+history "
         f"| vs v1 #{source_v1_id} | {date}"
     )
 
-    resp = httpx.post(
-        "https://api.resend.com/emails",
-        headers={"Authorization": f"Bearer {api_key}",
-                 "Content-Type": "application/json"},
-        json={"from": EMAIL_FROM, "to": [to], "subject": subject, "html": html},
-        timeout=30,
-    )
-    if resp.status_code == 200:
-        logger.info(f"v3 email sent: {subject}")
-        return True
-    logger.error(f"resend {resp.status_code}: {resp.text[:300]}")
+
+def _subscriber_subject(v3: dict, top_theme: str) -> str:
+    """Reader-facing subject for subscriber sends."""
+    date = v3.get("date") or datetime.now(timezone.utc).strftime("%b %d")
+    theme = (top_theme or "").strip()
+    if len(theme) > 70:
+        theme = theme[:70].rsplit(" ", 1)[0] + "…"
+    return f"Pulse — {theme}" if theme else f"Pulse — {date}"
+
+
+def _post_resend(api_key: str, url: str, payload) -> bool:
+    """POST to a Resend endpoint with the standard 3-attempt retry
+    (5s/10s backoff, no retry on auth errors)."""
+    last_error = None
+    for attempt in range(3):
+        try:
+            resp = httpx.post(
+                url,
+                headers={"Authorization": f"Bearer {api_key}",
+                         "Content-Type": "application/json"},
+                json=payload,
+                timeout=30,
+            )
+            if resp.status_code in (200, 201):
+                return True
+            logger.warning(
+                f"Resend {resp.status_code} on attempt {attempt + 1}/3: "
+                f"{resp.text[:300]}"
+            )
+            last_error = f"HTTP {resp.status_code}: {resp.text[:200]}"
+            if resp.status_code in (401, 403):
+                break  # auth errors won't resolve on retry
+        except Exception as e:
+            logger.warning(f"Resend attempt {attempt + 1}/3 failed: {e}")
+            last_error = str(e)
+        if attempt < 2:
+            time.sleep(5 * (attempt + 1))
+    logger.error(f"Resend send failed after retries: {last_error}")
     return False
+
+
+def send_v3_email(v3: dict, to: str, source_v1_id: int,
+                  variant: str = "premium") -> bool:
+    """Single-recipient test send (no unsubscribe header)."""
+    api_key = os.environ.get("RESEND_API_KEY", "")
+    if not api_key:
+        logger.error("RESEND_API_KEY not set")
+        return False
+    premium_html, free_html, _top_theme = _render_variants(v3)
+    html = free_html if variant == "free" else premium_html
+    subject = _v3_subject(v3, source_v1_id)
+    ok = _post_resend(api_key, "https://api.resend.com/emails",
+                      {"from": EMAIL_FROM, "to": [to],
+                       "subject": subject, "html": html})
+    if ok:
+        logger.info(f"v3 email ({variant}) sent to {to}: {subject}")
+    return ok
+
+
+RESEND_BATCH_LIMIT = 100  # Resend batch endpoint max emails per call
+
+
+def send_v3_email_to_subscribers(v3: dict, source_v1_id: int) -> bool:
+    """Subscriber-mode send: fetch the Clerk subscriber list, render the
+    premium + free variants once, and deliver via the Resend batch
+    endpoint (chunks of <=100). Each Clerk-backed recipient gets
+    RFC 8058 one-click unsubscribe headers; the aziz fallback entry
+    (user_id=None) gets none. Returns True when at least one email was
+    accepted; per-tier and per-batch results are logged."""
+    api_key = os.environ.get("RESEND_API_KEY", "")
+    if not api_key:
+        logger.error("RESEND_API_KEY not set")
+        return False
+
+    subscribers = get_subscribers()
+    premium_html, free_html, top_theme = _render_variants(v3)
+    subject = _subscriber_subject(v3, top_theme)
+
+    emails: list[dict] = []
+    n_premium = n_free = 0
+    for sub in subscribers:
+        premium = bool(sub.get("premium"))
+        unsub_url = None
+        if sub.get("user_id"):
+            unsub_url = make_unsubscribe_url(sub["user_id"])
+            if not unsub_url:
+                logger.warning(
+                    f"no unsubscribe URL for user {sub['user_id']} "
+                    f"(PULSE_UNSUB_SECRET missing?) — sending without "
+                    f"unsubscribe link or List-Unsubscribe header"
+                )
+        base_html = premium_html if premium else free_html
+        msg = {
+            "from": EMAIL_FROM,
+            "to": [sub["email"]],
+            "subject": subject,
+            "html": _with_unsub_footer(base_html, unsub_url),
+        }
+        if unsub_url:
+            msg["headers"] = {
+                "List-Unsubscribe": f"<{unsub_url}>",
+                "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+            }
+        if premium:
+            n_premium += 1
+        else:
+            n_free += 1
+        emails.append(msg)
+
+    chunks = [emails[i:i + RESEND_BATCH_LIMIT]
+              for i in range(0, len(emails), RESEND_BATCH_LIMIT)]
+    sent = failed = 0
+    failed_batches = 0
+    for i, chunk in enumerate(chunks):
+        ok = _post_resend(api_key, "https://api.resend.com/emails/batch",
+                          chunk)
+        if ok:
+            sent += len(chunk)
+        else:
+            failed += len(chunk)
+            failed_batches += 1
+            logger.error(
+                f"batch {i + 1}/{len(chunks)} FAILED "
+                f"({len(chunk)} recipients not sent)"
+            )
+
+    logger.info(
+        f"subscriber send summary: {n_premium} premium + {n_free} free "
+        f"recipients in {len(chunks)} batch(es); sent={sent} failed={failed} "
+        f"failed_batches={failed_batches}"
+    )
+    if failed:
+        logger.error(f"{failed} recipient(s) NOT delivered after retries")
+    return sent > 0
 
 
 def main() -> None:
     p = argparse.ArgumentParser()
-    p.add_argument("--to", default=DEFAULT_TO)
+    p.add_argument("--to", default=None,
+                   help="single-recipient test send (no unsubscribe header). "
+                        "Omit to send to the Clerk subscriber list.")
+    p.add_argument("--variant", choices=["premium", "free"],
+                   default="premium",
+                   help="which variant to send in --to test mode "
+                        "(subscriber mode always sends both by tier)")
     p.add_argument("--db", default=DEFAULT_DB)
     p.add_argument("--lookback-hours", type=int, default=24)
     p.add_argument("--max-roundups", type=int, default=15,
@@ -936,7 +1108,11 @@ def main() -> None:
 
     email_ok = False
     if not args.no_send:
-        email_ok = send_v3_email(v3, args.to, v1_id)
+        if args.to:
+            email_ok = send_v3_email(v3, args.to, v1_id,
+                                     variant=args.variant)
+        else:
+            email_ok = send_v3_email_to_subscribers(v3, v1_id)
         if not email_ok:
             sys.exit(1)
     else:
