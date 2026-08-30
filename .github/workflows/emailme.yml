@@ -1,0 +1,48 @@
+name: emailme
+
+# Relay: sends an email via Resend using the repo's RESEND_API_KEY secret.
+# Dispatched locally by the /emailme skill. The payload (a JSON body for the
+# Resend /emails endpoint) is fetched from a short-lived secret gist so that
+# email content never lands in this public repo.
+
+on:
+  workflow_dispatch:
+    inputs:
+      payload_url:
+        description: 'Raw URL of a JSON payload for the Resend /emails API'
+        required: true
+      note:
+        description: 'Short label for this send (shows in run list)'
+        required: false
+
+run-name: "emailme: ${{ inputs.note || 'send' }}"
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch payload and send via Resend
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          PAYLOAD_URL: ${{ inputs.payload_url }}
+        run: |
+          curl -sSfL "$PAYLOAD_URL" -o payload.json
+          python3 - <<'EOF'
+          import json, os, sys, urllib.request
+          payload = json.load(open("payload.json"))
+          req = urllib.request.Request(
+              "https://api.resend.com/emails",
+              data=json.dumps(payload).encode(),
+              headers={
+                  "Authorization": "Bearer " + os.environ["RESEND_API_KEY"],
+                  "Content-Type": "application/json",
+                  "User-Agent": "Mozilla/5.0 (home-economics emailme)",
+              },
+          )
+          try:
+              resp = urllib.request.urlopen(req, timeout=120)
+              print("Sent:", resp.read().decode()[:300])
+          except urllib.error.HTTPError as e:
+              print("Resend error", e.code, e.read().decode()[:500])
+              sys.exit(1)
+          EOF
