@@ -34,8 +34,6 @@ jobs:
       BROWSERBASE_API_KEY: ${{ secrets.BROWSERBASE_API_KEY }}
       BROWSERBASE_PROJECT_ID: ${{ secrets.BROWSERBASE_PROJECT_ID }}
       BROWSERBASE_CONTEXT_ID: ${{ secrets.BROWSERBASE_CONTEXT_ID }}
-      CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
-      PULSE_UNSUB_SECRET: ${{ secrets.PULSE_UNSUB_SECRET }}
       DATA_LAKE_PATH: /tmp/data-lake
       DATA_LAKE_CATALOG_PATH: /tmp/reference/data_lake_catalog.md
 
