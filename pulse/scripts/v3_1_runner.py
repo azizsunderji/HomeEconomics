@@ -787,7 +787,7 @@ def _render_variants(v3: dict) -> tuple[str, str, str]:
 # CAN-SPAM requires a valid physical postal address in every commercial
 # email. Set before launch; while empty the footer shows only the
 # unsubscribe link.
-PULSE_POSTAL_ADDRESS = ""
+PULSE_POSTAL_ADDRESS = "Home Economics, 12 East 49th Street, 11th floor, New York, NY 10017"
 
 
 def _with_unsub_footer(html: str, unsub_url: str | None) -> str:
