@@ -1,23 +1,32 @@
-"""Home for Lunch — email renderer (v4b briefing dict -> HTML).
+"""News at Noon — email renderer (v4b briefing dict -> HTML).
 
 Replaces the "Pulse"-era template in delivery/email_briefing.py for the
-daily brief now called "Home for Lunch". Renders from `briefing["entries"]`
-(the canonical ranked list produced by v4b_runner) rather than the
-`conversation_themes` back-mapping.
+daily brief now called "News at Noon". Renders
+from `briefing["entries"]` (the canonical ranked list produced by
+v4b_runner) rather than the `conversation_themes` back-mapping.
 
 Design rules (owner's brief, 2026-09):
   * White background everywhere. Body text #3D3733, links #0BB4FF.
   * No dark horizontal rules, no bordered boxes. Sections separate by
     whitespace. The only permitted separator colour is #F6F7F3 at 1px.
-  * Masthead: small "HOME ECONOMICS" kicker, "Home for Lunch" title, date.
-  * One synthesis paragraph at the top (never bullets).
+  * Masthead: Home Economics logo (LOGO_URL, ~140px, left-aligned) above
+    the "News at Noon" text title, then the date. A wordmark image can
+    replace the text title later via WORDMARK_URL. No small-caps kicker.
+  * "Today's Themes": one synthesis paragraph at the top (never bullets),
+    under its own section heading.
   * Numbered entries: title, summary with markdown links, one line of
     light source pills. No heat badges, no "Triggered by", no topic tags.
   * Compact four-up front-pages row with one sentence-cased headline each.
-  * Free / premium tiering (see FREE_ENTRY_COUNT, UPGRADE_URL).
-  * Paper of the Day, "From Home Economics", Pro Map blurb, press mentions.
+  * Free / premium tiering (see FREE_ENTRY_COUNT, UPGRADE_URL). In the
+    free edition the gap between the withheld block and "On the Front
+    Pages" is twice the standard section gap (WALL_GAP).
+  * Every top-level section is separated by SECTION_GAP pixels.
+  * Paper of the Day; then "From Home Economics" as a top-level heading
+    with three subsections: Recent Publications (Substack feed), Tools
+    (Pro Map, list-shaped so more can be added), and Home Economics in
+    the News (press mentions; omitted entirely when there are none).
   * Footer is one light line. No cost line, no URL-audit strip, no logs link.
-  * Unsubscribe block is appended by v3_1_runner._with_unsub_footer at send
+  * Unsubscribe block is appended by v4b_runner._lunch_footer at send
     time — not here.
 
 Typography: the brand's Oracle typeface cannot be embedded in email (no
@@ -50,8 +59,29 @@ logger = logging.getLogger(__name__)
 
 # ── Constants ───────────────────────────────────────────────────────────
 
-TITLE = "Home for Lunch"
+TITLE = "News at Noon"
 PUBLISHER = "Home Economics"
+
+# Masthead logo: black PNG on transparent, ~14 KB, deployed 2026-09-02
+# (HEAD -> 200, image/png, 14,596 bytes). Rendered ~140px wide, top-left.
+LOGO_URL = "https://homeeconomics.us/logo-email.png"
+LOGO_WIDTH = 140
+
+# Wordmark slot. When a "News at Noon" wordmark graphic exists, set this to
+# its URL and the masthead renders it as an <img> (WORDMARK_WIDTH px wide,
+# alt=TITLE) in place of the <h1> text title. Leave empty for the text title.
+WORDMARK_URL = ""
+WORDMARK_WIDTH = 320
+
+# Vertical rhythm. SECTION_GAP separates every top-level section (was a
+# mix of 26/34/36px; raised ~50% and made uniform). WALL_GAP is the larger
+# gap between the free edition's "N more in the premium edition" block and
+# "On the Front Pages".
+SECTION_GAP = 54
+WALL_GAP = SECTION_GAP * 2
+# Gap between a subsection heading block and the next subsection inside
+# "From Home Economics".
+SUBSECTION_GAP = 28
 
 # Free tier: when no entry carries a `tier` key, the top FREE_ENTRY_COUNT
 # entries by rank are shown in the free edition and the rest are listed
@@ -73,7 +103,7 @@ PRO_MAP_URL = "https://homeeconomics.us/promap"
 HE_FEED_URL = "https://homeeconomics.substack.com/feed"
 HE_FEED_TIMEOUT = 10
 HE_FEED_UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
-              "(KHTML, like Gecko) Chrome/124.0 Safari/537.36 HomeForLunch/1.0")
+              "(KHTML, like Gecko) Chrome/124.0 Safari/537.36 NewsAtNoon/1.0")
 HE_PUBLICATIONS_COUNT = 5
 # pulse/data/he_publications.json  (delivery/ -> scripts/ -> pulse/ -> data/)
 HE_PUBLICATIONS_CACHE = (
@@ -392,6 +422,22 @@ def _kicker(text: str) -> str:
             f'{_esc(text)}</div>\n')
 
 
+def _heading(text: str) -> str:
+    """Top-level heading (e.g. "From Home Economics"): larger than the
+    section kickers and the entry titles, ink-coloured, bold."""
+    return (f'<div style="font-family:{FONT}; font-size:24px; line-height:1.2; '
+            f'font-weight:700; letter-spacing:-0.3px; color:{INK}; margin:0 0 20px 0;">'
+            f'{_esc(text)}</div>\n')
+
+
+def _subkicker(text: str) -> str:
+    """Subsection heading under a _heading: same style as _kicker but a
+    touch smaller, so the hierarchy reads heading > subsection > body."""
+    return (f'<div style="font-family:{FONT}; font-size:11px; letter-spacing:2px; '
+            f'text-transform:uppercase; color:{MUTED}; margin:0 0 10px 0;">'
+            f'{_esc(text)}</div>\n')
+
+
 def _pill(label: str) -> str:
     return (f'<span style="display:inline-block; background-color:{LIGHT}; '
             f'color:{INK}; font-size:12px; line-height:18px; padding:2px 9px; '
@@ -481,7 +527,7 @@ def _split_entries(entries: list[dict], tier: str) -> tuple[list[dict], list[dic
 # ── Main renderer ───────────────────────────────────────────────────────
 
 def render_lunch_html(briefing: dict, tier: str = "premium") -> tuple[str, str, int]:
-    """Render a v4b briefing as the Home for Lunch email.
+    """Render a v4b briefing as the News at Noon email.
 
     Returns (html, top_entry_title, entry_count) where entry_count is the
     number of entries rendered in full for this tier. Mirrors the return
@@ -502,6 +548,16 @@ def render_lunch_html(briefing: dict, tier: str = "premium") -> tuple[str, str, 
     press_mentions = briefing.get("_press_mentions") or []
 
     body_text = f"font-family:{FONT}; font-size:17px; line-height:1.6; color:{INK};"
+
+    # Title: wordmark image when WORDMARK_URL is set, otherwise the text <h1>.
+    if WORDMARK_URL:
+        title_html = (f'<img src="{WORDMARK_URL}" alt="{_esc(TITLE)}" width="{WORDMARK_WIDTH}" '
+                      f'style="display:block; width:{WORDMARK_WIDTH}px; max-width:100%; '
+                      f'height:auto; margin:0 0 8px 0;">')
+    else:
+        title_html = (f'<h1 style="font-family:{FONT}; font-size:36px; line-height:1.1; '
+                      f'font-weight:700; letter-spacing:-0.5px; color:{INK}; margin:0 0 8px 0;">'
+                      f'{_esc(TITLE)}</h1>')
 
     parts: list[str] = []
     parts.append(f"""<!DOCTYPE html>
@@ -526,15 +582,12 @@ def render_lunch_html(briefing: dict, tier: str = "premium") -> tuple[str, str, 
 <table cellpadding="0" cellspacing="0" width="100%" style="max-width:600px; width:100%; {body_text}">
 <tr><td style="padding:28px 24px 32px 24px;">
 
-<!-- MASTHEAD -->
-<!-- Wordmark slot: when a "Home for Lunch" wordmark image exists, replace the
-     <h1> below with
-     <img src="https://home-economics.us/pulse-screenshots/lunch-wordmark.png"
-          alt="Home for Lunch" width="280" style="display:block; max-width:100%; height:auto;">
-     and keep the kicker + date lines. -->
+<!-- MASTHEAD: logo (top-left), title, date. No small-caps publisher line. -->
 <!-- Oracle (the brand typeface) cannot be embedded in email; system stack used. -->
-<div style="font-family:{FONT}; font-size:12px; letter-spacing:3px; text-transform:uppercase; color:{MUTED}; margin:0 0 6px 0;">{_esc(PUBLISHER)}</div>
-<h1 style="font-family:{FONT}; font-size:36px; line-height:1.1; font-weight:700; letter-spacing:-0.5px; color:{INK}; margin:0 0 8px 0;">{_esc(TITLE)}</h1>
+<div style="margin:0 0 18px 0;"><img src="{LOGO_URL}" alt="{_esc(PUBLISHER)}" width="{LOGO_WIDTH}" style="display:block; width:{LOGO_WIDTH}px; max-width:100%; height:auto;"></div>
+<!-- WORDMARK SLOT: set WORDMARK_URL (module constant) and the text <h1> is
+     replaced by <img src=WORDMARK_URL alt=TITLE width=WORDMARK_WIDTH>. -->
+{title_html}
 <div style="font-family:{FONT}; font-size:15px; color:{MUTED}; margin:0;">{_esc(date_line)}</div>
 """)
 
@@ -556,9 +609,10 @@ def render_lunch_html(briefing: dict, tier: str = "premium") -> tuple[str, str, 
             f'</td></tr></table>\n'
         )
 
-    # ── Intro paragraph ──
+    # ── Today's Themes (synthesis paragraph) ──
     if intro:
-        parts.append(_spacer(26))
+        parts.append(_spacer(SECTION_GAP))
+        parts.append(_kicker("Today’s Themes"))
         parts.append(
             f'<p style="{body_text} font-size:18px; line-height:1.65; margin:0;">'
             f'{_md_links(intro)}</p>\n'
@@ -566,7 +620,7 @@ def render_lunch_html(briefing: dict, tier: str = "premium") -> tuple[str, str, 
 
     # ── Entries ──
     if shown:
-        parts.append(_spacer(34))
+        parts.append(_spacer(SECTION_GAP))
         for i, e in enumerate(shown, start=1):
             num = e.get("rank") if isinstance(e.get("rank"), int) else i
             title = (e.get("title") or "").strip()
@@ -576,9 +630,12 @@ def render_lunch_html(briefing: dict, tier: str = "premium") -> tuple[str, str, 
             if pills:
                 pills_html = (f'<div style="margin:10px 0 0 0; line-height:24px;">'
                               f'{"".join(_pill(p) for p in pills)}</div>')
+            # Last entry carries no bottom padding so the following section
+            # gap is exactly SECTION_GAP (or WALL_GAP) and nothing more.
+            pad_bottom = 0 if i == len(shown) else 30
             parts.append(
                 f'<table width="100%" cellpadding="0" cellspacing="0"><tr>'
-                f'<td style="padding:0 0 30px 0;">'
+                f'<td style="padding:0 0 {pad_bottom}px 0;">'
                 f'<div style="font-family:{FONT}; font-size:19px; line-height:1.3; '
                 f'font-weight:700; color:{INK}; margin:0 0 8px 0;">'
                 f'<span style="color:{BLUE}; font-weight:600; margin-right:8px;">{num}</span>'
@@ -598,7 +655,7 @@ def render_lunch_html(briefing: dict, tier: str = "premium") -> tuple[str, str, 
             f'{_esc((w.get("title") or "").strip())}</div>'
             for k, w in enumerate(withheld, start=1)
         )
-        parts.append(_spacer(6))
+        parts.append(_spacer(36))
         parts.append(
             f'<table width="100%" cellpadding="0" cellspacing="0"><tr>'
             f'<td bgcolor="{LIGHT}" style="background-color:{LIGHT}; padding:18px 18px 14px 18px; border-radius:6px;">'
@@ -647,7 +704,9 @@ def render_lunch_html(briefing: dict, tier: str = "premium") -> tuple[str, str, 
             f'{head_html}'
             f'</td>'
         )
-    parts.append(_spacer(10))
+    # Free edition: the withheld block sits right above this heading; give it
+    # twice the standard gap so the wall reads as the end of the entries.
+    parts.append(_spacer(WALL_GAP if (tier == "free" and withheld) else SECTION_GAP))
     parts.append(_kicker("On the Front Pages"))
     parts.append(
         f'<table width="100%" cellpadding="0" cellspacing="0" style="margin:0 -6px;">'
@@ -661,7 +720,7 @@ def render_lunch_html(briefing: dict, tier: str = "premium") -> tuple[str, str, 
         if paper.get("date"):
             meta += (" &middot; " if meta else "") + _esc(paper["date"])
         key = (paper.get("key_finding") or "").strip()
-        parts.append(_spacer(36))
+        parts.append(_spacer(SECTION_GAP))
         parts.append(_kicker("Paper of the Day"))
         parts.append(
             f'<div style="font-family:{FONT}; font-size:19px; line-height:1.3; font-weight:700; margin:0 0 4px 0;">'
@@ -673,31 +732,44 @@ def render_lunch_html(briefing: dict, tier: str = "premium") -> tuple[str, str, 
             f'<div>{_button("Read the paper →", p_url)}</div>\n'
         )
 
-    # ── From Home Economics ──
+    # ── From Home Economics (top-level heading with three subsections) ──
     pubs = load_he_publications()
+    parts.append(_spacer(SECTION_GAP))
+    parts.append(_heading("From Home Economics"))
+    subsections: list[str] = []
+
+    # 1. Recent Publications (latest Substack posts). Omitted if the feed
+    #    and cache are both unavailable.
     if pubs:
-        parts.append(_spacer(36))
-        parts.append(_kicker("From Home Economics"))
+        rows = []
         for pub in pubs:
             date_bit = (f'<span style="color:{MUTED}; font-size:13px; margin-left:8px;">{_esc(pub.get("date") or "")}</span>'
                         if pub.get("date") else "")
-            parts.append(
+            rows.append(
                 f'<div style="{body_text} font-size:16px; margin:0 0 8px 0;">'
                 f'{_link(pub.get("title") or "", pub.get("url") or "#", color=INK, weight="600")}{date_bit}</div>\n'
             )
-    # Pro Map blurb (two sentences, own paragraph).
-    parts.append(_spacer(20 if pubs else 36))
-    parts.append(
-        f'<p style="{body_text} font-size:15px; margin:0;">'
-        f'The Pro Map puts Home Economics&rsquo; county- and ZIP-level housing data on one interactive map, '
-        f'from prices and rents to migration and permits. '
-        f'{_link("Explore the Pro Map →", PRO_MAP_URL, weight="600")}</p>\n'
-    )
+        subsections.append(_subkicker("Recent Publications") + "".join(rows))
 
-    # ── Home Economics in the News ──
+    # 2. Tools. One paragraph per tool: (name, blurb, cta_text, url). Add
+    #    more tuples here as tools are launched.
+    tools = [
+        ("Pro Map",
+         "The Pro Map puts Home Economics&rsquo; county- and ZIP-level housing data on one "
+         "interactive map, from prices and rents to migration and permits.",
+         "Explore the Pro Map →", PRO_MAP_URL),
+    ]
+    tool_rows = [
+        f'<p style="{body_text} font-size:15px; margin:0 0 10px 0;">'
+        f'{blurb} {_link(cta, url, weight="600")}</p>\n'
+        for _name, blurb, cta, url in tools
+    ]
+    subsections.append(_subkicker("Tools") + "".join(tool_rows))
+
+    # 3. Home Economics in the News (press mentions). Omitted entirely when
+    #    the briefing carries none; nothing is fabricated.
     if press_mentions:
-        parts.append(_spacer(36))
-        parts.append(_kicker("Home Economics in the News"))
+        rows = []
         for m in press_mentions[:10]:
             url = m.get("url") or ""
             src = (m.get("source") or "").strip()
@@ -706,13 +778,16 @@ def render_lunch_html(briefing: dict, tier: str = "premium") -> tuple[str, str, 
             src_html = _link(src, url, weight="600") if url else f'<span style="color:{BLUE}; font-weight:600;">{_esc(src)}</span>'
             head_html = _link(head, url, color=INK) if url else _esc(head)
             date_html = f'<span style="color:{MUTED}; font-size:13px;"> ({_esc(date_str)})</span>' if date_str else ""
-            parts.append(
+            rows.append(
                 f'<div style="{body_text} font-size:16px; margin:0 0 8px 0;">'
                 f'<span style="font-size:13px;">{src_html}</span> {head_html}{date_html}</div>\n'
             )
+        subsections.append(_subkicker("Home Economics in the News") + "".join(rows))
+
+    parts.append(_spacer(SUBSECTION_GAP).join(subsections))
 
     # ── Footer ──
-    parts.append(_spacer(40))
+    parts.append(_spacer(SECTION_GAP))
     parts.append(
         f'<div style="font-family:{FONT}; font-size:13px; color:{MUTED}; text-align:center;">'
         f'{_esc(TITLE)} &middot; {_esc(PUBLISHER)}</div>\n'
@@ -734,4 +809,5 @@ def render_lunch_html(briefing: dict, tier: str = "premium") -> tuple[str, str, 
 __all__ = [
     "render_lunch_html", "load_he_publications", "FREE_ENTRY_COUNT",
     "UPGRADE_URL", "PRO_MAP_URL", "HE_FEED_URL", "SOURCE_CANON",
+    "TITLE", "LOGO_URL", "WORDMARK_URL", "SECTION_GAP", "WALL_GAP",
 ]

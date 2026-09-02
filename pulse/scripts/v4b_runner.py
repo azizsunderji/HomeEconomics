@@ -106,8 +106,8 @@ from v4_runner import (  # noqa: E402
 logger = logging.getLogger("v4b_runner")
 
 BRIEFING_TYPE = "daily_v4b_attach"
-EMAIL_FROM = "Home for Lunch <pulse@home-economics.us>"
-PRODUCT_NAME = "Home for Lunch"
+EMAIL_FROM = "News at Noon <pulse@home-economics.us>"
+PRODUCT_NAME = "News at Noon"
 OWN_DOMAINS = ("homeeconomics.substack.com", "home-economics.us", "homeeconomics.us")
 SHADOW_SUBJECT_PREFIX = "[V4B SHADOW] "
 
@@ -957,7 +957,7 @@ def _restore_own_links(html: str, keep: dict) -> str:
 
 
 def _render_lunch_variants(v4b: dict) -> tuple[str, str, str]:
-    """Home for Lunch premium + free variants. Premium: every entry,
+    """News at Noon premium + free variants. Premium: every entry,
     working links (archive.ph scrubbed). Free: tiered render (banner,
     top-N entries, withheld list) with every external link walled, except
     links to our own domains."""
@@ -975,8 +975,8 @@ def _lunch_subject(top_title: str) -> str:
 
 
 def _lunch_footer(html: str, unsub_url: str | None) -> str:
-    """Compliance footer (visible unsubscribe + postal address) for Home
-    for Lunch. Same placement and rules as v3_1_runner._with_unsub_footer,
+    """Compliance footer (visible unsubscribe + postal address) for News
+    at Noon. Same placement and rules as v3_1_runner._with_unsub_footer,
     with the product name changed and no border line."""
     parts = []
     if unsub_url:
@@ -1018,7 +1018,7 @@ def send_v4b_shadow_email(v4b: dict, to: str, source_v1_id: int,
 
 def send_lunch_to_subscribers(v4b: dict, source_v1_id: int) -> bool:
     """Subscriber-mode send, mirroring v3_1_runner.send_v3_email_to_subscribers
-    but with the Home for Lunch template and footer. Free tier gets the
+    but with the News at Noon template and footer. Free tier gets the
     tiered/walled variant, premium gets working links. Not exercised in
     shadow mode."""
     api_key = os.environ.get("RESEND_API_KEY", "")

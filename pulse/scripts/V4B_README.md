@@ -38,7 +38,7 @@ The runner is additive. It imports from `v4_runner.py`, `v3_1_runner.py`,
 | 7 | Rank | `v4_runner.rank_entries` | v4 formula, cap `--max-entries` (18). |
 | 8 | Assemble, post-process | `v4_runner.entry_to_theme`, `postprocess_entries`, `build_v4_briefing` | As v4, plus a local paragraph-break restoration pass (`restore_paragraph_breaks`) after `postprocess_entries`: `synthesize._validate_briefing_urls` rejoins a summary with single spaces whenever it strips a sentence, which is what flattened the data-center entry into one block in runs 1 and 2. The pass maps each surviving sentence back to its pre-post-processing paragraph and re-inserts the breaks; restorations are listed in `_v4b_meta.postprocess.paragraph_breaks_restored`. Theme-based entries keep v1's platform badges, `heat_level` and `topics`, plus one badge per new outlet/platform among attached items. Meta key is `_v4b_meta`. |
 | 9 | Store | — | `briefing_type = "daily_v4b_attach"`. Skipped with `--no-store`. |
-| 10 | Send | `_render_variants`, `_with_unsub_footer`, `_subscriber_subject`, `_post_resend` | `--to` sends one premium-variant email with subject prefix `[V4B SHADOW] `. Without `--to`/`--no-send` it calls v3.1's subscriber send. |
+| 10 | Send | `_render_lunch_variants`, `_lunch_footer`, `_lunch_subject`, `send_lunch_to_subscribers`, `_post_resend` | Email product is **News at Noon** (`PRODUCT_NAME`, `EMAIL_FROM = "News at Noon <pulse@home-economics.us>"`; template in `delivery/email_lunch.py`, previews via `preview_lunch.py`). `--to` sends one email with subject prefix `[V4B SHADOW] `. Without `--to`/`--no-send` it sends premium (working links) and free (walled, top-N entries) variants to subscribers. |
 
 ## Attachment rules
 
