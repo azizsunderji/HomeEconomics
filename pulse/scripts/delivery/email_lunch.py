@@ -105,9 +105,9 @@ HE_FEED_TIMEOUT = 10
 HE_FEED_UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
               "(KHTML, like Gecko) Chrome/124.0 Safari/537.36 NewsAtNoon/1.0")
 HE_PUBLICATIONS_COUNT = 5
-# pulse/data/he_publications.json  (delivery/ -> scripts/ -> pulse/ -> data/)
+# pulse/scripts/delivery/he_publications.json (tracked, so GitHub Actions has it when Substack blocks the fetch)
 HE_PUBLICATIONS_CACHE = (
-    Path(__file__).resolve().parent.parent.parent / "data" / "he_publications.json"
+    Path(__file__).resolve().parent / "he_publications.json"
 )
 
 # Palette (only these background colours may appear in the rendered HTML).
