@@ -138,7 +138,7 @@ slot in the masthead. Rejected: clock-as-O wordmarks, dandy characters, code-dra
 3. Press mentions: rewrite `collectors/press_mentions.py` (Google News RSS *search* returns 0 items
    even for control queries; Brave Search API key exists in GH secrets). Needs a yes — existing file.
 4. Owner to add **@azizsunderji** to the Pulse X list so Recent posts populates.
-5. Send time: decided 12:15 ET, not yet implemented (see feature 1 — it falls out of the editor design).
+5. Send time: decided 11:59 ET (lands at noon), not yet implemented (see feature 1 — it falls out of the editor design).
 
 ---
 
@@ -154,7 +154,7 @@ slot in the masthead. Rejected: clock-as-O wordmarks, dandy characters, code-dra
 - Per-entry **free/premium selection**; the free box's "N of M themes" must reflect it (renderer
   already does, via `entry.tier`).
 - Delete entries; presumably reorder.
-- Workflow: draft arrives ~7am ET, owner edits, **send goes out at 12:15 ET whether or not it was
+- Workflow: draft arrives ~7am ET, owner edits, **send goes out at 11:59 ET (lands at noon) whether or not it was
   edited** ("if not edited, still send").
 
 ### Recommended architecture (keep the Python renderer; the droplet is always on)
@@ -177,7 +177,7 @@ slot in the masthead. Rejected: clock-as-O wordmarks, dandy characters, code-dra
   pane** that calls `/render` so the owner sees the real email (both tiers, switchable). A
   contenteditable WYSIWYG is nicer but fragile on iOS; if used, store as markdown via a
   converter and keep the textarea as fallback.
-- **Send at 12:15 ET from the droplet**: a cron (or the same FastAPI app's scheduler) at 16:15
+- **Send at 11:59 ET (lands at noon) from the droplet**: a cron (or the same FastAPI app's scheduler) at 16:15
   UTC loads the draft (edited or not), renders both tiers, and sends via the existing
   `send_lunch_to_subscribers` (needs `RESEND_API_KEY`, `CLERK_SECRET_KEY`, `PULSE_UNSUB_SECRET` in
   the droplet's env file — the GH secrets are not on the droplet today). The GH Actions v4b step
@@ -249,7 +249,7 @@ send code path. `pulse/editor/README.md` documents the daily flow, env file, and
 
 - Units (user systemd, lingering on): `noon-editor.service` (127.0.0.1:8240), `noon-ingest.timer`
   (11:00–15:59 UTC every 10 min; builds today's draft from the synced DB read-only and emails
-  the edit link once), `noon-send.timer` (12:15 America/New_York; sends unless Held or already
+  the edit link once), `noon-send.timer` (11:59 America/New_York; sends unless Held or already
   sent; emails an alert on failure). Env: `~/.noon_env` (NOON_SEND_MODE=shadow → owner only,
   free tier).
 - Editor verified by a headless Playwright run at 1280×900 and 390×844 touch: login, link
