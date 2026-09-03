@@ -14,6 +14,7 @@ import paths
 import drafts
 from delivery.email_lunch import FREE_ENTRY_COUNT, _intro_text
 from delivery.own_posts import load_own_posts
+from own_posts_apify import fetch_own_posts
 
 logger = logging.getLogger("noon.ingest")
 
@@ -87,6 +88,10 @@ def ingest(date: str | None = None, replace: bool = False) -> dict | None:
         return None
     rid, brief = found
     draft = build_draft(brief, date)
+    if not draft.get("_own_posts"):
+        # The list scrape cannot include the owner (X forbids adding yourself
+        # to your own list), so pull the timeline directly when a key is set.
+        draft["_own_posts"] = fetch_own_posts()
     row = drafts.create(date, rid, draft, replace=replace)
     logger.info(f"draft {date} created from briefing #{rid} ({len(draft['entries'])} entries)")
     return row
