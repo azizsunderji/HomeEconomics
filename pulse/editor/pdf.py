@@ -28,9 +28,11 @@ PRINT_CSS = """
   @page { size: Letter; margin: 0.55in 0.6in 0.6in 0.6in; }
   html, body { background: #ffffff !important; }
   body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  /* The whole email is one wrapping table/row, so never forbid breaks
+     inside generic tables or rows (that pushed the body to page 2). */
+  table, tr, td { page-break-inside: auto; break-inside: auto; }
   img { page-break-inside: avoid; break-inside: avoid; }
-  table { page-break-inside: auto; }
-  tr { page-break-inside: avoid; break-inside: avoid; }
+  tr.fp-row { page-break-inside: avoid; break-inside: avoid; }
   h1, h2, h3 { page-break-after: avoid; break-after: avoid; }
   a[href] { color: inherit; }
 </style>
