@@ -638,7 +638,7 @@ def render_lunch_html(briefing: dict, tier: str = "premium") -> tuple[str, str, 
 
 <!-- MASTHEAD: logo (top-left), title, date. No small-caps publisher line. -->
 <!-- Oracle (the brand typeface) cannot be embedded in email; system stack used. -->
-<div style="margin:0 0 18px 0;"><img src="{LOGO_URL}" alt="{_esc(PUBLISHER)}" width="{LOGO_WIDTH}" style="display:block; width:{LOGO_WIDTH}px; max-width:100%; height:auto;"></div>
+<div style="margin:0 0 {SECTION_GAP}px 0;"><img src="{LOGO_URL}" alt="{_esc(PUBLISHER)}" width="{LOGO_WIDTH}" style="display:block; width:{LOGO_WIDTH}px; max-width:100%; height:auto;"></div>
 <!-- WORDMARK SLOT: set WORDMARK_URL (module constant) and the text <h1> is
      replaced by <img src=WORDMARK_URL alt=TITLE width=WORDMARK_WIDTH>. -->
 {title_html}
