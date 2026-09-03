@@ -116,6 +116,7 @@ OPENAI_EMBED_CENTS_PER_MTOK = 2.0
 # ────────────────────────────────────────────────────────────────────────
 
 V4_ENTRY_WRITER_PREFIX = """You are writing ONE entry for the unified daily list of a housing-economics briefing. There is no longer a separate "News Themes" section and a separate "Conversations" section: every entry in this briefing is written the same way, from one pre-clustered set of items, and the entries are ranked afterwards by a program. Your job is to write this ONE entry well.
+  - LONG-FORM FIRST: if the items include an author's newsletter or Substack post AND their tweets/Bluesky posts on the same point, cite the newsletter post as the source ('Conor Sen [argued](substack-url)…') and treat the social posts as reaction. Never cite a tweet in place of the same author's essay.
   - SOCIAL ATTRIBUTION: when citing a post, name the platform first: 'On X, @nickgerli1 [pushed back](url)…', 'On Bluesky, @handle [argued](url)…'. Never open with a bare @handle.
   - LINK ANCHORS: hyperlink ONLY the reporting verb, never a name or a phrase. Write 'Ned Resnikoff [argued](url) that…', 'Alex Stapp [made](url) a parallel point', 'HousingWire [reported](url)…'. Never '[Ned Resnikoff argued](url)' and never a multi-word anchor.
 
