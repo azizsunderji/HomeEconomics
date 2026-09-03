@@ -646,6 +646,7 @@ def render_lunch_html(briefing: dict, tier: str = "premium") -> tuple[str, str, 
 """)
 
     # ── Free-edition banner ──
+    banner_html = ""
     if tier == "free":
         parts.append(_spacer(22))
         n_withheld = len(withheld)
@@ -654,7 +655,7 @@ def render_lunch_html(briefing: dict, tier: str = "premium") -> tuple[str, str, 
                       f"themes are only in the premium edition.")
         else:
             clause = " Links are disabled in this edition."
-        parts.append(
+        banner_html = (
             f'<table width="100%" cellpadding="0" cellspacing="0"><tr>'
             f'<td bgcolor="{LIGHT}" style="background-color:{LIGHT}; padding:14px 16px; '
             f'border-radius:6px; font-family:{FONT}; font-size:14px; line-height:1.5; color:{INK};">'
@@ -662,6 +663,7 @@ def render_lunch_html(briefing: dict, tier: str = "premium") -> tuple[str, str, 
             f'{_link("Upgrade →", UPGRADE_URL, weight="600")}'
             f'</td></tr></table>\n'
         )
+        parts.append(banner_html)
 
     # ── Today's Themes (synthesis paragraph) ──
     if intro:
@@ -840,6 +842,11 @@ def render_lunch_html(briefing: dict, tier: str = "premium") -> tuple[str, str, 
         subsections.append(_subkicker("Home Economics in the News") + "".join(rows))
 
     parts.append(_spacer(SUBSECTION_GAP).join(subsections))
+
+    # ── Free-edition banner, repeated at the bottom ──
+    if tier == "free" and banner_html:
+        parts.append(_spacer(SECTION_GAP))
+        parts.append(banner_html)
 
     # ── Footer ──
     parts.append(_spacer(SECTION_GAP))
