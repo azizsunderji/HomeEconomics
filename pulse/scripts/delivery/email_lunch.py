@@ -452,6 +452,73 @@ def _button(text: str, url: str) -> str:
             f'text-decoration:none;">{_esc(text)}</a>')
 
 
+BODY_LINK_STYLE = (
+    f"color:{INK}; text-decoration:none; border-bottom:2px solid {INK}; padding-bottom:1px;"
+)
+
+
+# Reporting verbs. When a markdown link's anchor text contains one of these,
+# only the verb stays linked ("Ned Resnikoff [argued](url)", "Alex Stapp
+# [made](url) a parallel point") — the owner's house style.
+_LINK_VERBS = {
+    "argued", "argues", "reported", "reports", "noted", "notes", "wrote", "writes", "said",
+    "says", "made", "makes", "found", "finds", "warned", "warns", "showed", "shows", "pointed",
+    "points", "called", "calls", "added", "adds", "estimated", "estimates", "projected",
+    "projects", "told", "posted", "posts", "tweeted", "explained", "explains", "published",
+    "publishes", "released", "releases", "announced", "announces", "flagged", "flags",
+    "highlighted", "highlights", "observed", "observes", "predicted", "predicts", "suggested",
+    "suggests", "cited", "cites", "described", "describes", "framed", "frames", "put", "puts",
+    "responded", "responds", "replied", "replies", "countered", "counters", "pushed",
+    "pushes", "asked", "asks", "questioned", "questions", "documented", "documents",
+    "tracked", "tracks", "calculated", "calculates", "confirmed", "confirms", "claimed",
+    "claims", "declared", "declares", "concluded", "concludes", "surveyed", "measured",
+    "detailed", "details", "outlined", "outlines", "shared", "shares", "laid", "lays",
+    "quoted", "quotes", "signed", "signs", "vetoed", "vetoes", "filed", "files", "sued",
+    "sues", "settled", "settles", "ruled", "rules", "blocked", "blocks", "approved",
+    "approves", "passed", "passes", "introduced", "introduces", "unveiled", "unveils",
+}
+
+
+def _narrow_link_anchors(text: str) -> str:
+    """Rewrite '[Name Surname argued](url)' as 'Name Surname [argued](url)':
+    keep only the first reporting verb inside the link. Anchors without a
+    listed verb are left untouched. Operates on markdown, before _md_links."""
+    anchor = r'(?:[^\[\]]|\[[^\]]*\])+'
+
+    def _fix(m):
+        inner, url = m.group(1), m.group(2)
+        words = inner.split(" ")
+        if len(words) < 2:
+            return m.group(0)
+        for i, w in enumerate(words):
+            bare = re.sub(r"^[^A-Za-z]+|[^A-Za-z]+$", "", w).lower()
+            if bare in _LINK_VERBS:
+                before = " ".join(words[:i])
+                after = " ".join(words[i + 1:])
+                out = f"[{w}]({url})"
+                if before:
+                    out = before + " " + out
+                if after:
+                    out = out + " " + after
+                return out
+        return m.group(0)
+
+    return re.sub(rf'\[({anchor})\]\(([^)]+)\)', _fix, str(text))
+
+
+def _body_links(text: str) -> str:
+    """_md_links() with every anchor restyled for body copy: ink-coloured,
+    underlined with a 2px rule, never blue and never visited-purple. Keeps
+    href/target, drops the incoming style. Anchors are first narrowed to
+    the reporting verb (see _narrow_link_anchors)."""
+    html = _md_links(_narrow_link_anchors(text))
+    return re.sub(
+        r'<a\s+href="([^"]+)"[^>]*>',
+        lambda m: f'<a href="{m.group(1)}" target="_blank" style="{BODY_LINK_STYLE}">',
+        html,
+    )
+
+
 def _link(text: str, url: str, color: str = BLUE, weight: str = "normal") -> str:
     return (f'<a href="{url}" target="_blank" style="color:{color}; '
             f'text-decoration:none; font-weight:{weight};">{_esc(text)}</a>')
@@ -671,7 +738,7 @@ def render_lunch_html(briefing: dict, tier: str = "premium") -> tuple[str, str, 
         parts.append(_kicker("Today’s Themes"))
         parts.append(
             f'<p style="{body_text} font-size:18px; line-height:1.65; margin:0;">'
-            f'{_md_links(_fix_sentence_starts(intro))}</p>\n'
+            f'{_body_links(_fix_sentence_starts(intro))}</p>\n'
         )
 
     # ── Entries ──
@@ -699,7 +766,7 @@ def render_lunch_html(briefing: dict, tier: str = "premium") -> tuple[str, str, 
                 f'<td style="font-family:{FONT}; font-size:19px; line-height:1.3; font-weight:700; '
                 f'color:{INK}; padding:0; vertical-align:top;">{_esc(title)}</td>'
                 f'</tr></table>'
-                f'<div style="{body_text}">{_md_links(summary)}</div>'
+                f'<div style="{body_text}">{_body_links(summary)}</div>'
                 f'{pills_html}'
                 f'</td></tr></table>\n'
             )
@@ -785,7 +852,7 @@ def render_lunch_html(briefing: dict, tier: str = "premium") -> tuple[str, str, 
             f'<div style="font-family:{FONT}; font-size:14px; color:{INK}; margin:0 0 2px 0;">{_esc(paper.get("authors") or "")}</div>'
             f'<div style="font-family:{FONT}; font-size:13px; color:{MUTED}; margin:0 0 12px 0;">{meta}</div>'
             + (f'<div style="{body_text} font-weight:600; margin:0 0 10px 0;">{_esc(key)}</div>' if key else "")
-            + f'<div style="{body_text} margin:0 0 16px 0;">{_md_links(paper.get("summary") or "")}</div>'
+            + f'<div style="{body_text} margin:0 0 16px 0;">{_body_links(paper.get("summary") or "")}</div>'
             f'<div>{_button("Read the paper →", p_url)}</div>\n'
         )
 
