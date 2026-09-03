@@ -12,6 +12,7 @@ Routes
   POST /api/draft/{date}/reset     rebuild from the stored brief (discards edits)
   GET  /preview/{date}?tier=       the exact HTML that would be sent
   GET  /api/drafts           recent days
+  GET  /latest[?k=]        public: latest edition (free; premium with the emailed key)
   GET  /health
 """
 from __future__ import annotations
@@ -102,6 +103,18 @@ def magic(d: str, k: str):
     if not auth.magic_ok(d, k, drafts.today_et()):
         raise HTTPException(status_code=403, detail="link expired or invalid")
     return _set_cookie(RedirectResponse(f"/?d={d}", status_code=302))
+
+
+@app.get("/latest", response_class=HTMLResponse)
+def latest(k: str | None = None):
+    """Public 'Read on the web' page: the latest edition. Free unless the
+    premium key from a premium email is present."""
+    row = drafts.latest_sent()
+    if row is None:
+        raise HTTPException(status_code=404, detail="no edition yet")
+    tier = "premium" if auth.web_token_ok(k) else "free"
+    return HTMLResponse(render.preview(row["json"], tier),
+                        headers={"Cache-Control": "no-store"})
 
 
 @app.get("/health")

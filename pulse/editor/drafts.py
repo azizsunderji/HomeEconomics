@@ -166,3 +166,14 @@ def versions(date: str) -> list[dict]:
             "WHERE date = ? ORDER BY version", (date,)
         ).fetchall()
     return [dict(r) for r in rows]
+
+
+def latest_sent() -> dict | None:
+    """Most recently sent draft, else the most recent draft of any status."""
+    with connect() as conn:
+        r = conn.execute(
+            "SELECT * FROM drafts WHERE status = 'sent' ORDER BY date DESC LIMIT 1"
+        ).fetchone()
+        if r is None:
+            r = conn.execute("SELECT * FROM drafts ORDER BY date DESC LIMIT 1").fetchone()
+    return _row_to_dict(r) if r else None

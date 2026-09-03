@@ -59,3 +59,13 @@ def magic_ok(date: str, token: str, today: str) -> bool:
     if not (timedelta(days=-2) <= (t - d) <= timedelta(days=2)):
         return False
     return secrets.compare_digest(token, magic_token(date))
+
+
+def web_token() -> str:
+    """Key in the premium email's 'Read on the web' link. One value for all
+    premium readers; rotate by changing NOON_SECRET."""
+    return _sig("web:premium")[:24]
+
+
+def web_token_ok(token: str | None) -> bool:
+    return bool(token) and secrets.compare_digest(token, web_token())

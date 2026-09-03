@@ -43,6 +43,8 @@ def _restore_own_links(html: str, keep: dict) -> str:
 
 def render_variants(draft: dict) -> tuple[str, str, str]:
     """(premium_html, free_html, top_title) — same steps as the runner."""
+    import auth
+    draft = dict(draft, _web_key=auth.web_token())  # premium "Read on the web" link
     premium_html, top, _n = render_lunch_html(draft, tier="premium")
     premium_html = scrub_archive_links(premium_html)
     free_raw, _t, _n2 = render_lunch_html(draft, tier="free")

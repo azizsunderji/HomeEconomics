@@ -67,6 +67,11 @@ PUBLISHER = "Home Economics"
 # (HEAD -> 200, image/png, 14,596 bytes). Rendered ~140px wide, top-left.
 LOGO_URL = "https://homeeconomics.us/logo-email.png"
 LOGO_WIDTH = 100
+# "Read on the web" (masthead, top right). Always the latest edition; the
+# premium email appends ?k=<key> (briefing["_web_key"], set by the editor)
+# so the page shows the premium edition. Own domain, so the free variant's
+# link wall leaves it alone.
+WEB_URL = "https://noon.homeeconomics.us/latest"
 
 # Wordmark slot. When a "News at Noon" wordmark graphic exists, set this to
 # its URL and the masthead renders it as an <img> (WORDMARK_WIDTH px wide,
@@ -829,6 +834,13 @@ def _link(text: str, url: str, color: str = BLUE, weight: str = "normal") -> str
             f'text-decoration:none; font-weight:{weight};">{_esc(text)}</a>')
 
 
+def _web_url(briefing: dict, tier: str) -> str:
+    """Latest-edition page; premium emails carry the key that unlocks the
+    premium edition on the web."""
+    key = briefing.get("_web_key") if tier == "premium" else None
+    return f"{WEB_URL}?k={key}" if key else WEB_URL
+
+
 def _format_date(date_str: str) -> str:
     """'2026-09-02' -> 'Wednesday, September 2, 2026'."""
     try:
@@ -1010,7 +1022,7 @@ def render_lunch_html(briefing: dict, tier: str = "premium") -> tuple[str, str, 
 
 <!-- MASTHEAD: logo (top-left), title, date. No small-caps publisher line. -->
 <!-- Oracle (the brand typeface) cannot be embedded in email; system stack used. -->
-<div style="margin:0 0 {SECTION_GAP}px 0;"><img src="{LOGO_URL}" alt="{_esc(PUBLISHER)}" width="{LOGO_WIDTH}" style="display:block; width:{LOGO_WIDTH}px; max-width:100%; height:auto;"></div>
+<table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 {SECTION_GAP}px 0;"><tr><td valign="top" style="padding:0;"><img src="{LOGO_URL}" alt="{_esc(PUBLISHER)}" width="{LOGO_WIDTH}" style="display:block; width:{LOGO_WIDTH}px; max-width:100%; height:auto;"></td><td valign="top" align="right" style="padding:0; font-family:{FONT}; font-size:13px; line-height:1.4; white-space:nowrap;"><a href="{_web_url(briefing, tier)}" style="{BODY_LINK_STYLE}">Read on the web</a></td></tr></table>
 <!-- WORDMARK SLOT: set WORDMARK_URL (module constant) and the text <h1> is
      replaced by <img src=WORDMARK_URL alt=TITLE width=WORDMARK_WIDTH>. -->
 {title_html}
