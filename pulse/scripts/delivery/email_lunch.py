@@ -83,7 +83,7 @@ SECTION_GAP = 54
 # set STANDFIRST_FONT to 'Georgia, "Times New Roman", serif' for the
 # magazine-style serif deck.
 STANDFIRST_SIZE = 20
-STANDFIRST_FONT = 'Georgia, "Times New Roman", serif'  # serif deck; set to None for the body family
+STANDFIRST_FONT = "Georgia, 'Times New Roman', Times, serif"  # single quotes: it sits inside a double-quoted style attribute
 WALL_GAP = 72  # gap between the free-tier withheld box and On the Front Pages
 # Gap between a subsection heading block and the next subsection inside
 # "From Home Economics".
