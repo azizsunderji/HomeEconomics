@@ -47,10 +47,15 @@ def load_briefing(args: argparse.Namespace) -> dict:
         row = conn.execute(
             "SELECT content_json FROM briefings WHERE id = ?", (args.id,)
         ).fetchone()
-        conn.close()
         if not row:
+            conn.close()
             sys.exit(f"no briefing with id {args.id} in {db}")
-        return json.loads(row[0])
+        data = json.loads(row[0])
+        if "_own_posts" not in data:
+            from delivery.own_posts import load_own_posts
+            data["_own_posts"] = load_own_posts(conn)
+        conn.close()
+        return data
     path = Path(args.json).expanduser()
     return json.loads(path.read_text())
 

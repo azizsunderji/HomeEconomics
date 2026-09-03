@@ -89,6 +89,7 @@ from analysis.anthropic_spend import record_usage as _record_usage, get_spend_ce
 
 # v4 pieces reused verbatim (v4_runner.py is not modified).
 from delivery.email_lunch import render_lunch_html  # noqa: E402
+from delivery.own_posts import load_own_posts  # noqa: E402
 from delivery.variants import make_free_variant, scrub_archive_links  # noqa: E402
 from v3_1_runner import (  # noqa: E402
     get_subscribers, make_unsubscribe_url, RESEND_BATCH_LIMIT, PULSE_POSTAL_ADDRESS,
@@ -1477,6 +1478,7 @@ def main() -> None:
     }
     v4b = build_v4_briefing(v1, entries, themes_out, conn, meta, post_stats)
     v4b["_v4b_meta"] = v4b.pop("_v4_meta")
+    v4b["_own_posts"] = load_own_posts(conn)   # owner's most-liked X posts, last 5 days
 
     print(f"\n=== v4b counts: {json.dumps(counts, indent=2)} ===")
     print(f"=== v4b timings (s): {json.dumps(timings)} ===")

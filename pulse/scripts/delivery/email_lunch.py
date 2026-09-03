@@ -273,34 +273,19 @@ def _source_name_for_host(host: str) -> str:
 
 
 def _entry_pills(entry: dict) -> list[str]:
-    """Ordered, de-duplicated pill labels for one entry: every host the
-    summary cites (order of first citation), then cluster outlets that
-    were not cited, then platform pills."""
+    """Pill labels for one entry: exactly the sources the summary cites,
+    in order of first citation — so the pills always match the links."""
     labels: list[str] = []
     seen: set[str] = set()
-
-    def _add(label: str):
-        label = (label or "").strip()
+    summary = str(entry.get("summary") or "")
+    for url in re.findall(r"\]\((https?://[^)\s]+)\)", summary):
+        label = (_source_name_for_host(_host_of(url)) or "").strip()
         if not label:
-            return
-        low = label.lower()
-        # feed-title junk that reaches news_outlets ("Search Results for "rss" – City Limits")
-        if len(label) > 32 or any(k in low for k in ("rss", "feed", "search results", "http")):
-            return
-        key = re.sub(r"[^a-z0-9]", "", low)   # "Citylimits" == "City Limits"
+            continue
+        key = re.sub(r"[^a-z0-9]", "", label.lower())
         if key and key not in seen:
             seen.add(key)
             labels.append(label)
-
-    summary = str(entry.get("summary") or "")
-    for url in re.findall(r"\]\((https?://[^)\s]+)\)", summary):
-        _add(_source_name_for_host(_host_of(url)))
-    for outlet in entry.get("news_outlets") or []:
-        _add(_canonical_source(outlet))
-    sources = entry.get("sources") or {}
-    if isinstance(sources, dict):
-        for key in sources:
-            _add(PLATFORM_PILL.get(str(key).lower(), ""))
     return labels
 
 
@@ -549,6 +534,26 @@ _LINK_VERBS = {
 }
 
 
+_PARTICIPLES = {
+    "citing", "noting", "arguing", "adding", "warning", "reporting", "flagging", "highlighting",
+    "calling", "writing", "saying", "quoting", "showing", "finding", "suggesting", "estimating",
+    "projecting", "describing", "documenting", "pointing", "observing", "predicting", "explaining",
+    "framing", "countering", "responding", "replying", "questioning", "confirming", "claiming",
+    "concluding", "detailing", "outlining", "sharing", "tracking", "spotlighting", "linking",
+    "referencing", "underscoring", "stressing", "emphasizing", "cautioning", "conceding",
+    "acknowledging", "announcing", "releasing", "publishing", "posting", "tweeting", "telling",
+}
+_PRESENT_VERBS = {
+    "awaits", "remains", "faces", "aims", "seeks", "requires", "allows", "includes", "proposes",
+    "directs", "authorizes", "creates", "makes", "gives", "adds", "raises", "lowers", "expands",
+    "extends", "restricts", "bars", "blocks", "passes", "stalls", "advances", "goes", "comes",
+    "takes", "puts", "provides", "offers", "lets", "shows", "suggests", "signals", "leaves",
+    "keeps", "holds", "stands", "trails", "lags", "rises", "falls", "drops", "climbs", "jumps",
+    "slips", "surges", "tumbles", "slides", "edges", "ticks", "sinks", "soars", "eases",
+    "narrows", "widens", "grows", "shrinks", "doubles", "halves", "tops", "exceeds", "trails",
+    "outpaces", "matches", "beats", "misses", "hovers", "sits", "stays", "returns", "reverses",
+    "reaches", "hits", "nears", "approaches", "touches", "crosses", "breaks", "sets",
+}
 _IRREGULAR_PAST = {
     "said", "made", "found", "told", "put", "wrote", "showed", "sold", "rose", "fell", "led",
     "held", "met", "saw", "won", "lost", "ran", "grew", "began", "broke", "brought", "bought",
@@ -586,7 +591,7 @@ def _is_reporting_verb(word: str, allow_capital: bool = False) -> bool:
     b = _bare(word)
     if not b or (b[0].isupper() and not allow_capital):
         return False
-    return b.lower() in _LINK_VERBS
+    return b.lower() in _LINK_VERBS or b.lower() in _PARTICIPLES
 
 
 def _is_verb(word: str, allow_capital: bool = False) -> bool:
@@ -598,9 +603,21 @@ def _is_verb(word: str, allow_capital: bool = False) -> bool:
     w = b.lower()
     if w in _NOT_VERBS:
         return False
-    if w in _LINK_VERBS or w in _IRREGULAR_PAST:
+    if w in _LINK_VERBS or w in _IRREGULAR_PAST or w in _PRESENT_VERBS:
         return True
     return len(w) > 4 and w.endswith("ed") and not w.endswith("eed")
+
+
+_RELATIVES = {"who", "which", "that", "whose", "whom", "where"}
+_BE = {"is", "are", "was", "were", "be", "been", "being", "'s", "'re", "keeps", "keep", "kept"}
+
+
+def _is_progressive(words: list, i: int) -> bool:
+    """words[i] is an -ing main verb right after a be-verb ('are rattling')."""
+    w = _bare(words[i]).lower()
+    if len(w) < 6 or not w.endswith("ing") or i == 0:
+        return False
+    return _bare(words[i - 1]).lower() in _BE
 
 
 def _is_cite_noun(word: str) -> bool:
@@ -632,6 +649,11 @@ def _narrow_link_anchors(text: str) -> str:
     anchor = r'(?:[^\[\]]|\[[^\]]*\])+'
     link_re = re.compile(rf'\[({anchor})\]\(([^)]+)\)')
     text = str(text)
+    # House style: the account is never the link. A handle link that is
+    # immediately followed by another link ("[@h](profile) [flagged](tweet)")
+    # simply loses its link; a lone handle link hands its URL to the verb
+    # after it via the forward rule below.
+    text = re.sub(r"\[(@[A-Za-z0-9_]+)\]\([^)]+\)(?=\s*\[)", r"\1", text)
     out, pos = [], 0
     for m in link_re.finditer(text):
         if m.start() < pos:            # already consumed by a backward move
@@ -646,10 +668,25 @@ def _narrow_link_anchors(text: str) -> str:
         if len(words) == 2 and _is_verb(words[0], allow_capital=at_sentence_start) \
                 and _bare(words[1]).lower() in _PARTICLES:
             continue
-        # 1. reporting verb inside the anchor (a descriptive verb like
-        #    'helped draft' is content, not attribution — fall through)
+        # 1. reporting verb inside the anchor ("[Ned Resnikoff argued]")
         idx = next((i for i, w in enumerate(words)
                     if _is_reporting_verb(w, allow_capital=(i == 0 and at_sentence_start))), None)
+        # 1b. no reporting verb: the main verb of a clause-length anchor —
+        #     a progressive after a be-verb ("are [rattling]") or a past-tense
+        #     verb — unless the anchor is a relative clause ("who helped
+        #     draft…"), which is content and defers to the verb before it.
+        # 1c. short attribution anchor ("[@bobbyfijan spotlighted]",
+        #     "[Lambert argued]"): any verb inside is the link
+        if idx is None and 2 <= len(words) <= 3:
+            idx = next((i for i, w in enumerate(words) if i > 0 and _is_verb(w)), None)
+        if idx is None and len(words) >= 4:
+            lead_word = _bare(words[0]).lower()
+            prev_word = _bare(head.split()[-1]).lower() if head.split() else ""
+            relative = lead_word in _RELATIVES or prev_word in _RELATIVES
+            if not relative:
+                idx = next((i for i in range(1, len(words)) if _is_progressive(words, i)), None)
+                if idx is None:
+                    idx = next((i for i, w in enumerate(words) if _is_verb(w)), None)
         if idx is not None:
             j = _with_particle(words, idx)
             before, verb, after = " ".join(words[:idx]), " ".join(words[idx:j]), " ".join(words[j:])
@@ -676,6 +713,18 @@ def _narrow_link_anchors(text: str) -> str:
                 consumed = len(mt.group(1)) + len(" ".join(following[:j]))
                 rep = inner + mt.group(1) + (lead + " " if lead else "") + f"[{verb}]({url})"
                 out.append(head + rep); pos = m.end() + consumed
+                continue
+        # 3b. a proper-noun title ("[Truckee Meadows Public Lands Management
+        #     Act]") with no verb near it: link the first verb later in the
+        #     same sentence, if any
+        cap_words = [w for w in words if _bare(w)[:1].isupper()]
+        if len(words) >= 3 and len(cap_words) >= 0.6 * len(words):
+            rest = re.split(r"[.!?](?:\s|$)", tail, maxsplit=1)[0]
+            fv = next((mm for mm in re.finditer(r"[A-Za-z-]+", rest)
+                       if _is_verb(mm.group(0)) and "[" not in rest[max(0, mm.start() - 1):mm.start()]), None)
+            if fv:
+                rep = inner + rest[:fv.start()] + f"[{fv.group(0)}]({url})" + rest[fv.end():]
+                out.append(head + rep); pos = m.end() + len(rest)
                 continue
         # citable noun inside the anchor (no verb anywhere near)
         ni = next((i for i, w in enumerate(words) if _is_cite_noun(w)), None)
@@ -746,7 +795,17 @@ def _body_links(text: str) -> str:
     underlined with a 2px rule, never blue and never visited-purple. Keeps
     href/target, drops the incoming style. Anchors are first narrowed to
     the reporting verb (see _narrow_link_anchors)."""
-    html = _md_links(_name_platforms(_narrow_link_anchors(text)))
+    text = str(text)
+    _url_re = re.compile(r"\]\((https?://[^)\s]+)\)")
+    # the only URL narrowing may remove: an @handle's own profile link that
+    # sits directly before another link (the account is never linked)
+    allowed_loss = set(re.findall(r"\[@[A-Za-z0-9_]+\]\((https?://[^)\s]+)\)(?=\s*\[)", text))
+    narrowed = _name_platforms(_narrow_link_anchors(text))
+    lost = [u for u in _url_re.findall(text) if u not in narrowed and u not in allowed_loss]
+    if lost:
+        logger.warning(f"link narrowing would lose {len(lost)} URL(s); using original links: {lost[:2]}")
+        narrowed = _name_platforms(text)
+    html = _md_links(narrowed)
     return re.sub(
         r'<a\s+href="([^"]+)"[^>]*>',
         lambda m: f'<a href="{m.group(1)}" target="_blank" style="{BODY_LINK_STYLE}">',
@@ -1142,6 +1201,26 @@ def render_lunch_html(briefing: dict, tier: str = "premium") -> tuple[str, str, 
                 f'<span style="font-size:13px;">{src_html}</span> {head_html}{date_html}</div>\n'
             )
         subsections.append(_subkicker("Home Economics in the News") + "".join(rows))
+
+    # 4. Recent posts: the owner's most-liked X posts, last five days.
+    #    Omitted entirely when there are none (the account must be on a
+    #    scraped X list for any to exist).
+    own_posts = briefing.get("_own_posts") or []
+    if own_posts:
+        rows = []
+        for post in own_posts[:3]:
+            text = (post.get("text") or "").strip()
+            if len(text) > 200:
+                text = text[:200].rsplit(" ", 1)[0] + "…"
+            likes = int(post.get("likes") or 0)
+            meta = f'{likes:,} like{"s" if likes != 1 else ""}'
+            rows.append(
+                f'<div style="{body_text} font-size:16px; margin:0 0 10px 0;">'
+                f'&ldquo;{_esc(text)}&rdquo; '
+                f'<span style="color:{MUTED}; font-size:13px; white-space:nowrap;">{meta} &middot; '
+                f'{_link("On X →", post.get("url") or "#", weight="600")}</span></div>\n'
+            )
+        subsections.append(_subkicker("Recent posts") + "".join(rows))
 
     parts.append(_spacer(SUBSECTION_GAP).join(subsections))
 

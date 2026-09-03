@@ -632,18 +632,37 @@ def postprocess_entries(entries: list[dict], themes: list[dict],
     tmp = _strip_forbidden_bridges(tmp)
     tmp = _enforce_paragraph_breaks(tmp)
     tmp = _autolink_bare_handles(tmp, conn)
+    # Snapshot before URL validation: it strips whole sentences whose
+    # link fails a HEAD check, which on paywalled / bot-blocking sites is
+    # a false negative. House rule: never drop a link. If validation
+    # loses any URL (or empties a summary) we restore the pre-validation
+    # text for that entry and keep its corrections only when nothing was lost.
+    _url_re = re.compile(r"\]\((https?://[^)\s]+)\)")
+    pre = {t["_v4_cluster_id"]: (t.get("summary") or "") for t in tmp["conversation_themes"]}
     tmp = _validate_briefing_urls(tmp, conn)
 
     surviving = tmp["conversation_themes"]
     by_cid = {t["_v4_cluster_id"]: t for t in surviving}
     kept_entries: list[dict] = []
     dropped: list[str] = []
+    reverted: list[str] = []
     for e in entries:
         t = by_cid.get(e["cluster_id"])
-        if t is None or not (t.get("summary") or "").strip():
-            dropped.append(e["title"])
-            continue
-        e["summary"] = t["summary"]
+        before = pre.get(e["cluster_id"], e.get("summary") or "")
+        after = (t.get("summary") or "") if t is not None else ""
+        lost = [u for u in _url_re.findall(before) if u not in after]
+        if not after.strip() or lost:
+            logger.warning(f"URL validation would drop {len(lost)} link(s) from {e['title']!r}; "
+                           f"keeping the pre-validation text: {lost[:3]}")
+            e["summary"] = before
+            reverted.append(e["title"])
+            if t is None:
+                t = {**e, "summary": before, "_v4_cluster_id": e["cluster_id"]}
+                surviving.append(t)
+            else:
+                t["summary"] = before
+        else:
+            e["summary"] = after
         kept_entries.append(e)
     for e in dropped:
         logger.warning(f"entry dropped in post-processing (summary emptied): {e!r}")
@@ -653,6 +672,7 @@ def postprocess_entries(entries: list[dict], themes: list[dict],
         "autolinked_handles": tmp.get("_autolinked_handles", 0),
         "url_audit": tmp.get("_url_audit", {}),
         "entries_dropped_in_postprocess": dropped,
+        "url_validation_reverted": reverted,
     }
     return kept_entries, surviving, stats
 
