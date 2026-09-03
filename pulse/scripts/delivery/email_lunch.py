@@ -280,8 +280,16 @@ def _entry_pills(entry: dict) -> list[str]:
     seen: set[str] = set()
 
     def _add(label: str):
-        if label and label.lower() not in seen:
-            seen.add(label.lower())
+        label = (label or "").strip()
+        if not label:
+            return
+        low = label.lower()
+        # feed-title junk that reaches news_outlets ("Search Results for "rss" – City Limits")
+        if len(label) > 32 or any(k in low for k in ("rss", "feed", "search results", "http")):
+            return
+        key = re.sub(r"[^a-z0-9]", "", low)   # "Citylimits" == "City Limits"
+        if key and key not in seen:
+            seen.add(key)
             labels.append(label)
 
     summary = str(entry.get("summary") or "")

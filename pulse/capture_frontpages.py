@@ -169,6 +169,8 @@ def _extract_headlines(pdf_path: Path, max_headlines: int = 5) -> list[dict]:
                     "text": t,
                     "size": s["size"],
                     "bbox": s["bbox"],
+                    # PyMuPDF flag bit 4 (value 16) = bold; some fonts only say so in the name
+                    "bold": bool(s.get("flags", 0) & 16) or "bold" in str(s.get("font", "")).lower(),
                 })
 
     if not spans:
@@ -228,15 +230,20 @@ def _extract_headlines(pdf_path: Path, max_headlines: int = 5) -> list[dict]:
         x1 = max(x["bbox"][2] for x in g)
         y1 = max(x["bbox"][3] for x in g)
         avg_size = sum(x["size"] for x in g) / len(g)
+        bold_share = sum(1 for x in g if x.get("bold")) / len(g)
         heads.append({
             "text": text,
             "bbox": (x0, y0, x1, y1),
             "size": avg_size,
+            "bold": bold_share,
             "page_w": pw,
             "page_h": ph,
         })
 
-    heads.sort(key=lambda h: (-h["size"], h["bbox"][1]))
+    # Rank: size band first (sizes within ~2pt count as equal, so a large
+    # feature deck does not beat the lead on a fraction of a point), then
+    # bolder, then the topmost on the page. The lead headline wins.
+    heads.sort(key=lambda h: (-round(h["size"] / 2.0), -h.get("bold", 0.0), h["bbox"][1]))
 
     bad_prefixes = (
         "vol.", "vol ", "no.", "no ", "$", "©", "edition", "designated",
