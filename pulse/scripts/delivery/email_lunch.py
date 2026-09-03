@@ -79,6 +79,11 @@ WORDMARK_WIDTH = 320
 # gap between the free edition's "N more in the premium edition" block and
 # "On the Front Pages".
 SECTION_GAP = 54
+# Standfirst (summary paragraph) type. Same family as the body by default;
+# set STANDFIRST_FONT to 'Georgia, "Times New Roman", serif' for the
+# magazine-style serif deck.
+STANDFIRST_SIZE = 20
+STANDFIRST_FONT = None  # None = body family (FONT); e.g. "Georgia, serif" for a serif deck
 WALL_GAP = 72  # gap between the free-tier withheld box and On the Front Pages
 # Gap between a subsection heading block and the next subsection inside
 # "From Home Economics".
@@ -1009,7 +1014,6 @@ def render_lunch_html(briefing: dict, tier: str = "premium") -> tuple[str, str, 
     # ── Free-edition banner ──
     banner_html = ""
     if tier == "free":
-        parts.append(_spacer(22))
         n_withheld = len(withheld)
         if n_withheld:
             clause = (f" Links are disabled, and {n_withheld} of today&rsquo;s {total} "
@@ -1024,16 +1028,20 @@ def render_lunch_html(briefing: dict, tier: str = "premium") -> tuple[str, str, 
             f'{_link("Upgrade →", UPGRADE_URL, weight="600")}'
             f'</td></tr></table>\n'
         )
-        parts.append(banner_html)
 
-    # ── Today's Themes (synthesis paragraph) ──
+    # ── Standfirst (the summary paragraph; no heading) ──
     if intro:
         parts.append(_spacer(SECTION_GAP))
-        parts.append(_kicker("Today’s Themes"))
+        # Standfirst: reads as summary through size and measure alone —
+        # no heading, no bold, no colour, no italics (owner's rule).
         parts.append(
-            f'<p style="{body_text} font-size:18px; line-height:1.65; margin:0;">'
+            f'<p style="{body_text} font-family:{STANDFIRST_FONT or FONT}; font-size:{STANDFIRST_SIZE}px; '
+            f'line-height:1.6; margin:0;">'
             f'{_body_links(_fix_sentence_starts(intro))}</p>\n'
         )
+    if tier == "free" and banner_html:
+        parts.append(_spacer(32))
+        parts.append(banner_html)
 
     # ── Entries ──
     if shown:
