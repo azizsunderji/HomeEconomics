@@ -300,7 +300,7 @@
     $('#btnTestPremium').addEventListener('click', () => sendTest('premium'));
     $('#btnHold').addEventListener('click', async () => {
       const next = state.status === 'held' ? 'draft' : 'held';
-      try { applyMeta(await api('POST', '/api/draft/' + state.date + '/status', { status: next })); say(next === 'held' ? 'Held. Today’s edition will not send until you resume it.' : 'Resumed. It sends at 12:15 ET.', 'ok'); }
+      try { applyMeta(await api('POST', '/api/draft/' + state.date + '/status', { status: next })); say(next === 'held' ? 'Held. Today’s edition will not send until you resume it.' : 'Resumed. It sends at noon ET.', 'ok'); }
       catch (e) { say(e.message, 'err'); }
     });
     twoTap($('#btnSendNow'), 'Send now', async () => {

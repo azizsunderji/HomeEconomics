@@ -1,6 +1,6 @@
 # News at Noon editor (`pulse/editor/`)
 
-Owner-only web editor for the daily draft, plus the 12:15 ET send. Runs on
+Owner-only web editor for the daily draft, plus the noon ET send (timer fires 11:59 ET so it lands at noon). Runs on
 the droplet as user-level systemd units (see `install.sh`); the Python
 renderer (`delivery/email_lunch.py`) is imported directly, so the preview
 is byte-for-byte what gets sent.
@@ -11,7 +11,7 @@ Flow each day
 2. `noon-ingest.timer` (every 10 min, 11:00–15:59 UTC) copies today's brief
    into `~/work/noon/noon_drafts.db` and emails the owner a one-tap edit link.
 3. The owner edits (or not) at `https://noon.homeeconomics.us`.
-4. `noon-send.timer` at 12:15 America/New_York sends the draft, unless it is
+4. `noon-send.timer` at 11:59 America/New_York sends the draft, unless it is
    Held or already sent manually. `NOON_SEND_MODE=shadow` sends to the owner
    only; `subscribers` sends to the Clerk list.
 

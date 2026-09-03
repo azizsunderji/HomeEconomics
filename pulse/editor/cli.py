@@ -2,7 +2,7 @@
 
   python cli.py ingest   every 10 min 11:00–15:59 UTC: create today's draft
                          from the synced brief and email the edit link once
-  python cli.py send     12:15 ET: send today's draft unless held/sent
+  python cli.py send     11:59 ET (lands at noon): send today's draft unless held/sent
   python cli.py render --tier free --out x.html
   python cli.py test --tier premium
   python cli.py pdf [--date]   write the edition PDF (also runs after every send)
@@ -51,7 +51,7 @@ def cmd_send(args) -> int:
         logger.error(f"{date}: no draft and no stored brief — nothing sent")
         sender.send_alert(f"Nothing sent for {date}",
                           "No draft existed and no v4b brief for today had synced to the droplet "
-                          "by 12:15 ET. Check the pulse-synth workflow and the Dropbox sync.")
+                          "by 11:59 ET. Check the pulse-synth workflow and the Dropbox sync.")
         return 1
     if row["status"] == "sent":
         logger.info(f"{date}: already sent at {row['sent_at']}")

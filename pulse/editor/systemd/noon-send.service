@@ -1,5 +1,5 @@
 [Unit]
-Description=News at Noon: the 12:15 ET send (edited or not)
+Description=News at Noon: the noon ET send (fires 11:59) (edited or not)
 
 [Service]
 Type=oneshot

@@ -119,7 +119,7 @@ def send_notification(date: str, magic_url: str, shown: int, total: int) -> bool
         f'<p style="margin:0 0 24px 0;"><a href="{magic_url}" style="display:inline-block;'
         'background:#0BB4FF;color:#ffffff;text-decoration:none;padding:12px 20px;'
         'font-size:16px;">Edit today&rsquo;s edition</a></p>'
-        '<p style="margin:0;font-size:14px;color:#888888;">It sends at 12:15 ET whether or not you edit it. '
+        '<p style="margin:0;font-size:14px;color:#888888;">It sends at noon ET whether or not you edit it. '
         'Open the editor and press Hold if it should not go out today.</p></div>'
     )
     ok = _post_resend(_api_key(), "https://api.resend.com/emails",

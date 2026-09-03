@@ -40,7 +40,7 @@ app = FastAPI(title="News at Noon editor", docs_url=None, redoc_url=None)
 STATIC = paths.EDITOR_DIR / "static"
 app.mount("/static", StaticFiles(directory=str(STATIC)), name="static")
 
-SEND_STATE_LABEL = {"draft": "Sends at 12:15 ET", "held": "Held — will not send", "sent": "Sent"}
+SEND_STATE_LABEL = {"draft": "Sends at noon ET", "held": "Held — will not send", "sent": "Sent"}
 
 
 # ── auth helpers ────────────────────────────────────────────────────────
