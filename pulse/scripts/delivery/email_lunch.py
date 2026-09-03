@@ -101,7 +101,7 @@ FREE_ENTRY_COUNT = 5
 
 # Upgrade page. The path still says /pulse/ and will be renamed later;
 # keep every reference to it going through this constant.
-UPGRADE_URL = "https://homeeconomics.us/noon/upgrade"
+UPGRADE_URL = "https://homeeconomics.us/noon/premium"  # the deliberate upgrade page; walled links go to /noon/upgrade (variants.py)
 
 # Pro Map page. HEAD-checked 2026-09-02: /promap -> 200; /pro-map, /tools,
 # /pro, /map -> 404 on homeeconomics.us.
