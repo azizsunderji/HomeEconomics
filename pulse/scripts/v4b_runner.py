@@ -158,6 +158,7 @@ GATE_SYSTEM = (
 # ────────────────────────────────────────────────────────────────────────
 
 V4B_REWRITE_PREFIX = """You are REWRITING ONE existing entry of a daily housing-economics briefing so that newly attached material is integrated into it. You are not writing from scratch.
+  - LINK ANCHORS: hyperlink ONLY the reporting verb, never a name or a phrase. Write 'Ned Resnikoff [argued](url) that…', 'Alex Stapp [made](url) a parallel point', 'HousingWire [reported](url)…'. Never '[Ned Resnikoff argued](url)' and never a multi-word anchor.
 
 WHAT YOU RECEIVE:
   1. ORIGINAL THEME: an entry that was already written today from the day's news. It has a title, a summary with inline markdown links, and a `related_news_trigger` naming the dated news event it is anchored on. Treat it as correct and already edited.
