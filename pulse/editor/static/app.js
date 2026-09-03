@@ -295,6 +295,7 @@
   function wireActions() {
     $('#btnPreviewFree').addEventListener('click', () => openPreview('free'));
     $('#btnPreviewPremium').addEventListener('click', () => openPreview('premium'));
+    $('#btnPdf').addEventListener('click', async () => { if (!(await ensureSaved())) { say('Could not save before the PDF.', 'err'); return; } window.open('/pdf/' + state.date, '_blank'); });
     $('#btnTestFree').addEventListener('click', () => sendTest('free'));
     $('#btnTestPremium').addEventListener('click', () => sendTest('premium'));
     $('#btnHold').addEventListener('click', async () => {

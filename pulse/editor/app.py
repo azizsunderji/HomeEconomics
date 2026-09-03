@@ -12,7 +12,8 @@ Routes
   POST /api/draft/{date}/reset     rebuild from the stored brief (discards edits)
   GET  /preview/{date}?tier=       the exact HTML that would be sent
   GET  /api/drafts           recent days
-  GET  /latest[?k=]        public: latest edition (free; premium with the emailed key)
+  GET  /latest.pdf          public: most recent edition as PDF
+  GET  /pdf/{date}?tier=    owner: render the draft to PDF now
   GET  /health
 """
 from __future__ import annotations
@@ -105,16 +106,30 @@ def magic(d: str, k: str):
     return _set_cookie(RedirectResponse(f"/?d={d}", status_code=302))
 
 
-@app.get("/latest", response_class=HTMLResponse)
-def latest(k: str | None = None):
-    """Public 'Read on the web' page: the latest edition. Free unless the
-    premium key from a premium email is present."""
-    row = drafts.latest_sent()
+@app.get("/latest.pdf")
+def latest_pdf():
+    """Public: the most recent edition PDF (written after each send)."""
+    import pdf
+    f = pdf.PDF_DIR / "latest.pdf"
+    if not f.exists():
+        raise HTTPException(status_code=404, detail="no PDF yet")
+    return FileResponse(str(f), media_type="application/pdf",
+                        headers={"Cache-Control": "no-store", "Content-Disposition": "inline; filename=\"News at Noon.pdf\""})
+
+
+@app.get("/pdf/{date}")
+def draft_pdf(request: Request, date: str, tier: str = "premium"):
+    """Owner: render this draft to PDF now and show it."""
+    _require(request)
+    import pdf
+    row = drafts.get(date)
     if row is None:
-        raise HTTPException(status_code=404, detail="no edition yet")
-    tier = "premium" if auth.web_token_ok(k) else "free"
-    return HTMLResponse(render.preview(row["json"], tier),
-                        headers={"Cache-Control": "no-store"})
+        raise HTTPException(status_code=404, detail="no such draft")
+    out = pdf.PDF_DIR / "preview" / f"News at Noon {date} {tier}.pdf"
+    pdf.make_pdf(row["json"], out, "premium" if tier == "premium" else "free")
+    return FileResponse(str(out), media_type="application/pdf",
+                        headers={"Cache-Control": "no-store",
+                                 "Content-Disposition": f"inline; filename=\"News at Noon {date}.pdf\""})
 
 
 @app.get("/health")

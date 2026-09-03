@@ -5,6 +5,7 @@
   python cli.py send     12:15 ET: send today's draft unless held/sent
   python cli.py render --tier free --out x.html
   python cli.py test --tier premium
+  python cli.py pdf [--date]   write the edition PDF (also runs after every send)
 """
 from __future__ import annotations
 
@@ -61,10 +62,32 @@ def cmd_send(args) -> int:
     ok, line = sender.send_final(row["json"])
     if ok:
         drafts.set_status(date, "sent", send_log=f"timer: {line}")
+        _pdf_after_send(row["json"])
         return 0
     logger.error(f"{date}: send failed — {line}")
     sender.send_alert(f"Send FAILED for {date}", line)
     return 1
+
+
+def _pdf_after_send(draft: dict) -> None:
+    try:
+        import pdf
+        pdf.publish_pdf(draft)
+    except Exception as e:  # noqa: BLE001
+        logger.error(f"pdf generation failed: {e}")
+        sender.send_alert("PDF generation failed", str(e))
+
+
+def cmd_pdf(args) -> int:
+    import pdf
+    date = args.date or drafts.today_et()
+    row = drafts.get(date)
+    if row is None:
+        logger.error(f"{date}: no draft")
+        return 1
+    out = pdf.publish_pdf(row["json"], args.tier)
+    print(out)
+    return 0
 
 
 def cmd_render(args) -> int:
@@ -97,6 +120,8 @@ def main() -> int:
     a.set_defaults(fn=cmd_send)
     a = sub.add_parser("render"); a.add_argument("--date"); a.add_argument("--tier", default="free")
     a.add_argument("--out", default="/tmp/noon_preview.html"); a.set_defaults(fn=cmd_render)
+    a = sub.add_parser("pdf"); a.add_argument("--date"); a.add_argument("--tier", default="premium")
+    a.set_defaults(fn=cmd_pdf)
     a = sub.add_parser("test"); a.add_argument("--date"); a.add_argument("--tier", default="free")
     a.add_argument("--to"); a.set_defaults(fn=cmd_test)
     args = p.parse_args()
