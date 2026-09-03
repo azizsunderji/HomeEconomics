@@ -233,21 +233,23 @@ jobs:
           PULSE_UNSUB_SECRET: ${{ secrets.PULSE_UNSUB_SECRET }}
         run: python v3_1_runner.py || echo "V3.1 run failed — continuing without"
 
-      - name: Run V4b unified brief (Home for Lunch) — shadow send to aziz only
+      - name: Run V4b unified brief (News at Noon) — store only; the droplet sends at 12:15 ET
         # Gated by the PULSE_PIPELINE repository variable:
         #   gh variable set PULSE_PIPELINE --body v4b   -> this step runs, v3.1 above is skipped
         #   gh variable set PULSE_PIPELINE --body v3_1  -> rollback: v3.1 runs, this is skipped
         # v4b reads the v1 briefing written by the synthesis step, like v3.1,
-        # and writes its own briefing_type (daily_v4b_attach). --to keeps it a
-        # single-recipient shadow; drop --to to send to the Clerk subscriber
-        # list. Failures MUST NOT take down the run — wrap in `|| echo`.
+        # and writes its own briefing_type (daily_v4b_attach). --no-send: the
+        # brief is stored and synced; the owner edits it in the News at Noon
+        # editor on the droplet (pulse/editor/), which sends at 12:15 ET.
+        # Rollback to the GH shadow send: replace --no-send with
+        # --to aziz@home-economics.us. Failures MUST NOT take down the run.
         if: steps.guard.outputs.should_run == 'true' && vars.PULSE_PIPELINE == 'v4b'
         working-directory: pulse/scripts
         env:
           PULSE_DB: ${{ github.workspace }}/pulse/data/pulse.db
           CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
           PULSE_UNSUB_SECRET: ${{ secrets.PULSE_UNSUB_SECRET }}
-        run: python -u v4b_runner.py --to aziz@home-economics.us || echo "V4b run failed — continuing without"
+        run: python -u v4b_runner.py --no-send || echo "V4b run failed — continuing without"
 
       # v1 health-report step retired 2026-06-30 alongside the v1 email. The
       # v3.1 health report below runs the same upstream collectors/enrichment/
