@@ -106,6 +106,12 @@ HE_FEED_UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.3
               "(KHTML, like Gecko) Chrome/124.0 Safari/537.36 NewsAtNoon/1.0")
 HE_PUBLICATIONS_COUNT = 5
 # pulse/scripts/delivery/he_publications.json (tracked, so GitHub Actions has it when Substack blocks the fetch)
+# Live cache: written on every successful fetch; gitignored (pulse/data/).
+HE_PUBLICATIONS_LIVE_CACHE = (
+    Path(__file__).resolve().parent.parent.parent / "data" / "he_publications.json"
+)
+# Tracked snapshot: read-only fallback shipped in the repo (refresh with
+# scripts/refresh_he_publications.py); never written at render time.
 HE_PUBLICATIONS_CACHE = (
     Path(__file__).resolve().parent / "he_publications.json"
 )
@@ -388,8 +394,8 @@ def load_he_publications(limit: int = HE_PUBLICATIONS_COUNT) -> list[dict]:
         items = _parse_feed(_fetch_feed_text())
         if items:
             try:
-                HE_PUBLICATIONS_CACHE.parent.mkdir(parents=True, exist_ok=True)
-                HE_PUBLICATIONS_CACHE.write_text(json.dumps(
+                HE_PUBLICATIONS_LIVE_CACHE.parent.mkdir(parents=True, exist_ok=True)
+                HE_PUBLICATIONS_LIVE_CACHE.write_text(json.dumps(
                     {"fetched_at": datetime.now(timezone.utc).isoformat(),
                      "feed": HE_FEED_URL, "items": items[:20]},
                     indent=2, ensure_ascii=False))
@@ -398,12 +404,15 @@ def load_he_publications(limit: int = HE_PUBLICATIONS_COUNT) -> list[dict]:
             return items[:limit]
     except Exception as e:
         logger.warning(f"HE feed fetch failed ({HE_FEED_URL}): {e}")
-    try:
-        if HE_PUBLICATIONS_CACHE.exists():
-            cached = json.loads(HE_PUBLICATIONS_CACHE.read_text())
-            return (cached.get("items") or [])[:limit]
-    except Exception as e:
-        logger.warning(f"could not read publications cache: {e}")
+    for cache in (HE_PUBLICATIONS_LIVE_CACHE, HE_PUBLICATIONS_CACHE):
+        try:
+            if cache.exists():
+                cached = json.loads(cache.read_text())
+                items = (cached.get("items") or [])[:limit]
+                if items:
+                    return items
+        except Exception as e:
+            logger.warning(f"could not read publications cache {cache}: {e}")
     return []
 
 
