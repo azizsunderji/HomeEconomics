@@ -265,3 +265,29 @@ add `import /etc/caddy/conf.d/*.caddy` to `/etc/caddy/Caddyfile` (snippet in
 (the 7am GH shadow then stops and the droplet's 12:15 send replaces it); CLERK_SECRET_KEY and
 PULSE_UNSUB_SECRET in `~/.noon_env` before `NOON_SEND_MODE=subscribers`. Until DNS:
 `ssh -L 8240:127.0.0.1:8240 vps` → http://127.0.0.1:8240.
+
+---
+
+## 7. Status update — 2026-09-03 night: site live, loop tested, one switch from launch
+
+- **Portal**: PR #9 merged (3d3e46d) plus 4fa1b2e. Live: https://homeeconomics.us/noon (free signup +
+  premium checkout), /noon/upgrade (the wall; /pulse and /pulse/upgrade 308-redirect there),
+  `api/pulse/subscribe` and `api/pulse/unsubscribe` unchanged (internal names kept: Clerk keys
+  `pulseNewsletter.subscribed` / `tools.pulse`, env `STRIPE_PRICE_PULSE_*`, `PULSE_UNSUB_SECRET`).
+  Checkout sets `payment_method_collection: if_required` (a 100%-off code needs no card).
+- **Stripe**: product renamed "News at Noon"; coupon `NOONTEST100` with promo code `NOONTEST`
+  (100% off forever, 3 redemptions, 1 used).
+- **Secrets on the droplet** (`~/.noon_env`): CLERK_SECRET_KEY (copied from the Clerk dashboard via
+  clipboard → ssh, never through the chat) and PULSE_UNSUB_SECRET (rotated 2026-09-03; the same new
+  value is in Vercel prod/preview/dev via `vercel env add` and in the GitHub secret). Vercel
+  refuses to `env pull` sensitive values — they come back as the literal `[SENSITIVE]`.
+- **End-to-end test (all passed)**: free signup via API → Clerk user flagged; signed unsubscribe
+  link (generated on the droplet) → confirmation page → POST → flag cleared; re-subscribe; sign-in
+  by email code; checkout with NOONTEST → webhook set `tools.pulse` → droplet sees premium=True.
+  Test account: aziz.sunderji+noontest@gmail.com (premium, $0 forever) — keep it as a live check.
+  The owner's own account aziz@home-economics.us is flagged subscribed + premium.
+- **Cutover (owner's call)**: on the droplet set `NOON_SEND_MODE=subscribers` in `~/.noon_env`
+  (timers read it at run time; `systemctl --user restart noon-editor.service` for the app). Until
+  then the 12:15 send goes to the owner only. Rollback: set it back to `shadow`.
+- Chrome-automation note: checkout.stripe.com denies screenshots; `find`, `get_page_text` and the
+  JavaScript tool still work there. Vercel CLI is authorized on the Mac (`npx vercel@latest`).
