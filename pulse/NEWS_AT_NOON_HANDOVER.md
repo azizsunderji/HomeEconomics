@@ -236,3 +236,32 @@ portal `src/app/api/admin/noon/*` (proxy). Existing-file edits needing the owner
 - The owner's standing rules: create new files rather than editing existing ones; ask before
   touching existing files; surface anomalies; no bold/colour/italics for emphasis; no dark lines;
   plain English in messages; don't ask questions the code can answer.
+
+---
+
+## 6. Status update — 2026-09-03 evening: Feature 1 is built and running
+
+`pulse/editor/` (commits d277fcd, 4cc0ee9) is live on the droplet. Architecture chosen: the
+whole editor lives on the droplet (FastAPI + a plain-JS mobile-first page), with its own
+password login and a per-day magic link in the "draft ready" email — not a Clerk-gated portal
+page. Reason: one repo, one language, no Vercel deploy or proxy, and the preview is the exact
+send code path. `pulse/editor/README.md` documents the daily flow, env file, and CLI.
+
+- Units (user systemd, lingering on): `noon-editor.service` (127.0.0.1:8240), `noon-ingest.timer`
+  (11:00–15:59 UTC every 10 min; builds today's draft from the synced DB read-only and emails
+  the edit link once), `noon-send.timer` (12:15 America/New_York; sends unless Held or already
+  sent; emails an alert on failure). Env: `~/.noon_env` (NOON_SEND_MODE=shadow → owner only,
+  free tier).
+- Editor verified by a headless Playwright run at 1280×900 and 390×844 touch: login, link
+  count parity DOM↔markdown, edit/autosave/version, insert link, unlink, tier toggle with live
+  count, reorder with ranks, delete/restore, hold/resume, previews, stale-save 409, reset.
+- The draft sets the masthead `date` to the send date; the stored brief carries the previous
+  day's date (latent bug in the shadow sends until now).
+- Module is `drafts.py`, not `store.py`: `pulse/scripts/store.py` shadows that name.
+
+Still needs the owner: GoDaddy A record `noon.homeeconomics.us → 104.236.210.18`; permission to
+add `import /etc/caddy/conf.d/*.caddy` to `/etc/caddy/Caddyfile` (snippet in
+`pulse/editor/caddy/noon.caddy`); permission to change the v4b workflow step to `--no-send`
+(the 7am GH shadow then stops and the droplet's 12:15 send replaces it); CLERK_SECRET_KEY and
+PULSE_UNSUB_SECRET in `~/.noon_env` before `NOON_SEND_MODE=subscribers`. Until DNS:
+`ssh -L 8240:127.0.0.1:8240 vps` → http://127.0.0.1:8240.
