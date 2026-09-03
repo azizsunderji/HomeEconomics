@@ -528,12 +528,19 @@ def _narrow_link_anchors(text: str) -> str:
             continue
         # case 2: verb immediately after the anchor (allow one small word between)
         tail = text[m.end():]
-        mt = re.match(r"(\s+)((?:[a-z]{1,3}\s+)?)([A-Za-z]+)", tail)
-        if mt and _is_verb(mt.group(3)):
-            rep = inner + mt.group(1) + mt.group(2) + f"[{mt.group(3)}]({url})"
-            out.append(text[pos:m.start()] + rep)
-            pos = m.end() + mt.end()
-            continue
+        mt = re.match(r"(\s+)((?:[^\s\[\]().]+\s+){0,2})([A-Za-z]+)", tail)
+        if mt:
+            # the verb may be the 1st, 2nd or 3rd following word; stop at the first verb
+            following = (mt.group(2) + mt.group(3)).split()
+            vi = next((i for i, w in enumerate(following) if _is_verb(w)), None)
+            if vi is not None:
+                lead = " ".join(following[:vi])
+                verb = following[vi]
+                consumed = len(mt.group(1)) + len(" ".join(following[:vi + 1]))
+                rep = inner + mt.group(1) + (lead + " " if lead else "") + f"[{verb}]({url})"
+                out.append(text[pos:m.start()] + rep)
+                pos = m.end() + consumed
+                continue
         # case 3: nearest verb earlier in the same sentence, not inside another link
         head = text[pos:m.start()]
         sent_start = max(head.rfind(". "), head.rfind("! "), head.rfind("? "), head.rfind("\n"))
@@ -553,12 +560,39 @@ def _narrow_link_anchors(text: str) -> str:
     return "".join(out)
 
 
+_SOCIAL_HOSTS = (("x.com", "X"), ("twitter.com", "X"), ("bsky.app", "Bluesky"))
+_PLATFORM_WORDS = re.compile(r"\b(on x\b|x,|bluesky|tweet|tweeted|posted on|thread on)", re.I)
+
+
+def _name_platforms(text: str) -> str:
+    """House style: a social attribution names the platform. For each
+    '@handle' that begins a sentence or clause and is followed (within the
+    same sentence) by a link to X/Twitter or Bluesky, prepend 'On X, ' /
+    'On Bluesky, ' unless the sentence already names the platform."""
+    text = str(text)
+    out = []
+    pos = 0
+    for m in re.finditer(r"(^|(?<=[.!?;]\s)|(?<=—\s)|(?<=\n))(@[A-Za-z0-9_]+)", text):
+        sent_end = re.search(r"[.!?](\s|$)", text[m.end():])
+        sentence = text[m.start(): m.end() + (sent_end.end() if sent_end else len(text))]
+        platform = next((name for host, name in _SOCIAL_HOSTS if host in sentence), None)
+        if not platform:
+            continue
+        before = text[max(0, m.start() - 60):m.start()]
+        if _PLATFORM_WORDS.search(before + " " + sentence):
+            continue
+        out.append(text[pos:m.start()] + f"On {platform}, ")
+        pos = m.start()
+    out.append(text[pos:])
+    return "".join(out)
+
+
 def _body_links(text: str) -> str:
     """_md_links() with every anchor restyled for body copy: ink-coloured,
     underlined with a 2px rule, never blue and never visited-purple. Keeps
     href/target, drops the incoming style. Anchors are first narrowed to
     the reporting verb (see _narrow_link_anchors)."""
-    html = _md_links(_narrow_link_anchors(text))
+    html = _md_links(_narrow_link_anchors(_name_platforms(text)))
     return re.sub(
         r'<a\s+href="([^"]+)"[^>]*>',
         lambda m: f'<a href="{m.group(1)}" target="_blank" style="{BODY_LINK_STYLE}">',

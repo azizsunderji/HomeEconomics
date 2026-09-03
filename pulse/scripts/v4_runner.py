@@ -116,6 +116,7 @@ OPENAI_EMBED_CENTS_PER_MTOK = 2.0
 # ────────────────────────────────────────────────────────────────────────
 
 V4_ENTRY_WRITER_PREFIX = """You are writing ONE entry for the unified daily list of a housing-economics briefing. There is no longer a separate "News Themes" section and a separate "Conversations" section: every entry in this briefing is written the same way, from one pre-clustered set of items, and the entries are ranked afterwards by a program. Your job is to write this ONE entry well.
+  - SOCIAL ATTRIBUTION: when citing a post, name the platform first: 'On X, @nickgerli1 [pushed back](url)…', 'On Bluesky, @handle [argued](url)…'. Never open with a bare @handle.
   - LINK ANCHORS: hyperlink ONLY the reporting verb, never a name or a phrase. Write 'Ned Resnikoff [argued](url) that…', 'Alex Stapp [made](url) a parallel point', 'HousingWire [reported](url)…'. Never '[Ned Resnikoff argued](url)' and never a multi-word anchor.
 
 The items below have been pre-clustered into a tight group sharing one specific story, event, debate, or shared argument. Some clusters are large (news articles plus social reaction); some are small; some contain a SINGLE high-relevance news item that the clustering step left on its own. All of these are valid inputs.
