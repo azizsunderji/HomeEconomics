@@ -69,11 +69,11 @@ def send_preview(html: str, tier: str, top_title: str, to: str,
     # needed for sending. EMAIL_FROM / PRODUCT_NAME / _lunch_footer are the
     # News at Noon versions (the v3_1 ones still say "Pulse").
     from v3_1_runner import _post_resend
-    from v4b_runner import EMAIL_FROM, PRODUCT_NAME, _lunch_footer
+    from v4b_runner import EMAIL_FROM, PRODUCT_NAME, _lunch_footer, _noon_date_str
     api_key = os.environ.get("RESEND_API_KEY")
     if not api_key:
         sys.exit("RESEND_API_KEY is not set (source ~/.pulse_dev_env)")
-    subject = f"[DESIGN PREVIEW – {tier.upper()}] {PRODUCT_NAME} — {top_title}"
+    subject = f"[DESIGN PREVIEW – {tier.upper()}] {PRODUCT_NAME}: {_noon_date_str()}"
     payload = {
         "from": from_addr or EMAIL_FROM,
         "to": [to],

@@ -65,7 +65,7 @@ PUBLISHER = "Home Economics"
 # Masthead logo: black PNG on transparent, ~14 KB, deployed 2026-09-02
 # (HEAD -> 200, image/png, 14,596 bytes). Rendered ~140px wide, top-left.
 LOGO_URL = "https://homeeconomics.us/logo-email.png"
-LOGO_WIDTH = 140
+LOGO_WIDTH = 100
 
 # Wordmark slot. When a "News at Noon" wordmark graphic exists, set this to
 # its URL and the masthead renders it as an <img> (WORDMARK_WIDTH px wide,
@@ -271,8 +271,8 @@ def _sentence_case_headline(text: str, proper: set[str] | None = None) -> str:
     letters = [c for c in text if c.isalpha()]
     if not letters:
         return text
-    if sum(1 for c in letters if c.isupper()) / len(letters) <= 0.7:
-        return text
+    if sum(1 for c in letters if c.isupper()) / len(letters) < 0.95:
+        return text[:1].upper() + text[1:]
     known = set(_PROPER)
     if proper:
         known |= {p.lower() for p in proper}
@@ -468,6 +468,60 @@ def _format_date(date_str: str) -> str:
 
 # ── Intro paragraph ────────────────────────────────────────────────────
 
+INTRO_MAX_CHARS = 320
+INTRO_MAX_SENTENCES = 3
+
+
+# Abbreviations that end with a period but do not end a sentence. A
+# lowercase word after one of these is left alone.
+_ABBREV = {
+    "gov", "sen", "rep", "mr", "mrs", "ms", "dr", "prof", "st", "mt", "no", "vs", "inc", "co",
+    "corp", "ltd", "jr", "sr", "u.s", "u.k", "e.g", "i.e", "etc", "jan", "feb", "mar", "apr",
+    "jun", "jul", "aug", "sep", "sept", "oct", "nov", "dec", "fig", "dept", "est", "approx",
+    "a.m", "p.m", "gen", "lt", "col", "sgt", "capt", "ave", "blvd", "rd",
+}
+
+
+def _fix_sentence_starts(text: str) -> str:
+    """Capitalise a lowercase word that begins a sentence: at the start of
+    the text, after a paragraph break, or after '. ', '! ', '? ' when the
+    preceding token is not a known abbreviation. Markdown links are left
+    intact (the word inside '[' is handled like any other word)."""
+    if not text:
+        return text
+
+    def _cap_first(seg: str) -> str:
+        m = re.match(r"^(\s*\[?)([a-z])", seg)
+        return seg[:m.end(1)] + m.group(2).upper() + seg[m.end():] if m else seg
+
+    out_paras = []
+    for para in text.split("\n\n"):
+        para = _cap_first(para)
+
+        def _after_punct(m):
+            prev = m.group(1).lower().rstrip(".")
+            if prev in _ABBREV or len(prev) <= 1:
+                return m.group(0)
+            return m.group(1) + m.group(2) + m.group(3) + m.group(4).upper()
+
+        para = re.sub(r"([A-Za-z.]+)([.!?])(\s+\[?)([a-z])", _after_punct, para)
+        out_paras.append(para)
+    return "\n\n".join(out_paras)
+
+
+def _shorten_intro(text: str) -> str:
+    """Keep the first INTRO_MAX_SENTENCES sentences, stopping early once
+    INTRO_MAX_CHARS is reached, always on a sentence boundary. The first
+    sentence is always kept even if it alone exceeds the cap."""
+    sents = [t for t in re.split(r"(?<=[.!?])\s+", text.strip()) if t]
+    out: list[str] = []
+    for sent in sents[:INTRO_MAX_SENTENCES]:
+        if out and len(" ".join(out)) + 1 + len(sent) > INTRO_MAX_CHARS:
+            break
+        out.append(sent)
+    return " ".join(out) if out else text.strip()
+
+
 def _intro_text(briefing: dict, entries: list[dict]) -> tuple[str, str]:
     """Return (text, source_label). Priority: `intro` (editor-written) ->
     `pulse` if it is prose (or a dict/list carrying a prose field) ->
@@ -494,10 +548,10 @@ def _intro_text(briefing: dict, entries: list[dict]) -> tuple[str, str]:
 
     p = _prose_from(briefing.get("pulse"))
     if p:
-        return p, "pulse"
+        return _shorten_intro(p), "pulse"
     p = _prose_from(briefing.get("conversation_pulse"))
     if p:
-        return p, "conversation_pulse"
+        return _shorten_intro(p), "conversation_pulse"
     titles = [e.get("title", "").strip().rstrip(".") for e in entries[:3] if e.get("title")]
     if not titles:
         return "", "none"
@@ -615,7 +669,7 @@ def render_lunch_html(briefing: dict, tier: str = "premium") -> tuple[str, str, 
         parts.append(_kicker("Today’s Themes"))
         parts.append(
             f'<p style="{body_text} font-size:18px; line-height:1.65; margin:0;">'
-            f'{_md_links(intro)}</p>\n'
+            f'{_md_links(_fix_sentence_starts(intro))}</p>\n'
         )
 
     # ── Entries ──
@@ -624,7 +678,8 @@ def render_lunch_html(briefing: dict, tier: str = "premium") -> tuple[str, str, 
         for i, e in enumerate(shown, start=1):
             num = e.get("rank") if isinstance(e.get("rank"), int) else i
             title = (e.get("title") or "").strip()
-            summary = (e.get("summary") or "").strip()
+            title = title[:1].upper() + title[1:]
+            summary = _fix_sentence_starts((e.get("summary") or "").strip())
             pills = _entry_pills(e)
             pills_html = ""
             if pills:
@@ -638,7 +693,8 @@ def render_lunch_html(briefing: dict, tier: str = "premium") -> tuple[str, str, 
                 f'<td style="padding:0 0 {pad_bottom}px 0;">'
                 f'<div style="font-family:{FONT}; font-size:19px; line-height:1.3; '
                 f'font-weight:700; color:{INK}; margin:0 0 8px 0;">'
-                f'<span style="color:{BLUE}; font-weight:600; margin-right:8px;">{num}</span>'
+                f'<div style="font-family:{FONT}; font-size:19px; line-height:1.3; font-weight:700; '
+                f'color:{BLUE}; margin:0 0 2px 0;">{num}</div>'
                 f'{_esc(title)}</div>'
                 f'<div style="{body_text}">{_md_links(summary)}</div>'
                 f'{pills_html}'

@@ -970,8 +970,16 @@ def _render_lunch_variants(v4b: dict) -> tuple[str, str, str]:
     return premium_html, free_html, top or ""
 
 
-def _lunch_subject(top_title: str) -> str:
-    return f"{PRODUCT_NAME} \u2014 {top_title}" if top_title else PRODUCT_NAME
+def _noon_date_str() -> str:
+    """'Thursday, September 3, 2026' in US Eastern time, matching the masthead."""
+    from zoneinfo import ZoneInfo
+    return datetime.now(ZoneInfo("America/New_York")).strftime("%A, %B %-d, %Y")
+
+
+def _lunch_subject(top_title: str | None = None) -> str:
+    """Subject is date-based by the owner's decision: 'News at Noon: <date>'.
+    top_title is accepted for call-site compatibility and ignored."""
+    return f"{PRODUCT_NAME}: {_noon_date_str()}"
 
 
 def _lunch_footer(html: str, unsub_url: str | None) -> str:
