@@ -490,16 +490,17 @@ def _kicker(text: str, size: int = 24) -> str:
 def _heading(text: str) -> str:
     """Top-level heading (e.g. "From Home Economics"): larger than the
     section kickers and the entry titles, ink-coloured, bold."""
-    return (f'<div style="font-family:{HEAD_FONT}; font-size:30px; line-height:1.2; '
-            f'color:{INK}; margin:0 0 22px 0;">'
-            f'{_esc(text)}</div>\n')
+    # Same style as every other section head: one top-level level only.
+    return _kicker(text)
 
 
 def _subkicker(text: str) -> str:
     """Subsection heading under a _heading: same style as _kicker but a
     touch smaller, so the hierarchy reads heading > subsection > body."""
-    return (f'<div style="font-family:{HEAD_FONT}; font-size:19px; line-height:1.25; '
-            f'color:{INK}; margin:0 0 12px 0;">'
+    # Subordinate by voice, not size: small letter-spaced sans caps in ink,
+    # under a serif section head.
+    return (f'<div style="font-family:{FONT}; font-size:12px; letter-spacing:2px; '
+            f'text-transform:uppercase; color:{INK}; margin:0 0 10px 0;">'
             f'{_esc(text)}</div>\n')
 
 
