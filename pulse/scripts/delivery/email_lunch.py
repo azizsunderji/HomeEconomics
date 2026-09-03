@@ -43,6 +43,7 @@ from __future__ import annotations
 import json
 import logging
 import re
+from urllib.parse import urlsplit
 import subprocess
 import xml.etree.ElementTree as ET
 from datetime import datetime, timezone, timedelta
@@ -224,22 +225,74 @@ def _canonical_source(name: str) -> str:
     return raw
 
 
+_SOURCE_NAMES_PATH = Path(__file__).resolve().parent / "source_names.json"
+
+
+def _load_source_names() -> dict:
+    try:
+        return json.loads(_SOURCE_NAMES_PATH.read_text())
+    except Exception:
+        return {}
+
+
+_SOURCE_NAMES = _load_source_names()
+
+
+def _host_of(url: str) -> str:
+    try:
+        host = urlsplit(url).hostname or ""
+    except Exception:
+        return ""
+    return host.lower().removeprefix("www.").removeprefix("amp.")
+
+
+def _source_name_for_host(host: str) -> str:
+    """Display name for a cited host: exact host map -> parent-domain map
+    -> special families (senate.gov / house.gov / substack.com / archive.ph
+    is skipped) -> title-cased second-level domain as a last resort."""
+    if not host:
+        return ""
+    names = _SOURCE_NAMES
+    if host in names:
+        return names[host]
+    parts = host.split(".")
+    for i in range(1, len(parts) - 1):
+        parent = ".".join(parts[i:])
+        if parent in names:
+            return names[parent]
+    if host.endswith(".senate.gov"):
+        return names.get(host, "U.S. Senate")
+    if host.endswith(".house.gov"):
+        return names.get(host, "U.S. House")
+    if host.endswith(".substack.com"):
+        return names.get(host, parts[0].replace("-", " ").title())
+    if host in ("archive.ph", "archive.org", "web.archive.org", "t.co"):
+        return ""
+    label = parts[-2] if len(parts) >= 2 else parts[0]
+    return _canonical_source(label.replace("-", " ").title())
+
+
 def _entry_pills(entry: dict) -> list[str]:
-    """Ordered, de-duplicated pill labels for one entry."""
+    """Ordered, de-duplicated pill labels for one entry: every host the
+    summary cites (order of first citation), then cluster outlets that
+    were not cited, then platform pills."""
     labels: list[str] = []
     seen: set[str] = set()
-    for outlet in entry.get("news_outlets") or []:
-        label = _canonical_source(outlet)
+
+    def _add(label: str):
         if label and label.lower() not in seen:
             seen.add(label.lower())
             labels.append(label)
+
+    summary = str(entry.get("summary") or "")
+    for url in re.findall(r"\]\((https?://[^)\s]+)\)", summary):
+        _add(_source_name_for_host(_host_of(url)))
+    for outlet in entry.get("news_outlets") or []:
+        _add(_canonical_source(outlet))
     sources = entry.get("sources") or {}
     if isinstance(sources, dict):
         for key in sources:
-            label = PLATFORM_PILL.get(str(key).lower())
-            if label and label.lower() not in seen:
-                seen.add(label.lower())
-                labels.append(label)
+            _add(PLATFORM_PILL.get(str(key).lower(), ""))
     return labels
 
 
@@ -479,7 +532,7 @@ _LINK_VERBS = {
     "suggests", "cited", "cites", "described", "describes", "framed", "frames", "put", "puts",
     "responded", "responds", "replied", "replies", "countered", "counters", "pushed",
     "pushes", "asked", "asks", "questioned", "questions", "documented", "documents",
-    "tracked", "tracks", "calculated", "calculates", "confirmed", "confirms", "claimed",
+    "tracked", "tracks", "confirmed", "confirms", "claimed",
     "claims", "declared", "declares", "concluded", "concludes", "surveyed", "measured",
     "detailed", "details", "outlined", "outlines", "shared", "shares", "laid", "lays",
     "quoted", "quotes", "signed", "signs", "vetoed", "vetoes", "filed", "files", "sued",
@@ -488,72 +541,163 @@ _LINK_VERBS = {
 }
 
 
-def _is_verb(word: str) -> bool:
-    return re.sub(r"^[^A-Za-z]+|[^A-Za-z]+$", "", word).lower() in _LINK_VERBS
+_IRREGULAR_PAST = {
+    "said", "made", "found", "told", "put", "wrote", "showed", "sold", "rose", "fell", "led",
+    "held", "met", "saw", "won", "lost", "ran", "grew", "began", "broke", "brought", "bought",
+    "built", "came", "cut", "drew", "drove", "gave", "got", "kept", "knew", "left", "paid",
+    "read", "sent", "set", "spent", "stood", "took", "thought", "threw", "went", "hit", "cost",
+    "laid", "meant", "sought", "struck", "spoke", "chose", "flagged", "shut", "let", "hung",
+    "sat", "sang", "swung", "bent", "dealt", "fed", "fled", "forecast", "hid", "lent", "shot",
+    "slid", "split", "spread", "sprang", "stuck", "swept", "taught", "tore", "understood",
+    "withdrew", "wove",
+}
+# -ed words that are not sentence verbs in practice (adjectives / nouns)
+_NOT_VERBS = {"need", "indeed", "speed", "feed", "seed", "bred", "unprecedented", "expected",
+              "unexpected", "related", "unrelated", "detailed", "limited", "unlimited", "fixed",
+              "mixed", "aged", "based", "so-called", "interested", "concerned", "supposed",
+              "united", "sophisticated", "dedicated", "married", "tired", "scared", "worried",
+              "excited", "surprised", "distressed", "used", "hundred", "thousand", "unchanged"}
+_PARTICLES = {"back", "out", "up", "down", "on", "off", "in", "over", "away", "forward", "ahead",
+              "through", "along", "aside"}
+_CITE_NOUNS = {"paper", "report", "post", "thread", "piece", "article", "study", "analysis",
+               "newsletter", "essay", "column", "note", "chart", "memo", "letter", "brief",
+               "survey", "tracker", "dashboard", "map", "video", "podcast", "interview", "speech",
+               "testimony", "statement", "filing", "ruling", "order", "data", "release", "index",
+               "presentation", "deck", "op-ed", "editorial", "review", "bulletin", "notice"}
+
+
+def _bare(word: str) -> str:
+    return re.sub(r"^[^A-Za-z]+|[^A-Za-z-]+$", "", word)
+
+
+def _is_reporting_verb(word: str, allow_capital: bool = False) -> bool:
+    """An attribution verb from the reporting list ('argued', 'reported',
+    'flagged', 'pushed back'). Lowercase only — a capitalised mid-sentence
+    word is a name ('Calculated Risk') — unless allow_capital (sentence-
+    initial)."""
+    b = _bare(word)
+    if not b or (b[0].isupper() and not allow_capital):
+        return False
+    return b.lower() in _LINK_VERBS
+
+
+def _is_verb(word: str, allow_capital: bool = False) -> bool:
+    """Any sentence verb we could hang a link on: reporting verbs plus
+    regular past tense (-ed) and common irregular pasts. Same casing rule."""
+    b = _bare(word)
+    if not b or (b[0].isupper() and not allow_capital):
+        return False
+    w = b.lower()
+    if w in _NOT_VERBS:
+        return False
+    if w in _LINK_VERBS or w in _IRREGULAR_PAST:
+        return True
+    return len(w) > 4 and w.endswith("ed") and not w.endswith("eed")
+
+
+def _is_cite_noun(word: str) -> bool:
+    return _bare(word).lower() in _CITE_NOUNS
+
+
+def _with_particle(words: list, i: int) -> int:
+    """Index one past the verb at i, extended over a trailing particle
+    ('pushed back', 'laid out')."""
+    j = i + 1
+    if j < len(words) and _bare(words[j]).lower() in _PARTICLES:
+        j += 1
+    return j
 
 
 def _narrow_link_anchors(text: str) -> str:
-    """House style: only the reporting verb carries the link.
+    """House style: the link sits on the verb of the clause the source
+    supports (or on the citable noun after a quoted title), never on a
+    name or a phrase. Markdown in, markdown out.
 
-    1. '[Ned Resnikoff argued](url) that' -> 'Ned Resnikoff [argued](url) that'
-       (verb inside the anchor: keep only the verb).
-    2. '[Nicholas Miller and Justin Lahart](url) quoted' ->
-       'Nicholas Miller and Justin Lahart [quoted](url)'
-       (no verb inside: the word right after the anchor is a verb).
-    3. 'The MBA reported … [applications up 0.8%](url)' ->
-       'The MBA [reported](url) … applications up 0.8%'
-       (no verb inside or after: move the link back to the nearest
-       reporting verb earlier in the same sentence, if it is not already
-       linked).
-    Anchors with no reachable verb are left untouched. Markdown in, markdown out."""
+    Order of preference for an anchor that is not already a bare verb:
+      1. a verb inside the anchor          '[Ned Resnikoff argued]' -> 'Ned Resnikoff [argued]'
+      2. a citable noun right after it     '["New Exclusionary Zoning"] paper' -> '… ["…"] paper' -> '"…" [paper]'
+      3. a verb within the next 3 words    '[Calculated] Risk noted' -> 'Calculated Risk [noted]'
+      4. the nearest verb earlier in the
+         same clause/sentence              'The MBA reported … [applications up]' -> 'The MBA [reported] …'
+    A citable noun inside the anchor with no verb narrows to the noun
+    ('in [a thread]' -> 'in a [thread]'). Otherwise the link is left alone."""
     anchor = r'(?:[^\[\]]|\[[^\]]*\])+'
     link_re = re.compile(rf'\[({anchor})\]\(([^)]+)\)')
     text = str(text)
-    out = []
-    pos = 0
+    out, pos = [], 0
     for m in link_re.finditer(text):
+        if m.start() < pos:            # already consumed by a backward move
+            continue
         inner, url = m.group(1), m.group(2)
         words = inner.split(" ")
-        # case 1: verb inside the anchor
-        idx = next((i for i, w in enumerate(words) if _is_verb(w)), None)
-        if idx is not None and len(words) >= 2:
-            before, after = " ".join(words[:idx]), " ".join(words[idx + 1:])
-            rep = f"[{words[idx]}]({url})"
+        head = text[pos:m.start()]
+        at_sentence_start = not head.strip() or re.search(r"[.!?]\s*$", head) is not None
+        # bare verb (with optional particle) -> already right
+        if len(words) == 1 and _is_verb(words[0], allow_capital=at_sentence_start):
+            continue
+        if len(words) == 2 and _is_verb(words[0], allow_capital=at_sentence_start) \
+                and _bare(words[1]).lower() in _PARTICLES:
+            continue
+        # 1. reporting verb inside the anchor (a descriptive verb like
+        #    'helped draft' is content, not attribution — fall through)
+        idx = next((i for i, w in enumerate(words)
+                    if _is_reporting_verb(w, allow_capital=(i == 0 and at_sentence_start))), None)
+        if idx is not None:
+            j = _with_particle(words, idx)
+            before, verb, after = " ".join(words[:idx]), " ".join(words[idx:j]), " ".join(words[j:])
+            rep = f"[{verb}]({url})"
             rep = (before + " " + rep) if before else rep
             rep = (rep + " " + after) if after else rep
-            out.append(text[pos:m.start()] + rep)
-            pos = m.end()
+            out.append(head + rep); pos = m.end()
             continue
-        if idx is not None:          # single-word verb anchor: already right
-            continue
-        # case 2: verb immediately after the anchor (allow one small word between)
         tail = text[m.end():]
-        mt = re.match(r"(\s+)((?:[^\s\[\]().]+\s+){0,2})([A-Za-z]+)", tail)
+        # 2. citable noun immediately after ('… "Title" paper')
+        mn = re.match(r"(\s+)([A-Za-z-]+)", tail)
+        if mn and _is_cite_noun(mn.group(2)):
+            out.append(head + inner + mn.group(1) + f"[{mn.group(2)}]({url})")
+            pos = m.end() + mn.end()
+            continue
+        # 3. verb within the next three words (stop at clause punctuation)
+        mt = re.match(r"(\s+)((?:[^\s\[\]().;:,—]+\s+){0,2})([A-Za-z-]+)", tail)
         if mt:
-            # the verb may be the 1st, 2nd or 3rd following word; stop at the first verb
             following = (mt.group(2) + mt.group(3)).split()
-            vi = next((i for i, w in enumerate(following) if _is_verb(w)), None)
+            vi = next((i for i, w in enumerate(following) if _is_reporting_verb(w)), None)
             if vi is not None:
-                lead = " ".join(following[:vi])
-                verb = following[vi]
-                consumed = len(mt.group(1)) + len(" ".join(following[:vi + 1]))
+                j = _with_particle(following, vi)
+                lead = " ".join(following[:vi]); verb = " ".join(following[vi:j])
+                consumed = len(mt.group(1)) + len(" ".join(following[:j]))
                 rep = inner + mt.group(1) + (lead + " " if lead else "") + f"[{verb}]({url})"
-                out.append(text[pos:m.start()] + rep)
-                pos = m.end() + consumed
+                out.append(head + rep); pos = m.end() + consumed
                 continue
-        # case 3: nearest verb earlier in the same sentence, not inside another link
-        head = text[pos:m.start()]
-        sent_start = max(head.rfind(". "), head.rfind("! "), head.rfind("? "), head.rfind("\n"))
+        # citable noun inside the anchor (no verb anywhere near)
+        ni = next((i for i, w in enumerate(words) if _is_cite_noun(w)), None)
+        if ni is not None and len(words) >= 2:
+            before, after = " ".join(words[:ni]), " ".join(words[ni + 1:])
+            rep = f"[{words[ni]}]({url})"
+            rep = (before + " " + rep) if before else rep
+            rep = (rep + " " + after) if after else rep
+            out.append(head + rep); pos = m.end()
+            continue
+        # 4. nearest verb earlier in the same clause/sentence, not inside another link
+        sent_start = max(head.rfind(". "), head.rfind("! "), head.rfind("? "), head.rfind("\n"),
+                         head.rfind("; "))
         window = head[sent_start + 1:] if sent_start >= 0 else head
-        cands = [mm for mm in re.finditer(r"[A-Za-z]+", window) if _is_verb(mm.group(0))]
-        cands = [mm for mm in cands if "[" not in window[max(0, mm.start() - 1):mm.start()]]
+        # prefer the nearest REPORTING verb ('reported', not 'rose'); only if
+        # the clause has none, take the nearest generic past-tense verb
+        # ('intersected')
+        words_in = [mm for mm in re.finditer(r"[A-Za-z-]+", window)
+                    if "[" not in window[max(0, mm.start() - 1):mm.start()]]
+        cands = [mm for mm in words_in
+                 if _is_reporting_verb(mm.group(0), allow_capital=(mm.start() == 0 and at_sentence_start))]
+        if not cands:
+            cands = [mm for mm in words_in
+                     if _is_verb(mm.group(0), allow_capital=(mm.start() == 0 and at_sentence_start))]
         if cands:
             v = cands[-1]
             base = len(head) - len(window)
             vs, ve = base + v.start(), base + v.end()
             new_head = head[:vs] + f"[{head[vs:ve]}]({url})" + head[ve:]
-            out.append(new_head + inner)
-            pos = m.end()
+            out.append(new_head + inner); pos = m.end()
             continue
         # nothing reachable: leave the link as written
     out.append(text[pos:])
@@ -566,15 +710,17 @@ _PLATFORM_WORDS = re.compile(r"\b(on x\b|x,|bluesky|tweet|tweeted|posted on|thre
 
 def _name_platforms(text: str) -> str:
     """House style: a social attribution names the platform. For each
-    '@handle' that begins a sentence or clause and is followed (within the
-    same sentence) by a link to X/Twitter or Bluesky, prepend 'On X, ' /
-    'On Bluesky, ' unless the sentence already names the platform."""
+    '@handle' that begins a sentence or clause and is followed within the
+    sentence by a link to X/Twitter or Bluesky, prepend 'On X, ' /
+    'On Bluesky, ' unless the sentence already names the platform.
+    Runs AFTER _narrow_link_anchors, so '[@handle pushed back](url)' has
+    already become '@handle [pushed back](url)'."""
     text = str(text)
-    out = []
-    pos = 0
+    out, pos = [], 0
     for m in re.finditer(r"(^|(?<=[.!?;]\s)|(?<=—\s)|(?<=\n))(@[A-Za-z0-9_]+)", text):
-        sent_end = re.search(r"[.!?](\s|$)", text[m.end():])
-        sentence = text[m.start(): m.end() + (sent_end.end() if sent_end else len(text))]
+        rest = text[m.end():]
+        sent_end = re.search(r"[.!?](\s|$)", rest)
+        sentence = text[m.start(): m.end() + (sent_end.end() if sent_end else len(rest))]
         platform = next((name for host, name in _SOCIAL_HOSTS if host in sentence), None)
         if not platform:
             continue
@@ -592,7 +738,7 @@ def _body_links(text: str) -> str:
     underlined with a 2px rule, never blue and never visited-purple. Keeps
     href/target, drops the incoming style. Anchors are first narrowed to
     the reporting verb (see _narrow_link_anchors)."""
-    html = _md_links(_narrow_link_anchors(_name_platforms(text)))
+    html = _md_links(_name_platforms(_narrow_link_anchors(text)))
     return re.sub(
         r'<a\s+href="([^"]+)"[^>]*>',
         lambda m: f'<a href="{m.group(1)}" target="_blank" style="{BODY_LINK_STYLE}">',
