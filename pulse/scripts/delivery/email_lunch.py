@@ -687,7 +687,7 @@ def render_lunch_html(briefing: dict, tier: str = "premium") -> tuple[str, str, 
                               f'{"".join(_pill(p) for p in pills)}</div>')
             # Last entry carries no bottom padding so the following section
             # gap is exactly SECTION_GAP (or WALL_GAP) and nothing more.
-            pad_bottom = 0 if i == len(shown) else 30
+            pad_bottom = 0 if i == len(shown) else 40
             parts.append(
                 f'<table width="100%" cellpadding="0" cellspacing="0"><tr>'
                 f'<td style="padding:0 0 {pad_bottom}px 0;">'
