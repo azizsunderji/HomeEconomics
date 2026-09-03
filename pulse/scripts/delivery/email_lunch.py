@@ -707,16 +707,14 @@ def render_lunch_html(briefing: dict, tier: str = "premium") -> tuple[str, str, 
         n = len(withheld)
         items = "".join(
             f'<div style="{body_text} font-size:16px; margin:0 0 8px 0;">'
-            f'<span style="color:{MUTED}; margin-right:8px;">'
-            f'{w.get("rank") if isinstance(w.get("rank"), int) else len(shown) + k}</span>'
             f'{_esc((w.get("title") or "").strip())}</div>'
-            for k, w in enumerate(withheld, start=1)
+            for w in withheld
         )
         parts.append(_spacer(36))
         parts.append(
             f'<table width="100%" cellpadding="0" cellspacing="0"><tr>'
             f'<td bgcolor="{LIGHT}" style="background-color:{LIGHT}; padding:18px 18px 14px 18px; border-radius:6px;">'
-            f'{_kicker(f"{n} more in the premium edition")}'
+            f'{_kicker("More in the premium edition")}'
             f'{items}'
             f'<div style="margin:12px 0 0 0; font-family:{FONT}; font-size:14px;">'
             f'{_link("Upgrade →", UPGRADE_URL, weight="600")}</div>'
