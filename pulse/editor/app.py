@@ -12,6 +12,7 @@ Routes
   POST /api/draft/{date}/reset     rebuild from the stored brief (discards edits)
   GET  /preview/{date}?tier=       the exact HTML that would be sent
   GET  /api/drafts           recent days
+  GET  /latest[?k=]        public: latest edition (free; premium with the emailed key)
   GET  /latest.pdf          public: most recent edition as PDF
   GET  /pdf/{date}?tier=    owner: render the draft to PDF now
   GET  /health
@@ -104,6 +105,20 @@ def magic(d: str, k: str):
     if not auth.magic_ok(d, k, drafts.today_et()):
         raise HTTPException(status_code=403, detail="link expired or invalid")
     return _set_cookie(RedirectResponse(f"/?d={d}", status_code=302))
+
+
+@app.get("/latest", response_class=HTMLResponse)
+def latest(k: str | None = None):
+    """Public 'Read on the web' page: the latest edition. Free unless the
+    premium key from a premium email is present."""
+    row = drafts.latest_sent()
+    if row is None:
+        raise HTTPException(status_code=404, detail="no edition yet")
+    tier = "premium" if auth.web_token_ok(k) else "free"
+    html = render.preview(row["json"], tier)
+    # Web page, not email: every link opens in a new tab so the edition stays put.
+    html = html.replace("<head>", '<head>\n<base target="_blank">', 1)
+    return HTMLResponse(html, headers={"Cache-Control": "no-store"})
 
 
 @app.get("/latest.pdf")
