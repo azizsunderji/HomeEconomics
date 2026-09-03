@@ -475,26 +475,31 @@ def _spacer(height: int = 24) -> str:
             f'font-size:1px;">&nbsp;</td></tr></table>\n')
 
 
-def _kicker(text: str) -> str:
-    """Section heading: small, letter-spaced, muted. No rule above it."""
-    return (f'<div style="font-family:{FONT}; font-size:12px; letter-spacing:2px; '
-            f'text-transform:uppercase; color:{MUTED}; margin:0 0 14px 0;">'
+HEAD_FONT = "Georgia, 'Times New Roman', Times, serif"  # section heads share the standfirst serif
+
+
+def _kicker(text: str, size: int = 24) -> str:
+    """Section heading ("On the Front Pages", "Paper of the Day"): serif,
+    ink, normal weight, larger than body — editorial hierarchy through
+    typeface and size, not bold or colour. No rule above it."""
+    return (f'<div style="font-family:{HEAD_FONT}; font-size:{size}px; line-height:1.25; '
+            f'color:{INK}; margin:0 0 16px 0;">'
             f'{_esc(text)}</div>\n')
 
 
 def _heading(text: str) -> str:
     """Top-level heading (e.g. "From Home Economics"): larger than the
     section kickers and the entry titles, ink-coloured, bold."""
-    return (f'<div style="font-family:{FONT}; font-size:24px; line-height:1.2; '
-            f'font-weight:700; letter-spacing:-0.3px; color:{INK}; margin:0 0 20px 0;">'
+    return (f'<div style="font-family:{HEAD_FONT}; font-size:30px; line-height:1.2; '
+            f'color:{INK}; margin:0 0 22px 0;">'
             f'{_esc(text)}</div>\n')
 
 
 def _subkicker(text: str) -> str:
     """Subsection heading under a _heading: same style as _kicker but a
     touch smaller, so the hierarchy reads heading > subsection > body."""
-    return (f'<div style="font-family:{FONT}; font-size:11px; letter-spacing:2px; '
-            f'text-transform:uppercase; color:{MUTED}; margin:0 0 10px 0;">'
+    return (f'<div style="font-family:{HEAD_FONT}; font-size:19px; line-height:1.25; '
+            f'color:{INK}; margin:0 0 12px 0;">'
             f'{_esc(text)}</div>\n')
 
 
@@ -1085,7 +1090,7 @@ def render_lunch_html(briefing: dict, tier: str = "premium") -> tuple[str, str, 
         parts.append(
             f'<table width="100%" cellpadding="0" cellspacing="0"><tr>'
             f'<td bgcolor="{LIGHT}" style="background-color:{LIGHT}; padding:18px 18px 14px 18px; border-radius:6px;">'
-            f'{_kicker("More in the premium edition")}'
+            f'{_kicker("More in the premium edition", size=19)}'
             f'{items}'
             f'<div style="margin:12px 0 0 0; font-family:{FONT}; font-size:14px;">'
             f'{_link("Upgrade →", UPGRADE_URL, weight="600")}</div>'
@@ -1103,40 +1108,28 @@ def render_lunch_html(briefing: dict, tier: str = "premium") -> tuple[str, str, 
         ("lat", "Los Angeles Times",       "CA_LAT"),
         ("hc",  "Houston Chronicle",       "TX_HC"),
     ]
-    proper = _collect_proper_nouns(front) if front else set()
     cells = []
     for slug, label, ff_slug in papers:
-        pdata = (front or {}).get(slug) or {}
-        heads = pdata.get("headlines") or []
-        head = next((h for h in heads if (h.get("text") or "").strip()), None)
-        head_html = ""
-        if head:
-            text = _esc(_sentence_case_headline((head.get("text") or "").strip(), proper))
-            url = head.get("article_url") or ""
-            inner = (f'<a href="{url}" target="_blank" style="color:{INK}; text-decoration:none;">{text}</a>'
-                     if url else text)
-            head_html = (f'<div style="font-family:{FONT}; font-size:13px; line-height:1.4; '
-                         f'color:{INK}; margin:6px 0 0 0;">{inner}</div>')
         pdf_url = f"https://cdn.freedomforum.org/dfp/pdf{_ff_day}/{ff_slug}.pdf"
         img_url = f"https://home-economics.us/pulse-screenshots/{slug}.jpg?v={_cb}"
-        short = {"nyt": "NYT", "wsj": "WSJ", "lat": "LA Times", "hc": "Houston Chronicle"}[slug]
+        # images only: the masthead and its own headlines are legible at this
+        # size, so no paper label and no pulled headline (owner's call)
         cells.append(
-            f'<td class="fp-cell" width="25%" valign="top" style="padding:0 6px;">'
+            f'<td class="fp-cell" width="50%" valign="top" style="padding:0 8px 16px 8px;">'
             f'<a href="{pdf_url}" target="_blank">'
-            f'<img src="{img_url}" alt="{_esc(label)} front page" width="120" '
-            f'style="display:block; width:100%; max-width:120px; height:auto;"></a>'
-            f'<div style="font-family:{FONT}; font-size:11px; letter-spacing:1.5px; '
-            f'text-transform:uppercase; color:{MUTED}; margin:8px 0 0 0;">{_esc(short)}</div>'
-            f'{head_html}'
+            f'<img src="{img_url}" alt="{_esc(label)} front page" width="276" '
+            f'style="display:block; width:100%; max-width:100%; height:auto;"></a>'
             f'</td>'
         )
     # Free edition: the withheld block sits right above this heading; give it
-    # twice the standard gap so the wall reads as the end of the entries.
+    # a larger gap so the wall reads as the end of the entries.
     parts.append(_spacer(WALL_GAP if (tier == "free" and withheld) else SECTION_GAP))
     parts.append(_kicker("On the Front Pages"))
+    # 2x2 on desktop (each image ~half the 600px column, headlines readable);
+    # the .fp-row/.fp-cell media query stacks them single-column on mobile.
+    rows = "".join(f'<tr class="fp-row">{cells[i]}{cells[i + 1]}</tr>' for i in range(0, len(cells), 2))
     parts.append(
-        f'<table width="100%" cellpadding="0" cellspacing="0" style="margin:0 -6px;">'
-        f'<tr class="fp-row">{"".join(cells)}</tr></table>\n'
+        f'<table width="100%" cellpadding="0" cellspacing="0" style="margin:0 -8px;">{rows}</table>\n'
     )
 
     # ── Paper of the Day ──
