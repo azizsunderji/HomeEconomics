@@ -1,0 +1,9 @@
+[Unit]
+Description=News at Noon send at 12:15 US Eastern
+
+[Timer]
+OnCalendar=*-*-* 12:15:00 America/New_York
+Persistent=true
+
+[Install]
+WantedBy=timers.target

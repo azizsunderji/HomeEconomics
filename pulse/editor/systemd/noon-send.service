@@ -1,0 +1,10 @@
+[Unit]
+Description=News at Noon: the 12:15 ET send (edited or not)
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/aziz/work/HomeEconomics/pulse/editor
+EnvironmentFile=/home/aziz/.noon_env
+ExecStart=/home/aziz/work/pulse-venv/bin/python cli.py send
+StandardOutput=append:/home/aziz/work/noon/logs/send.log
+StandardError=append:/home/aziz/work/noon/logs/send.log

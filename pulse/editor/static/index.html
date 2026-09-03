@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>News at Noon — editor</title>
+<link rel="stylesheet" href="/static/style.css"></head>
+<body>
+<div class="topbar"><div class="inner">
+  <span class="brand">News at Noon</span>
+  <span class="datelabel" id="dateLabel"></span>
+  <span class="spacer"></span>
+  <span class="chip" id="saveChip">Loading</span>
+  <span class="chip" id="statusChip"></span>
+</div></div>
+
+<div class="wrap">
+  <div class="banner" id="banner" hidden></div>
+
+  <section class="standfirst">
+    <h2>Standfirst</h2>
+    <div class="rich" id="intro" contenteditable="true" data-kind="intro"></div>
+    <div class="tools" data-for="intro">
+      <button class="btn" data-act="link">Link</button>
+      <button class="btn" data-act="unlink">Unlink</button>
+      <span class="hint">Select a word, then Link.</span>
+    </div>
+    <div class="linkbox" hidden data-for="intro">
+      <div class="sel"></div>
+      <input type="url" placeholder="https://…" inputmode="url" autocapitalize="off" autocomplete="off">
+      <button class="btn primary" data-act="apply">Apply</button>
+      <button class="btn" data-act="cancel">Cancel</button>
+    </div>
+  </section>
+
+  <section>
+    <h2>Themes</h2>
+    <div class="count">Free readers get <b id="freeShown">0</b> of <b id="freeTotal">0</b> themes. Premium-only themes are marked.</div>
+    <div id="entries"></div>
+    <div id="deleted"></div>
+  </section>
+
+  <section id="paperSection">
+    <h2>Paper of the Day</h2>
+    <div id="paper"></div>
+  </section>
+
+  <div class="more">
+    <button class="btn" id="btnHold">Hold today’s send</button>
+    <button class="btn" id="btnSendNow">Send now</button>
+    <button class="btn danger" id="btnReset">Discard edits and rebuild</button>
+    <a class="btn" href="/logout">Sign out</a>
+  </div>
+  <p class="muted" id="footnote"></p>
+</div>
+
+<div class="actions"><div class="inner">
+  <button class="btn" id="btnPreviewFree">Preview free</button>
+  <button class="btn" id="btnPreviewPremium">Preview premium</button>
+  <button class="btn" id="btnTestFree">Email me free</button>
+  <button class="btn" id="btnTestPremium">Email me premium</button>
+</div></div>
+
+<script src="/static/app.js"></script>
+</body></html>

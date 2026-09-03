@@ -1,0 +1,15 @@
+[Unit]
+Description=News at Noon editor (127.0.0.1:8240)
+After=network.target
+
+[Service]
+WorkingDirectory=/home/aziz/work/HomeEconomics/pulse/editor
+EnvironmentFile=/home/aziz/.noon_env
+ExecStart=/home/aziz/work/pulse-venv/bin/uvicorn app:app --host 127.0.0.1 --port 8240 --proxy-headers
+Restart=always
+RestartSec=3
+StandardOutput=append:/home/aziz/work/noon/logs/editor.log
+StandardError=append:/home/aziz/work/noon/logs/editor.log
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,10 @@
+[Unit]
+Description=News at Noon: build today's draft from the synced brief and email the edit link
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/aziz/work/HomeEconomics/pulse/editor
+EnvironmentFile=/home/aziz/.noon_env
+ExecStart=/home/aziz/work/pulse-venv/bin/python cli.py ingest
+StandardOutput=append:/home/aziz/work/noon/logs/ingest.log
+StandardError=append:/home/aziz/work/noon/logs/ingest.log

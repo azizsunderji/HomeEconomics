@@ -1,0 +1,13 @@
+# News at Noon editor. Add `import /etc/caddy/conf.d/*.caddy` to /etc/caddy/Caddyfile
+# and copy this file to /etc/caddy/conf.d/. Needs an A record:
+#   noon.homeeconomics.us -> 104.236.210.18
+noon.homeeconomics.us {
+	encode gzip
+	reverse_proxy 127.0.0.1:8240
+	log {
+		output file /var/log/caddy/noon.log {
+			roll_size 20mb
+			roll_keep 3
+		}
+	}
+}

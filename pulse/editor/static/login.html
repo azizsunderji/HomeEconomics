@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>News at Noon — sign in</title>
+<link rel="stylesheet" href="/static/style.css"></head>
+<body class="login">
+<form method="post" action="/login" class="login-box">
+  <div class="brand">News at Noon</div>
+  <div class="muted">Editor sign-in</div>
+  <input type="password" name="password" placeholder="Password" autofocus autocomplete="current-password" required>
+  <button type="submit" class="btn primary">Sign in</button>
+  <div class="error">{{ERROR}}</div>
+</form>
+</body></html>
