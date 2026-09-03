@@ -127,3 +127,14 @@ def send_notification(date: str, magic_url: str, shown: int, total: int) -> bool
                        "subject": f"Draft ready: {render.subject(date)}", "html": html})
     logger.info(f"draft-ready notification for {date}: {'ok' if ok else 'FAILED'}")
     return ok
+
+
+def send_alert(subject: str, text: str) -> bool:
+    """Plain-text problem report to the owner (used by the timers)."""
+    try:
+        return _post_resend(_api_key(), "https://api.resend.com/emails",
+                            {"from": render.EMAIL_FROM, "to": [paths.OWNER_EMAIL],
+                             "subject": f"[News at Noon] {subject}", "text": text})
+    except Exception as e:  # noqa: BLE001
+        logger.error(f"alert could not be sent: {e}")
+        return False

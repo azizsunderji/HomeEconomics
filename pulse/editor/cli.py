@@ -48,6 +48,9 @@ def cmd_send(args) -> int:
     row = drafts.get(date) or ingest.ingest(date)
     if row is None:
         logger.error(f"{date}: no draft and no stored brief — nothing sent")
+        sender.send_alert(f"Nothing sent for {date}",
+                          "No draft existed and no v4b brief for today had synced to the droplet "
+                          "by 12:15 ET. Check the pulse-synth workflow and the Dropbox sync.")
         return 1
     if row["status"] == "sent":
         logger.info(f"{date}: already sent at {row['sent_at']}")
@@ -60,6 +63,7 @@ def cmd_send(args) -> int:
         drafts.set_status(date, "sent", send_log=f"timer: {line}")
         return 0
     logger.error(f"{date}: send failed — {line}")
+    sender.send_alert(f"Send FAILED for {date}", line)
     return 1
 
 
