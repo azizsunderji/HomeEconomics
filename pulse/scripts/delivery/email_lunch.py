@@ -78,7 +78,7 @@ WORDMARK_WIDTH = 320
 # gap between the free edition's "N more in the premium edition" block and
 # "On the Front Pages".
 SECTION_GAP = 54
-WALL_GAP = SECTION_GAP * 2
+WALL_GAP = 72  # gap between the free-tier withheld box and On the Front Pages
 # Gap between a subsection heading block and the next subsection inside
 # "From Home Economics".
 SUBSECTION_GAP = 28
