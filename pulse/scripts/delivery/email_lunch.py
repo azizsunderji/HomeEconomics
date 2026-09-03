@@ -462,7 +462,7 @@ def _button(text: str, url: str) -> str:
 
 
 BODY_LINK_STYLE = (
-    f"color:{INK}; text-decoration:none; border-bottom:2px solid {INK}; padding-bottom:1px;"
+    f"color:{INK}; text-decoration:none; border-bottom:2px solid {BLUE}; padding-bottom:1px;"
 )
 
 
@@ -488,31 +488,69 @@ _LINK_VERBS = {
 }
 
 
-def _narrow_link_anchors(text: str) -> str:
-    """Rewrite '[Name Surname argued](url)' as 'Name Surname [argued](url)':
-    keep only the first reporting verb inside the link. Anchors without a
-    listed verb are left untouched. Operates on markdown, before _md_links."""
-    anchor = r'(?:[^\[\]]|\[[^\]]*\])+'
+def _is_verb(word: str) -> bool:
+    return re.sub(r"^[^A-Za-z]+|[^A-Za-z]+$", "", word).lower() in _LINK_VERBS
 
-    def _fix(m):
+
+def _narrow_link_anchors(text: str) -> str:
+    """House style: only the reporting verb carries the link.
+
+    1. '[Ned Resnikoff argued](url) that' -> 'Ned Resnikoff [argued](url) that'
+       (verb inside the anchor: keep only the verb).
+    2. '[Nicholas Miller and Justin Lahart](url) quoted' ->
+       'Nicholas Miller and Justin Lahart [quoted](url)'
+       (no verb inside: the word right after the anchor is a verb).
+    3. 'The MBA reported … [applications up 0.8%](url)' ->
+       'The MBA [reported](url) … applications up 0.8%'
+       (no verb inside or after: move the link back to the nearest
+       reporting verb earlier in the same sentence, if it is not already
+       linked).
+    Anchors with no reachable verb are left untouched. Markdown in, markdown out."""
+    anchor = r'(?:[^\[\]]|\[[^\]]*\])+'
+    link_re = re.compile(rf'\[({anchor})\]\(([^)]+)\)')
+    text = str(text)
+    out = []
+    pos = 0
+    for m in link_re.finditer(text):
         inner, url = m.group(1), m.group(2)
         words = inner.split(" ")
-        if len(words) < 2:
-            return m.group(0)
-        for i, w in enumerate(words):
-            bare = re.sub(r"^[^A-Za-z]+|[^A-Za-z]+$", "", w).lower()
-            if bare in _LINK_VERBS:
-                before = " ".join(words[:i])
-                after = " ".join(words[i + 1:])
-                out = f"[{w}]({url})"
-                if before:
-                    out = before + " " + out
-                if after:
-                    out = out + " " + after
-                return out
-        return m.group(0)
-
-    return re.sub(rf'\[({anchor})\]\(([^)]+)\)', _fix, str(text))
+        # case 1: verb inside the anchor
+        idx = next((i for i, w in enumerate(words) if _is_verb(w)), None)
+        if idx is not None and len(words) >= 2:
+            before, after = " ".join(words[:idx]), " ".join(words[idx + 1:])
+            rep = f"[{words[idx]}]({url})"
+            rep = (before + " " + rep) if before else rep
+            rep = (rep + " " + after) if after else rep
+            out.append(text[pos:m.start()] + rep)
+            pos = m.end()
+            continue
+        if idx is not None:          # single-word verb anchor: already right
+            continue
+        # case 2: verb immediately after the anchor (allow one small word between)
+        tail = text[m.end():]
+        mt = re.match(r"(\s+)((?:[a-z]{1,3}\s+)?)([A-Za-z]+)", tail)
+        if mt and _is_verb(mt.group(3)):
+            rep = inner + mt.group(1) + mt.group(2) + f"[{mt.group(3)}]({url})"
+            out.append(text[pos:m.start()] + rep)
+            pos = m.end() + mt.end()
+            continue
+        # case 3: nearest verb earlier in the same sentence, not inside another link
+        head = text[pos:m.start()]
+        sent_start = max(head.rfind(". "), head.rfind("! "), head.rfind("? "), head.rfind("\n"))
+        window = head[sent_start + 1:] if sent_start >= 0 else head
+        cands = [mm for mm in re.finditer(r"[A-Za-z]+", window) if _is_verb(mm.group(0))]
+        cands = [mm for mm in cands if "[" not in window[max(0, mm.start() - 1):mm.start()]]
+        if cands:
+            v = cands[-1]
+            base = len(head) - len(window)
+            vs, ve = base + v.start(), base + v.end()
+            new_head = head[:vs] + f"[{head[vs:ve]}]({url})" + head[ve:]
+            out.append(new_head + inner)
+            pos = m.end()
+            continue
+        # nothing reachable: leave the link as written
+    out.append(text[pos:])
+    return "".join(out)
 
 
 def _body_links(text: str) -> str:
