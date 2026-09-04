@@ -21,7 +21,7 @@ from urllib.parse import parse_qsl, unquote, urlencode, urlsplit, urlunsplit
 import httpx
 
 import paths  # noqa: F401
-from delivery.email_lunch import _entry_pills
+from delivery.email_lunch import _source_name_for_host
 
 logger = logging.getLogger("noon.links")
 
@@ -101,28 +101,29 @@ def _host(url: str) -> str:
     return urlsplit(url).netloc.lower().replace("www.", "")
 
 
+MAILCHIMP_ACCOUNTS = {"opennewyork": "Open New York"}
+
+
 def outlets_for(entry: dict) -> list[str]:
-    """Source pills for an entry: the renderer's names for the cited hosts,
-    minus our own properties (the publisher is not a source), with hosted
-    newsletter pages named after the newsletter (mailchi.mp/<name>/…)."""
-    urls = list(dict.fromkeys(_URL_RE.findall(entry.get("summary") or "")))
-    pills = _entry_pills(dict(entry, summary=" ".join(f"[x]({u})" for u in urls if _host(u) not in OWN_HOSTS)))
+    """Source pills for an entry: the renderer's name for each cited host, in
+    order of first citation, minus our own properties (the publisher is not
+    a source) and minus collection channels; Mailchimp-hosted newsletter
+    pages are named after the newsletter (mailchi.mp/<account>/…)."""
     out: list[str] = []
-    for u, name in zip([u for u in urls if _host(u) not in OWN_HOSTS], pills or []):
+    for u in dict.fromkeys(_URL_RE.findall(entry.get("summary") or "")):
         h = _host(u)
+        if h in OWN_HOSTS:
+            continue
         if h == "mailchi.mp":
-            seg = urlsplit(u).path.strip("/").split("/")[0]
-            name = " ".join(w.capitalize() for w in re.split(r"[-_]+", seg)) if seg else name
-        out.append(name)
-    # _entry_pills de-duplicates by host in its own order; fall back to it
-    # if the zip above could not line up one name per URL.
-    if len(pills or []) != len([u for u in urls if _host(u) not in OWN_HOSTS]):
-        out = [n for n in (pills or []) if n.lower() not in ("homeeconomics", "home economics", "gmail", "newsletter")]
-    seen: list[str] = []
-    for n in out:
-        if n and n not in seen:
-            seen.append(n)
-    return seen
+            seg = urlsplit(u).path.strip("/").split("/")[0].lower()
+            name = MAILCHIMP_ACCOUNTS.get(seg) or " ".join(w.capitalize() for w in re.split(r"[-_]+", seg)) or "Newsletter"
+        else:
+            name = (_source_name_for_host(h) or "").strip()
+        if not name or name.lower() in ("gmail", "newsletter", "homeeconomics", "home economics"):
+            continue
+        if name not in out:
+            out.append(name)
+    return out
 
 
 def clean_draft(draft: dict) -> dict:

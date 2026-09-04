@@ -299,6 +299,9 @@ _MD_URL_RE = re.compile(rf"\]\((https?://[^)\s]+){_MD_TITLE}\)")
 _DATA_FREE_RE = re.compile(r"""\bdata-free\s*=\s*["']1["']""", re.IGNORECASE)
 
 
+_OWN_PILL_HOSTS = {"homeeconomics.substack.com", "home-economics.us", "homeeconomics.us", "noon.homeeconomics.us"}
+
+
 def _entry_pills(entry: dict) -> list[str]:
     """Pill labels for one entry: exactly the sources the summary cites,
     in order of first citation — so the pills always match the links."""
@@ -306,9 +309,12 @@ def _entry_pills(entry: dict) -> list[str]:
     seen: set[str] = set()
     summary = str(entry.get("summary") or "")
     for url in _MD_URL_RE.findall(summary):
-        label = (_source_name_for_host(_host_of(url)) or "").strip()
-        if not label:
-            continue
+        host = _host_of(url)
+        if host in _OWN_PILL_HOSTS:
+            continue  # the publisher is not a source
+        label = (_source_name_for_host(host) or "").strip()
+        if not label or label.lower() in ("gmail", "newsletter"):
+            continue  # a collection channel is not a source
         key = re.sub(r"[^a-z0-9]", "", label.lower())
         if key and key not in seen:
             seen.add(key)
