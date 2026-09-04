@@ -808,6 +808,21 @@ def _name_platforms(text: str) -> str:
     return "".join(out)
 
 
+ENTRY_TITLE_GAP = 14   # px between an entry's number+title row and its first paragraph
+ENTRY_PARA_GAP = 12    # px between paragraphs inside an entry (was a <br><br>, ~27px)
+
+
+def _entry_paragraphs(html: str, body_text: str) -> str:
+    """Split body HTML on blank-line breaks (<br><br> from the markdown
+    converter) and render each paragraph as a block with a fixed gap, so the
+    break inside an entry is visibly smaller than the gap under its title."""
+    paras = [p.strip() for p in re.split(r"(?:<br\s*/?>\s*){2,}", html) if p.strip()]
+    return "".join(
+        f'<div style="{body_text} margin:0 0 {ENTRY_PARA_GAP if i < len(paras) - 1 else 0}px 0;">{p}</div>'
+        for i, p in enumerate(paras)
+    )
+
+
 def _body_links(text: str) -> str:
     """_md_links() with every anchor restyled for body copy: ink-coloured,
     underlined with a 2px rule, never blue and never visited-purple. Keeps
@@ -1082,13 +1097,13 @@ def render_lunch_html(briefing: dict, tier: str = "premium") -> tuple[str, str, 
             parts.append(
                 f'<table width="100%" cellpadding="0" cellspacing="0"><tr>'
                 f'<td style="padding:0 0 {pad_bottom}px 0;">'
-                f'<table cellpadding="0" cellspacing="0" style="margin:0 0 8px 0;"><tr>'
+                f'<table cellpadding="0" cellspacing="0" style="margin:0 0 {ENTRY_TITLE_GAP}px 0;"><tr>'
                 f'<td style="font-family:{FONT}; font-size:19px; line-height:1.3; font-weight:700; '
                 f'color:{BLUE}; padding:0 12px 0 0; vertical-align:top; white-space:nowrap;">{num}</td>'
                 f'<td style="font-family:{FONT}; font-size:19px; line-height:1.3; font-weight:700; '
                 f'color:{INK}; padding:0; vertical-align:top;">{_esc(title)}</td>'
                 f'</tr></table>'
-                f'<div style="{body_text}">{_body_links(summary)}</div>'
+                f'{_entry_paragraphs(_body_links(summary), body_text)}'
                 f'{pills_html}'
                 f'</td></tr></table>\n'
             )
