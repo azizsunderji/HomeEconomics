@@ -44,6 +44,23 @@ SERIF = 'Gelasio, Georgia, "Times New Roman", serif'
 _LINK_RE = re.compile(r"\[([^\]]+)\]\((?:[^)\s]+)(?:\s+(?:\"[^\"]*\"|'[^']*'))?\)")
 
 
+_LINK_FULL = re.compile(r"\[([^\]]+)\]\((https?://[^\s)]+)\)")
+
+
+def linked(md: str) -> str:
+    """Markdown summary -> HTML with the house link style (ink text, blue
+    underline), everything else escaped. Used by the PDF cards, where links
+    survive; the PNG cards use plain()."""
+    out, i = [], 0
+    for m in _LINK_FULL.finditer(str(md or "")):
+        out.append(_esc(md[i:m.start()]))
+        out.append(f'<a href="{_html.escape(m.group(2), quote=True)}">{_esc(m.group(1))}</a>')
+        i = m.end()
+    out.append(_esc(md[i:]))
+    t = "".join(out)
+    return re.sub(r"[*_`]+", "", t).replace("\r", "").strip()
+
+
 def plain(md: str) -> str:
     """Markdown summary -> plain text (links to their text, no markup)."""
     t = _LINK_RE.sub(r"\1", str(md or ""))
@@ -102,16 +119,26 @@ def _base_css() -> str:
            justify-content:space-between; align-items:baseline; font-size:24px; color:{MUTED}; }}
   .foot b {{ color:{INK}; font-weight:500; }}
   .foot .cta {{ color:{INK}; }}
+  a {{ color:{INK}; text-decoration:none; border-bottom:3px solid {BLUE}; padding-bottom:2px; }}
+  /* PDF deck: one card per page, links live */
+  body.deck {{ height:auto; overflow:visible; }}
+  body.deck .card {{ page-break-after:always; break-after:page; }}
+  body.deck .card:last-child {{ page-break-after:auto; break-after:auto; }}
+  @page {{ size:{W}px {H}px; margin:0; }}
 </style>
 """
 
 
-def _foot(label: str) -> str:
+def _foot(label: str, links: bool = False) -> str:
+    cta = (f'<a href="https://{SIGNUP}?src=cards">{SIGNUP}</a>' if links else SIGNUP)
     return (f'<div class="foot"><span><b>News at Noon</b> · {_esc(label)}</span>'
-            f'<span class="cta">Free daily at noon ET → {SIGNUP}</span></div>')
+            f'<span class="cta">Free daily at noon ET → {cta}</span></div>')
 
 
-def card_cover(draft: dict, entries: list[dict]) -> str:
+LATEST_URL = "https://noon.homeeconomics.us/latest"
+
+
+def card_cover(draft: dict, entries: list[dict], links: bool = False) -> str:
     date = draft.get("date") or datetime.now().strftime("%Y-%m-%d")
     stand = plain(draft.get("intro") or "")
     stand = first_paragraph(stand, 300)
@@ -123,32 +150,68 @@ def card_cover(draft: dict, entries: list[dict]) -> str:
             items += f'<li><span class="n"></span><span style="color:{MUTED}">and {len(entries) - max_items} more</span></li>'
             break
         prem = '<span class="p">Premium</span>' if e.get("tier") == "premium" else ""
-        items += f'<li><span class="n">{i}</span><span>{_esc(e.get("title") or "")}</span>{prem}</li>'
-    return f"""<!doctype html><html><head><meta charset="utf-8">{_base_css()}</head><body>
+        t = _esc(e.get("title") or "")
+        if links:
+            t = f'<a href="{LATEST_URL}">{t}</a>'
+        items += f'<li><span class="n">{i}</span><span>{t}</span>{prem}</li>'
+    return f"""
 <div class="card">
   <div class="head"><img src="{LOGO_URL}" alt="Home Economics"><span class="date">{_esc(date_label(date))}</span></div>
   <div class="title">News at Noon</div>
   <div class="stand">{_esc(stand)}</div>
   <ul class="toc">{items}</ul>
-  {_foot("a daily brief on the U.S. housing market")}
-</div></body></html>"""
+  {_foot("a daily brief on the U.S. housing market", links)}
+</div>"""
 
 
-def card_theme(draft: dict, entry: dict, number: int) -> str:
+def _first_paragraph_md(md: str, max_chars: int) -> str:
+    """Like first_paragraph but keeps [text](url) markup (length measured on
+    the plain text, so the cut matches the PNG cards)."""
+    paras = [x.strip() for x in str(md or "").replace("\r", "").split("\n\n") if x.strip()]
+    if not paras:
+        return ""
+    t = paras[0]
+    if len(paras) > 1 and len(plain(t)) + 2 + len(plain(paras[1])) <= max_chars:
+        t = t + "\n\n" + paras[1]
+    if len(plain(t)) <= max_chars:
+        return t
+    # Cut on the plain text, then keep the markdown prefix that maps to it:
+    # walk the markdown counting visible characters.
+    target = len(first_paragraph(t, max_chars).rstrip("…"))
+    seen, i = 0, 0
+    while i < len(t) and seen < target:
+        m = _LINK_FULL.match(t, i)
+        if m:
+            seen += len(m.group(1)); i = m.end()
+        else:
+            seen += 1; i += 1
+    cut = t[:i].rstrip(",;: ")
+    return cut if cut.endswith((".", "?", "!")) else cut + "…"
+
+
+def card_theme(draft: dict, entry: dict, number: int, links: bool = False) -> str:
     title = (entry.get("title") or "").strip()
-    body = first_paragraph(entry.get("summary") or "", 760 if len(title) < 50 else 640)
+    limit = 760 if len(title) < 50 else 640
+    body = _first_paragraph_md(entry.get("summary") or "", limit) if links else first_paragraph(entry.get("summary") or "", limit)
     pills = "".join(f'<span class="pill">{_esc(p)}</span>' for p in (entry.get("news_outlets") or [])[:5])
     date = draft.get("date") or ""
-    body_html = "".join(f'<p style="margin:0 0 22px 0">{_esc(x)}</p>' for x in body.split("\n\n"))
-    return f"""<!doctype html><html><head><meta charset="utf-8">{_base_css()}</head><body>
+    conv = linked if links else _esc
+    body_html = "".join(f'<p style="margin:0 0 22px 0">{conv(x)}</p>' for x in body.split("\n\n"))
+    return f"""
 <div class="card">
   <div class="head"><img src="{LOGO_URL}" alt="Home Economics"><span class="date">{_esc(date_label(date))}</span></div>
   <div class="num">{number}</div>
   <div class="h">{_esc(title)}</div>
   <div class="body">{body_html}</div>
   <div class="pills">{pills}</div>
-  {_foot("theme %d of today's edition" % number)}
-</div></body></html>"""
+  {_foot("theme %d of today's edition" % number, links)}
+</div>"""
+
+
+def _doc(cards: list[str], deck: bool = False) -> str:
+    body_cls = ' class="deck"' if deck else ""
+    return (f'<!doctype html><html><head><meta charset="utf-8">{_base_css()}</head>'
+            f'<body{body_cls}>{"".join(cards)}</body></html>')
 
 
 def pick_entries(draft: dict) -> tuple[list[dict], list[tuple[int, dict]]]:
@@ -175,7 +238,7 @@ def render_cards(draft: dict, out_dir: Path) -> list[Path]:
         page = browser.new_page(viewport={"width": W, "height": H}, device_scale_factor=1)
         for k, html in enumerate(pages, start=1):
             out = out_dir / f"News at Noon {date} card{k}.png"
-            page.set_content(html, wait_until="networkidle")
+            page.set_content(_doc([html]), wait_until="networkidle")
             page.wait_for_timeout(150)
             page.screenshot(path=str(out), clip={"x": 0, "y": 0, "width": W, "height": H})
             outs.append(out)
@@ -183,9 +246,36 @@ def render_cards(draft: dict, out_dir: Path) -> list[Path]:
     return outs
 
 
+def render_cards_pdf(draft: dict, out: Path) -> Path:
+    """The same four cards as one PDF, one card per page, with the links
+    live: theme text links to the sources, titles on the cover to the web
+    edition, the sign-up line to the site. PNGs cannot carry links; this is
+    the file to post where a document keeps them (LinkedIn) or to link to."""
+    from playwright.sync_api import sync_playwright
+
+    entries, chosen = pick_entries(draft)
+    cards = [card_cover(draft, entries, links=True)] + [card_theme(draft, e, n, links=True) for n, e in chosen]
+    out.parent.mkdir(parents=True, exist_ok=True)
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        page = browser.new_page(viewport={"width": W, "height": H}, device_scale_factor=1)
+        page.set_content(_doc(cards, deck=True), wait_until="networkidle")
+        page.wait_for_timeout(150)
+        page.emulate_media(media="print")
+        page.pdf(path=str(out), width=f"{W}px", height=f"{H}px", print_background=True,
+                 prefer_css_page_size=True, margin={"top": "0", "right": "0", "bottom": "0", "left": "0"})
+        browser.close()
+    logger.info(f"cards pdf written: {out} ({out.stat().st_size:,} bytes)")
+    return out
+
+
 def publish_cards(draft: dict) -> list[Path]:
     outs = render_cards(draft, CARDS_DIR)
     logger.info(f"cards written: {len(outs)} in {CARDS_DIR}")
+    date = draft.get("date") or datetime.now().strftime("%Y-%m-%d")
+    deck = render_cards_pdf(draft, CARDS_DIR / f"News at Noon {date} cards.pdf")
+    shutil.copyfile(deck, CARDS_DIR / "latest-cards.pdf")
+    outs += [deck, CARDS_DIR / "latest-cards.pdf"]
     if DROPBOX_DIR:
         try:
             dest = Path(DROPBOX_DIR) / "cards"

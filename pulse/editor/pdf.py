@@ -42,6 +42,11 @@ PRINT_CSS = """
   tr.fp-row { page-break-inside: avoid; break-inside: avoid; }
   h1, h2, h3 { page-break-after: avoid; break-after: avoid; }
   a[href] { color: inherit; }
+  /* The email wrapper cell ends with 32px of bottom padding; when the footer
+     lands near the foot of a page that padding alone spilled onto a blank
+     last page. Drop it for print, and never stretch the body to page height. */
+  html, body { height: auto !important; }
+  td[style*="padding:28px 24px 32px 24px"] { padding-bottom: 0 !important; }
   /* The email's font stacks name fonts this box does not have (Chromium would
      set everything in Liberation Sans/Serif). Use the brand sans and a real
      serif, both installed on the droplet. */
