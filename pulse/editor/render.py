@@ -63,7 +63,7 @@ def with_footer(html: str, unsub_url: str | None) -> str:
     if not parts:
         return html
     footer = (
-        '<div style="max-width:600px;margin:24px auto 0;padding:16px 0 24px;'
+        '<div style="max-width:600px;margin:24px auto 0;padding:16px 24px 24px;'
         'font-size:12px;color:#888888;text-align:center;">'
         f"You&rsquo;re receiving {PRODUCT_NAME} at this address. "
         + " &middot; ".join(parts) + "</div>"
