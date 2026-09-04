@@ -291,3 +291,30 @@ PULSE_UNSUB_SECRET in `~/.noon_env` before `NOON_SEND_MODE=subscribers`. Until D
   then the 12:15 send goes to the owner only. Rollback: set it back to `shadow`.
 - Chrome-automation note: checkout.stripe.com denies screenshots; `find`, `get_page_text` and the
   JavaScript tool still work there. Vercel CLI is authorized on the Mac (`npx vercel@latest`).
+
+---
+
+## 8. Status update — 2026-09-04
+
+- **Live to subscribers** (`NOON_SEND_MODE=subscribers`); the timer fires at **11:59 ET** so the
+  edition lands at noon. Pricing **$49/mo, $490/yr** (Stripe prices price_1UBhF1GXFv3s1ifAbkWIfy8l /
+  price_1UBhF2GXFv3s1ifAwh6oWsMg; old ones archived). Pages: /noon (signup), /noon/premium (the
+  deliberate upgrade page, linked from the email's Upgrade box), /noon/upgrade (the wall for walled
+  links). Teams/bespoke copy on both, pointing at /inquire. Telegram alert on every free signup;
+  paid alerts come from the Stripe webhook.
+- **Editor additions** (another session, 2026-09-04): per-link "keep in free edition" flag, source
+  pill under the caret, a social/free PDF (`latest-free.pdf` at /latest.pdf; premium at
+  /latest-premium.pdf behind login), four 1080×1350 PNG cards per edition (cards.py), Oracle and
+  Gelasio fonts on the droplet for PDFs.
+- **Links** (`pulse/editor/links.py`, run at draft build and re-runnable on a stored draft):
+  tracking redirects resolved (awstrack, Google Alerts wrapper, newsletter click-trackers), utm
+  stripped; source pills rebuilt from the resolved URLs — never "gmail"/"Newsletter", never our
+  own domains; Mailchimp-hosted newsletters named from the account (MAILCHIMP_ACCOUNTS). The
+  renderer's `_entry_pills` prefers `entry["_pills"]` when a cleaned draft carries it.
+- **Cards**: text goes through the email's `_body_links` (so every link in the shown paragraphs is
+  underlined, cover standfirst included); up to three paragraphs, shrinking type before dropping
+  one. No PDF card deck (owner: underline only, images cannot link).
+- **PDFs**: no trailing blank page (wrapper cell bottom padding dropped in print CSS).
+- Tooling: Vercel CLI and Stripe CLI (profile `--project-name he4` = the live account
+  acct_1TbkTOGXFv3s1ifA; the owner has four identically named Stripe accounts) are authorized on
+  the Mac. Test promo code NOONTEST (100% off, 2 redemptions left).
