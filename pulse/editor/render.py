@@ -8,6 +8,7 @@ owner sees is what goes out.
 """
 from __future__ import annotations
 
+import os
 import re
 from datetime import datetime
 
@@ -18,15 +19,29 @@ from delivery.variants import make_free_variant, scrub_archive_links
 PRODUCT_NAME = "News at Noon"
 EMAIL_FROM = "News at Noon <pulse@home-economics.us>"
 OWN_DOMAINS = ("homeeconomics.substack.com", "home-economics.us", "homeeconomics.us")
+# The owner's own posts are advertising: they stay live in the free email and
+# the social PDF. Matched by handle in the URL, plus the exact URLs of the
+# "Recent posts" block (draft["_own_posts"]), which may use x.com/i/status/… forms.
+OWN_HANDLE = os.environ.get("NOON_OWN_HANDLE", "azizsunderji")
+_OWN_URL_RE = re.compile(
+    r"https?://(?:www\.)?(?:x\.com|twitter\.com)/" + re.escape(OWN_HANDLE) + r"(?:/|$)"
+    r"|https?://bsky\.app/profile/" + re.escape(OWN_HANDLE) +
+    r"|https?://(?:www\.)?linkedin\.com/(?:in/" + re.escape(OWN_HANDLE) + r"|posts/" + re.escape(OWN_HANDLE) + r"_)",
+    re.IGNORECASE)
 PULSE_POSTAL_ADDRESS = "Home Economics, 12 East 49th Street, 11th floor, New York, NY 10017"
 
 
-def _protect_own_links(html: str) -> tuple[str, dict]:
+def _own_post_urls(draft: dict) -> set:
+    return {p.get("url") for p in (draft.get("_own_posts") or []) if isinstance(p, dict) and p.get("url")}
+
+
+def _protect_own_links(html: str, own_urls: set | None = None) -> tuple[str, dict]:
     keep: dict = {}
+    own_urls = own_urls or set()
 
     def _sub(m):
         href = m.group(1)
-        if any(d in href for d in OWN_DOMAINS):
+        if any(d in href for d in OWN_DOMAINS) or href in own_urls or _OWN_URL_RE.search(href):
             key = f"__OWNLINK_{len(keep)}__"
             keep[key] = href
             return f'href="{key}"'
@@ -49,7 +64,7 @@ def render_variants(draft: dict) -> tuple[str, str, str]:
     premium_html = scrub_archive_links(premium_html)
     free_raw, _t, _n2 = render_lunch_html(draft, tier="free")
     free_raw = scrub_archive_links(free_raw)
-    protected, keep = _protect_own_links(free_raw)
+    protected, keep = _protect_own_links(free_raw, _own_post_urls(draft))
     free_html = _restore_own_links(make_free_variant(protected), keep)
     return premium_html, free_html, top or ""
 
@@ -61,7 +76,7 @@ def render_social(draft: dict) -> str:
     the free email; no web key (the social edition never unlocks premium)."""
     raw, _t, _n = render_lunch_html(draft, tier="social")
     raw = scrub_archive_links(raw)
-    protected, keep = _protect_own_links(raw)
+    protected, keep = _protect_own_links(raw, _own_post_urls(draft))
     return _restore_own_links(make_free_variant(protected, wall_url=SIGNUP_URL), keep)
 
 
