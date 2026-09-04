@@ -42,6 +42,12 @@ PRINT_CSS = """
   tr.fp-row { page-break-inside: avoid; break-inside: avoid; }
   h1, h2, h3 { page-break-after: avoid; break-after: avoid; }
   a[href] { color: inherit; }
+  /* The email's font stacks name fonts this box does not have (Chromium would
+     set everything in Liberation Sans/Serif). Use the brand sans and a real
+     serif, both installed on the droplet. */
+  [style*="-apple-system"], [style*="Helvetica"], [style*="Arial"] {
+    font-family: "ABC Oracle Edu", "Helvetica Neue", Helvetica, Arial, sans-serif !important; }
+  [style*="Georgia"] { font-family: "Bitstream Charter", Georgia, "Times New Roman", serif !important; }
 </style>
 """
 
