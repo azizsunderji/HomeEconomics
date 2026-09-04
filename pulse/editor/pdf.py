@@ -47,7 +47,7 @@ PRINT_CSS = """
      serif, both installed on the droplet. */
   [style*="-apple-system"], [style*="Helvetica"], [style*="Arial"] {
     font-family: "ABC Oracle Edu", "Helvetica Neue", Helvetica, Arial, sans-serif !important; }
-  [style*="Georgia"] { font-family: "Bitstream Charter", Georgia, "Times New Roman", serif !important; }
+  [style*="Georgia"] { font-family: "Gelasio", "Bitstream Charter", Georgia, "Times New Roman", serif !important; }
 </style>
 """
 
