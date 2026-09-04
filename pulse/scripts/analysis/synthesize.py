@@ -50,7 +50,7 @@ MODEL = "claude-opus-4-8"
 # Tier 2: Institutional research — only pulled in if the finding is directly newsworthy
 #   Goldman, AEI, Fed, NBER, BLS, Census data releases
 SOURCE_TIERS = {
-    "hackernews": 1, "twitter": 1, "bluesky": 1,
+    "hackernews": 1, "twitter": 1, "bluesky": 1, "linkedin": 1,
     "substack": 1, "google_news": 1, "rss": 1, "gmail": 1,
 }
 
@@ -131,6 +131,8 @@ def _get_source_display_name(item: dict) -> str:
         return f"Twitter ({author})" if author else "Twitter"
     if source == "bluesky":
         return f"Bluesky ({author})" if author else "Bluesky"
+    if source == "linkedin":
+        return f"LinkedIn ({author})" if author else "LinkedIn"
     if feed:
         return feed
     if source == "gmail" and author:
@@ -265,7 +267,7 @@ def _format_items_for_conversation(items: list[dict], limit: int = 280) -> str:
         if id(item) in reserved_ids:
             continue
         src = (item.get("source") or "").lower()
-        if src in ("twitter", "bluesky"):
+        if src in ("twitter", "bluesky", "linkedin"):
             akey = _author_key(item)
             if akey:
                 n = author_counts.get(akey, 0)
@@ -287,11 +289,11 @@ def _format_items_for_conversation(items: list[dict], limit: int = 280) -> str:
     for tier in by_tier:
         social_items = [
             i for i in by_tier[tier]
-            if (i.get("source") or "").lower() in ("twitter", "bluesky")
+            if (i.get("source") or "").lower() in ("twitter", "bluesky", "linkedin")
         ]
         other_items = [
             i for i in by_tier[tier]
-            if (i.get("source") or "").lower() not in ("twitter", "bluesky")
+            if (i.get("source") or "").lower() not in ("twitter", "bluesky", "linkedin")
         ]
         # Group social by author (preserving relevance order across groups)
         from collections import OrderedDict
@@ -334,7 +336,7 @@ def _format_items_for_conversation(items: list[dict], limit: int = 280) -> str:
             # anchored on real news events.
             commentary_tag = "[COMMENTARY] " if item.get("_trigger_type") == "commentary" else ""
 
-            if source in ("twitter", "bluesky", "hackernews"):
+            if source in ("twitter", "bluesky", "linkedin", "hackernews"):
                 # Social: 600 chars covers the full tweet/post in almost all cases.
                 # ALL volume signals (likes, retweets, comment count) hidden from
                 # Sonnet — user feedback was that any volume-correlated signal
@@ -348,7 +350,7 @@ def _format_items_for_conversation(items: list[dict], limit: int = 280) -> str:
                 # Thread grouping: consecutive same-author items get a "↪" prefix
                 # so Sonnet visually sees them as a thread to summarize together.
                 akey = _author_key_for_grouping(item)
-                is_continuation = (akey == last_author_key and source in ("twitter", "bluesky"))
+                is_continuation = (akey == last_author_key and source in ("twitter", "bluesky", "linkedin"))
                 last_author_key = akey
                 body_preview = body[:600]
                 prefix = "  ↪ " if is_continuation else "  "
@@ -969,7 +971,7 @@ _SOCIAL_LEAD_PATTERN = re.compile(
     r"^\s*(@\w+|\[?@\w+\]?)",
     re.IGNORECASE,
 )
-_SOCIAL_ONLY_PLATFORM_NAMES = {"twitter", "x", "bluesky", "hackernews", "hn"}
+_SOCIAL_ONLY_PLATFORM_NAMES = {"twitter", "x", "bluesky", "linkedin", "hackernews", "hn"}
 
 # Words that signal the trigger is referencing a real published event/report
 # even when the platforms list happens to be twitter-only. Used to suppress
@@ -1613,6 +1615,10 @@ def _classify_url_only(url: str) -> tuple[str, str]:
         if parts and parts[0] == "profile" and len(parts) > 1:
             return "bluesky", f"@{parts[1]}"
         return "bluesky", f"@{parts[0]}" if parts and parts[0] else "@?"
+    if d == "linkedin.com" or d.endswith(".linkedin.com"):
+        # LinkedIn authors are display names, not handles; the corpus row
+        # (when present) supplies the name. URL-only fallback: platform.
+        return "linkedin", "LinkedIn"
     if d.endswith(".substack.com"):
         sub = d[:-len(".substack.com")]
         return "substack", sub.capitalize()
@@ -1673,6 +1679,11 @@ def _compute_cited_sources(briefing: dict, conn: sqlite3.Connection) -> dict:
                 display = (row["author"] or "").strip()
                 if display and not display.startswith("@"):
                     display = "@" + display
+                if not display:
+                    _, display = _classify_url_only(url)
+            elif src_type == "linkedin":
+                # display name, never an @handle
+                display = (row["author"] or "").strip()
                 if not display:
                     _, display = _classify_url_only(url)
             elif src_type in ("rss", "substack", "gmail"):
@@ -2577,7 +2588,7 @@ Coverage rules:
    - **WEEKLY ECONOMIC INDICATORS — REPORT Y/Y, NOT W/W (added 2026-06-18).** When citing weekly housing/economic releases (weekly mortgage applications surveys, weekly mortgage rate trackers, weekly jobless claims, weekly retail-sales-now-casts, weekly redbook, etc.), report the YEAR-OVER-YEAR comparison, NOT the week-over-week move. Weekly w/w changes are dominated by holidays, seasonality, single-day rate spikes, and report-week artifacts — they're noise, not signal, and reporting them as if they're the news inflates random fluctuation into a story. Y/y removes seasonality and gives the actual underlying trend. Concrete bad shape: "applications fell 3.8% w/w, with refinances down 5% and purchases down 3%." Concrete good shape: "purchase applications are 3% ahead of a year ago, with refinances down N% y/y." If the source ONLY reports w/w and the y/y is unavailable, drop the data point — don't repackage noise as news. Exception: a major outlier week (e.g., a 15%+ move on a rate decision) can be reported as such with the w/w mentioned alongside the y/y context, never w/w alone.
    - **Weave historical context with explicit time stamps — ENCOURAGED (added 2026-06-10).** The "Past 6 Days" section is a load-bearing input, not optional decoration. You are ENCOURAGED to weave the past-6-day arc into today's themes whenever genuinely relevant — historical weaving with explicit time stamps is a value-add, not padding, and substantially deepens the briefing. The bar is "genuinely relevant," not "strictly necessary": if a past-6-day item meaningfully extends, contextualizes, or contrasts with today's claim, cite it. Diagnostic: a strong briefing typically carries multiple "earlier this week / Tuesday / Friday" historical references woven across themes; a briefing with zero historical weaving has probably left value on the table. Always cite with a date stamp: "Tuesday, [an economist argued](url)..." or "earlier this week [an analyst warned](url)...". Never use a historical item without a date marker — the reader needs to instantly tell what's fresh vs context. Today's items don't need a date stamp (they're implicitly today). Historical items remain CONNECTIVE TISSUE — they cannot anchor a theme; today's items must anchor.
    - **CRITICAL: historical context must match the theme's specific topic, geography, and country.** Don't weld an Australian migration statistic into a Canadian unemployment theme, or a NYC rent freeze argument into a San Francisco housing theme, just because both have "international" or "housing_policy" tags. Before citing a historical voice, verify: (a) same country/metro, (b) same specific topic (rent control ≠ inclusionary zoning ≠ permitting reform), (c) same direction of argument. If a historical item is about a different country or a tangentially-related topic, leave it out — better to have no historical citation than a misleading one. Recurring failure pattern: an historical handle on Country A's housing/migration data being welded into a Country B theme just because the topic tags overlap.
-Label each theme's anchor platforms accurately: use "rss" or "substack" or the newspaper name when that's the anchor, "twitter" or "bluesky" when those anchor it.
+Label each theme's anchor platforms accurately: use "rss" or "substack" or the newspaper name when that's the anchor, "twitter" or "bluesky" or "linkedin" when those anchor it.
 
 **No theme-count target. Only include themes anchored on real news events with substantial direct commentary.** Don't pad. If a candidate has no real anchor or no commentary, drop it.
 
@@ -2795,7 +2806,7 @@ def generate_daily_briefing(
     # tech_general topic and weight=40 ("include sparingly only if exceptional").
     # HN isn't curated the way Twitter follows are; we scrape the front page.
     SOURCE_FLOOR = {
-        "twitter": 10, "bluesky": 10, "rss": 10, "substack": 10, "gmail": 10,
+        "twitter": 10, "bluesky": 10, "linkedin": 10, "rss": 10, "substack": 10, "gmail": 10,
         "hackernews": 30,
     }
     BULK_FLOOR = 30  # google_news and other bulk sources

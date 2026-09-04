@@ -73,7 +73,7 @@ def compute_convergence(
         # Convergence score: platforms * normalized relevance
         # Large bonus for organic sources — conversation is the primary signal
         organic_bonus = 1.0
-        organic_platforms = {"bluesky", "hackernews", "twitter"}
+        organic_platforms = {"bluesky", "hackernews", "twitter", "linkedin"}
         if organic_platforms & set(platform_names):
             organic_bonus = 3.0
 
@@ -123,7 +123,7 @@ def detect_organic_conversations(
     items = get_items_since(conn, hours=hours, min_relevance=min_relevance)
 
     # Separate by type
-    organic_sources = {"bluesky", "hackernews"}
+    organic_sources = {"bluesky", "hackernews", "linkedin"}
     news_sources = {"google_news", "rss", "twitter"}
 
     organic_items = [i for i in items if i["source"] in organic_sources]
@@ -175,7 +175,7 @@ def detect_active_debates(
     items = get_items_since(conn, hours=hours, min_relevance=min_relevance)
 
     # Only look at conversation sources
-    conversation_sources = {"hackernews", "twitter", "bluesky"}
+    conversation_sources = {"hackernews", "twitter", "bluesky", "linkedin"}
     conv_items = [i for i in items if i["source"] in conversation_sources]
 
     # Group by topic

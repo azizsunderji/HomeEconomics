@@ -173,6 +173,7 @@ SOURCE_CANON = {
     "x": "X",
     "twitter/x": "X",
     "bluesky": "Bluesky",
+    "linkedin": "LinkedIn",
     "hacker news": "Hacker News",
     "hackernews": "Hacker News",
     "hn": "Hacker News",
@@ -192,6 +193,7 @@ SOURCE_CANON = {
 PLATFORM_PILL = {
     "twitter": "X",
     "bluesky": "Bluesky",
+    "linkedin": "LinkedIn",
     "substack": "Substack",
     "hackernews": "Hacker News",
     "reddit": "Reddit",
@@ -777,8 +779,8 @@ def _narrow_link_anchors(text: str) -> str:
     return "".join(out)
 
 
-_SOCIAL_HOSTS = (("x.com", "X"), ("twitter.com", "X"), ("bsky.app", "Bluesky"))
-_PLATFORM_WORDS = re.compile(r"\b(on x\b|x,|bluesky|tweet|tweeted|posted on|thread on)", re.I)
+_SOCIAL_HOSTS = (("x.com", "X"), ("twitter.com", "X"), ("bsky.app", "Bluesky"), ("linkedin.com", "LinkedIn"))
+_PLATFORM_WORDS = re.compile(r"\b(on x\b|x,|bluesky|linkedin|tweet|tweeted|posted on|thread on)", re.I)
 
 
 def _name_platforms(text: str) -> str:

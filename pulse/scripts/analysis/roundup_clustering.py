@@ -130,7 +130,7 @@ def _count_substantive_words(text: str) -> int:
 def _is_quote_or_reply_tweet(item: dict) -> bool:
     """Heuristic: drop tweets that are mostly quoting/replying without a
     substantive original take. Conservative — only filters obvious cases."""
-    if item.get("source") not in ("twitter", "bluesky"):
+    if item.get("source") not in ("twitter", "bluesky", "linkedin"):
         return False
     body = (item.get("body") or "").strip()
     # Replies typically start with one or more @handles
@@ -244,7 +244,7 @@ def _aggregate_threads(items: list[dict]) -> list[dict]:
     for it in items:
         src = it.get("source", "")
         author = (it.get("author") or "").strip()
-        if src in ("twitter", "bluesky") and author:
+        if src in ("twitter", "bluesky", "linkedin") and author:
             groups[(src, author)].append(it)
         else:
             other.append(it)

@@ -25,6 +25,7 @@ EXPECTED_MIN = {
     "rss":        {"items": 200, "authors": 30},
     "twitter":    {"items": 50,  "authors": 10},
     "bluesky":    {"items": 30,  "authors": 8},
+    "linkedin":   {"items": 3,   "authors": 2},   # small curated list; a quiet day is normal
     "substack":   {"items": 10,  "authors": 5},
     "hackernews": {"items": 5,   "authors": 3},
     "gmail":      {"items": 5,   "authors": 3},

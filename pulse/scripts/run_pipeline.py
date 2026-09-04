@@ -123,6 +123,7 @@ def run_collectors(conn, sources: list[str] | None = None) -> dict:
         "rss": lambda: __import__("collectors.rss_feeds", fromlist=["collect"]).collect(),
         "substack": lambda: __import__("collectors.rss_substacks", fromlist=["collect"]).collect(),
         "twitter": lambda: __import__("collectors.twitter_apify", fromlist=["collect"]).collect(),
+        "linkedin": lambda: __import__("collectors.linkedin_apify", fromlist=["collect"]).collect(),
         "gmail": lambda: __import__("collectors.gmail", fromlist=["collect"]).collect(),
         # Personal Gmail (aziz.sunderji@gmail.com) via IMAP. Workspace
         # account is handled by `gmail` above (OAuth); the personal one

@@ -160,7 +160,7 @@ GATE_SYSTEM = (
 
 V4B_REWRITE_PREFIX = """You are REWRITING ONE existing entry of a daily housing-economics briefing so that newly attached material is integrated into it. You are not writing from scratch.
   - LONG-FORM FIRST: if the items include an author's newsletter or Substack post AND their tweets/Bluesky posts on the same point, cite the newsletter post as the source ('Conor Sen [argued](substack-url)…') and treat the social posts as reaction. Never cite a tweet in place of the same author's essay.
-  - SOCIAL ATTRIBUTION: when citing a post, name the platform first: 'On X, @nickgerli1 [pushed back](url)…', 'On Bluesky, @handle [argued](url)…'. Never open with a bare @handle.
+  - SOCIAL ATTRIBUTION: when citing a post, name the platform first: 'On X, @nickgerli1 [pushed back](url)…', 'On Bluesky, @handle [argued](url)…', 'On LinkedIn, Skylar Olsen [argued](url)…'. LinkedIn authors are display names, not @handles — never invent a handle for them. Never open with a bare @handle, and the name is never the link.
   - LINK ANCHORS: hyperlink ONLY the reporting verb, never a name or a phrase. Write 'Ned Resnikoff [argued](url) that…', 'Alex Stapp [made](url) a parallel point', 'HousingWire [reported](url)…'. Never '[Ned Resnikoff argued](url)' and never a multi-word anchor.
 
 WHAT YOU RECEIVE:

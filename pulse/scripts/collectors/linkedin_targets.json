@@ -1,0 +1,110 @@
+{
+  "_comment": "Seed list, verified with harvestapi/linkedin-profile-posts on 2026-09-03. Append contacts below.",
+  "targets": [
+    {
+      "url": "https://www.linkedin.com/company/zillow/",
+      "name": "Zillow",
+      "note": "company page"
+    },
+    {
+      "url": "https://www.linkedin.com/company/redfin/",
+      "name": "Redfin",
+      "note": "company page"
+    },
+    {
+      "url": "https://www.linkedin.com/company/realtor-com/",
+      "name": "Realtor.com",
+      "note": "company page"
+    },
+    {
+      "url": "https://www.linkedin.com/company/national-association-of-realtors/",
+      "name": "National Association of Realtors",
+      "note": "company page"
+    },
+    {
+      "url": "https://www.linkedin.com/company/mortgage-bankers-association/",
+      "name": "Mortgage Bankers Association",
+      "note": "company page"
+    },
+    {
+      "url": "https://www.linkedin.com/company/freddie-mac/",
+      "name": "Freddie Mac",
+      "note": "company page"
+    },
+    {
+      "url": "https://www.linkedin.com/company/fanniemae/",
+      "name": "Fannie Mae",
+      "note": "company page"
+    },
+    {
+      "url": "https://www.linkedin.com/company/john-burns-research-and-consulting/",
+      "name": "John Burns Research and Consulting",
+      "note": "company page"
+    },
+    {
+      "url": "https://www.linkedin.com/company/urban-institute/",
+      "name": "Urban Institute",
+      "note": "company page"
+    },
+    {
+      "url": "https://www.linkedin.com/company/harvard-joint-center-for-housing-studies/",
+      "name": "Harvard Joint Center for Housing Studies",
+      "note": "company page"
+    },
+    {
+      "url": "https://www.linkedin.com/company/costar-group/",
+      "name": "CoStar Group",
+      "note": "company page"
+    },
+    {
+      "url": "https://www.linkedin.com/company/apartment-list/",
+      "name": "Apartment List",
+      "note": "company page"
+    },
+    {
+      "url": "https://www.linkedin.com/company/cotality/",
+      "name": "Cotality",
+      "note": "company page"
+    },
+    {
+      "url": "https://www.linkedin.com/in/darylfairweather/",
+      "name": "Daryl Fairweather",
+      "note": "Redfin chief economist"
+    },
+    {
+      "url": "https://www.linkedin.com/in/lawrence-yun-592a76146/",
+      "name": "Lawrence Yun",
+      "note": "NAR chief economist"
+    },
+    {
+      "url": "https://www.linkedin.com/in/selma-hepp-phd-11b0773a/",
+      "name": "Selma Hepp",
+      "note": "Cotality chief economist"
+    },
+    {
+      "url": "https://www.linkedin.com/in/mark-zandi-667086350/",
+      "name": "Mark Zandi",
+      "note": "Moody's chief economist"
+    },
+    {
+      "url": "https://www.linkedin.com/in/allisonmwolf/",
+      "name": "Ali Wolf",
+      "note": "Zonda chief economist"
+    },
+    {
+      "url": "https://www.linkedin.com/in/logan-mohtashami-5167631/",
+      "name": "Logan Mohtashami",
+      "note": "HousingWire lead analyst"
+    },
+    {
+      "url": "https://www.linkedin.com/in/jonathanjmiller/",
+      "name": "Jonathan Miller",
+      "note": "Miller Samuel"
+    },
+    {
+      "url": "https://www.linkedin.com/in/ivy-zelman-64304616b/",
+      "name": "Ivy Zelman",
+      "note": "Zelman & Associates"
+    }
+  ]
+}

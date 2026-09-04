@@ -616,6 +616,7 @@ SOURCE_WEIGHTS = {
     "twitter": 4,
     "hackernews": 4,
     "bluesky": 3,
+    "linkedin": 3,
     "substack": 3,
     "gmail": 2,       # institutional research via email
     "google_news": 1,
