@@ -189,24 +189,44 @@ def _first_paragraph_md(md: str, max_chars: int) -> str:
     return cut if cut.endswith((".", "?", "!")) else cut + "…"
 
 
-def card_theme(draft: dict, entry: dict, number: int, links: bool = False) -> str:
+def _paragraphs_md(md: str, max_paras: int, max_chars: int) -> list[str]:
+    """Opening paragraphs of a summary (markdown kept) within a plain-text
+    character budget. Paragraphs are never cut mid-way; the budget decides
+    how many fit."""
+    paras = [x.strip() for x in str(md or "").replace("\r", "").split("\n\n") if x.strip()]
+    out: list[str] = []
+    total = 0
+    for x in paras[:max_paras]:
+        n = len(plain(x))
+        if out and total + 2 + n > max_chars:
+            break
+        out.append(x)
+        total += n + 2
+    return out or paras[:1]
+
+
+def _card_links(md_paragraph: str) -> str:
+    """The email's link treatment (only the reporting verb, never a handle,
+    'On X,' before handles, original links kept if narrowing would lose one)
+    with the email's inline styles dropped so the card CSS underlines."""
+    from delivery.email_lunch import _body_links
+    html = _body_links(md_paragraph)
+    return re.sub(r'<a\s+href="([^"]+)"[^>]*>', r'<a href="\1">', html)
+
+
+def card_theme(draft: dict, entry: dict, number: int, links: bool = False,
+               max_paras: int = 3, max_chars: int = 1100, body_px: int = 33) -> str:
     title = (entry.get("title") or "").strip()
-    limit = 760 if len(title) < 50 else 640
-    # Linked words carry the email's blue underline on the cards too (an image
-    # cannot carry a working link; the underline shows where the sources are).
-    # Same rules as the email: only the reporting verb, never a handle.
-    from delivery.email_lunch import _narrow_link_anchors, _name_platforms
-    md = _name_platforms(_narrow_link_anchors(entry.get("summary") or ""))
-    body = _first_paragraph_md(md, limit)
+    paras = _paragraphs_md(entry.get("summary") or "", max_paras, max_chars)
     pills = "".join(f'<span class="pill">{_esc(p)}</span>' for p in (entry.get("news_outlets") or [])[:5])
     date = draft.get("date") or ""
-    body_html = "".join(f'<p style="margin:0 0 22px 0">{linked(x)}</p>' for x in body.split("\n\n"))
+    body_html = "".join(f'<p style="margin:0 0 22px 0">{_card_links(x)}</p>' for x in paras)
     return f"""
 <div class="card">
   <div class="head"><img src="{LOGO_URL}" alt="Home Economics"><span class="date">{_esc(date_label(date))}</span></div>
   <div class="num">{number}</div>
   <div class="h">{_esc(title)}</div>
-  <div class="body">{body_html}</div>
+  <div class="body" style="font-size:{body_px}px">{body_html}</div>
   <div class="pills">{pills}</div>
   {_foot("theme %d of today's edition" % number, links)}
 </div>"""
@@ -235,15 +255,39 @@ def render_cards(draft: dict, out_dir: Path) -> list[Path]:
     out_dir.mkdir(parents=True, exist_ok=True)
     date = draft.get("date") or datetime.now().strftime("%Y-%m-%d")
     entries, chosen = pick_entries(draft)
-    pages = [card_cover(draft, entries)] + [card_theme(draft, e, n) for n, e in chosen]
     outs = []
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         page = browser.new_page(viewport={"width": W, "height": H}, device_scale_factor=1)
-        for k, html in enumerate(pages, start=1):
-            out = out_dir / f"News at Noon {date} card{k}.png"
+
+        def overflows() -> bool:
+            # the footer is pushed below the card when the body is too long
+            return page.evaluate("() => { const c = document.querySelector('.card'); return c.scrollHeight > c.clientHeight + 1; }")
+
+        def show(html: str) -> None:
             page.set_content(_doc([html]), wait_until="networkidle")
             page.wait_for_timeout(150)
+
+        # cover
+        show(card_cover(draft, entries))
+        out = out_dir / f"News at Noon {date} card1.png"
+        page.screenshot(path=str(out), clip={"x": 0, "y": 0, "width": W, "height": H})
+        outs.append(out)
+        # themes: as much of the opening as fits — try 3 paragraphs at 33px,
+        # then smaller type, then fewer paragraphs
+        for k, (n, e) in enumerate(chosen, start=2):
+            fitted = None
+            for max_paras in (3, 2, 1):
+                for px in (33, 31, 29, 27):
+                    show(card_theme(draft, e, n, max_paras=max_paras, body_px=px))
+                    if not overflows():
+                        fitted = (max_paras, px)
+                        break
+                if fitted:
+                    break
+            if not fitted:
+                show(card_theme(draft, e, n, max_paras=1, max_chars=640, body_px=27))
+            out = out_dir / f"News at Noon {date} card{k}.png"
             page.screenshot(path=str(out), clip={"x": 0, "y": 0, "width": W, "height": H})
             outs.append(out)
         browser.close()
