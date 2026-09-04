@@ -77,6 +77,7 @@ from v3_1_runner import (  # noqa: E402
     load_v1_scaffold,
     _post_resend,
 )
+from config import corpus_lookback_hours  # noqa: E402
 from analysis.roundup_clustering import (  # noqa: E402
     embed_corpus, cluster_items, Cluster, CorpusItem, MIN_CLUSTER_SIZE,
     OPENAI_EMBED_MODEL,
@@ -1082,7 +1083,8 @@ def _opus_cents(tracker: RunCostTracker) -> float:
 def main() -> None:
     p = argparse.ArgumentParser(description="Pulse v4b runner: v1 themes + attached clusters")
     p.add_argument("--db", default=DEFAULT_DB)
-    p.add_argument("--lookback-hours", type=int, default=24)
+    p.add_argument("--lookback-hours", type=int, default=corpus_lookback_hours(),
+                   help="corpus window; default 24, or 72 on Mondays so the edition covers the weekend")
     p.add_argument("--min-cluster-size", type=int, default=MIN_CLUSTER_SIZE)
     p.add_argument("--max-entries", type=int, default=DEFAULT_MAX_ENTRIES)
     p.add_argument("--dedup-threshold", type=float, default=DEFAULT_DEDUP_THRESHOLD)

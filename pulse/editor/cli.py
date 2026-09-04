@@ -3,6 +3,11 @@
   python cli.py ingest   every 10 min 11:00–15:59 UTC: create today's draft
                          from the synced brief and email the edit link once
   python cli.py send     11:59 ET (lands at noon): send today's draft unless held/sent
+
+News at Noon is a Monday-to-Friday product: ingest and send do nothing on a
+Saturday or Sunday date unless --force is given. The timers are already
+Mon..Fri; this guard covers a Persistent catch-up run after downtime and
+manual starts.
   python cli.py render --tier free --out x.html
   python cli.py test --tier premium
   python cli.py pdf [--date]   write the edition PDF (also runs after every send)
@@ -12,6 +17,7 @@ from __future__ import annotations
 import argparse
 import logging
 import sys
+from datetime import datetime
 from pathlib import Path
 
 import paths
@@ -30,8 +36,16 @@ logging.basicConfig(
 logger = logging.getLogger("noon.cli")
 
 
+def is_weekend(date: str) -> bool:
+    """True for a Saturday or Sunday date (YYYY-MM-DD)."""
+    return datetime.strptime(date, "%Y-%m-%d").weekday() >= 5
+
+
 def cmd_ingest(args) -> int:
     date = args.date or drafts.today_et()
+    if is_weekend(date) and not args.force:
+        logger.info(f"{date} is a weekend: News at Noon is Monday to Friday; not ingesting")
+        return 0
     row = ingest.ingest(date, replace=args.replace)
     if row is None:
         logger.info(f"{date}: nothing to ingest yet")
@@ -46,6 +60,9 @@ def cmd_ingest(args) -> int:
 
 def cmd_send(args) -> int:
     date = args.date or drafts.today_et()
+    if is_weekend(date) and not args.force:
+        logger.info(f"{date} is a weekend: News at Noon is Monday to Friday; not sending")
+        return 0
     row = drafts.get(date) or ingest.ingest(date)
     if row is None:
         logger.error(f"{date}: no draft and no stored brief — nothing sent")
@@ -115,7 +132,8 @@ def main() -> int:
     p = argparse.ArgumentParser()
     sub = p.add_subparsers(dest="cmd", required=True)
     a = sub.add_parser("ingest"); a.add_argument("--date"); a.add_argument("--replace", action="store_true")
-    a.add_argument("--no-notify", action="store_true"); a.set_defaults(fn=cmd_ingest)
+    a.add_argument("--no-notify", action="store_true"); a.add_argument("--force", action="store_true")
+    a.set_defaults(fn=cmd_ingest)
     a = sub.add_parser("send"); a.add_argument("--date"); a.add_argument("--force", action="store_true")
     a.set_defaults(fn=cmd_send)
     a = sub.add_parser("render"); a.add_argument("--date"); a.add_argument("--tier", default="free")

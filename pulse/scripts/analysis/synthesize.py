@@ -21,7 +21,7 @@ from urllib.parse import urlparse
 import anthropic
 import requests
 
-from config import TOPICS, RELEVANCE_THRESHOLD_HIGHLIGHT, SOURCE_WEIGHTS
+from config import TOPICS, RELEVANCE_THRESHOLD_HIGHLIGHT, SOURCE_WEIGHTS, corpus_lookback_hours
 from store import (
     get_db, get_items_since, get_conversation_items, add_story_opportunity,
     save_briefing, get_collection_stats,
@@ -145,7 +145,24 @@ def _get_source_display_name(item: dict) -> str:
     return source.title()
 
 
-def _format_items_for_conversation(items: list[dict], limit: int = 280) -> str:
+def _day_stamp(item: dict) -> str:
+    """'[Fri] ' style weekday stamp (US Eastern) for an item, '' if it has no timestamp.
+    Used only when the corpus window is longer than a day (the Monday edition), so the
+    model can tell Friday's news from Monday's."""
+    ts_str = item.get("published_at") or item.get("collected_at") or ""
+    try:
+        from datetime import datetime as _dt
+        from zoneinfo import ZoneInfo as _ZI
+        ts = _dt.fromisoformat(ts_str.replace("Z", "+00:00"))
+        if ts.tzinfo is None:
+            ts = ts.replace(tzinfo=timezone.utc)
+        return f"[{ts.astimezone(_ZI('America/New_York')).strftime('%a')}] "
+    except Exception:
+        return ""
+
+
+def _format_items_for_conversation(items: list[dict], limit: int = 280,
+                                   stamp_days: bool = False) -> str:
     """Format items for the conversation-focused synthesis prompt.
 
     Conversation items get full treatment (body + comments).
@@ -369,7 +386,8 @@ def _format_items_for_conversation(items: list[dict], limit: int = 280) -> str:
                             f"       HN Discussion URL: {hn_url}  (use this when citing 'Hacker News commenters' or 'the HN thread')\n"
                         )
                 lines.append(
-                    f"{prefix}[{item.get('conversation_signal', '?'):>3} conv] "
+                    f"{prefix}{_day_stamp(item) if stamp_days else ''}"
+                    f"[{item.get('conversation_signal', '?'):>3} conv] "
                     f"{commentary_tag}"
                     f"{item['_source_display']}: "
                     f"{item['title'][:200]}\n"
@@ -404,7 +422,7 @@ def _format_items_for_conversation(items: list[dict], limit: int = 280) -> str:
                     except (json.JSONDecodeError, TypeError):
                         pass
                 lines.append(
-                    f"  {commentary_tag}{item['_source_display']}: {item['title'][:200]}\n"
+                    f"  {_day_stamp(item) if stamp_days else ''}{commentary_tag}{item['_source_display']}: {item['title'][:200]}\n"
                     f"       URL: {item.get('url', '')}\n"
                     f"       {body_preview}"
                     f"{' | Stats: ' + '; '.join(stats[:2]) if stats and tier == 2 else ''}"
@@ -2737,8 +2755,11 @@ def generate_daily_briefing(
     """
     client = client or anthropic.Anthropic()
 
-    # Gather all inputs
-    all_items = get_items_since(conn, hours=24, min_relevance=0)
+    # Gather all inputs. The window is 24h except on Mondays (72h, so the
+    # Monday edition covers the weekend) — see config.corpus_lookback_hours.
+    window = corpus_lookback_hours()
+    logger.info(f"Corpus window for today's pool: {window}h")
+    all_items = get_items_since(conn, hours=window, min_relevance=0)
 
     # Unwrap Substack tracking-redirect URLs to the underlying article
     # URLs. Without this, citations point to .../substack.com/redirect/...
@@ -2827,10 +2848,10 @@ def generate_daily_briefing(
         if _is_super_smart_item(i)
         or (i.get("relevance_score") or 0) >= SOURCE_FLOOR.get(i.get("source"), BULK_FLOOR)
     ]
-    convergence = compute_convergence(conn, hours=24)
+    convergence = compute_convergence(conn, hours=window)
     shifts = detect_narrative_shifts(conn)
-    organic = detect_organic_conversations(conn, hours=24)
-    stats = get_collection_stats(conn, hours=24)
+    organic = detect_organic_conversations(conn, hours=window)
+    stats = get_collection_stats(conn, hours=window)
 
     # Source breakdown with human-readable names
     source_display_counts = Counter()
@@ -2841,7 +2862,7 @@ def generate_daily_briefing(
     conversation_items = [i for i in all_items if (i.get("conversation_signal") or 0) >= 30]
 
     # Get collection errors for transparency
-    collection_errors = get_recent_collection_errors(conn, hours=24)
+    collection_errors = get_recent_collection_errors(conn, hours=window)
 
     # Substacker / columnist items: any source where an individual writer is
     # making an argument worth summarizing. Three sources qualify:
@@ -2962,10 +2983,20 @@ Each paper below already ran as Paper of the Day within the last 14 days. Do NOT
             f"Paper-of-the-day do-not-pick list: {len(recently_used_paper_titles)} title(s) injected into prompt"
         )
 
+    window_note = ""
+    if window > 24:
+        window_note = (
+            f"\nWINDOW NOTE: this is the Monday edition and the pool below covers the past {window} hours "
+            "(Friday morning through this morning, US Eastern), not one day. Every item carries a [Day] stamp. "
+            "Only items stamped with today's weekday are today's news; refer to the rest by day "
+            "('Friday', 'over the weekend', 'Saturday'), never as 'today'. Weekend and Friday items may still "
+            "anchor a theme.\n"
+        )
+
     user_content = f"""## Today's Collected Items — {len(all_items)} total, {len(relevant_items)} above relevance threshold, {len(conversation_items)} with active conversation
 When citing a tweet or Bluesky post, use the @handle exactly as it appears — do NOT translate to a real name or guess who the person is.
-
-{_format_items_for_conversation(relevant_items, limit=280)}
+{window_note}
+{_format_items_for_conversation(relevant_items, limit=280, stamp_days=window > 24)}
 
 ## Newsletters (INPUT — route into themes / roundups; no dedicated section)
 These are newsletter articles (Substack + email newsletters). The dedicated substacker_takes output section has been removed (see rule 5) — DO NOT output a substacker_takes field. Instead: when a newsletter directly comments on a candidate event, weave it into that theme's commentary with inline [author](url) citation; when it's topical discussion without a single event anchor, route it into a conversation_roundup; skip the rest.

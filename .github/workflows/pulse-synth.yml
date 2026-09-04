@@ -1,6 +1,8 @@
 name: Pulse Daily Synthesis & Email
 
-# Runs once per day at 11:00 UTC (7:00am ET / 6:00am EST).
+# Runs Monday to Friday at 11:00 UTC (7:00am ET / 6:00am EST). News at Noon
+# is a weekday product (owner decision 2026-09-04); the Monday run reads a
+# 72-hour corpus window so weekend news is covered.
 # Reads the pulse.db that the collection workflow synced to Dropbox,
 # re-pulls Gmail to catch late newsletters, classifies, enriches paywalled
 # articles via Browserbase, fetches journal abstracts, runs Sonnet synthesis,
@@ -12,9 +14,9 @@ on:
     # Three staggered attempts within 40 min — if GitHub's cron skips one
     # (which happens at top-of-hour under load), the next one catches it.
     # The "already-ran-today" guard below prevents double-sending.
-    - cron: "0 11 * * *"   # 7:00am ET / 6:00am EST — primary
-    - cron: "20 11 * * *"  # 7:20am ET — backup #1
-    - cron: "40 11 * * *"  # 7:40am ET — backup #2 (last reasonable hit before 8am)
+    - cron: "0 11 * * 1-5"   # Mon–Fri 7:00am ET / 6:00am EST — primary
+    - cron: "20 11 * * 1-5"  # Mon–Fri 7:20am ET — backup #1
+    - cron: "40 11 * * 1-5"  # Mon–Fri 7:40am ET — backup #2 (last reasonable hit before 8am)
   workflow_dispatch:
 
 jobs:
@@ -85,6 +87,19 @@ jobs:
             echo "should_run=true" >> "$GITHUB_OUTPUT"
             echo "No prior success or earlier-in-progress run today — proceeding."
           fi
+
+      - name: "Corpus window (Monday covers the weekend, 72h; otherwise 24h)"
+        # One number for the shell steps (enrichment) and the Python steps
+        # (synthesis, v4b) via PULSE_LOOKBACK_HOURS. Same rule as
+        # config.corpus_lookback_hours, evaluated in US Eastern.
+        id: window
+        if: steps.guard.outputs.should_run == 'true'
+        run: |
+          dow=$(TZ=America/New_York date +%u)
+          if [ "$dow" = "1" ]; then hours=72; else hours=24; fi
+          echo "hours=$hours" >> "$GITHUB_OUTPUT"
+          echo "enrich_hours=$((hours + 12))" >> "$GITHUB_OUTPUT"
+          echo "corpus window: ${hours}h (ET weekday $dow)"
 
       - name: Set up Python
         if: steps.guard.outputs.should_run == 'true'
@@ -180,12 +195,12 @@ jobs:
       - name: Enrich articles via Browserbase
         if: steps.guard.outputs.should_run == 'true'
         working-directory: pulse
-        run: python enrich_articles.py --hours 36 --limit 300
+        run: python enrich_articles.py --hours ${{ steps.window.outputs.enrich_hours }} --limit 300
 
       - name: Enrich t.co links inside high-relevance tweets
         if: steps.guard.outputs.should_run == 'true'
         working-directory: pulse
-        run: python enrich_tweet_links.py --hours 24 --limit 60 --min-relevance 50 || echo "Tweet-link enrichment failed — continuing"
+        run: python enrich_tweet_links.py --hours ${{ steps.window.outputs.hours }} --limit 60 --min-relevance 50 || echo "Tweet-link enrichment failed — continuing"
 
       - name: Fetch journal abstracts
         if: steps.guard.outputs.should_run == 'true'
@@ -203,6 +218,8 @@ jobs:
         # email. We now send only the v3.1 email. (v1 email retired 2026-06-30.)
         if: steps.guard.outputs.should_run == 'true'
         working-directory: pulse/scripts
+        env:
+          PULSE_LOOKBACK_HOURS: ${{ steps.window.outputs.hours }}
         run: python run_pipeline.py synthesize --no-email
 
       # V2 disabled 2026-06-16: user is not using v2 comparison output.
@@ -249,6 +266,7 @@ jobs:
           PULSE_DB: ${{ github.workspace }}/pulse/data/pulse.db
           CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
           PULSE_UNSUB_SECRET: ${{ secrets.PULSE_UNSUB_SECRET }}
+          PULSE_LOOKBACK_HOURS: ${{ steps.window.outputs.hours }}
         run: python -u v4b_runner.py --no-send || echo "V4b run failed — continuing without"
 
       # v1 health-report step retired 2026-06-30 alongside the v1 email. The

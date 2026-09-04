@@ -628,3 +628,31 @@ MIN_COMMENTS_FOR_CONVERSATION = 10  # Below this, a post is a link share, not a 
 # ── Data lake path (for crosswalk) ────────────────────────────────────────────
 DATA_LAKE_PATH = os.environ.get("DATA_LAKE_PATH", "/Users/azizsunderji/Dropbox/Home Economics/Data")
 DATA_LAKE_CATALOG_PATH = os.environ.get("DATA_LAKE_CATALOG_PATH", "/Users/azizsunderji/Dropbox/Home Economics/Reference/data_lake_catalog.md")
+
+
+# ── Corpus window ─────────────────────────────────────────────────────────────
+# News at Noon is a Monday-to-Friday product (owner decision 2026-09-04). The
+# Monday edition covers the weekend: its "today" pool reaches back 72 hours
+# (Friday 7am ET to Monday 7am ET) instead of 24. Both the v1 synthesis
+# (analysis/synthesize.py) and the v4b runner read this so they agree.
+CORPUS_LOOKBACK_HOURS = 24
+MONDAY_LOOKBACK_HOURS = 72
+
+
+def corpus_lookback_hours(now=None) -> int:
+    """Hours of items the daily synthesis treats as today's pool.
+
+    72 on a Monday (US Eastern), 24 otherwise. The PULSE_LOOKBACK_HOURS
+    environment variable overrides both (the workflow sets it so the shell
+    steps and the Python steps use one number).
+    """
+    env = os.environ.get("PULSE_LOOKBACK_HOURS")
+    if env:
+        return int(env)
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+    et = ZoneInfo("America/New_York")
+    now = now or datetime.now(et)
+    if now.tzinfo is not None:
+        now = now.astimezone(et)
+    return MONDAY_LOOKBACK_HOURS if now.weekday() == 0 else CORPUS_LOOKBACK_HOURS

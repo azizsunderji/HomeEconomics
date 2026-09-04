@@ -8,10 +8,10 @@ is byte-for-byte what gets sent.
 Flow each day
 1. 11:00 UTC GitHub Actions builds the v4b brief and stores it in `pulse.db`,
    which syncs to the droplet.
-2. `noon-ingest.timer` (every 10 min, 11:00–15:59 UTC) copies today's brief
+2. `noon-ingest.timer` (Monday to Friday, every 10 min, 11:00–15:59 UTC) copies today's brief
    into `~/work/noon/noon_drafts.db` and emails the owner a one-tap edit link.
 3. The owner edits (or not) at `https://noon.homeeconomics.us`.
-4. `noon-send.timer` at 11:59 America/New_York sends the draft, unless it is
+4. `noon-send.timer` at 11:59 America/New_York, Monday to Friday, sends the draft, unless it is
    Held or already sent manually. `NOON_SEND_MODE=shadow` sends to the owner
    only; `subscribers` sends to the Clerk list.
 

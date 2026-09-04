@@ -1,8 +1,8 @@
 [Unit]
-Description=News at Noon send at 11:59 US Eastern (lands at noon)
+Description=News at Noon send at 11:59 US Eastern, Monday to Friday (lands at noon)
 
 [Timer]
-OnCalendar=*-*-* 11:59:00 America/New_York
+OnCalendar=Mon..Fri *-*-* 11:59:00 America/New_York
 Persistent=true
 
 [Install]

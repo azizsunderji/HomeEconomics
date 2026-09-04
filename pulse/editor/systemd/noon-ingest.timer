@@ -1,8 +1,8 @@
 [Unit]
-Description=Poll for today's brief every 10 minutes, 11:00-15:59 UTC (synth runs 11:00 UTC)
+Description=Poll for today's brief every 10 minutes, 11:00-15:59 UTC, Monday to Friday (synth runs 11:00 UTC)
 
 [Timer]
-OnCalendar=*-*-* 11..15:00/10:00 UTC
+OnCalendar=Mon..Fri *-*-* 11..15:00/10:00 UTC
 Persistent=false
 
 [Install]

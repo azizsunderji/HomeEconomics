@@ -318,3 +318,31 @@ PULSE_UNSUB_SECRET in `~/.noon_env` before `NOON_SEND_MODE=subscribers`. Until D
 - Tooling: Vercel CLI and Stripe CLI (profile `--project-name he4` = the live account
   acct_1TbkTOGXFv3s1ifA; the owner has four identically named Stripe accounts) are authorized on
   the Mac. Test promo code NOONTEST (100% off, 2 redemptions left).
+
+---
+
+## 9. Status update — 2026-09-04 evening: Monday-to-Friday only, Monday covers the weekend
+
+- **Weekday schedule** (owner decision): both droplet timers are `Mon..Fri` (repo units under
+  `pulse/editor/systemd/`, installed and verified: next fire Mon 2026-09-07). `cli.py send` and
+  `cli.py ingest` skip a Saturday or Sunday date unless `--force` — this covers the send timer's
+  Persistent catch-up after downtime (without it a missed Friday send would fire on Saturday and
+  send Saturday's brief). `pulse-synth.yml` crons are `1-5`; `pulse-daily.yml` scrapers still run
+  every day so the weekend corpus exists for Monday.
+- **Monday lookback 72h**: `config.corpus_lookback_hours()` returns 72 on a Monday (US Eastern),
+  24 otherwise; `PULSE_LOOKBACK_HOURS` overrides. Used by `generate_daily_briefing` (today's pool,
+  convergence, organic conversations, stats, collection errors; the past-6-days block is unchanged
+  and still excludes today's pool by id) and by `v4b_runner.py --lookback-hours` (default). The
+  workflow computes the same number in a "Corpus window" step, passes it as `PULSE_LOOKBACK_HOURS`
+  to the synthesis and v4b steps, and scales the enrichment steps (`enrich_articles --hours` =
+  window + 12, `enrich_tweet_links --hours` = window).
+- **Monday prompt**: when the window exceeds 24h each item in the today's-pool block carries a
+  `[Fri]`/`[Sat]`/`[Sun]`/`[Mon]` stamp (US Eastern) and a WINDOW NOTE tells the model only items
+  stamped with today's weekday are "today"; the rest are cited by day. First real run: Mon 7 Sep.
+  Check that edition for "today" applied to Friday news and for the corpus size (three days of
+  items compete for the same 280 slots).
+- Verified today's (Fri 4 Sep) edition: held at 11:59 ET by the owner, sent manually at 12:00:53 ET
+  to 8/8 subscribers (2 premium, 6 free). Six draft versions were saved after the send (17:27–18:47
+  UTC); those edits are in the stored draft and PDF path only, not in what subscribers received.
+- Workspace for this product on the Dropbox root: `NewsAtNoon/` (CLAUDE.md, scripts of each
+  session's patches and checks).
