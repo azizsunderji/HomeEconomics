@@ -20,6 +20,7 @@ Routes
 from __future__ import annotations
 
 import logging
+import threading
 from typing import Any
 
 from fastapi import Body, FastAPI, HTTPException, Query, Request
@@ -239,7 +240,20 @@ def send_now(request: Request, date: str, body: dict[str, Any] = Body(default={}
     ok, line = sender.send_final(row["json"])
     if not ok:
         raise HTTPException(status_code=502, detail=line)
-    return _payload(drafts.set_status(date, "sent", send_log=f"manual: {line}"))
+    payload = _payload(drafts.set_status(date, "sent", send_log=f"manual: {line}"))
+    # Same PDF step the timer path runs (cli._pdf_after_send); in a thread so
+    # the button returns at once. Failures alert the owner, never the reader.
+    threading.Thread(target=_pdf_after_send, args=(row["json"],), daemon=True).start()
+    return payload
+
+
+def _pdf_after_send(draft: dict) -> None:
+    try:
+        import pdf
+        pdf.publish_pdf(draft)
+    except Exception as e:  # noqa: BLE001
+        logger.error(f"pdf generation failed after manual send: {e}")
+        sender.send_alert("PDF generation failed", str(e))
 
 
 @app.post("/api/draft/{date}/reset")
