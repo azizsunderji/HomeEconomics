@@ -140,8 +140,11 @@ LATEST_URL = "https://noon.homeeconomics.us/latest"
 
 def card_cover(draft: dict, entries: list[dict], links: bool = False) -> str:
     date = draft.get("date") or datetime.now().strftime("%Y-%m-%d")
-    stand = plain(draft.get("intro") or "")
-    stand = first_paragraph(stand, 300)
+    # standfirst keeps its links (underlined), cut on the plain-text length
+    stand_md = _paragraphs_md(draft.get("intro") or "", 1, 10_000)[0] if (draft.get("intro") or "").strip() else ""
+    if len(plain(stand_md)) > 300:
+        stand_md = _first_paragraph_md(stand_md, 300)
+    stand = plain(stand_md)
     # fit the list to the card: fewer titles when the standfirst is long
     max_items = 12 if len(stand) < 160 else 9 if len(stand) < 240 else 7
     items = ""
@@ -158,7 +161,7 @@ def card_cover(draft: dict, entries: list[dict], links: bool = False) -> str:
 <div class="card">
   <div class="head"><img src="{LOGO_URL}" alt="Home Economics"><span class="date">{_esc(date_label(date))}</span></div>
   <div class="title">News at Noon</div>
-  <div class="stand">{_esc(stand)}</div>
+  <div class="stand">{_card_links(stand_md)}</div>
   <ul class="toc">{items}</ul>
   {_foot("a daily brief on the U.S. housing market", links)}
 </div>"""
