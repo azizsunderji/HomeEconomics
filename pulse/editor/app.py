@@ -74,6 +74,20 @@ async def no_store(request: Request, call_next):
 
 # ── pages ───────────────────────────────────────────────────────────────
 
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon_ico():
+    """Same Home Economics mark as the main site, so bookmarks and tabs for the
+    editor, the web edition and the PDFs carry the icon."""
+    return FileResponse(STATIC / "favicon.ico", media_type="image/x-icon",
+                        headers={"Cache-Control": "public, max-age=86400"})
+
+
+@app.get("/icon.svg", include_in_schema=False)
+def favicon_svg():
+    return FileResponse(STATIC / "icon.svg", media_type="image/svg+xml",
+                        headers={"Cache-Control": "public, max-age=86400"})
+
+
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request):
     if not _authed(request):
