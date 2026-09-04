@@ -192,7 +192,14 @@ def _first_paragraph_md(md: str, max_chars: int) -> str:
 def card_theme(draft: dict, entry: dict, number: int, links: bool = False) -> str:
     title = (entry.get("title") or "").strip()
     limit = 760 if len(title) < 50 else 640
-    body = _first_paragraph_md(entry.get("summary") or "", limit) if links else first_paragraph(entry.get("summary") or "", limit)
+    if links:
+        # Same link house style as the email: only the reporting verb carries
+        # the link, handles are never linked, "On X," before a handle.
+        from delivery.email_lunch import _narrow_link_anchors, _name_platforms
+        md = _name_platforms(_narrow_link_anchors(entry.get("summary") or ""))
+        body = _first_paragraph_md(md, limit)
+    else:
+        body = first_paragraph(entry.get("summary") or "", limit)
     pills = "".join(f'<span class="pill">{_esc(p)}</span>' for p in (entry.get("news_outlets") or [])[:5])
     date = draft.get("date") or ""
     conv = linked if links else _esc
