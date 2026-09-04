@@ -97,6 +97,12 @@ def publish_pdf(draft: dict, tier: str = PDF_TIER) -> Path:
     make_pdf(draft, social, "social")
     shutil.copyfile(social, PDF_DIR / "latest-free.pdf")
     logger.info(f"pdf published: {dated.name} ({tier}) and {social.name} (social)")
+    # Social image cards (cards.py) ride along with the PDFs; never fatal.
+    try:
+        import cards
+        cards.publish_cards(draft)
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"social cards failed: {e}")
     if DROPBOX_DIR:
         try:
             dest = Path(DROPBOX_DIR)
