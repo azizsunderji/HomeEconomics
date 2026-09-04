@@ -109,10 +109,31 @@
   document.addEventListener('selectionchange', () => {
     const sel = document.getSelection(); if (!sel || !sel.rangeCount) return;
     const r = sel.getRangeAt(0); const ed = editorOf(r.startContainer);
-    if (!ed) return;
+    if (!ed) { showOpenPill(null); return; }
     savedRange = r.cloneRange(); activeEditor = ed;
     $$('.rich a.active').forEach(a => a.classList.remove('active'));
     const a = anchorAt(r); if (a) a.classList.add('active');
+    showOpenPill(a);
+  });
+  // ── open the underlying source ────────────────────────────────────
+  // A tap on a linked word places the caret so the word can be edited; the
+  // pill offers the link itself. On a desktop, Cmd/Ctrl-click opens it too.
+  const openPill = document.createElement('a');
+  openPill.className = 'openpill'; openPill.target = '_blank'; openPill.rel = 'noopener'; openPill.hidden = true;
+  document.body.appendChild(openPill);
+  function showOpenPill(a) {
+    const href = a && a.getAttribute('href');
+    if (!href) { openPill.hidden = true; return; }
+    let host = href; try { host = new URL(href).hostname.replace(/^www\./, ''); } catch (e) { /* keep raw */ }
+    openPill.href = href;
+    openPill.textContent = 'Open “' + a.textContent.trim() + '” → ' + host + ' ↗';
+    const bar = document.querySelector('.actions');
+    openPill.style.bottom = ((bar ? bar.offsetHeight : 60) + 10) + 'px';
+    openPill.hidden = false;
+  }
+  document.addEventListener('click', ev => {
+    const a = ev.target.closest('.rich a');
+    if (a && (ev.metaKey || ev.ctrlKey)) { ev.preventDefault(); window.open(a.getAttribute('href'), '_blank', 'noopener'); }
   });
   function anchorAt(range) {
     const el = range.commonAncestorContainer.nodeType === 1 ? range.commonAncestorContainer : range.commonAncestorContainer.parentElement;
