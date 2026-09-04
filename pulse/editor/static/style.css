@@ -51,6 +51,8 @@ h2 { font-family: var(--serif); font-weight: normal; font-size: 22px; margin: 36
 .rich p:last-child { margin-bottom: 0; }
 .rich a { color: var(--ink); text-decoration: none; border-bottom: 2px solid var(--blue); padding-bottom: 1px; }
 .rich a.active { background: #e3f6ff; }
+/* a link flagged to stay live in the free edition ([text](url "free")) */
+.rich a[data-free]::after { content: "free"; font-size: 10px; line-height: 1; letter-spacing: .5px; text-transform: uppercase; color: var(--green); vertical-align: super; margin-left: 2px; }
 .standfirst .rich { font-family: var(--serif); font-size: 20px; }
 
 /* toolbar */
@@ -69,6 +71,8 @@ h2 { font-family: var(--serif); font-weight: normal; font-size: 22px; margin: 36
 .linkbox[hidden] { display: none; }
 .linkbox input { flex: 1; min-width: 200px; font: inherit; font-size: 15px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; }
 .linkbox .sel { font-size: 13px; color: var(--muted); width: 100%; }
+.linkbox .freeopt { display: flex; align-items: center; gap: 6px; width: 100%; font-size: 14px; cursor: pointer; user-select: none; }
+.linkbox .freeopt input { width: 18px; height: 18px; margin: 0; }
 .hint { font-size: 13px; color: var(--muted); }
 
 /* deleted list */

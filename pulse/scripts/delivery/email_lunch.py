@@ -290,13 +290,22 @@ def _source_name_for_host(host: str) -> str:
     return _canonical_source(label.replace("-", " ").title())
 
 
+# Markdown link URL, tolerating an optional title: [text](url) or
+# [text](url "free"). The title "free" flags a link that stays live in the
+# free edition (see email_briefing._md_links / variants.make_free_variant);
+# it must ride along with the URL through every markdown-level pass here.
+_MD_TITLE = r"""(?:\s+(?:"[^"]*"|'[^']*'))?\s*"""
+_MD_URL_RE = re.compile(rf"\]\((https?://[^)\s]+){_MD_TITLE}\)")
+_DATA_FREE_RE = re.compile(r"""\bdata-free\s*=\s*["']1["']""", re.IGNORECASE)
+
+
 def _entry_pills(entry: dict) -> list[str]:
     """Pill labels for one entry: exactly the sources the summary cites,
     in order of first citation — so the pills always match the links."""
     labels: list[str] = []
     seen: set[str] = set()
     summary = str(entry.get("summary") or "")
-    for url in re.findall(r"\]\((https?://[^)\s]+)\)", summary):
+    for url in _MD_URL_RE.findall(summary):
         label = (_source_name_for_host(_host_of(url)) or "").strip()
         if not label:
             continue
@@ -835,21 +844,23 @@ def _body_links(text: str) -> str:
     href/target, drops the incoming style. Anchors are first narrowed to
     the reporting verb (see _narrow_link_anchors)."""
     text = str(text)
-    _url_re = re.compile(r"\]\((https?://[^)\s]+)\)")
+    _url_re = _MD_URL_RE
     # the only URL narrowing may remove: an @handle's own profile link that
     # sits directly before another link (the account is never linked)
-    allowed_loss = set(re.findall(r"\[@[A-Za-z0-9_]+\]\((https?://[^)\s]+)\)(?=\s*\[)", text))
+    allowed_loss = set(re.findall(rf"\[@[A-Za-z0-9_]+\]\((https?://[^)\s]+){_MD_TITLE}\)(?=\s*\[)", text))
     narrowed = _name_platforms(_narrow_link_anchors(text))
     lost = [u for u in _url_re.findall(text) if u not in narrowed and u not in allowed_loss]
     if lost:
         logger.warning(f"link narrowing would lose {len(lost)} URL(s); using original links: {lost[:2]}")
         narrowed = _name_platforms(text)
     html = _md_links(narrowed)
-    return re.sub(
-        r'<a\s+href="([^"]+)"[^>]*>',
-        lambda m: f'<a href="{m.group(1)}" target="_blank" style="{BODY_LINK_STYLE}">',
-        html,
-    )
+    # Restyle every anchor; keep the data-free="1" flag (a link the owner
+    # wants live in the free edition) so variants.make_free_variant can see it.
+    def _restyle(m: re.Match) -> str:
+        free = ' data-free="1"' if _DATA_FREE_RE.search(m.group(0)) else ""
+        return f'<a href="{m.group(1)}"{free} target="_blank" style="{BODY_LINK_STYLE}">'
+
+    return re.sub(r'<a\s+href="([^"]+)"[^>]*>', _restyle, html)
 
 
 def _link(text: str, url: str, color: str = BLUE, weight: str = "normal") -> str:

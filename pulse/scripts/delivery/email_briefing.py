@@ -73,7 +73,12 @@ def _esc(text: str) -> str:
 def _md_links(text: str) -> str:
     """Convert markdown links [text](url) to HTML <a> tags, escape the rest.
     Also converts double-newlines (\\n\\n) into paragraph breaks (<br><br>) so
-    the synthesizer can use them to separate distinct points within a theme."""
+    the synthesizer can use them to separate distinct points within a theme.
+
+    A link may carry a markdown title: [text](url "free") marks a link the
+    owner wants to stay live in the free edition; it renders with
+    data-free="1" (honoured by delivery.variants.make_free_variant). Any
+    other title is dropped. Links without a title render exactly as before."""
     import re
     # Anchor text may contain one level of nested brackets, e.g.
     # "[[HousingWire] reported](url)" — the model sometimes brackets source names.
@@ -85,7 +90,13 @@ def _md_links(text: str) -> str:
         if m:
             link_text = _esc(m.group(1).replace('[', '').replace(']', ''))
             url = m.group(2)
-            result.append(f'<a href="{url}" target="_blank" style="color: #0BB4FF; text-decoration: none;">{link_text}</a>')
+            free = ''
+            t = re.fullmatch(r'(\S+)\s+(["\'])(.*?)\2\s*', url)
+            if t:
+                url = t.group(1)
+                if t.group(3).strip().lower() == 'free':
+                    free = ' data-free="1"'
+            result.append(f'<a href="{url}"{free} target="_blank" style="color: #0BB4FF; text-decoration: none;">{link_text}</a>')
         else:
             escaped = _esc(part)
             escaped = re.sub(r'\n{2,}', '<br><br>', escaped)

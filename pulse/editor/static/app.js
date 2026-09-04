@@ -1,6 +1,9 @@
 /* News at Noon editor. Plain JS, no build step.
    Content model: the draft JSON from /api/draft. Summaries are markdown with
-   [text](url) links; the contenteditable blocks convert to and from that. */
+   [text](url) links; the contenteditable blocks convert to and from that.
+   A link the owner wants to stay live in the free edition carries the
+   markdown title "free" — [text](url "free") — and data-free="1" on its
+   anchor here (see the "Keep in free edition" box). */
 (function () {
   'use strict';
   const $ = (s, el) => (el || document).querySelector(s);
@@ -14,12 +17,17 @@
   // ── markdown <-> html ─────────────────────────────────────────────
   const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   const escAttr = s => esc(s).replace(/"/g, '&quot;');
+  // [text](url) with an optional markdown title: [text](url "free") marks a
+  // link that stays live in the free edition. Only the title "free" is kept
+  // (as data-free="1"); any other title is dropped.
+  const FREE_TITLE = 'free';
   function inlineToHtml(text) {
-    const re = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
+    const re = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)(?:\s+(?:"([^"]*)"|'([^']*)'))?\s*\)/g;
     let out = '', i = 0, m;
     while ((m = re.exec(text))) {
       out += esc(text.slice(i, m.index));
-      out += '<a href="' + escAttr(m[2]) + '">' + esc(m[1]) + '</a>';
+      const title = (m[3] !== undefined ? m[3] : m[4] || '').trim().toLowerCase();
+      out += '<a href="' + escAttr(m[2]) + '"' + (title === FREE_TITLE ? ' data-free="1"' : '') + '>' + esc(m[1]) + '</a>';
       i = m.index + m[0].length;
     }
     return out + esc(text.slice(i));
@@ -40,7 +48,8 @@
         if (tag === 'BR') { cur += '\n'; continue; }
         if (tag === 'A') {
           const href = n.getAttribute('href') || '', t = n.textContent;
-          cur += href && t.trim() ? '[' + t + '](' + href + ')' : t; continue;
+          const title = n.hasAttribute('data-free') ? ' "' + FREE_TITLE + '"' : '';
+          cur += href && t.trim() ? '[' + t + '](' + href + title + ')' : t; continue;
         }
         if (/^(P|DIV|LI|H[1-6]|BLOCKQUOTE|PRE)$/.test(tag)) { flush(); walk(n); flush(); } else walk(n);
       }
@@ -145,30 +154,39 @@
   function unwrap(a) { const p = a.parentNode; while (a.firstChild) p.insertBefore(a.firstChild, a); p.removeChild(a); }
   function toolbarFor(ed) { return ed.parentElement.querySelector('.tools[data-for], .tools'); }
   function linkboxFor(ed) { return ed.parentElement.querySelector('.linkbox'); }
+  function freeCheckFor(ed) { return $('input[data-free-check]', linkboxFor(ed)); }
+  function setFree(a, on) { if (on) a.setAttribute('data-free', '1'); else a.removeAttribute('data-free'); }
   function keepSelection(btn) { btn.addEventListener('mousedown', ev => ev.preventDefault()); }
 
   function startLink(ed) {
-    const box = linkboxFor(ed), input = $('input', box), selInfo = $('.sel', box);
+    const box = linkboxFor(ed), input = $('input[type=url]', box), selInfo = $('.sel', box), free = freeCheckFor(ed);
     const r = savedRange && activeEditor === ed ? savedRange : null;
     const a = r ? anchorAt(r) : null;
     if (a) {
       pending = { ed, anchor: a }; selInfo.textContent = 'Editing link on “' + a.textContent + '”'; input.value = a.getAttribute('href') || '';
+      free.checked = a.hasAttribute('data-free');
     } else if (r && !r.collapsed && r.toString().trim()) {
       pending = { ed, range: r.cloneRange() }; selInfo.textContent = 'Link “' + r.toString().trim() + '” to:'; input.value = '';
+      free.checked = false;
     } else { say('Select a word or phrase first, then press Link.', ''); return; }
     box.hidden = false; input.focus();
   }
   function applyLink(ed) {
-    const box = linkboxFor(ed), input = $('input', box);
+    const box = linkboxFor(ed), input = $('input[type=url]', box), keepFree = freeCheckFor(ed).checked;
     let url = input.value.trim();
     if (url && !/^https?:\/\//i.test(url)) url = 'https://' + url;
     if (!pending || pending.ed !== ed) { box.hidden = true; return; }
     if (!url) { say('Enter a URL, or Cancel.', ''); return; }
-    if (pending.anchor) { pending.anchor.setAttribute('href', url); }
+    if (pending.anchor) { pending.anchor.setAttribute('href', url); setFree(pending.anchor, keepFree); }
     else {
+      const before = new Set($$('a', ed));
       restoreRange(pending.range, ed);
       document.execCommand('createLink', false, url);
-      // execCommand may add target/rel or leave the new anchor unselected; nothing else to do.
+      // execCommand may add target/rel or leave the new anchor unselected. Find
+      // what it created (any anchor not there before) and set the free flag on it.
+      let made = $$('a', ed).filter(a => !before.has(a));
+      if (!made.length) { const sel = document.getSelection(); const a = sel && sel.rangeCount ? anchorAt(sel.getRangeAt(0)) : null; if (a) made = [a]; }
+      made.forEach(a => setFree(a, keepFree));
     }
     pending = null; box.hidden = true; onRichInput(ed);
   }
@@ -179,6 +197,15 @@
     unwrap(a); pending = null; linkboxFor(ed).hidden = true; onRichInput(ed);
   }
   function wireTools(section, ed) {
+    // "Keep in free edition" box: added here so every link box (entries,
+    // paper, standfirst) gets it without touching the page markup.
+    const box = $('.linkbox', section);
+    if (box && !$('input[data-free-check]', box)) {
+      const lab = document.createElement('label'); lab.className = 'freeopt';
+      const cb = document.createElement('input'); cb.type = 'checkbox'; cb.setAttribute('data-free-check', '');
+      lab.appendChild(cb); lab.appendChild(document.createTextNode(' Keep in free edition'));
+      box.insertBefore(lab, $('[data-act="apply"]', box));
+    }
     $$('.tools .btn, .linkbox .btn', section).forEach(keepSelection);
     section.addEventListener('click', ev => {
       const b = ev.target.closest('[data-act]'); if (!b) return;
@@ -188,7 +215,7 @@
       else if (act === 'apply') applyLink(ed);
       else if (act === 'cancel') { pending = null; linkboxFor(ed).hidden = true; }
     });
-    const input = $('.linkbox input', section);
+    const input = $('.linkbox input[type=url]', section);
     input.addEventListener('keydown', ev => { if (ev.key === 'Enter') { ev.preventDefault(); applyLink(ed); } });
     ed.addEventListener('paste', ev => {
       ev.preventDefault(); const t = (ev.clipboardData || window.clipboardData).getData('text/plain');

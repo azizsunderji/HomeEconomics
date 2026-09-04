@@ -10,7 +10,12 @@ Two pure functions over rendered email HTML:
                               attributes, plain-text URLs). An
                               optional wall_url replaces the default
                               wall (the social PDF points at the
-                              sign-up page instead).
+                              sign-up page instead). The one exception
+                              is an anchor the owner flagged in the
+                              editor as "Keep in free edition": it
+                              carries data-free="1" (from the markdown
+                              title [text](url "free")) and is left
+                              exactly as it is, text included.
 
   scrub_archive_links(html) — premium email: archive.ph / archive.today
                               snapshot links (which can enter the
@@ -59,6 +64,11 @@ _HREF_RE = re.compile(r"""(\bhref\s*=\s*)(["'])(.*?)\2""",
 _TITLE_ALT_RE = re.compile(r"""(\b(?:title|alt)\s*=\s*)(["'])(.*?)\2""",
                            re.IGNORECASE | re.DOTALL)
 _TEXT_URL_RE = re.compile(r"""https?://[^\s<>"']+""", re.IGNORECASE)
+# Owner-flagged anchor that stays live in the free edition.
+_DATA_FREE_RE = re.compile(r"""\bdata-free\s*=\s*["']1["']""", re.IGNORECASE)
+# Plain-text (markdown) form of the same flag: the URL is followed by the
+# title "free" and the closing paren — [text](https://… "free").
+_MD_FREE_TAIL_RE = re.compile(r"""\s+(["'])free\1\s*\)""", re.IGNORECASE)
 
 
 def _domain_of(url: str) -> str:
@@ -105,10 +115,21 @@ def make_free_variant(html: str, wall_url: str = UPGRADE_WALL_URL) -> str:
     defaults to UPGRADE_WALL_URL; pass another own-domain URL to wall
     links elsewhere (e.g. the sign-up page for the social PDF)."""
     out: list[str] = []
+    in_free = False  # inside an <a data-free="1">…</a>: nothing is walled
     for seg in _TAG_SPLIT_RE.split(html):
         if seg.startswith("<"):
             low = seg.lower()
+            if low.startswith("</a"):
+                in_free = False
+                out.append(seg)
+                continue
             if low.startswith("<a") and (low[2:3].isspace() or low[2:3] == ">"):
+                if _DATA_FREE_RE.search(seg):
+                    # Owner-flagged "Keep in free edition" link: leave the
+                    # tag and everything up to its </a> untouched.
+                    in_free = True
+                    out.append(seg)
+                    continue
                 # Anchor tag: wall external hrefs.
                 seg = _HREF_RE.sub(
                     lambda m: (m.group(1) + m.group(2) + wall_url
@@ -126,6 +147,8 @@ def make_free_variant(html: str, wall_url: str = UPGRADE_WALL_URL) -> str:
                 seg,
             )
             out.append(seg)
+        elif in_free:
+            out.append(seg)
         else:
             # Text node: replace bare external URLs with the wall URL.
             out.append(_TEXT_URL_RE.sub(
@@ -139,12 +162,19 @@ def make_free_variant(html: str, wall_url: str = UPGRADE_WALL_URL) -> str:
 def make_free_text(text: str, wall_url: str = UPGRADE_WALL_URL) -> str:
     """Free-variant transform for a plain-text email part (if one is
     ever added): every external URL becomes the wall URL (default:
-    the upgrade wall)."""
-    return _TEXT_URL_RE.sub(
-        lambda u: wall_url if _is_external_link(u.group(0))
-        else u.group(0),
-        text,
-    )
+    the upgrade wall). A URL inside a markdown link titled "free"
+    ([text](https://… "free")) or inside an <a data-free="1"> anchor
+    is the owner's "Keep in free edition" flag and is left alone."""
+    def _sub(u: re.Match) -> str:
+        if not _is_external_link(u.group(0)) or _MD_FREE_TAIL_RE.match(text, u.end()):
+            return u.group(0)
+        return wall_url
+
+    if _DATA_FREE_RE.search(text):
+        # The text carries flagged anchors: use the tag-aware pass so a
+        # flagged anchor's href and text are never rewritten.
+        return make_free_variant(text, wall_url)
+    return _TEXT_URL_RE.sub(_sub, text)
 
 
 # ── premium archive.ph scrub ────────────────────────────────────────────
