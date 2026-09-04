@@ -137,6 +137,7 @@ def clean_draft(draft: dict) -> dict:
         e["summary"], n = resolve_summary(e.get("summary") or "", cache)
         changed += n
         e["news_outlets"] = outlets_for(e)
+        e["_pills"] = list(e["news_outlets"])  # the renderer shows exactly these
     paper = draft.get("paper_of_the_day")
     if isinstance(paper, dict) and paper.get("summary"):
         paper["summary"], n = resolve_summary(paper["summary"], cache)

@@ -305,6 +305,11 @@ _OWN_PILL_HOSTS = {"homeeconomics.substack.com", "home-economics.us", "homeecono
 def _entry_pills(entry: dict) -> list[str]:
     """Pill labels for one entry: exactly the sources the summary cites,
     in order of first citation — so the pills always match the links."""
+    # A cleaned draft (editor links.py) carries the final pill list, computed
+    # from the resolved URLs with the same rules plus newsletter naming.
+    pre = entry.get("_pills")
+    if isinstance(pre, list) and pre:
+        return [str(x) for x in pre if str(x).strip()]
     labels: list[str] = []
     seen: set[str] = set()
     summary = str(entry.get("summary") or "")
