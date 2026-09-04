@@ -192,18 +192,15 @@ def _first_paragraph_md(md: str, max_chars: int) -> str:
 def card_theme(draft: dict, entry: dict, number: int, links: bool = False) -> str:
     title = (entry.get("title") or "").strip()
     limit = 760 if len(title) < 50 else 640
-    if links:
-        # Same link house style as the email: only the reporting verb carries
-        # the link, handles are never linked, "On X," before a handle.
-        from delivery.email_lunch import _narrow_link_anchors, _name_platforms
-        md = _name_platforms(_narrow_link_anchors(entry.get("summary") or ""))
-        body = _first_paragraph_md(md, limit)
-    else:
-        body = first_paragraph(entry.get("summary") or "", limit)
+    # Linked words carry the email's blue underline on the cards too (an image
+    # cannot carry a working link; the underline shows where the sources are).
+    # Same rules as the email: only the reporting verb, never a handle.
+    from delivery.email_lunch import _narrow_link_anchors, _name_platforms
+    md = _name_platforms(_narrow_link_anchors(entry.get("summary") or ""))
+    body = _first_paragraph_md(md, limit)
     pills = "".join(f'<span class="pill">{_esc(p)}</span>' for p in (entry.get("news_outlets") or [])[:5])
     date = draft.get("date") or ""
-    conv = linked if links else _esc
-    body_html = "".join(f'<p style="margin:0 0 22px 0">{conv(x)}</p>' for x in body.split("\n\n"))
+    body_html = "".join(f'<p style="margin:0 0 22px 0">{linked(x)}</p>' for x in body.split("\n\n"))
     return f"""
 <div class="card">
   <div class="head"><img src="{LOGO_URL}" alt="Home Economics"><span class="date">{_esc(date_label(date))}</span></div>
@@ -253,36 +250,9 @@ def render_cards(draft: dict, out_dir: Path) -> list[Path]:
     return outs
 
 
-def render_cards_pdf(draft: dict, out: Path) -> Path:
-    """The same four cards as one PDF, one card per page, with the links
-    live: theme text links to the sources, titles on the cover to the web
-    edition, the sign-up line to the site. PNGs cannot carry links; this is
-    the file to post where a document keeps them (LinkedIn) or to link to."""
-    from playwright.sync_api import sync_playwright
-
-    entries, chosen = pick_entries(draft)
-    cards = [card_cover(draft, entries, links=True)] + [card_theme(draft, e, n, links=True) for n, e in chosen]
-    out.parent.mkdir(parents=True, exist_ok=True)
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        page = browser.new_page(viewport={"width": W, "height": H}, device_scale_factor=1)
-        page.set_content(_doc(cards, deck=True), wait_until="networkidle")
-        page.wait_for_timeout(150)
-        page.emulate_media(media="print")
-        page.pdf(path=str(out), width=f"{W}px", height=f"{H}px", print_background=True,
-                 prefer_css_page_size=True, margin={"top": "0", "right": "0", "bottom": "0", "left": "0"})
-        browser.close()
-    logger.info(f"cards pdf written: {out} ({out.stat().st_size:,} bytes)")
-    return out
-
-
 def publish_cards(draft: dict) -> list[Path]:
     outs = render_cards(draft, CARDS_DIR)
     logger.info(f"cards written: {len(outs)} in {CARDS_DIR}")
-    date = draft.get("date") or datetime.now().strftime("%Y-%m-%d")
-    deck = render_cards_pdf(draft, CARDS_DIR / f"News at Noon {date} cards.pdf")
-    shutil.copyfile(deck, CARDS_DIR / "latest-cards.pdf")
-    outs += [deck, CARDS_DIR / "latest-cards.pdf"]
     if DROPBOX_DIR:
         try:
             dest = Path(DROPBOX_DIR) / "cards"

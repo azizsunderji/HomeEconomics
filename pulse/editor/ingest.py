@@ -15,6 +15,7 @@ import drafts
 from delivery.email_lunch import FREE_ENTRY_COUNT, _intro_text
 from delivery.own_posts import load_own_posts
 from own_posts_apify import fetch_own_posts
+from links import clean_draft
 
 logger = logging.getLogger("noon.ingest")
 
@@ -88,6 +89,10 @@ def ingest(date: str | None = None, replace: bool = False) -> dict | None:
         return None
     rid, brief = found
     draft = build_draft(brief, date)
+    try:
+        clean_draft(draft)  # resolve tracking redirects, rebuild outlets
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"link cleaning skipped: {e}")
     if not draft.get("_own_posts"):
         # The list scrape cannot include the owner (X forbids adding yourself
         # to your own list), so pull the timeline directly when a key is set.
