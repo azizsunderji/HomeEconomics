@@ -13,8 +13,11 @@ Routes
   GET  /preview/{date}?tier=       the exact HTML that would be sent
   GET  /api/drafts           recent days
   GET  /latest[?k=]        public: latest edition (free; premium with the emailed key)
-  GET  /latest.pdf          public: most recent edition as PDF
+  GET  /latest.pdf          public: most recent edition as PDF (the social
+                            version: free edition with sign-up copy)
+  GET  /latest-premium.pdf  owner: most recent premium edition as PDF
   GET  /pdf/{date}?tier=    owner: render the draft to PDF now
+                            (tier = premium | free | social)
   GET  /health
 """
 from __future__ import annotations
@@ -124,25 +127,39 @@ def latest(k: str | None = None):
 
 @app.get("/latest.pdf")
 def latest_pdf():
-    """Public: the most recent edition PDF (written after each send)."""
+    """Public: the most recent edition PDF (written after each send). This
+    is the social version — the free edition with sign-up copy."""
     import pdf
-    f = pdf.PDF_DIR / "latest.pdf"
+    f = pdf.PDF_DIR / "latest-free.pdf"
     if not f.exists():
         raise HTTPException(status_code=404, detail="no PDF yet")
     return FileResponse(str(f), media_type="application/pdf",
                         headers={"Cache-Control": "no-store", "Content-Disposition": "inline; filename=\"News at Noon.pdf\""})
 
 
+@app.get("/latest-premium.pdf")
+def latest_premium_pdf(request: Request):
+    """Owner: the most recent premium edition PDF (every theme, live links)."""
+    _require(request)
+    import pdf
+    f = pdf.PDF_DIR / "latest.pdf"
+    if not f.exists():
+        raise HTTPException(status_code=404, detail="no PDF yet")
+    return FileResponse(str(f), media_type="application/pdf",
+                        headers={"Cache-Control": "no-store", "Content-Disposition": "inline; filename=\"News at Noon premium.pdf\""})
+
+
 @app.get("/pdf/{date}")
 def draft_pdf(request: Request, date: str, tier: str = "premium"):
-    """Owner: render this draft to PDF now and show it."""
+    """Owner: render this draft to PDF now and show it (tier: premium | free | social)."""
     _require(request)
     import pdf
     row = drafts.get(date)
     if row is None:
         raise HTTPException(status_code=404, detail="no such draft")
+    tier = tier if tier in ("premium", "free", "social") else "free"
     out = pdf.PDF_DIR / "preview" / f"News at Noon {date} {tier}.pdf"
-    pdf.make_pdf(row["json"], out, "premium" if tier == "premium" else "free")
+    pdf.make_pdf(row["json"], out, tier)
     return FileResponse(str(out), media_type="application/pdf",
                         headers={"Cache-Control": "no-store",
                                  "Content-Disposition": f"inline; filename=\"News at Noon {date}.pdf\""})

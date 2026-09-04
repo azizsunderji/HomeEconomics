@@ -103,6 +103,12 @@ FREE_ENTRY_COUNT = 5
 # keep every reference to it going through this constant.
 UPGRADE_URL = "https://homeeconomics.us/noon/premium"  # the deliberate upgrade page; walled links go to /noon/upgrade (variants.py)
 
+# Sign-up page, used by the "social" tier (the public PDF posted on social
+# media). That edition addresses someone who has never subscribed: same
+# entries and withheld list as the free tier, but the two boxes ask the
+# reader to sign up for the free email rather than to upgrade.
+SIGNUP_URL = "https://homeeconomics.us/noon?src=pdf"
+
 # Pro Map page. HEAD-checked 2026-09-02: /promap -> 200; /pro-map, /tools,
 # /pro, /map -> 404 on homeeconomics.us.
 PRO_MAP_URL = "https://homeeconomics.us/promap"
@@ -970,7 +976,7 @@ def _intro_text(briefing: dict, entries: list[dict]) -> tuple[str, str]:
 
 def _split_entries(entries: list[dict], tier: str) -> tuple[list[dict], list[dict]]:
     """(shown, withheld) for the requested tier."""
-    if tier != "free":
+    if tier not in ("free", "social"):
         return entries, []
     if any("tier" in e for e in entries):
         shown = [e for e in entries if e.get("tier") != "premium"]
@@ -988,8 +994,15 @@ def render_lunch_html(briefing: dict, tier: str = "premium") -> tuple[str, str, 
     number of entries rendered in full for this tier. Mirrors the return
     shape of email_briefing.render_briefing_html so it can drop into
     v3_1_runner._render_variants-style code.
+
+    Tiers: "premium" (everything), "free" (FREE_ENTRY_COUNT entries, the
+    rest listed by title, upgrade boxes) and "social" (identical to free
+    except the two boxes invite a non-subscriber to sign up; used for the
+    public PDF).
     """
-    tier = "free" if str(tier).lower() == "free" else "premium"
+    tier = str(tier).lower()
+    tier = tier if tier in ("free", "social") else "premium"
+    walled = tier in ("free", "social")  # free-style edition (entries withheld, boxes shown)
 
     entries = [e for e in (briefing.get("entries") or []) if isinstance(e, dict)]
     entries.sort(key=lambda e: (e.get("rank") is None, e.get("rank", 10**6)))
@@ -1048,19 +1061,36 @@ def render_lunch_html(briefing: dict, tier: str = "premium") -> tuple[str, str, 
 
     # ── Free-edition banner ──
     banner_html = ""
-    if tier == "free":
+    if walled:
         n_withheld = len(withheld)
-        if n_withheld:
-            clause = (f" Links are disabled, and {n_withheld} of today&rsquo;s {total} "
-                      f"themes are only in the premium edition.")
+        if tier == "social":
+            # Public PDF: the reader has never subscribed, so ask for the
+            # free sign-up rather than an upgrade.
+            if n_withheld:
+                clause = (f" Today&rsquo;s premium edition has {n_withheld} more "
+                          f"{'theme' if n_withheld == 1 else 'themes'} and every link goes to the source.")
+            else:
+                clause = ""
+            banner_text = (
+                f'This is the free edition of {_esc(TITLE)}, a daily brief on the U.S. housing '
+                f'market by Aziz Sunderji.{clause} Get the free edition by email at noon Eastern. '
+                f'{_link("Sign up →", SIGNUP_URL, weight="600")}'
+            )
         else:
-            clause = " Links are disabled in this edition."
+            if n_withheld:
+                clause = (f" Links are disabled, and {n_withheld} of today&rsquo;s {total} "
+                          f"themes are only in the premium edition.")
+            else:
+                clause = " Links are disabled in this edition."
+            banner_text = (
+                f'You&rsquo;re reading the free edition of {_esc(TITLE)}.{clause} '
+                f'{_link("Upgrade →", UPGRADE_URL, weight="600")}'
+            )
         banner_html = (
             f'<table width="100%" cellpadding="0" cellspacing="0"><tr>'
             f'<td bgcolor="{LIGHT}" style="background-color:{LIGHT}; padding:14px 16px; '
             f'border-radius:6px; font-family:{FONT}; font-size:14px; line-height:1.5; color:{INK};">'
-            f'You&rsquo;re reading the free edition of {_esc(TITLE)}.{clause} '
-            f'{_link("Upgrade →", UPGRADE_URL, weight="600")}'
+            f'{banner_text}'
             f'</td></tr></table>\n'
         )
 
@@ -1074,7 +1104,7 @@ def render_lunch_html(briefing: dict, tier: str = "premium") -> tuple[str, str, 
             f'line-height:1.6; margin:0;">'
             f'{_body_links(_fix_sentence_starts(intro))}</p>\n'
         )
-    if tier == "free" and banner_html:
+    if walled and banner_html:
         parts.append(_spacer(32))
         parts.append(banner_html)
 
@@ -1108,9 +1138,15 @@ def render_lunch_html(briefing: dict, tier: str = "premium") -> tuple[str, str, 
                 f'</td></tr></table>\n'
             )
 
-    # ── Withheld entries (free tier) ──
-    if tier == "free" and withheld:
+    # ── Withheld entries (free / social tiers) ──
+    if walled and withheld:
         n = len(withheld)
+        upgrade_link = _link("Upgrade →", UPGRADE_URL, weight="600")
+        if tier == "social":
+            withheld_links = (f'{_link("Sign up free →", SIGNUP_URL, weight="600")}'
+                              f'&nbsp;&nbsp;&middot;&nbsp;&nbsp;{upgrade_link}')
+        else:
+            withheld_links = upgrade_link
         items = "".join(
             f'<div style="{body_text} font-size:16px; margin:0 0 8px 0;">'
             f'{_esc((w.get("title") or "").strip())}</div>'
@@ -1123,7 +1159,7 @@ def render_lunch_html(briefing: dict, tier: str = "premium") -> tuple[str, str, 
             f'{_kicker("More in the premium edition", size=19)}'
             f'{items}'
             f'<div style="margin:12px 0 0 0; font-family:{FONT}; font-size:14px;">'
-            f'{_link("Upgrade →", UPGRADE_URL, weight="600")}</div>'
+            f'{withheld_links}</div>'
             f'</td></tr></table>\n'
         )
 
@@ -1153,7 +1189,7 @@ def render_lunch_html(briefing: dict, tier: str = "premium") -> tuple[str, str, 
         )
     # Free edition: the withheld block sits right above this heading; give it
     # a larger gap so the wall reads as the end of the entries.
-    parts.append(_spacer(WALL_GAP if (tier == "free" and withheld) else SECTION_GAP))
+    parts.append(_spacer(WALL_GAP if (walled and withheld) else SECTION_GAP))
     parts.append(_kicker("On the Front Pages"))
     # 2x2 on desktop (each image ~half the 600px column, headlines readable);
     # the .fp-row/.fp-cell media query stacks them single-column on mobile.
@@ -1256,7 +1292,7 @@ def render_lunch_html(briefing: dict, tier: str = "premium") -> tuple[str, str, 
     parts.append(_spacer(SUBSECTION_GAP).join(subsections))
 
     # ── Free-edition banner, repeated at the bottom ──
-    if tier == "free" and banner_html:
+    if walled and banner_html:
         parts.append(_spacer(SECTION_GAP))
         parts.append(banner_html)
 
@@ -1282,6 +1318,6 @@ def render_lunch_html(briefing: dict, tier: str = "premium") -> tuple[str, str, 
 
 __all__ = [
     "render_lunch_html", "load_he_publications", "FREE_ENTRY_COUNT",
-    "UPGRADE_URL", "PRO_MAP_URL", "HE_FEED_URL", "SOURCE_CANON",
+    "UPGRADE_URL", "SIGNUP_URL", "PRO_MAP_URL", "HE_FEED_URL", "SOURCE_CANON",
     "TITLE", "LOGO_URL", "WORDMARK_URL", "SECTION_GAP", "WALL_GAP",
 ]

@@ -12,7 +12,7 @@ import re
 from datetime import datetime
 
 import paths  # noqa: F401  (sys.path setup)
-from delivery.email_lunch import render_lunch_html
+from delivery.email_lunch import SIGNUP_URL, render_lunch_html
 from delivery.variants import make_free_variant, scrub_archive_links
 
 PRODUCT_NAME = "News at Noon"
@@ -52,6 +52,17 @@ def render_variants(draft: dict) -> tuple[str, str, str]:
     protected, keep = _protect_own_links(free_raw)
     free_html = _restore_own_links(make_free_variant(protected), keep)
     return premium_html, free_html, top or ""
+
+
+def render_social(draft: dict) -> str:
+    """HTML for the public PDF (posted on social media): the free edition
+    with sign-up copy, walled links pointing at the sign-up page rather
+    than the upgrade wall. Same protect/restore of own-domain links as
+    the free email; no web key (the social edition never unlocks premium)."""
+    raw, _t, _n = render_lunch_html(draft, tier="social")
+    raw = scrub_archive_links(raw)
+    protected, keep = _protect_own_links(raw)
+    return _restore_own_links(make_free_variant(protected, wall_url=SIGNUP_URL), keep)
 
 
 def with_footer(html: str, unsub_url: str | None) -> str:

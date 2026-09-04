@@ -1,9 +1,16 @@
-"""Daily PDF of the edition (for posting on social media).
+"""Daily PDFs of the edition.
 
-Renders the premium edition — every theme, working links, no upgrade
-boxes — through headless Chromium (Playwright) onto US Letter pages, and
-keeps `News at Noon YYYY-MM-DD.pdf` plus `latest.pdf` in NOON_PDF_DIR
-(and, when set, a copy in NOON_PDF_DROPBOX_DIR so it lands on the Mac).
+Two files per edition, rendered through headless Chromium (Playwright)
+onto US Letter pages and kept in NOON_PDF_DIR (and, when set, mirrored
+to NOON_PDF_DROPBOX_DIR so they land on the Mac):
+
+  premium  `News at Noon YYYY-MM-DD.pdf`      + `latest.pdf`
+           every theme, working links, no upgrade boxes (owner only:
+           served at /latest-premium.pdf).
+  social   `News at Noon YYYY-MM-DD free.pdf` + `latest-free.pdf`
+           the free edition with sign-up copy and links walled to the
+           sign-up page; this is what /latest.pdf serves publicly and
+           what gets posted on social media.
 """
 from __future__ import annotations
 
@@ -40,8 +47,12 @@ PRINT_CSS = """
 
 
 def edition_html(draft: dict, tier: str = PDF_TIER) -> str:
-    premium_html, free_html, _ = render.render_variants(draft)
-    html = premium_html if tier == "premium" else free_html
+    """Edition HTML with the print stylesheet. tier: premium | free | social."""
+    if tier == "social":
+        html = render.render_social(draft)
+    else:
+        premium_html, free_html, _ = render.render_variants(draft)
+        html = premium_html if tier == "premium" else free_html
     idx = html.lower().find("</head>")
     return html[:idx] + PRINT_CSS + html[idx:] if idx != -1 else PRINT_CSS + html
 
@@ -64,18 +75,31 @@ def make_pdf(draft: dict, out: Path, tier: str = PDF_TIER) -> Path:
 
 
 def publish_pdf(draft: dict, tier: str = PDF_TIER) -> Path:
-    """Write the dated PDF, refresh latest.pdf, mirror to Dropbox if configured."""
+    """Write both edition PDFs and refresh the `latest` copies, then mirror
+    all four files to Dropbox if configured.
+
+    `tier` selects what goes into the main file (`News at Noon DATE.pdf` /
+    `latest.pdf`; premium by default — `cli.py pdf --tier` can override).
+    The social file (`News at Noon DATE free.pdf` / `latest-free.pdf`) is
+    always written. Returns the main (premium) path, as callers expect.
+    """
     date = draft["date"]
     dated = PDF_DIR / f"News at Noon {date}.pdf"
     make_pdf(draft, dated, tier)
     shutil.copyfile(dated, PDF_DIR / "latest.pdf")
+    social = PDF_DIR / f"News at Noon {date} free.pdf"
+    make_pdf(draft, social, "social")
+    shutil.copyfile(social, PDF_DIR / "latest-free.pdf")
+    logger.info(f"pdf published: {dated.name} ({tier}) and {social.name} (social)")
     if DROPBOX_DIR:
         try:
             dest = Path(DROPBOX_DIR)
             dest.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(dated, dest / dated.name)
             shutil.copyfile(dated, dest / "latest.pdf")
-            logger.info(f"pdf mirrored to {dest}")
+            shutil.copyfile(social, dest / social.name)
+            shutil.copyfile(social, dest / "latest-free.pdf")
+            logger.info(f"pdfs mirrored to {dest}")
         except Exception as e:  # noqa: BLE001
             logger.warning(f"Dropbox mirror failed: {e}")
     return dated

@@ -7,7 +7,10 @@ Two pure functions over rendered email HTML:
                               readers see the briefing but can't click
                               through to sources. No source URL may
                               leak anywhere (hrefs, title/alt
-                              attributes, plain-text URLs).
+                              attributes, plain-text URLs). An
+                              optional wall_url replaces the default
+                              wall (the social PDF points at the
+                              sign-up page instead).
 
   scrub_archive_links(html) — premium email: archive.ph / archive.today
                               snapshot links (which can enter the
@@ -93,12 +96,14 @@ def _is_archive_url(url: str) -> bool:
 
 # ── free variant ────────────────────────────────────────────────────────
 
-def make_free_variant(html: str) -> str:
+def make_free_variant(html: str, wall_url: str = UPGRADE_WALL_URL) -> str:
     """Rewrite every external content URL in a rendered premium email to
     the upgrade wall. Leaves <img src> / asset URLs, own-domain links
     (homeeconomics.us / home-economics.us), mailto:, and relative URLs
     untouched. Also scrubs URLs from title/alt attributes and from
-    plain text so no source URL leaks in the free tier."""
+    plain text so no source URL leaks in the free tier. `wall_url`
+    defaults to UPGRADE_WALL_URL; pass another own-domain URL to wall
+    links elsewhere (e.g. the sign-up page for the social PDF)."""
     out: list[str] = []
     for seg in _TAG_SPLIT_RE.split(html):
         if seg.startswith("<"):
@@ -106,7 +111,7 @@ def make_free_variant(html: str) -> str:
             if low.startswith("<a") and (low[2:3].isspace() or low[2:3] == ">"):
                 # Anchor tag: wall external hrefs.
                 seg = _HREF_RE.sub(
-                    lambda m: (m.group(1) + m.group(2) + UPGRADE_WALL_URL
+                    lambda m: (m.group(1) + m.group(2) + wall_url
                                + m.group(2))
                     if _is_external_link(m.group(3)) else m.group(0),
                     seg,
@@ -124,18 +129,19 @@ def make_free_variant(html: str) -> str:
         else:
             # Text node: replace bare external URLs with the wall URL.
             out.append(_TEXT_URL_RE.sub(
-                lambda u: UPGRADE_WALL_URL
+                lambda u: wall_url
                 if _is_external_link(u.group(0)) else u.group(0),
                 seg,
             ))
     return "".join(out)
 
 
-def make_free_text(text: str) -> str:
+def make_free_text(text: str, wall_url: str = UPGRADE_WALL_URL) -> str:
     """Free-variant transform for a plain-text email part (if one is
-    ever added): every external URL becomes the upgrade wall URL."""
+    ever added): every external URL becomes the wall URL (default:
+    the upgrade wall)."""
     return _TEXT_URL_RE.sub(
-        lambda u: UPGRADE_WALL_URL if _is_external_link(u.group(0))
+        lambda u: wall_url if _is_external_link(u.group(0))
         else u.group(0),
         text,
     )
