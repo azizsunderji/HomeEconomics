@@ -3,6 +3,12 @@
 #   noon.homeeconomics.us -> 104.236.210.18
 noon.homeeconomics.us {
 	encode gzip
+	# Mirror of the substack.com feeds that block GitHub Actions (pulse/editor/mirror_feeds.py,
+	# hourly). The collector reads https://noon.homeeconomics.us/feeds/<slug>.xml first.
+	handle_path /feeds/* {
+		root * /home/aziz/work/noon/feeds
+		file_server
+	}
 	reverse_proxy 127.0.0.1:8240
 	log {
 		output file /var/log/caddy/noon.log {

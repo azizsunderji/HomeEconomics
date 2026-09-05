@@ -31,6 +31,9 @@ jobs:
       PUSHOVER_USER: ${{ secrets.PUSHOVER_USER }}
       BLUESKY_HANDLE: ${{ secrets.BLUESKY_HANDLE }}
       BLUESKY_APP_PASSWORD: ${{ secrets.BLUESKY_APP_PASSWORD }}
+      # Droplet mirror of the substack.com feeds that 403 GitHub Actions and Browserbase
+      # (collectors/rss_substacks._fetch_via_mirror; pulse/editor/mirror_feeds.py).
+      SUBSTACK_MIRROR_BASE: https://noon.homeeconomics.us/feeds
       BROWSERBASE_API_KEY: ${{ secrets.BROWSERBASE_API_KEY }}
       BROWSERBASE_PROJECT_ID: ${{ secrets.BROWSERBASE_PROJECT_ID }}
       BROWSERBASE_CONTEXT_ID: ${{ secrets.BROWSERBASE_CONTEXT_ID }}

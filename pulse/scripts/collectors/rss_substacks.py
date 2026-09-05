@@ -28,6 +28,8 @@ from typing import Optional
 import feedparser
 import httpx
 
+from urllib.parse import urlsplit
+
 from collectors import PulseItem, record_collector_error
 from config import COMPETITOR_SUBSTACKS
 
@@ -132,6 +134,33 @@ async def _fetch_via_browserbase(urls: list[str]) -> dict[str, bytes]:
     return out
 
 
+def _fetch_via_mirror(base: str, substacks: list[tuple[str, str]]) -> dict[str, bytes]:
+    """Feeds hosted on substack.com, from the droplet mirror (2026-09-05).
+
+    Substack's own domain answers 403 to GitHub Actions and to Browserbase
+    alike: 17 of the 45 configured feeds never produced an item (every run
+    since at least 2026-06-18). The droplet is not blocked; it re-fetches
+    them hourly (pulse/editor/mirror_feeds.py) and Caddy serves them at
+    SUBSTACK_MIRROR_BASE/<slug>.xml. Returns {feed_url: bytes} for every
+    feed the mirror had; misses fall through to Browserbase/httpx below.
+    """
+    got: dict[str, bytes] = {}
+    targets = [(n, u) for n, u in substacks if urlsplit(u).netloc.lower().endswith(".substack.com")]
+    for name, feed_url in targets:
+        slug = urlsplit(feed_url).netloc.lower().split(".")[0]
+        try:
+            r = httpx.get(f"{base}/{slug}.xml", timeout=20, follow_redirects=True)
+            body = r.content
+            if r.status_code == 200 and len(body) > 500 and (b"<rss" in body[:4000] or b"<feed" in body[:4000]):
+                got[feed_url] = body
+            else:
+                logger.info(f"mirror miss for '{name}': HTTP {r.status_code}, {len(body)} bytes")
+        except Exception as e:
+            logger.info(f"mirror fetch failed for '{name}': {e}")
+    logger.info(f"Substack mirror pass: {len(got)} of {len(targets)} substack.com feeds fetched from {base}")
+    return got
+
+
 def collect(
     substacks: list[tuple[str, str]] | None = None,
     max_per_feed: int = 5,
@@ -149,10 +178,16 @@ def collect(
     # with a browser UA. We open ONE BB session and fetch all feeds through
     # it; anything that succeeds skips the httpx path below.
     bb_bytes: dict[str, bytes] = {}
+    mirror_base = os.environ.get("SUBSTACK_MIRROR_BASE", "").rstrip("/")
+    if mirror_base:
+        try:
+            bb_bytes.update(_fetch_via_mirror(mirror_base, substacks))
+        except Exception as e:
+            logger.warning(f"Substack mirror pass crashed: {e}")
     if os.environ.get("BROWSERBASE_API_KEY"):
         try:
-            urls_to_fetch = [feed_url for _, feed_url in substacks]
-            bb_bytes = asyncio.run(_fetch_via_browserbase(urls_to_fetch))
+            urls_to_fetch = [feed_url for _, feed_url in substacks if feed_url not in bb_bytes]
+            bb_bytes.update(asyncio.run(_fetch_via_browserbase(urls_to_fetch)))
             logger.info(
                 f"Browserbase substack pass: {len(bb_bytes)} of "
                 f"{len(urls_to_fetch)} feeds fetched"

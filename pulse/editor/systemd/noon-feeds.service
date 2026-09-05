@@ -1,0 +1,10 @@
+[Unit]
+Description=News at Noon: mirror the substack.com feeds that block GitHub Actions
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/aziz/work/HomeEconomics/pulse/editor
+EnvironmentFile=/home/aziz/.noon_env
+ExecStart=/home/aziz/work/pulse-venv/bin/python mirror_feeds.py
+StandardOutput=append:/home/aziz/work/noon/logs/feeds.log
+StandardError=append:/home/aziz/work/noon/logs/feeds.log

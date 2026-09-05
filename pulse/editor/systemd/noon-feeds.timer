@@ -1,0 +1,9 @@
+[Unit]
+Description=Hourly at :15 UTC, so the mirror is fresh before each pulse-daily collection (:30)
+
+[Timer]
+OnCalendar=*-*-* *:15:00 UTC
+Persistent=true
+
+[Install]
+WantedBy=timers.target
