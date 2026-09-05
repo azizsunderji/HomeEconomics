@@ -346,3 +346,28 @@ PULSE_UNSUB_SECRET in `~/.noon_env` before `NOON_SEND_MODE=subscribers`. Until D
   UTC); those edits are in the stored draft and PDF path only, not in what subscribers received.
 - Workspace for this product on the Dropbox root: `NewsAtNoon/` (CLAUDE.md, scripts of each
   session's patches and checks).
+
+---
+
+## 10. Status update — 2026-09-05: substack.com feeds mirrored from the droplet
+
+- **Finding**: the 17 competitor newsletters hosted on `*.substack.com` (Calculated Risk, Kevin
+  Erdmann, Cameron Murray, Nominal News, Maximum New York, Derek Thompson, Goldsmith-Pinkham, Ryan
+  Avent, Robin Brooks, L.A. Reported, Krugman, Kustov, Clancy, Zvi, Richardson, Import AI, Hugh
+  Clarke) answered HTTP 403 to GitHub Actions and to Browserbase on every run since at least
+  2026-06-18 and had never produced an item. The 28 feeds on custom domains collect normally. The
+  health email's "Substack RSS degraded" warning is those 17 errors per run. In the two stored
+  editions (3–4 Sep), 5 of 132 theme links came from competitor newsletters, one from a
+  substack.com host (via Gmail).
+- **Cause**: Cloudflare in front of substack.com. From the droplet it challenges httpx (403,
+  `cf-mitigated: challenge`) but serves urllib and curl; from Actions and Browserbase everything is
+  blocked.
+- **Fix (live)**: `pulse/editor/mirror_feeds.py` fetches the substack.com feeds with urllib every
+  hour at :15 UTC (`noon-feeds.timer`, log `~/work/noon/logs/feeds.log`) into
+  `~/work/noon/feeds/<slug>.xml` plus `index.json`; Caddy serves them at
+  `https://noon.homeeconomics.us/feeds/` (route in `pulse/editor/caddy/noon.caddy`, installed);
+  `collectors/rss_substacks._fetch_via_mirror` reads the mirror first when `SUBSTACK_MIRROR_BASE`
+  is set (`pulse-daily.yml` env), and only the misses go to Browserbase/httpx. A failed mirror
+  fetch keeps the previous file, so the collector sees a stale feed rather than nothing.
+- Follow-up to consider: the collected newsletters are underused in the synthesis (routed into
+  themes, no dedicated section); revisit once a week of the full corpus exists.
