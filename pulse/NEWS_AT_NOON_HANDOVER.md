@@ -371,3 +371,12 @@ PULSE_UNSUB_SECRET in `~/.noon_env` before `NOON_SEND_MODE=subscribers`. Until D
   fetch keeps the previous file, so the collector sees a stale feed rather than nothing.
 - Follow-up to consider: the collected newsletters are underused in the synthesis (routed into
   themes, no dedicated section); revisit once a week of the full corpus exists.
+- **Extended to every OPML feed (same day)**: the mirror now fetches all 161 feeds (17 substack.com
+  + 144 from `pulse/data/Feeds.opml`) as `f_<sha1(xmlUrl)[:12]>.xml`; `collectors/rss_feeds.py`
+  fetches directly first and reads the mirror (`FEED_MIRROR_BASE`) only when a feed fails or
+  answers non-200, so nothing changes for working feeds. Rescued: the Taylor & Francis housing
+  journals (Housing Studies, Housing Policy Debate, Journal of Housing Research, Journal of Real
+  Estate Research, JAPA, Journal of Urban Affairs, Spatial Economic Analysis, Annals of the AAG),
+  Inman, FeedBurner's Calculated Risk, and our own feed. Still dark, blocked for the droplet too:
+  Century 21, Wiley's Real Estate Economics and Journal of Regional Science (403), Seattle Times
+  (202 bot check). Check: `~/work/noon/feeds/index.json` and `~/work/noon/logs/feeds.log`.
