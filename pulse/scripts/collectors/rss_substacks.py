@@ -187,9 +187,10 @@ def collect(
     if os.environ.get("BROWSERBASE_API_KEY"):
         try:
             urls_to_fetch = [feed_url for _, feed_url in substacks if feed_url not in bb_bytes]
-            bb_bytes.update(asyncio.run(_fetch_via_browserbase(urls_to_fetch)))
+            bb_got = asyncio.run(_fetch_via_browserbase(urls_to_fetch))
+            bb_bytes.update(bb_got)
             logger.info(
-                f"Browserbase substack pass: {len(bb_bytes)} of "
+                f"Browserbase substack pass: {len(bb_got)} of "
                 f"{len(urls_to_fetch)} feeds fetched"
             )
         except Exception as e:
