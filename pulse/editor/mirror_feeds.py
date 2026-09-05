@@ -65,8 +65,11 @@ def main() -> int:
             index = {}
     targets = [(n, u, slug_for(u)) for n, u in COMPETITOR_SUBSTACKS if slug_for(u)]
     try:
-        seen = {u for _, u, _ in targets}
+        seen: set[str] = set()
         for f in parse_opml(DEFAULT_OPML_PATH):
+            # Not deduped against the substack.com targets: an OPML feed that
+            # shares a URL with one (Calculated Risk) must exist under its f_ slug
+            # too, because rss_feeds.py looks it up by that name.
             if f["url"] not in seen:
                 targets.append((f["title"], f["url"], opml_slug(f["url"])))
                 seen.add(f["url"])
