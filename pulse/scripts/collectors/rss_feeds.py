@@ -153,6 +153,30 @@ def collect(
         text = _XML_BARE_AMP_RE.sub("&amp;", text)
         return text.encode("utf-8", errors="replace")
 
+    # Droplet mirror (2026-09-05): some publishers answer 403 to GitHub
+    # Actions (the Taylor & Francis housing journals, Inman, FeedBurner's
+    # Calculated Risk, our own feed) but not to the droplet, which mirrors
+    # every OPML feed hourly (pulse/editor/mirror_feeds.py) and serves it at
+    # FEED_MIRROR_BASE/f_<sha1(url)[:12]>.xml. Direct fetch first; the mirror
+    # only rescues a feed that failed or answered non-200.
+    import hashlib as _hashlib
+    import os as _os
+    _mirror_base = (_os.environ.get("FEED_MIRROR_BASE") or _os.environ.get("SUBSTACK_MIRROR_BASE") or "").rstrip("/")
+
+    def _from_mirror(url: str) -> Optional[bytes]:
+        if not _mirror_base:
+            return None
+        slug = "f_" + _hashlib.sha1(url.strip().encode()).hexdigest()[:12]
+        try:
+            m = _httpx.get(f"{_mirror_base}/{slug}.xml", timeout=20, follow_redirects=True)
+        except Exception:
+            return None
+        body = m.content
+        if m.status_code == 200 and len(body) > 500 and (b"<rss" in body[:4000] or b"<feed" in body[:4000] or b"<rdf:RDF" in body[:4000]):
+            return body
+        return None
+
+    mirror_rescued = 0
     for feed_info in feeds:
         try:
             # Fetch via httpx (lets us swap UA, follow redirects, and
@@ -165,12 +189,21 @@ def collect(
                     headers={"User-Agent": _UA, "Accept": "application/rss+xml, application/atom+xml, application/xml;q=0.9, */*;q=0.8"},
                 )
             except Exception as fetch_err:
-                record_collector_error("rss", fetch_err, context=f"feed={feed_info['title']}")
-                logger.warning(
-                    f"Feed fetch failed for '{feed_info['title']}': {fetch_err}"
-                )
-                continue
-            if r.status_code != 200:
+                r = None
+                if _from_mirror(feed_info["url"]) is None:
+                    record_collector_error("rss", fetch_err, context=f"feed={feed_info['title']}")
+                    logger.warning(
+                        f"Feed fetch failed for '{feed_info['title']}': {fetch_err}"
+                    )
+                    continue
+            mirrored = None
+            if r is None or r.status_code != 200:
+                mirrored = _from_mirror(feed_info["url"])
+                if mirrored is not None:
+                    mirror_rescued += 1
+                    logger.info(f"Feed '{feed_info['title']}' read from the droplet mirror"
+                                + (f" (direct fetch HTTP {r.status_code})" if r is not None else ""))
+            if mirrored is None and r.status_code != 200:
                 record_collector_error(
                     "rss",
                     RuntimeError(f"HTTP {r.status_code}"),
@@ -181,7 +214,7 @@ def collect(
                 )
                 continue
 
-            raw_bytes = r.content
+            raw_bytes = mirrored if mirrored is not None else r.content
             parsed = feedparser.parse(raw_bytes)
 
             # Retry with entity sanitization if the first pass bozo'd
@@ -258,7 +291,7 @@ def collect(
             logger.warning(f"Error fetching feed '{feed_info['title']}': {e}")
             continue
 
-    logger.info(f"RSS feeds total: {len(items)} items from {len(feeds)} feeds")
+    logger.info(f"RSS feeds total: {len(items)} items from {len(feeds)} feeds ({mirror_rescued} read from the droplet mirror)")
     return items
 
 
