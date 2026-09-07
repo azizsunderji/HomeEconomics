@@ -247,6 +247,9 @@
       '<input type="url" placeholder="https://…" inputmode="url" autocapitalize="off" autocomplete="off">' +
       '<button class="btn primary" data-act="apply">Apply</button><button class="btn" data-act="cancel">Cancel</button></div>';
   }
+  // Titles are one-row textareas so long headlines wrap on a phone. Height follows the text.
+  function fitTitle(t) { t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px'; }
+  window.addEventListener('resize', () => $$('.entry .title').forEach(fitTitle));
   function renderEntries() {
     const host = $('#entries'); host.innerHTML = '';
     (state.json.entries || []).forEach((e, i) => {
@@ -255,14 +258,19 @@
       const pills = (e.news_outlets || []).slice(0, 6).join(' · ');
       sec.innerHTML =
         '<div class="head"><span class="num">' + (i + 1) + '</span>' +
-        '<input class="title" value="' + escAttr(e.title || '') + '" placeholder="Title"></div>' +
+        '<textarea class="title" rows="1" placeholder="Title">' + esc(e.title || '') + '</textarea></div>' +
         '<div class="meta">' + esc(e.origin === 'cluster' ? 'From social' : 'From news') + (pills ? ' · ' + esc(pills) : '') + '</div>' +
         '<div class="rich" contenteditable="true" data-kind="summary" data-idx="' + i + '">' + mdToHtml(e.summary) + '</div>' +
         toolsHtml();
       host.appendChild(sec);
       const ed = $('.rich', sec);
       wireTools(sec, ed);
-      $('.title', sec).addEventListener('input', ev => { state.json.entries[i].title = ev.target.value; touch(); });
+      const title = $('.title', sec); fitTitle(title);
+      title.addEventListener('keydown', ev => { if (ev.key === 'Enter') { ev.preventDefault(); title.blur(); } });
+      title.addEventListener('input', () => {
+        if (/[\r\n]/.test(title.value)) title.value = title.value.replace(/[\r\n]+/g, ' ');
+        fitTitle(title); state.json.entries[i].title = title.value; touch();
+      });
       const seg = $('.seg', sec); seg.children[e.tier === 'premium' ? 1 : 0].classList.add('on', e.tier === 'premium' ? 'premium' : 'free');
       sec.addEventListener('click', ev => {
         const b = ev.target.closest('[data-act]'); if (!b) return;

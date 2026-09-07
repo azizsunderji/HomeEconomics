@@ -38,9 +38,10 @@ h2 { font-family: var(--serif); font-weight: normal; font-size: 22px; margin: 36
 /* entries */
 .entry { padding: 18px 0 22px 0; border-top: 1px solid var(--line); }
 .entry.premium { background: linear-gradient(90deg, var(--soft), var(--soft)) no-repeat; background-size: 4px 100%; padding-left: 14px; }
-.entry .head { display: flex; align-items: baseline; gap: 10px; }
-.entry .num { color: var(--blue); font-weight: 700; font-size: 19px; min-width: 24px; }
-.entry .title { flex: 1; border: 0; border-bottom: 1px solid transparent; background: transparent; font: inherit; font-size: 19px; font-weight: 600; padding: 4px 0; outline: none; width: 100%; }
+.entry .head { display: flex; align-items: flex-start; gap: 10px; }
+.entry .num { color: var(--blue); font-weight: 700; font-size: 19px; min-width: 24px; padding: 4px 0; }
+/* a one-row textarea (not an input) so long headlines wrap on a phone; app.js sets its height */
+.entry .title { flex: 1; min-width: 0; display: block; border: 0; border-bottom: 1px solid transparent; background: transparent; font: inherit; font-size: 19px; font-weight: 600; padding: 4px 0; margin: 0; outline: none; width: 100%; resize: none; overflow: hidden; white-space: pre-wrap; overflow-wrap: anywhere; -webkit-appearance: none; appearance: none; border-radius: 0; }
 .entry .title:focus { border-bottom-color: var(--blue); }
 .entry .meta { font-size: 13px; color: var(--muted); margin: 2px 0 8px 34px; }
 
