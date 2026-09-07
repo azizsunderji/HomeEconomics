@@ -159,7 +159,7 @@
   function keepSelection(btn) { btn.addEventListener('mousedown', ev => ev.preventDefault()); }
 
   function startLink(ed) {
-    const box = linkboxFor(ed), input = $('input[type=url]', box), selInfo = $('.sel', box), free = freeCheckFor(ed);
+    const box = linkboxFor(ed), input = $('.url', box), selInfo = $('.sel', box), free = freeCheckFor(ed);
     const r = savedRange && activeEditor === ed ? savedRange : null;
     const a = r ? anchorAt(r) : null;
     if (a) {
@@ -169,10 +169,10 @@
       pending = { ed, range: r.cloneRange() }; selInfo.textContent = 'Link “' + r.toString().trim() + '” to:'; input.value = '';
       free.checked = false;
     } else { say('Select a word or phrase first, then press Link.', ''); return; }
-    box.hidden = false; input.focus();
+    box.hidden = false; fitTitle(input); input.focus();
   }
   function applyLink(ed) {
-    const box = linkboxFor(ed), input = $('input[type=url]', box), keepFree = freeCheckFor(ed).checked;
+    const box = linkboxFor(ed), input = $('.url', box), keepFree = freeCheckFor(ed).checked;
     let url = input.value.trim();
     if (url && !/^https?:\/\//i.test(url)) url = 'https://' + url;
     if (!pending || pending.ed !== ed) { box.hidden = true; return; }
@@ -215,8 +215,9 @@
       else if (act === 'apply') applyLink(ed);
       else if (act === 'cancel') { pending = null; linkboxFor(ed).hidden = true; }
     });
-    const input = $('.linkbox input[type=url]', section);
+    const input = $('.linkbox .url', section);
     input.addEventListener('keydown', ev => { if (ev.key === 'Enter') { ev.preventDefault(); applyLink(ed); } });
+    input.addEventListener('input', () => { if (/[\r\n]/.test(input.value)) input.value = input.value.replace(/[\r\n]+/g, ' '); fitTitle(input); });
     ed.addEventListener('paste', ev => {
       ev.preventDefault(); const t = (ev.clipboardData || window.clipboardData).getData('text/plain');
       document.execCommand('insertText', false, t);
@@ -239,17 +240,19 @@
       '<button class="btn" data-act="unlink">Unlink</button>' +
       '<span class="spacer"></span>' +
       '<div class="seg"><button data-act="free">Free</button><button data-act="premium">Premium</button></div>' +
+      '<span class="move">' +
       '<button class="btn icon" data-act="up" title="Move up">↑</button>' +
       '<button class="btn icon" data-act="down" title="Move down">↓</button>' +
       '<button class="btn icon danger" data-act="delete" title="Delete">✕</button>' +
-      '</div>' +
+      '</span></div>' +
       '<div class="linkbox" hidden><div class="sel"></div>' +
-      '<input type="url" placeholder="https://…" inputmode="url" autocapitalize="off" autocomplete="off">' +
+      '<textarea class="url" rows="1" placeholder="https://…" inputmode="url" autocapitalize="off" autocomplete="off"></textarea>' +
       '<button class="btn primary" data-act="apply">Apply</button><button class="btn" data-act="cancel">Cancel</button></div>';
   }
-  // Titles are one-row textareas so long headlines wrap on a phone. Height follows the text.
+  // Titles, link-box URLs and paper fields are one-row textareas so long text wraps on a phone.
+  // Height follows the text; the stored value stays single-line (Enter is handled, newlines stripped).
   function fitTitle(t) { t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px'; }
-  window.addEventListener('resize', () => $$('.entry .title').forEach(fitTitle));
+  window.addEventListener('resize', () => $$('.entry .title, .linkbox .url, .field textarea').forEach(fitTitle));
   function renderEntries() {
     const host = $('#entries'); host.innerHTML = '';
     (state.json.entries || []).forEach((e, i) => {
@@ -312,14 +315,21 @@
       const b = $('#paperRestore'); if (b) b.addEventListener('click', () => { state.json.paper_of_the_day = state.json._removed_paper; delete state.json._removed_paper; touch(); renderPaper(); });
       return;
     }
-    const f = (k, label) => '<div class="field"><label>' + label + '</label><input data-k="' + k + '" value="' + escAttr(p[k] || '') + '"></div>';
+    const f = (k, label) => '<div class="field"><label>' + label + '</label><textarea data-k="' + k + '" rows="1"' + (k === 'url' ? ' inputmode="url" autocapitalize="off" autocomplete="off"' : '') + '>' + esc(p[k] || '') + '</textarea></div>';
     host.innerHTML = f('title', 'Title') + f('authors', 'Authors') + f('publication', 'Publication') + f('url', 'URL') +
       '<div class="sub">Summary</div><div class="rich" contenteditable="true" data-kind="paper">' + mdToHtml(p.summary) + '</div>' +
       '<div class="tools"><button class="btn" data-act="link">Link</button><button class="btn" data-act="unlink">Unlink</button>' +
       '<span class="spacer"></span><button class="btn danger" id="paperRemove">Remove paper</button></div>' +
-      '<div class="linkbox" hidden><div class="sel"></div><input type="url" placeholder="https://…" inputmode="url" autocapitalize="off" autocomplete="off">' +
+      '<div class="linkbox" hidden><div class="sel"></div><textarea class="url" rows="1" placeholder="https://…" inputmode="url" autocapitalize="off" autocomplete="off"></textarea>' +
       '<button class="btn primary" data-act="apply">Apply</button><button class="btn" data-act="cancel">Cancel</button></div>';
-    $$('input[data-k]', host).forEach(inp => inp.addEventListener('input', ev => { p[ev.target.dataset.k] = ev.target.value; touch(); }));
+    $$('textarea[data-k]', host).forEach(t => {
+      fitTitle(t);
+      t.addEventListener('keydown', ev => { if (ev.key === 'Enter') { ev.preventDefault(); t.blur(); } });
+      t.addEventListener('input', () => {
+        if (/[\r\n]/.test(t.value)) t.value = t.value.replace(/[\r\n]+/g, ' ');
+        fitTitle(t); p[t.dataset.k] = t.value; touch();
+      });
+    });
     wireTools(host, $('.rich', host));
     $('#paperRemove').addEventListener('click', () => { state.json._removed_paper = p; state.json.paper_of_the_day = null; touch(); renderPaper(); });
   }
