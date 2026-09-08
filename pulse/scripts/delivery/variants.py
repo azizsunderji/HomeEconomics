@@ -42,6 +42,7 @@ from urllib.parse import urlparse
 ALLOWED_DOMAINS = (
     "homeeconomics.us",
     "home-economics.us",
+    "thepromap.com",  # the owner's Pro Map; linked from image captions
 )
 
 UPGRADE_WALL_URL = "https://homeeconomics.us/pulse/upgrade?src=email"

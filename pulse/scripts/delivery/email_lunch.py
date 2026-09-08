@@ -346,13 +346,35 @@ def _tint(color: str, alpha: float) -> str:
     return "#%02X%02X%02X" % tuple(round(c * alpha + b * (1 - alpha)) for c, b in zip(rgb, bg))
 
 
+_CAPTION_URL_RE = re.compile(r"(https?://[^\s<>]+|www\.[^\s<>]+)")
+
+
+def _caption_html(caption: str) -> str:
+    """Escaped caption with bare URLs linked in the house style. Mail apps
+    otherwise auto-link them and iOS Mail swallowed the space before the
+    address ('Map fromwww.thepromap.com', 2026-09-08). Trailing punctuation
+    stays outside the link."""
+    out = []
+    for i, piece in enumerate(_CAPTION_URL_RE.split(caption)):
+        if i % 2 == 0:
+            out.append(_esc(piece))
+            continue
+        tail = ""
+        while piece and piece[-1] in ").,;:!?":
+            tail = piece[-1] + tail
+            piece = piece[:-1]
+        href = piece if piece.startswith("http") else "https://" + piece
+        out.append(f'<a href="{_esc(href)}" style="{BODY_LINK_STYLE}">{_esc(piece)}</a>{_esc(tail)}')
+    return "".join(out)
+
+
 def _image_block(caption: str, url: str, margin: str) -> str:
     """One image block: the picture at the column width and, when the caption
     is not empty, the caption beneath it. `margin` is the CSS margin shorthand."""
     cap_html = ""
     if caption:
         cap_html = (f'<div style="font-family:{FONT}; font-size:13px; line-height:1.5; '
-                    f'color:{_tint(INK, 0.7)}; margin:6px 0 0 0;">{_esc(caption)}</div>')
+                    f'color:{_tint(INK, 0.7)}; margin:6px 0 0 0;">{_caption_html(caption)}</div>')
     return (f'<div style="margin:{margin};">'
             f'<img src="{_esc(url)}" alt="{_esc(caption)}" width="600" '
             f'style="display:block;width:100%;max-width:600px;height:auto;border:0;">'
