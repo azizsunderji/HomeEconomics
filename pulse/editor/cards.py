@@ -123,7 +123,7 @@ def _base_css() -> str:
   .body {{ font-size:33px; line-height:1.42; }}
   .pills {{ margin:40px 0 0 0; display:flex; flex-wrap:wrap; gap:12px; }}
   .pill {{ background:{LIGHT}; color:{INK}; font-size:22px; padding:10px 18px; border-radius:999px; }}
-  .foot {{ margin-top:auto; padding-top:32px; border-top:2px solid {LIGHT}; display:flex;
+  .foot {{ margin-top:auto; padding-top:32px; display:flex;
            justify-content:space-between; align-items:baseline; font-size:24px; color:{MUTED}; }}
   .foot b {{ color:{INK}; font-weight:500; }}
   .foot .cta {{ color:{INK}; }}
