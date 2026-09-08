@@ -344,13 +344,41 @@ def _resolve_article_urls(papers_data: dict, db: sqlite3.Connection | None
 
 # ── Composition (page-only, no headlines drawn into image) ──────────
 
+def _front_page_clip(page):
+    """Spread guard (2026-09-08). Some days Freedom Forum's page 1 is a two-page
+    spread: an advertising wrap beside the real front page (the NYT of 8 Sep 2026
+    came as 1758x1686pt, nearly square, and rendered as a half-size front page
+    next to a Tiffany ad). A broadsheet is about 0.5 wide-to-high; when the page is
+    wider than 0.75 of its height, return the half that holds the largest text
+    span (the masthead), or the right half if the text layer gives nothing.
+    Returns None for a normal portrait page (no clip)."""
+    r = page.rect
+    if r.width <= 0.75 * r.height:
+        return None
+    best = None  # (font size, x centre)
+    try:
+        for block in page.get_text("dict")["blocks"]:
+            for line in block.get("lines", []):
+                for span in line.get("spans", []):
+                    if span.get("text", "").strip() and (best is None or span["size"] > best[0]):
+                        best = (span["size"], (span["bbox"][0] + span["bbox"][2]) / 2)
+    except Exception:
+        best = None
+    mid = r.x0 + r.width / 2
+    right = best is None or best[1] >= mid
+    print(f"  spread detected ({r.width:.0f}x{r.height:.0f}pt): keeping the "
+          f"{'right' if right else 'left'} half" + (f" (largest text {best[0]:.0f}pt)" if best else ""))
+    return fitz.Rect(mid if right else r.x0, r.y0, r.x1 if right else mid, r.y1)
+
+
 def _compose_page_image(pdf_path: Path, out_path: Path) -> bool:
     """Build a page-only composite PNG (cropped top, faded to cream)."""
     try:
         doc = fitz.open(pdf_path)
         page = doc[0]
         zoom = PAGE_RENDER_DPI / 72.0
-        pix = page.get_pixmap(matrix=fitz.Matrix(zoom, zoom), alpha=False)
+        clip = _front_page_clip(page)
+        pix = page.get_pixmap(matrix=fitz.Matrix(zoom, zoom), clip=clip, alpha=False)
         page_img = Image.frombytes("RGB", (pix.width, pix.height), pix.samples)
         render_w, render_h = pix.width, pix.height
 

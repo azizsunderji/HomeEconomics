@@ -1,0 +1,32 @@
+name: Front pages only (re-capture and upload)
+
+# Manual re-run of the front-page capture (pulse/capture_frontpages.py) with
+# the Bluehost upload, for a day when the images need replacing before the
+# noon send (added 2026-09-08 after the NYT came as a two-page ad-wrap spread).
+# Does not touch the database or the brief.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  frontpages:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SFTP_HOST: ${{ secrets.SFTP_HOST }}
+      SFTP_USER: ${{ secrets.SFTP_USER }}
+      SFTP_KEY: ${{ secrets.SFTP_KEY }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r pulse/requirements.txt
+      - name: Capture and upload front pages
+        working-directory: pulse
+        run: python capture_frontpages.py
