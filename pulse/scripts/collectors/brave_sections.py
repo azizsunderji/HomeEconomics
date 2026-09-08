@@ -25,10 +25,16 @@ from collectors import PulseItem, record_collector_error
 
 logger = logging.getLogger(__name__)
 
-SECTIONS: list[tuple[str, str, str]] = [
-    ("WSJ > Real Estate (via search)", "site:wsj.com/real-estate", r"^https?://(www\.)?wsj\.com/real-estate/"),
-    ("WSJ > Nicole Friedman (via search)", '"Nicole Friedman" site:wsj.com', r"^https?://(www\.)?wsj\.com/"),
-    ("NYT > Real Estate (via search)", "site:nytimes.com realestate", r"^https?://(www\.)?nytimes\.com/\d{4}/\d{2}/\d{2}/realestate/"),
+SECTIONS: list[tuple[str, list[str], str]] = [
+    ("WSJ > Real Estate (via search)",
+     ["site:wsj.com/real-estate", "site:wsj.com real estate", "wsj.com/real-estate housing", "site:wsj.com housing market"],
+     r"^https?://(www\.)?wsj\.com/real-estate/"),
+    ("WSJ > Nicole Friedman (via search)",
+     ['"Nicole Friedman" site:wsj.com', '"Nicole Friedman" wsj housing'],
+     r"^https?://(www\.)?wsj\.com/"),
+    ("NYT > Real Estate (via search)",
+     ["site:nytimes.com realestate", "site:nytimes.com/realestate"],
+     r"^https?://(www\.)?nytimes\.com/\d{4}/\d{2}/\d{2}/realestate/"),
 ]
 NEWS_URL = "https://api.search.brave.com/res/v1/news/search"
 WEB_URL = "https://api.search.brave.com/res/v1/web/search"
@@ -46,17 +52,22 @@ def _parse_age(s: str | None) -> datetime | None:
 
 
 def _search(client: httpx.Client, query: str) -> list[dict]:
-    """News endpoint first; web endpoint if the plan lacks news. Returns result dicts."""
+    """News index first, then the web index whenever news gives nothing (paywalled
+    publishers such as wsj.com are thin in the news index). Returns result dicts,
+    each tagged with "_index"."""
     params = {"q": query, "count": COUNT, "freshness": FRESHNESS, "search_lang": "en", "country": "us"}
+    out: list[dict] = []
     r = client.get(NEWS_URL, params=params)
     if r.status_code == 200:
-        return list((r.json().get("results") or []))
-    if r.status_code in (401, 403, 422, 429):
+        out = [dict(x, _index="news") for x in (r.json().get("results") or [])]
+    elif r.status_code in (401, 403):
         raise RuntimeError(f"news search HTTP {r.status_code}: {r.text[:120]}")
-    r = client.get(WEB_URL, params=params)
-    if r.status_code != 200:
-        raise RuntimeError(f"web search HTTP {r.status_code}: {r.text[:120]}")
-    return list(((r.json().get("web") or {}).get("results") or []))
+    if not out:
+        r = client.get(WEB_URL, params=params)
+        if r.status_code != 200:
+            raise RuntimeError(f"web search HTTP {r.status_code}: {r.text[:120]}")
+        out = [dict(x, _index="web") for x in ((r.json().get("web") or {}).get("results") or [])]
+    return out
 
 
 def collect() -> list[PulseItem]:
@@ -68,14 +79,20 @@ def collect() -> list[PulseItem]:
     seen: set[str] = set()
     headers = {"Accept": "application/json", "Accept-Encoding": "gzip", "X-Subscription-Token": key}
     with httpx.Client(timeout=25, headers=headers) as client:
-        for feed_name, query, pattern in SECTIONS:
+        for feed_name, queries, pattern in SECTIONS:
             rx = re.compile(pattern, re.I)
-            try:
-                results = _search(client, query)
-            except Exception as e:  # noqa: BLE001
-                record_collector_error("rss", e, context=f"brave={feed_name}")
-                logger.warning(f"brave_sections '{feed_name}': {e}")
-                continue
+            results: list[dict] = []
+            for query in queries:
+                try:
+                    got = _search(client, query)
+                except Exception as e:  # noqa: BLE001
+                    record_collector_error("rss", e, context=f"brave={feed_name}")
+                    logger.warning(f"brave_sections '{feed_name}' [{query}]: {e}")
+                    continue
+                matched = [x for x in got if rx.match((x.get("url") or "").split("?")[0])]
+                logger.info(f"brave_sections '{feed_name}' [{query}]: {len(got)} results "
+                            f"({got[0]['_index'] if got else '-'}), {len(matched)} in section")
+                results.extend(got)
             kept = 0
             for res in results:
                 url = (res.get("url") or "").split("?")[0].split("#")[0]
