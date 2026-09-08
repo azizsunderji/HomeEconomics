@@ -26,6 +26,13 @@ from delivery.email_lunch import _source_name_for_host
 logger = logging.getLogger("noon.links")
 
 _URL_RE = re.compile(r"\]\((https?://[^\s)]+)\)")
+# An image the owner dropped in from the editor, ![caption](url) on its own line:
+# not a citation, so never resolved, never a pill.
+_IMG_RE = re.compile(r"!\[[^\]\n]*\]\(https?://[^\s)]+\)")
+
+
+def _no_images(md: str) -> str:
+    return _IMG_RE.sub("", md or "")
 _TRACKING_PARAMS = re.compile(r"^(utm_|mc_cid|mc_eid|fbclid|gclid|mkt_tok|_hsenc|_hsmi|vero_id|ref$|cmpid$|srnd$|sref$)")
 _UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128 Safari/537.36"
 TIMEOUT = 8.0
@@ -78,7 +85,7 @@ def resolve(url: str) -> str:
 
 def resolve_summary(md: str, cache: dict[str, str]) -> tuple[str, int]:
     """Replace redirecting URLs in one markdown summary. Returns (text, n_changed)."""
-    urls = list(dict.fromkeys(_URL_RE.findall(md or "")))
+    urls = list(dict.fromkeys(_URL_RE.findall(_no_images(md))))
     todo = [u for u in urls if u not in cache]
     if todo:
         with ThreadPoolExecutor(max_workers=8) as ex:
@@ -110,7 +117,7 @@ def outlets_for(entry: dict) -> list[str]:
     a source) and minus collection channels; Mailchimp-hosted newsletter
     pages are named after the newsletter (mailchi.mp/<account>/…)."""
     out: list[str] = []
-    for u in dict.fromkeys(_URL_RE.findall(entry.get("summary") or "")):
+    for u in dict.fromkeys(_URL_RE.findall(_no_images(entry.get("summary") or ""))):
         h = _host(u)
         if h in OWN_HOSTS:
             continue

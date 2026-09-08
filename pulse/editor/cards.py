@@ -45,14 +45,22 @@ _LINK_RE = re.compile(r"\[([^\]]+)\]\((?:[^)\s]+)(?:\s+(?:\"[^\"]*\"|'[^']*'))?\
 
 
 _LINK_FULL = re.compile(r"\[([^\]]+)\]\((https?://[^\s)]+)\)")
+# An image dropped in from the editor (![caption](url) on its own line) is left
+# out of the cards: they are images themselves.
+_IMG_LINE = re.compile(r"^[ \t]*!\[[^\]\n]*\]\(https?://[^\s)]+\)[ \t]*$", re.M)
+
+
+def _no_images(md: str) -> str:
+    return re.sub(r"\n{3,}", "\n\n", _IMG_LINE.sub("", str(md or "")))
 
 
 def linked(md: str) -> str:
     """Markdown summary -> HTML with the house link style (ink text, blue
     underline), everything else escaped. Used by the PDF cards, where links
     survive; the PNG cards use plain()."""
+    md = _no_images(md)
     out, i = [], 0
-    for m in _LINK_FULL.finditer(str(md or "")):
+    for m in _LINK_FULL.finditer(md):
         out.append(_esc(md[i:m.start()]))
         out.append(f'<a href="{_html.escape(m.group(2), quote=True)}">{_esc(m.group(1))}</a>')
         i = m.end()
@@ -63,7 +71,7 @@ def linked(md: str) -> str:
 
 def plain(md: str) -> str:
     """Markdown summary -> plain text (links to their text, no markup)."""
-    t = _LINK_RE.sub(r"\1", str(md or ""))
+    t = _LINK_RE.sub(r"\1", _no_images(md))
     t = re.sub(r"[*_`]+", "", t)
     return t.replace("\r", "").strip()
 
@@ -170,7 +178,7 @@ def card_cover(draft: dict, entries: list[dict], links: bool = False) -> str:
 def _first_paragraph_md(md: str, max_chars: int) -> str:
     """Like first_paragraph but keeps [text](url) markup (length measured on
     the plain text, so the cut matches the PNG cards)."""
-    paras = [x.strip() for x in str(md or "").replace("\r", "").split("\n\n") if x.strip()]
+    paras = [x.strip() for x in _no_images(md).replace("\r", "").split("\n\n") if x.strip()]
     if not paras:
         return ""
     t = paras[0]
@@ -196,7 +204,7 @@ def _paragraphs_md(md: str, max_paras: int, max_chars: int) -> list[str]:
     """Opening paragraphs of a summary (markdown kept) within a plain-text
     character budget. Paragraphs are never cut mid-way; the budget decides
     how many fit."""
-    paras = [x.strip() for x in str(md or "").replace("\r", "").split("\n\n") if x.strip()]
+    paras = [x.strip() for x in _no_images(md).replace("\r", "").split("\n\n") if x.strip()]
     out: list[str] = []
     total = 0
     for x in paras[:max_paras]:

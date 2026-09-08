@@ -3,7 +3,10 @@
    [text](url) links; the contenteditable blocks convert to and from that.
    A link the owner wants to stay live in the free edition carries the
    markdown title "free" — [text](url "free") — and data-free="1" on its
-   anchor here (see the "Keep in free edition" box). */
+   anchor here (see the "Keep in free edition" box).
+   An image is a markdown image on a line of its own, ![caption](url); in the
+   editor it is a <figure class="img"> (thumbnail, caption field, remove button)
+   that is not editable text, so it never counts as a link. */
 (function () {
   'use strict';
   const $ = (s, el) => (el || document).querySelector(s);
@@ -32,10 +35,23 @@
     }
     return out + esc(text.slice(i));
   }
+  // ![caption](url) on a line of its own: an image block. The caption is the alt text.
+  const IMG_RE = /^!\[([^\]]*)\]\((https?:\/\/[^\s)]+)\)$/;
+  function figureHtml(caption, url) {
+    return '<figure class="img" contenteditable="false" data-url="' + escAttr(url) + '">' +
+      '<img src="' + escAttr(url) + '" alt="">' +
+      '<div class="caprow"><input class="cap" type="text" placeholder="Caption (optional)" value="' + escAttr(caption) + '">' +
+      '<button type="button" class="btn icon rm" data-act="rmimg" title="Remove image">✕</button></div></figure>';
+  }
   function mdToHtml(md) {
     const paras = String(md || '').replace(/\r/g, '').split(/\n{2,}/).map(p => p.trim()).filter(Boolean);
     if (!paras.length) return '<p><br></p>';
-    return paras.map(p => '<p>' + inlineToHtml(p).replace(/\n/g, '<br>') + '</p>').join('');
+    const out = paras.map(p => { const m = IMG_RE.exec(p); return m ? figureHtml(m[1].trim(), m[2]) : '<p>' + inlineToHtml(p).replace(/\n/g, '<br>') + '</p>'; });
+    // an image at either end gets an empty paragraph beside it so the caret has somewhere to go;
+    // empty paragraphs are dropped again by htmlToMd
+    if (IMG_RE.test(paras[0])) out.unshift('<p><br></p>');
+    if (IMG_RE.test(paras[paras.length - 1])) out.push('<p><br></p>');
+    return out.join('');
   }
   function htmlToMd(root) {
     const paras = []; let cur = '';
@@ -46,6 +62,14 @@
         if (n.nodeType !== 1) continue;
         const tag = n.tagName;
         if (tag === 'BR') { cur += '\n'; continue; }
+        if (tag === 'FIGURE' && n.classList.contains('img')) {
+          flush();
+          const capEl = n.querySelector('input.cap');
+          const cap = (capEl ? capEl.value : '').replace(/[\[\]]/g, '').replace(/\s+/g, ' ').trim();
+          const url = n.getAttribute('data-url') || '';
+          if (url) paras.push('![' + cap + '](' + url + ')');
+          continue;
+        }
         if (tag === 'A') {
           const href = n.getAttribute('href') || '', t = n.textContent;
           const title = n.hasAttribute('data-free') ? ' "' + FREE_TITLE + '"' : '';
@@ -212,6 +236,8 @@
       const act = b.dataset.act;
       if (act === 'link') startLink(ed);
       else if (act === 'unlink') removeLink(ed);
+      else if (act === 'image') startImage(ed);
+      else if (act === 'rmimg') { const f = b.closest('figure.img'); if (f) { f.remove(); onRichInput(ed); } }
       else if (act === 'apply') applyLink(ed);
       else if (act === 'cancel') { pending = null; linkboxFor(ed).hidden = true; }
     });
@@ -224,6 +250,67 @@
     });
     ed.addEventListener('input', () => onRichInput(ed));
   }
+  // ── images ────────────────────────────────────────────────────────
+  // Image button -> the hidden file input (camera roll / files on a phone) ->
+  // POST /api/upload -> a <figure> at the caret, splitting the paragraph when
+  // the caret is inside one. The caret is remembered before the picker opens
+  // because the selection is lost while it is up.
+  const fileInput = $('#imgFile');
+  let imgTarget = null;
+  function startImage(ed) {
+    imgTarget = { ed, range: savedRange && activeEditor === ed ? savedRange.cloneRange() : null };
+    fileInput.value = ''; fileInput.click();
+  }
+  function blockOf(node, ed) {
+    let el = node.nodeType === 1 ? node : node.parentElement;
+    while (el && el.parentElement !== ed) el = el.parentElement;
+    return el;
+  }
+  function insertImage(ed, url, caption, range) {
+    const tmp = document.createElement('div'); tmp.innerHTML = figureHtml(caption || '', url);
+    const figure = tmp.firstChild;
+    const r = range && ed.contains(range.startContainer) ? range.cloneRange() : null;
+    const a = r ? anchorAt(r) : null;
+    if (a) { r.setStartAfter(a); r.collapse(true); }  // never split a link in two
+    const blk = r ? blockOf(r.startContainer, ed) : null;
+    if (!blk) ed.appendChild(figure);
+    else if (blk.tagName !== 'P') blk.after(figure);
+    else {
+      const before = document.createRange(); before.selectNodeContents(blk); before.setEnd(r.startContainer, r.startOffset);
+      const rest = document.createRange(); rest.selectNodeContents(blk); rest.setStart(r.startContainer, r.startOffset);
+      if (!before.toString().trim()) blk.before(figure);          // caret at the start: image above this paragraph
+      else if (!rest.toString().trim()) blk.after(figure);        // caret at the end: image below it
+      else { const p = document.createElement('p'); p.appendChild(rest.extractContents()); blk.after(figure); figure.after(p); }
+    }
+    if (!figure.nextSibling) { const p = document.createElement('p'); p.innerHTML = '<br>'; figure.after(p); }
+    const after = figure.nextSibling;
+    const sel = document.getSelection(); const nr = document.createRange(); nr.setStart(after, 0); nr.collapse(true);
+    sel.removeAllRanges(); sel.addRange(nr); savedRange = nr.cloneRange(); activeEditor = ed;
+    onRichInput(ed);
+    const cap = $('input.cap', figure); if (cap) cap.focus();
+    return figure;
+  }
+  async function uploadImage(file) {
+    const fd = new FormData(); fd.append('file', file, file.name || 'image');
+    const r = await fetch('/api/upload', { method: 'POST', body: fd });
+    if (r.status === 401) { location.href = '/login'; throw new Error('signed out'); }
+    let data = null; try { data = await r.json(); } catch (_) { /* no body */ }
+    if (!r.ok) throw new Error((data && data.detail) || ('HTTP ' + r.status));
+    return data;
+  }
+  fileInput.addEventListener('change', async () => {
+    const f = fileInput.files && fileInput.files[0]; const t = imgTarget; imgTarget = null;
+    if (!f || !t) return;
+    if (f.type && !/^image\/(png|jpeg)$/.test(f.type)) { say('Only PNG or JPEG images can be added.', 'err'); fileInput.value = ''; return; }
+    if (f.size > 8 * 1024 * 1024) { say('That image is over 8 MB.', 'err'); fileInput.value = ''; return; }
+    say('Uploading ' + (f.name || 'image') + '…');
+    try {
+      const data = await uploadImage(f);
+      insertImage(t.ed, data.url, '', t.range);
+      say('Image added. Type a caption under it, or leave it blank.', 'ok');
+    } catch (e) { say('Upload failed: ' + e.message, 'err'); }
+    fileInput.value = '';
+  });
   function onRichInput(ed) {
     const md = htmlToMd(ed);
     const kind = ed.dataset.kind;
@@ -238,6 +325,7 @@
     return '<div class="tools">' +
       '<button class="btn" data-act="link">Link</button>' +
       '<button class="btn" data-act="unlink">Unlink</button>' +
+      '<button class="btn" data-act="image">Image</button>' +
       '<span class="spacer"></span>' +
       '<div class="seg"><button data-act="free">Free</button><button data-act="premium">Premium</button></div>' +
       '<span class="move">' +
@@ -319,6 +407,7 @@
     host.innerHTML = f('title', 'Title') + f('authors', 'Authors') + f('publication', 'Publication') + f('url', 'URL') +
       '<div class="sub">Summary</div><div class="rich" contenteditable="true" data-kind="paper">' + mdToHtml(p.summary) + '</div>' +
       '<div class="tools"><button class="btn" data-act="link">Link</button><button class="btn" data-act="unlink">Unlink</button>' +
+      '<button class="btn" data-act="image">Image</button>' +
       '<span class="spacer"></span><button class="btn danger" id="paperRemove">Remove paper</button></div>' +
       '<div class="linkbox" hidden><div class="sel"></div><textarea class="url" rows="1" placeholder="https://…" inputmode="url" autocapitalize="off" autocomplete="off"></textarea>' +
       '<button class="btn primary" data-act="apply">Apply</button><button class="btn" data-act="cancel">Cancel</button></div>';

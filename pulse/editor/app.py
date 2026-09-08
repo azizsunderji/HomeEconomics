@@ -10,6 +10,9 @@ Routes
   POST /api/draft/{date}/send-test {tier}
   POST /api/draft/{date}/send-now  {confirm: true}
   POST /api/draft/{date}/reset     rebuild from the stored brief (discards edits)
+  POST /api/upload           multipart PNG/JPEG (<= 8 MB) -> {url, width, height};
+                             stored under NOON_IMAGES_DIR/YYYY/MM/<sha1[:12]>.<ext>
+  GET  /images/...           public: the uploaded images (StaticFiles)
   GET  /preview/{date}?tier=       the exact HTML that would be sent
   GET  /api/drafts           recent days
   GET  /latest[?k=]        public: latest edition (free; premium with the emailed key)
@@ -22,11 +25,16 @@ Routes
 """
 from __future__ import annotations
 
+import hashlib
 import logging
+import os
+import struct
 import threading
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
-from fastapi import Body, FastAPI, HTTPException, Query, Request
+from fastapi import Body, FastAPI, File, HTTPException, Query, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 
@@ -43,6 +51,13 @@ logger = logging.getLogger("noon.app")
 app = FastAPI(title="News at Noon editor", docs_url=None, redoc_url=None)
 STATIC = paths.EDITOR_DIR / "static"
 app.mount("/static", StaticFiles(directory=str(STATIC)), name="static")
+# Images the owner drops into a theme from the editor (POST /api/upload). Served by
+# this app so the Caddy config need not change; the public URL is
+# https://noon.homeeconomics.us/images/YYYY/MM/<id>.png and the email embeds it.
+IMAGES_DIR = Path(os.environ.get("NOON_IMAGES_DIR", str(Path.home() / "work" / "noon" / "images")))
+IMAGES_DIR.mkdir(parents=True, exist_ok=True)
+app.mount("/images", StaticFiles(directory=str(IMAGES_DIR)), name="images")
+IMAGE_MAX_BYTES = 8 * 1024 * 1024
 
 SEND_STATE_LABEL = {"draft": "Sends at noon ET", "held": "Held — will not send", "sent": "Sent"}
 
@@ -297,6 +312,68 @@ def reset_draft(request: Request, date: str):
     if new is None:
         raise HTTPException(status_code=404, detail="no stored brief to rebuild from")
     return _payload(new)
+
+
+# ── image upload ───────────────────────────────────────────────────────
+
+def _image_kind(data: bytes) -> str | None:
+    """'png' or 'jpg' from the file's magic bytes; None for anything else."""
+    if data[:8] == b"\x89PNG\r\n\x1a\n":
+        return "png"
+    if data[:3] == b"\xff\xd8\xff":
+        return "jpg"
+    return None
+
+
+def _image_size(data: bytes, kind: str) -> tuple[int, int]:
+    """(width, height) — Pillow when available, else read from the header."""
+    try:
+        import io
+        from PIL import Image
+        with Image.open(io.BytesIO(data)) as im:
+            return int(im.width), int(im.height)
+    except Exception:  # noqa: BLE001  (no Pillow, or an odd file)
+        pass
+    if kind == "png" and len(data) >= 24:
+        w, h = struct.unpack(">II", data[16:24])
+        return int(w), int(h)
+    if kind == "jpg":
+        i = 2
+        while i + 9 < len(data):
+            if data[i] != 0xFF:
+                i += 1
+                continue
+            marker = data[i + 1]
+            if marker in (0xD8, 0x01) or 0xD0 <= marker <= 0xD7:
+                i += 2
+                continue
+            seg_len = struct.unpack(">H", data[i + 2:i + 4])[0]
+            if marker in (0xC0, 0xC1, 0xC2, 0xC3, 0xC5, 0xC6, 0xC7, 0xC9, 0xCA, 0xCB, 0xCD, 0xCE, 0xCF):
+                h, w = struct.unpack(">HH", data[i + 5:i + 9])
+                return int(w), int(h)
+            i += 2 + seg_len
+    return 0, 0
+
+
+@app.post("/api/upload")
+async def upload_image(request: Request, file: UploadFile = File(...)):
+    """Store one PNG or JPEG for use as ![caption](url) in a summary."""
+    _require(request)
+    data = await file.read(IMAGE_MAX_BYTES + 1)
+    if len(data) > IMAGE_MAX_BYTES:
+        raise HTTPException(status_code=413, detail="image is over 8 MB")
+    kind = _image_kind(data)
+    if not kind:
+        raise HTTPException(status_code=400, detail="only PNG or JPEG images")
+    width, height = _image_size(data, kind)
+    now = datetime.now(timezone.utc)
+    rel = f"{now:%Y}/{now:%m}/{hashlib.sha1(data).hexdigest()[:12]}.{kind}"
+    dest = IMAGES_DIR / rel
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    if not dest.exists():
+        dest.write_bytes(data)
+    logger.info(f"image stored: {rel} ({len(data):,} bytes, {width}x{height})")
+    return {"url": f"{paths.BASE_URL}/images/{rel}", "width": width, "height": height, "bytes": len(data)}
 
 
 @app.get("/api/drafts")

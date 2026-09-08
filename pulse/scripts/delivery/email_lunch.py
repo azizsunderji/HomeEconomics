@@ -301,6 +301,63 @@ _DATA_FREE_RE = re.compile(r"""\bdata-free\s*=\s*["']1["']""", re.IGNORECASE)
 
 _OWN_PILL_HOSTS = {"homeeconomics.substack.com", "home-economics.us", "homeeconomics.us", "noon.homeeconomics.us"}
 
+# ── Inline images ──────────────────────────────────────────────────────
+# The editor drops a chart into a summary, the standfirst or the paper summary as
+# a markdown image on a line of its own: ![caption](https://noon.homeeconomics.us/images/…).
+# Image lines are split out BEFORE any link processing (anchor narrowing, platform
+# naming, the free-tier wall, source pills) and rendered as a block: the image at
+# the column width, the caption beneath in 13px ink at 70%. No rules, no borders.
+_MD_IMAGE_RE = re.compile(r"^[ \t]*!\[([^\]\n]*)\]\((https?://[^\s)]+)\)[ \t]*$", re.M)
+IMAGE_GAP = 16  # px between an image block and the text around it (standfirst, paper)
+
+
+def _strip_images(text: str) -> str:
+    """The text without its image lines (for pills, counts, anything link-related)."""
+    return _MD_IMAGE_RE.sub("", str(text or ""))
+
+
+def _split_images(text: str) -> list[tuple]:
+    """[("text", markdown) | ("image", caption, url)] in document order; text
+    segments are stripped, empty ones dropped."""
+    text = str(text or "")
+    out: list[tuple] = []
+    pos = 0
+    for m in _MD_IMAGE_RE.finditer(text):
+        before = text[pos:m.start()].strip()
+        if before:
+            out.append(("text", before))
+        out.append(("image", m.group(1).strip(), m.group(2)))
+        pos = m.end()
+    rest = text[pos:].strip()
+    if rest:
+        out.append(("text", rest))
+    return out
+
+
+def _has_images(text: str) -> bool:
+    return _MD_IMAGE_RE.search(str(text or "")) is not None
+
+
+def _tint(color: str, alpha: float) -> str:
+    """`color` at `alpha` over the white page, as a flat hex (some mail clients
+    ignore rgba). Derived from the existing constants; no new colour."""
+    rgb = [int(color[i:i + 2], 16) for i in (1, 3, 5)]
+    bg = [int(WHITE[i:i + 2], 16) for i in (1, 3, 5)]
+    return "#%02X%02X%02X" % tuple(round(c * alpha + b * (1 - alpha)) for c, b in zip(rgb, bg))
+
+
+def _image_block(caption: str, url: str, margin: str) -> str:
+    """One image block: the picture at the column width and, when the caption
+    is not empty, the caption beneath it. `margin` is the CSS margin shorthand."""
+    cap_html = ""
+    if caption:
+        cap_html = (f'<div style="font-family:{FONT}; font-size:13px; line-height:1.5; '
+                    f'color:{_tint(INK, 0.7)}; margin:6px 0 0 0;">{_esc(caption)}</div>')
+    return (f'<div style="margin:{margin};">'
+            f'<img src="{_esc(url)}" alt="{_esc(caption)}" width="600" '
+            f'style="display:block;width:100%;max-width:600px;height:auto;border:0;">'
+            f'{cap_html}</div>')
+
 
 def _entry_pills(entry: dict) -> list[str]:
     """Pill labels for one entry: exactly the sources the summary cites,
@@ -312,7 +369,7 @@ def _entry_pills(entry: dict) -> list[str]:
         return [str(x) for x in pre if str(x).strip()]
     labels: list[str] = []
     seen: set[str] = set()
-    summary = str(entry.get("summary") or "")
+    summary = _strip_images(entry.get("summary") or "")  # an image host is never a source
     for url in _MD_URL_RE.findall(summary):
         host = _host_of(url)
         if host in _OWN_PILL_HOSTS:
@@ -849,6 +906,61 @@ def _entry_paragraphs(html: str, body_text: str) -> str:
     )
 
 
+def _entry_body(summary: str, body_text: str) -> str:
+    """An entry's paragraphs, with any image line rendered as a block between
+    them at the paragraph gap. Without images this is exactly the old path."""
+    segs = _split_images(summary)
+    if not any(s[0] == "image" for s in segs):
+        return _entry_paragraphs(_body_links(summary), body_text)
+    blocks: list[tuple] = []
+    for s in segs:
+        if s[0] == "text":
+            html = _body_links(s[1])
+            blocks += [("p", p.strip()) for p in re.split(r"(?:<br\s*/?>\s*){2,}", html) if p.strip()]
+        else:
+            blocks.append(s)
+    out = []
+    for i, b in enumerate(blocks):
+        gap = ENTRY_PARA_GAP if i < len(blocks) - 1 else 0
+        if b[0] == "p":
+            out.append(f'<div style="{body_text} margin:0 0 {gap}px 0;">{b[1]}</div>')
+        else:
+            out.append(_image_block(b[1], b[2], f"0 0 {gap}px 0"))
+    return "".join(out)
+
+
+def _standfirst_html(intro: str, body_text: str) -> str:
+    """The standfirst paragraph(s); an image line becomes a block between them."""
+    style = (f'{body_text} font-family:{STANDFIRST_FONT or FONT}; font-size:{STANDFIRST_SIZE}px; '
+             f'line-height:1.6;')
+    segs = _split_images(intro)
+    if not any(s[0] == "image" for s in segs):
+        return f'<p style="{style} margin:0;">{_body_links(_fix_sentence_starts(intro))}</p>\n'
+    out = []
+    for i, s in enumerate(segs):
+        margin = f"{IMAGE_GAP}px 0 0 0" if i else "0"
+        if s[0] == "text":
+            out.append(f'<p style="{style} margin:{margin};">{_body_links(_fix_sentence_starts(s[1]))}</p>')
+        else:
+            out.append(_image_block(s[1], s[2], margin))
+    return "".join(out) + "\n"
+
+
+def _paper_body(summary: str, body_text: str) -> str:
+    """The paper summary block; an image line becomes a block inside it."""
+    segs = _split_images(summary)
+    if not any(s[0] == "image" for s in segs):
+        return f'<div style="{body_text} margin:0 0 16px 0;">{_body_links(summary)}</div>'
+    inner = []
+    for i, s in enumerate(segs):
+        margin = f"{IMAGE_GAP}px 0 0 0" if i else "0"
+        if s[0] == "text":
+            inner.append(f'<div style="margin:{margin};">{_body_links(s[1])}</div>')
+        else:
+            inner.append(_image_block(s[1], s[2], margin))
+    return f'<div style="{body_text} margin:0 0 16px 0;">{"".join(inner)}</div>'
+
+
 def _body_links(text: str) -> str:
     """_md_links() with every anchor restyled for body copy: ink-coloured,
     underlined with a 2px rule, never blue and never visited-purple. Keeps
@@ -1121,11 +1233,7 @@ def render_lunch_html(briefing: dict, tier: str = "premium") -> tuple[str, str, 
         parts.append(_spacer(SECTION_GAP))
         # Standfirst: reads as summary through size and measure alone —
         # no heading, no bold, no colour, no italics (owner's rule).
-        parts.append(
-            f'<p style="{body_text} font-family:{STANDFIRST_FONT or FONT}; font-size:{STANDFIRST_SIZE}px; '
-            f'line-height:1.6; margin:0;">'
-            f'{_body_links(_fix_sentence_starts(intro))}</p>\n'
-        )
+        parts.append(_standfirst_html(intro, body_text))
     if walled and banner_html:
         parts.append(_spacer(32))
         parts.append(banner_html)
@@ -1155,7 +1263,7 @@ def render_lunch_html(briefing: dict, tier: str = "premium") -> tuple[str, str, 
                 f'<td style="font-family:{FONT}; font-size:19px; line-height:1.3; font-weight:700; '
                 f'color:{INK}; padding:0; vertical-align:top;">{_esc(title)}</td>'
                 f'</tr></table>'
-                f'{_entry_paragraphs(_body_links(summary), body_text)}'
+                f'{_entry_body(summary, body_text)}'
                 f'{pills_html}'
                 f'</td></tr></table>\n'
             )
@@ -1235,8 +1343,8 @@ def render_lunch_html(briefing: dict, tier: str = "premium") -> tuple[str, str, 
             f'<div style="font-family:{FONT}; font-size:14px; color:{INK}; margin:0 0 2px 0;">{_esc(paper.get("authors") or "")}</div>'
             f'<div style="font-family:{FONT}; font-size:13px; color:{MUTED}; margin:0 0 12px 0;">{meta}</div>'
             + (f'<div style="{body_text} font-weight:600; margin:0 0 10px 0;">{_esc(key)}</div>' if key else "")
-            + f'<div style="{body_text} margin:0 0 16px 0;">{_body_links(paper.get("summary") or "")}</div>'
-            f'<div>{_button("Read the paper →", p_url)}</div>\n'
+            + _paper_body(paper.get("summary") or "", body_text)
+            + f'<div>{_button("Read the paper →", p_url)}</div>\n'
         )
 
     # ── From Home Economics (top-level heading with three subsections) ──

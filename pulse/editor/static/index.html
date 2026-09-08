@@ -22,7 +22,8 @@
     <div class="tools" data-for="intro">
       <button class="btn" data-act="link">Link</button>
       <button class="btn" data-act="unlink">Unlink</button>
-      <span class="hint">Select a word, then Link.</span>
+      <button class="btn" data-act="image">Image</button>
+      <span class="hint">Select a word, then Link. Image adds a picture at the cursor.</span>
     </div>
     <div class="linkbox" hidden data-for="intro">
       <div class="sel"></div>
@@ -61,5 +62,7 @@
   <button class="btn" id="btnTestPremium">Email me premium</button>
 </div></div>
 
+<!-- shared by every Image button: opens the camera roll / files on a phone -->
+<input type="file" id="imgFile" accept="image/png,image/jpeg" hidden>
 <script src="/static/app.js"></script>
 </body></html>

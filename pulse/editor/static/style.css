@@ -56,6 +56,14 @@ h2 { font-family: var(--serif); font-weight: normal; font-size: 22px; margin: 36
 /* a link flagged to stay live in the free edition ([text](url "free")) */
 .rich a[data-free]::after { content: "free"; font-size: 10px; line-height: 1; letter-spacing: .5px; text-transform: uppercase; color: var(--green); vertical-align: super; margin-left: 2px; }
 .standfirst .rich { font-family: var(--serif); font-size: 20px; }
+/* an image dropped into the text (markdown ![caption](url)): thumbnail, caption field, remove button */
+.rich figure.img { display: block; margin: 0 0 14px 0; padding: 8px; background: var(--soft); border-radius: 6px; }
+.rich figure.img img { display: block; max-width: 100%; max-height: 220px; width: auto; height: auto; border-radius: 3px; }
+.rich figure.img .caprow { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
+.rich figure.img .cap { flex: 1; min-width: 0; display: block; margin: 0; font: inherit; font-family: var(--sans); font-size: 14px; line-height: 1.4; padding: 6px 0; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; color: var(--ink); outline: none; -webkit-appearance: none; appearance: none; }
+.rich figure.img .cap:focus { border-bottom-color: var(--blue); }
+.rich figure.img .rm { flex: none; }
+#imgFile { display: none; }
 
 /* toolbar */
 .tools { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
