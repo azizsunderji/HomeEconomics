@@ -409,3 +409,31 @@ PULSE_UNSUB_SECRET in `~/.noon_env` before `NOON_SEND_MODE=subscribers`. Until D
   attempted and dropped by the owner.
 - Web edition and `/latest.pdf` show the last *sent* edition by design; the editor's Preview/PDF
   buttons show the current draft.
+
+---
+
+## 12. Status update — 2026-09-08 evening: signup attribution and the morning report
+
+- **Source tag (portal, commit 2ff0382).** Links the owner posts carry `?src=<channel>-<post>` on
+  any of /noon, /noon/premium, /noon/upgrade (e.g. `homeeconomics.us/noon?src=x-0908`,
+  `?src=li-rents`). `NoonSourceTag` (mounted on all three pages) stores the tag in
+  localStorage `noon_src` for 30 days (a newer tag replaces it); with no tag and nothing stored
+  it stores the referrer as `ref:<host>`. `NoonSignupForm` posts it as `source`;
+  `api/pulse/subscribe` validates it (≤64 chars, `[A-Za-z0-9._:-]`) and `setPulseSubscribed`
+  writes `pulseNewsletter.source` (an existing source is replaced only by an explicit tag on a
+  resubscribe; `ref:` never overwrites). `NoonUpgrade` passes it to `api/checkout`, which sets
+  `noon_source` on the Checkout Session and subscription metadata; the webhook's
+  `recordPulsePremium` stamps `tools.pulseSince` (first activation only), fills
+  `pulseNewsletter.source` if unset, and creates a subscribed `pulseNewsletter` record for a
+  buyer who never did the free signup (before this, such a buyer was not on the send list at
+  all, because `subscribers.py` requires `pulseNewsletter.subscribed`). Both Telegram alerts
+  (free signup, paid) now carry the source. The free edition's walled links already arrive at
+  /noon/upgrade with `?src=email`, so "email" is a source in its own right.
+- **Morning report (pipeline).** `pulse/editor/signup_report.py`, run by `noon-report.timer`
+  at 07:00 ET daily (`systemd/noon-report.service|timer`, log `report.log`), emails the owner
+  "News at Noon signups: <day>": signups, premium, unsubscribes in the last 24 h, totals, and
+  signups by source (7 days and since launch). Details in `pulse/editor/README.md`.
+  Premium subscriptions made before 2026-09-08 have no `pulseSince` and appear only in totals;
+  the Stripe key is not on the droplet, so there is no customer-creation-time fallback.
+- End-to-end test 2026-09-08: `/noon?src=test-0908` → form → Clerk `source == "test-0908"` →
+  signed unsubscribe → listed in a `--hours 1` report. Test address removed from the list.

@@ -1,0 +1,9 @@
+[Unit]
+Description=News at Noon signup report at 07:00 US Eastern, every day
+
+[Timer]
+OnCalendar=*-*-* 07:00:00 America/New_York
+Persistent=true
+
+[Install]
+WantedBy=timers.target

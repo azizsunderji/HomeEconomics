@@ -1,0 +1,10 @@
+[Unit]
+Description=News at Noon: morning signup report to the owner (signups, upgrades, unsubscribes, sources)
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/aziz/work/HomeEconomics/pulse/editor
+EnvironmentFile=/home/aziz/.noon_env
+ExecStart=/home/aziz/work/pulse-venv/bin/python signup_report.py
+StandardOutput=append:/home/aziz/work/noon/logs/report.log
+StandardError=append:/home/aziz/work/noon/logs/report.log
