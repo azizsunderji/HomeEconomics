@@ -301,7 +301,7 @@
   fileInput.addEventListener('change', async () => {
     const f = fileInput.files && fileInput.files[0]; const t = imgTarget; imgTarget = null;
     if (!f || !t) return;
-    if (f.type && !/^image\/(png|jpeg)$/.test(f.type)) { say('Only PNG or JPEG images can be added.', 'err'); fileInput.value = ''; return; }
+    // Any image type: the server converts HEIC/WebP/GIF/TIFF to PNG and refuses non-images.
     if (f.size > 8 * 1024 * 1024) { say('That image is over 8 MB.', 'err'); fileInput.value = ''; return; }
     say('Uploading ' + (f.name || 'image') + '…');
     try {

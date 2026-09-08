@@ -316,6 +316,30 @@ def reset_draft(request: Request, date: str):
 
 # ── image upload ───────────────────────────────────────────────────────
 
+def _convert_to_png(data: bytes) -> bytes | None:
+    """Any image Pillow can decode (HEIC from an iPhone via pillow-heif, WebP, GIF,
+    TIFF, BMP) re-encoded as PNG; None when it is not an image. Added 2026-09-08 after
+    the owner's first upload from a phone was refused as 'only PNG or JPEG'."""
+    try:
+        import io
+        from PIL import Image
+        try:
+            import pillow_heif
+            pillow_heif.register_heif_opener()
+        except Exception:
+            pass
+        im = Image.open(io.BytesIO(data))
+        im.load()
+        if im.mode not in ("RGB", "RGBA"):
+            im = im.convert("RGBA" if "A" in im.getbands() else "RGB")
+        out = io.BytesIO()
+        im.save(out, format="PNG", optimize=True)
+        return out.getvalue()
+    except Exception as e:  # noqa: BLE001
+        logger.info(f"upload is not a decodable image: {e}")
+        return None
+
+
 def _image_kind(data: bytes) -> str | None:
     """'png' or 'jpg' from the file's magic bytes; None for anything else."""
     if data[:8] == b"\x89PNG\r\n\x1a\n":
@@ -364,7 +388,12 @@ async def upload_image(request: Request, file: UploadFile = File(...)):
         raise HTTPException(status_code=413, detail="image is over 8 MB")
     kind = _image_kind(data)
     if not kind:
-        raise HTTPException(status_code=400, detail="only PNG or JPEG images")
+        converted = _convert_to_png(data)
+        if converted is None:
+            raise HTTPException(status_code=400, detail="that file is not an image this editor can read (PNG, JPEG, HEIC, WebP, GIF, TIFF)")
+        if len(converted) > IMAGE_MAX_BYTES:
+            raise HTTPException(status_code=413, detail="image is over 8 MB after conversion")
+        data, kind = converted, "png"
     width, height = _image_size(data, kind)
     now = datetime.now(timezone.utc)
     rel = f"{now:%Y}/{now:%m}/{hashlib.sha1(data).hexdigest()[:12]}.{kind}"
