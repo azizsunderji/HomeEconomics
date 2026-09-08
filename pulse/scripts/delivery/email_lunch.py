@@ -307,7 +307,9 @@ _OWN_PILL_HOSTS = {"homeeconomics.substack.com", "home-economics.us", "homeecono
 # Image lines are split out BEFORE any link processing (anchor narrowing, platform
 # naming, the free-tier wall, source pills) and rendered as a block: the image at
 # the column width, the caption beneath in 13px ink at 70%. No rules, no borders.
-_MD_IMAGE_RE = re.compile(r"^[ \t]*!\[([^\]\n]*)\]\((https?://[^\s)]+)\)[ \t]*$", re.M)
+# Anywhere in the text, not only on a line of its own: the editor can leave an image
+# glued to the sentence before it, and a link pass must never see it (2026-09-08).
+_MD_IMAGE_RE = re.compile(r"[ \t]*!\[([^\]\n]*)\]\((https?://[^\s)]+)\)[ \t]*")
 IMAGE_GAP = 16  # px between an image block and the text around it (standfirst, paper)
 
 
@@ -859,9 +861,11 @@ def _narrow_link_anchors(text: str) -> str:
             out.append(head + rep); pos = m.end()
             continue
         # 4. nearest verb earlier in the same clause/sentence, not inside another link
-        sent_start = max(head.rfind(". "), head.rfind("! "), head.rfind("? "), head.rfind("\n"),
-                         head.rfind("; "))
-        window = head[sent_start + 1:] if sent_start >= 0 else head
+        # A sentence may end with a closing quote or bracket after the stop
+        # ("backdrop.' There was"): without allowing for that, the window ran
+        # back into the previous sentence and linked a word there (2026-09-08).
+        ends = [mm.end() for mm in re.finditer(r"[.!?;][\"'\u2019\u201d)\]]*\s|\n", head)]
+        window = head[ends[-1]:] if ends else head
         # prefer the nearest REPORTING verb ('reported', not 'rose'); only if
         # the clause has none, take the nearest generic past-tense verb
         # ('intersected')
