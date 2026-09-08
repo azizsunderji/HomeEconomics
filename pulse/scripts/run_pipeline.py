@@ -121,6 +121,8 @@ def run_collectors(conn, sources: list[str] | None = None) -> dict:
         "bluesky": lambda: __import__("collectors.bluesky", fromlist=["collect"]).collect(),
         "hackernews": lambda: __import__("collectors.hackernews", fromlist=["collect"]).collect(),
         "rss": lambda: __import__("collectors.rss_feeds", fromlist=["collect"]).collect(),
+        # Brave Search backstop for sections without a feed (WSJ real estate); stores as rss items.
+        "brave_sections": lambda: __import__("collectors.brave_sections", fromlist=["collect"]).collect(),
         "substack": lambda: __import__("collectors.rss_substacks", fromlist=["collect"]).collect(),
         "twitter": lambda: __import__("collectors.twitter_apify", fromlist=["collect"]).collect(),
         "linkedin": lambda: __import__("collectors.linkedin_apify", fromlist=["collect"]).collect(),
