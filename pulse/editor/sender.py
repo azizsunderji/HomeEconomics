@@ -59,6 +59,17 @@ def send_test(draft: dict, tier: str, to: str | None = None) -> bool:
     """One copy of the chosen tier to the owner, subject marked as a test."""
     to = to or paths.OWNER_EMAIL
     html = render.preview(draft, tier)
+    # Same footer as a subscriber copy (unsubscribe link for the recipient when
+    # they are a subscriber, plus the postal address), so a test looks like the
+    # real email. Owner asked for this 2026-09-08.
+    try:
+        from delivery.subscribers import get_subscribers, make_unsubscribe_url
+        me = next((u for u in get_subscribers() if u.get("email", "").lower() == to.lower()), None)
+        unsub = make_unsubscribe_url(me["user_id"]) if me and me.get("user_id") else None
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"test send: no unsubscribe link ({e})")
+        unsub = None
+    html = render.with_footer(html, unsub)
     subject = f"[TEST – {tier.upper()}] {render.subject(draft['date'])}"
     ok = _post_resend(_api_key(), "https://api.resend.com/emails",
                       {"from": render.EMAIL_FROM, "to": [to], "subject": subject, "html": html,
