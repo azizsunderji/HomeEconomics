@@ -58,7 +58,8 @@ REPLY_TO = os.environ.get("NOON_REPLY_TO", paths.OWNER_EMAIL)
 def send_test(draft: dict, tier: str, to: str | None = None) -> bool:
     """One copy of the chosen tier to the owner, subject marked as a test."""
     to = to or paths.OWNER_EMAIL
-    html = render.preview(draft, tier)
+    premium_html, free_html, _ = render.render_variants(draft)  # no footer yet (preview adds one)
+    html = premium_html if tier == "premium" else free_html
     # Same footer as a subscriber copy (unsubscribe link for the recipient when
     # they are a subscriber, plus the postal address), so a test looks like the
     # real email. Owner asked for this 2026-09-08.
