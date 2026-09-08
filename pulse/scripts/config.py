@@ -377,7 +377,7 @@ TWITTER_MIN_LIKES = 2    # Was 1; bumped 2026-05-10 per user. Floor at 2 still a
                          # noise that 1 leaves through. Was 5 originally — that filtered
                          # too aggressively (cut Wiebe's 3-like / 481-view tweet).
 TWITTER_MAX_PER_QUERY = 60  # Per batch; more results = better coverage of quiet accounts
-TWITTER_DAILY_BUDGET_CENTS = 200  # $2/day max Apify spend (1 batch, no sweep)
+TWITTER_DAILY_BUDGET_CENTS = 300  # $3/day cap; normal days spend ~115¢ over 4 runs, the headroom covers manual re-runs (raised 2026-09-08 after 5 test dispatches exhausted 200¢)
 
 TWITTER_VIP_ACCOUNTS = []  # Removed — all accounts earn placement on merit
 
