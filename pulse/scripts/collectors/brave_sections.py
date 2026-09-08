@@ -40,6 +40,10 @@ NEWS_URL = "https://api.search.brave.com/res/v1/news/search"
 WEB_URL = "https://api.search.brave.com/res/v1/web/search"
 FRESHNESS = "pw"  # past week; the source_id dedupes repeats across runs
 COUNT = 20
+MAX_AGE_DAYS = 7
+# Brave drops the "www." that the RSS feeds carry; the source_id is md5(url), so the
+# host must match the feed's form or the same article is stored twice (seen 2026-09-08).
+CANONICAL_HOST = {"nytimes.com": "www.nytimes.com", "wsj.com": "www.wsj.com"}
 
 
 def _parse_age(s: str | None) -> datetime | None:
@@ -55,19 +59,20 @@ def _search(client: httpx.Client, query: str) -> list[dict]:
     """News index first, then the web index whenever news gives nothing (paywalled
     publishers such as wsj.com are thin in the news index). Returns result dicts,
     each tagged with "_index"."""
-    params = {"q": query, "count": COUNT, "freshness": FRESHNESS, "search_lang": "en", "country": "us"}
-    out: list[dict] = []
-    r = client.get(NEWS_URL, params=params)
-    if r.status_code == 200:
-        out = [dict(x, _index="news") for x in (r.json().get("results") or [])]
-    elif r.status_code in (401, 403):
-        raise RuntimeError(f"news search HTTP {r.status_code}: {r.text[:120]}")
-    if not out:
-        r = client.get(WEB_URL, params=params)
+    base = {"q": query, "count": COUNT, "search_lang": "en", "country": "us"}
+    attempts = [(NEWS_URL, "news", True), (WEB_URL, "web", True), (NEWS_URL, "news-nofresh", False), (WEB_URL, "web-nofresh", False)]
+    for url, label, fresh in attempts:
+        params = dict(base, freshness=FRESHNESS) if fresh else base
+        r = client.get(url, params=params)
+        if r.status_code in (401, 403):
+            raise RuntimeError(f"{label} search HTTP {r.status_code}: {r.text[:120]}")
         if r.status_code != 200:
-            raise RuntimeError(f"web search HTTP {r.status_code}: {r.text[:120]}")
-        out = [dict(x, _index="web") for x in ((r.json().get("web") or {}).get("results") or [])]
-    return out
+            continue
+        j = r.json()
+        rows = j.get("results") if url == NEWS_URL else (j.get("web") or {}).get("results")
+        if rows:
+            return [dict(x, _index=label) for x in rows]
+    return []
 
 
 def collect() -> list[PulseItem]:
@@ -96,7 +101,12 @@ def collect() -> list[PulseItem]:
             kept = 0
             for res in results:
                 url = (res.get("url") or "").split("?")[0].split("#")[0]
+                for bare, www in CANONICAL_HOST.items():
+                    url = re.sub(rf"^(https?://){bare}/", rf"\1{www}/", url)
                 if not url or not rx.match(url) or url in seen:
+                    continue
+                age = _parse_age(res.get("page_age"))
+                if age is not None and (datetime.now(timezone.utc) - age).days > MAX_AGE_DAYS:
                     continue
                 seen.add(url)
                 title = re.sub(r"<[^>]+>", "", res.get("title") or "").strip()
