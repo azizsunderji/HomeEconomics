@@ -49,13 +49,20 @@ def _api_key() -> str:
     return key
 
 
+# Replies go to the owner. The From stays 'News at Noon <pulse@home-economics.us>',
+# which is not a mailbox (probe 2026-09-08: mail to it never arrived), so without
+# this a reader who hits Reply gets a bounce.
+REPLY_TO = os.environ.get("NOON_REPLY_TO", paths.OWNER_EMAIL)
+
+
 def send_test(draft: dict, tier: str, to: str | None = None) -> bool:
     """One copy of the chosen tier to the owner, subject marked as a test."""
     to = to or paths.OWNER_EMAIL
     html = render.preview(draft, tier)
     subject = f"[TEST – {tier.upper()}] {render.subject(draft['date'])}"
     ok = _post_resend(_api_key(), "https://api.resend.com/emails",
-                      {"from": render.EMAIL_FROM, "to": [to], "subject": subject, "html": html})
+                      {"from": render.EMAIL_FROM, "to": [to], "subject": subject, "html": html,
+                       "reply_to": REPLY_TO})
     logger.info(f"test send ({tier}) to {to}: {'ok' if ok else 'FAILED'}")
     return ok
 
@@ -86,7 +93,7 @@ def _send_subscribers(draft: dict) -> tuple[bool, str]:
         unsub_url = make_unsubscribe_url(sub["user_id"]) if sub.get("user_id") else None
         if sub.get("user_id") and not unsub_url:
             logger.warning(f"no unsubscribe URL for user {sub['user_id']} (PULSE_UNSUB_SECRET missing?)")
-        msg = {"from": render.EMAIL_FROM, "to": [sub["email"]], "subject": subject,
+        msg = {"from": render.EMAIL_FROM, "to": [sub["email"]], "subject": subject, "reply_to": REPLY_TO,
                "html": render.with_footer(premium_html if premium else free_html, unsub_url)}
         if unsub_url:
             msg["headers"] = {"List-Unsubscribe": f"<{unsub_url}>",
