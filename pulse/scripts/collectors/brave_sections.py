@@ -25,13 +25,10 @@ from collectors import PulseItem, record_collector_error
 
 logger = logging.getLogger(__name__)
 
+# Brave does not index wsj.com at all (site:wsj.com returns nothing from either index,
+# 2026-09-08); the Journal's real estate section comes from the droplet mirror's
+# Google News feed instead (pulse/editor/mirror_feeds.py, GNEWS_SEARCHES).
 SECTIONS: list[tuple[str, list[str], str]] = [
-    ("WSJ > Real Estate (via search)",
-     ["site:wsj.com/real-estate", "site:wsj.com real estate", "wsj.com/real-estate housing", "site:wsj.com housing market"],
-     r"^https?://(www\.)?wsj\.com/real-estate/"),
-    ("WSJ > Nicole Friedman (via search)",
-     ['"Nicole Friedman" site:wsj.com', '"Nicole Friedman" wsj housing'],
-     r"^https?://(www\.)?wsj\.com/"),
     ("NYT > Real Estate (via search)",
      ["site:nytimes.com realestate", "site:nytimes.com/realestate"],
      r"^https?://(www\.)?nytimes\.com/\d{4}/\d{2}/\d{2}/realestate/"),
