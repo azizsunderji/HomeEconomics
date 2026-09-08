@@ -380,3 +380,32 @@ PULSE_UNSUB_SECRET in `~/.noon_env` before `NOON_SEND_MODE=subscribers`. Until D
   Inman, FeedBurner's Calculated Risk, and our own feed. Still dark, blocked for the droplet too:
   Century 21, Wiley's Real Estate Economics and Journal of Regional Science (403), Seattle Times
   (202 bot check). Check: `~/work/noon/feeds/index.json` and `~/work/noon/logs/feeds.log`.
+
+---
+
+## 11. Status update — 2026-09-08
+
+- **Inline images** (owner: illustrate a theme with a Pro Map PNG). `POST /api/upload` in the editor
+  (cookie auth, 8 MB cap, any image Pillow can decode; AVIF/HEIC/WebP/GIF/TIFF converted to PNG,
+  served at `/images/YYYY/MM/<sha1>.png`); Image button beside Link/Unlink on entries, the standfirst
+  and the paper; the figure round-trips as `![caption](url)` on its own line. Renderer:
+  `_split_images` lifts image lines out before any link pass; block `<img width=600>` with a 13px
+  caption; captions link bare URLs themselves (iOS Mail auto-linked them and swallowed the space
+  before the address); no pill from an image host; `links.py` and `cards.py` skip image lines;
+  `thepromap.com` is an own domain in the free edition. Regression scripts in `NewsAtNoon/scripts/`
+  (37_–45_, 64_, 72_); baseline diffs must ignore the hourly `?v=` on front-page images.
+- **Editor on phones**: headline and URL fields are self-sizing textareas; grouped move buttons;
+  44px tap targets; focus bar 12px into the gutter; Sign out styled as a button.
+- **Front pages**: `_front_page_clip` keeps the masthead half when Freedom Forum ships a two-page
+  spread (NYT 8 Sep); `pulse-frontpages.yml` re-captures and uploads on demand.
+- **Feeds**: `brave_sections.py` (Brave Search) is a backstop for the NYT real estate section only —
+  Brave does not index wsj.com. The Journal's real estate section (no Dow Jones feed) comes from the
+  droplet mirror: a Google News RSS search decoded to wsj.com URLs (`gn_wsj-real-estate.xml`,
+  `GNEWS_SEARCHES` in `mirror_feeds.py`, needs `googlenewsdecoder` and `pillow-heif` in the venv);
+  it is an ordinary OPML entry. Dead `Alert: Nicole Friedman` removed. Eight duplicate NYT rows
+  (Brave's www-less URLs, fixed) remain in `items` from 8 Sep.
+- **Reply-To**: `sender.REPLY_TO` (NOON_REPLY_TO, default the owner) on test and subscriber sends;
+  `pulse@home-economics.us` is not a mailbox (probe never arrived) — a Workspace alias was
+  attempted and dropped by the owner.
+- Web edition and `/latest.pdf` show the last *sent* edition by design; the editor's Preview/PDF
+  buttons show the current draft.
