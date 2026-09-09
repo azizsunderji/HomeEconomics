@@ -173,9 +173,33 @@ def _last_24h_iso(hours: int = 24) -> str:
     return (datetime.now(timezone.utc) - timedelta(hours=hours)).isoformat()
 
 
+def _last_successful_run(conn: sqlite3.Connection, source: str) -> Optional[str]:
+    """started_at of the source's most recent collection_runs row that
+    completed without an error, or None. A failure that a later run
+    superseded is history, not a live problem: the twitter budget-exhausted
+    run of 8 Sep 19:36 was followed by two successful runs and still
+    degraded the report and re-sent the same alert for a day."""
+    try:
+        row = conn.execute(
+            "SELECT started_at FROM collection_runs "
+            "WHERE source = ? AND completed_at IS NOT NULL "
+            "AND COALESCE(error, '') = '' "
+            "ORDER BY started_at DESC LIMIT 1",
+            (source,),
+        ).fetchone()
+        return row["started_at"] if row else None
+    except Exception:
+        return None
+
+
 def _collector_error_summary(conn: sqlite3.Connection, source: str,
-                             hours: int = 24) -> tuple[int, list[str]]:
+                             hours: int = 24,
+                             since: Optional[str] = None) -> tuple[int, list[str]]:
     """Return (count, sample_messages) from collector_errors for one source.
+
+    `since` (ISO timestamp) raises the floor above the `hours` window, so
+    errors logged before the source's last successful run can be left out
+    (see _last_successful_run).
 
     Catches the silent-swallow pattern where a collector's except block
     only calls logger.warning — production GHA logs are not queryable, so
@@ -185,6 +209,8 @@ def _collector_error_summary(conn: sqlite3.Connection, source: str,
     """
     try:
         cutoff = _last_24h_iso(hours)
+        if since and since > cutoff:
+            cutoff = since
         row = conn.execute(
             "SELECT COUNT(*) c FROM collector_errors "
             "WHERE source = ? AND ts >= ?",
@@ -298,14 +324,24 @@ def probe_twitter(stage: Stage, conn: sqlite3.Connection) -> None:
     went_silent = active_60d - active_14d
 
     # Apify run errors (collection_runs is best-effort — may not exist).
+    # An error from a run that a later successful run superseded is shown
+    # as a note, not as a degradation.
     err_rows: list = []
+    cleared_rows: list = []
+    last_ok = _last_successful_run(conn, "twitter")
     try:
-        err_rows = conn.execute(
+        all_err_rows = conn.execute(
             "SELECT started_at, error FROM collection_runs "
             "WHERE source='twitter' AND started_at >= ? AND error != '' "
-            "ORDER BY started_at DESC LIMIT 5",
+            "ORDER BY started_at DESC LIMIT 20",
             (cutoff_24h,),
         ).fetchall()
+        for r in all_err_rows:
+            if last_ok and r["started_at"] < last_ok:
+                cleared_rows.append(r)
+            else:
+                err_rows.append(r)
+        err_rows = err_rows[:5]
     except Exception:
         pass
 
@@ -325,12 +361,28 @@ def probe_twitter(stage: Stage, conn: sqlite3.Connection) -> None:
         f"{super_smart_24h['a']} authors today)"
     )
     if err_rows:
-        stage.row("Apify errors (24h)", len(err_rows))
+        stage.row("Apify errors since last successful run", len(err_rows))
         for r in err_rows[:3]:
             stage.note(f"{r['started_at'][:16]}: {(r['error'] or '')[:160]}")
+    if cleared_rows:
+        stage.row("Earlier Apify errors cleared by a later run", len(cleared_rows))
+        stage.note(
+            f"{len(cleared_rows)} earlier error(s), cleared by the run at "
+            f"{last_ok[11:16]} UTC: "
+            + " · ".join(
+                f"{r['started_at'][11:16]} {(r['error'] or '')[:100]}"
+                for r in cleared_rows[:3]
+            )
+        )
 
-    n_err, err_samples = _collector_error_summary(conn, "twitter", 24)
-    stage.row("Collector errors logged (24h)", _fmt_int(n_err))
+    n_err, err_samples = _collector_error_summary(conn, "twitter", 24, since=last_ok)
+    n_err_24h, _ = _collector_error_summary(conn, "twitter", 24)
+    stage.row("Collector errors logged since last successful run", _fmt_int(n_err))
+    if n_err_24h > n_err:
+        stage.note(
+            f"{n_err_24h - n_err} earlier collector error(s) in 24h, cleared by "
+            f"the run at {last_ok[11:16]} UTC"
+        )
     if err_samples:
         stage.note("Recent errors: " + " · ".join(err_samples[:3]))
 
@@ -351,7 +403,7 @@ def probe_twitter(stage: Stage, conn: sqlite3.Connection) -> None:
     elif items < 200:
         stage.set(STATUS_WARN, f"only {_fmt_int(items)} items captured (expected ~750–3000)")
     elif err_rows:
-        stage.set(STATUS_WARN, f"{len(err_rows)} Apify error(s) in last 24h")
+        stage.set(STATUS_WARN, f"{len(err_rows)} Apify error(s) since the last successful run")
     else:
         stage.headline = (
             f"{_fmt_int(items)} items from {authors_24h} authors "
@@ -458,28 +510,31 @@ def _probe_rss_subset(
         if not _expected_seen(low)
     ]
 
-    # Silent 14d — same substring rule but against a 14d window
-    cutoff_14d = _last_24h_iso(24 * 14)
-    seen_14d = set()
+    # Silent 30d — same substring rule but against a 30d window. Silence is
+    # information, not failure: many newsletters post rarely (half of the
+    # substack.com feeds unblocked on 5 Sep had simply not published). Fetch
+    # failures show up as collector errors below, which do degrade.
+    cutoff_30d = _last_24h_iso(24 * 30)
+    seen_30d = set()
     for r in conn.execute(
         f"SELECT DISTINCT LOWER(COALESCE(feed_name,'')) fn FROM items "
         f"WHERE source='{source_filter}' AND collected_at >= ?",
-        (cutoff_14d,),
+        (cutoff_30d,),
     ).fetchall():
         if r["fn"]:
-            seen_14d.add(r["fn"])
-    silent_14d = []
+            seen_30d.add(r["fn"])
+    silent_30d = []
     for low, orig in expected_lower.items():
-        hit = low in seen_14d or any(low in s or s in low for s in seen_14d)
+        hit = low in seen_30d or any(low in s or s in low for s in seen_30d)
         if not hit:
-            silent_14d.append(orig)
+            silent_30d.append(orig)
 
     stage.row("Items collected (24h)", _fmt_int(total_items))
     stage.row("Feeds with items (24h)", _fmt_int(len(seen_titles)))
     if expected_titles:
         stage.row("Expected feeds in OPML/config", _fmt_int(len(expected_titles)))
         stage.row("Expected feeds absent 24h", _fmt_int(len(missing)))
-        stage.row("Expected feeds silent 14d", _fmt_int(len(silent_14d)))
+        stage.row("Expected feeds silent 30d (informational)", _fmt_int(len(silent_30d)))
 
     # Top N
     top_lines = sorted(feed_counts.items(), key=lambda x: -x[1])[:top_n]
@@ -487,31 +542,33 @@ def _probe_rss_subset(
         top_blob = " · ".join(f"{n} {name or '(no name)'}" for name, n in top_lines)
         stage.note(f"Top feeds (24h): {top_blob}")
 
-    if silent_14d:
-        sample = ", ".join(silent_14d[:8])
-        if len(silent_14d) > 8:
-            sample += f", +{len(silent_14d) - 8} more"
-        stage.note(f"Expected feeds silent ≥14d (likely broken/renamed): {sample}")
+    if silent_30d:
+        sample = ", ".join(silent_30d[:8])
+        if len(silent_30d) > 8:
+            sample += f", +{len(silent_30d) - 8} more"
+        stage.note(f"Expected feeds silent 30d+ (no items; not an error unless listed "
+                   f"under collector errors): {sample}")
 
     # Soft-fail errors logged by the collector (HTTP non-200, exception,
     # bozo feed, etc.). Without this row a silent swallow inside the
     # collector's try/except is invisible until the count threshold
     # alarm fires.
+    # Errors from the latest completed run are the live problems; the 24h
+    # total repeats every persistent failure once per run (six broken feeds
+    # became "48 collector errors" over eight runs).
     err_source = "substack" if source_filter == "substack" else "rss"
-    n_err, err_samples = _collector_error_summary(conn, err_source, 24)
-    stage.row("Collector errors logged (24h)", _fmt_int(n_err))
+    last_ok = _last_successful_run(conn, err_source)
+    n_err_24h, _ = _collector_error_summary(conn, err_source, 24)
+    n_err, err_samples = _collector_error_summary(conn, err_source, 24, since=last_ok)
+    stage.row("Collector errors logged (latest run)", _fmt_int(n_err))
+    stage.row("Collector errors logged (24h, all runs)", _fmt_int(n_err_24h))
     if err_samples:
-        stage.note("Recent errors: " + " · ".join(err_samples[:3]))
+        stage.note("Recent errors: " + " · ".join(err_samples[:6]))
 
     if total_items == 0:
         stage.set(STATUS_BROKEN, f"0 {source_filter} items in 24h")
-    elif expected_titles and len(silent_14d) > max(10, len(expected_titles) * 0.25):
-        stage.set(
-            STATUS_WARN,
-            f"{len(silent_14d)} of {len(expected_titles)} expected feeds silent 14d+",
-        )
     elif n_err > 0:
-        stage.set(STATUS_WARN, f"{n_err} collector errors logged in 24h")
+        stage.set(STATUS_WARN, f"{n_err} collector error(s) in the latest run")
     else:
         stage.headline = f"{_fmt_int(total_items)} items, {len(seen_titles)} feeds active"
 
@@ -989,8 +1046,19 @@ def probe_journal_abstracts(stage: Stage, conn: sqlite3.Connection) -> None:
     picks = cj.get("_journal_articles") or []
     stats = cj.get("_journal_abstract_stats") or {}
 
+    # Front matter (Editorial Board, Issue Information, Corrigendum...) has
+    # no abstract to fetch; run_pipeline excludes it from the picks, and the
+    # probe ignores any that an older briefing still carries.
+    non_papers = []
+    if _cfg is not None and hasattr(_cfg, "is_non_paper_title"):
+        non_papers = [j for j in picks if _cfg.is_non_paper_title(j.get("title") or "")]
+        picks = [j for j in picks if j not in non_papers]
+    if non_papers:
+        stage.note("Excluded non-paper pick(s): "
+                   + " · ".join((j.get("title") or "")[:60] for j in non_papers))
+
     with_abs = sum(1 for j in picks if len((j.get("abstract") or "").strip()) >= 80)
-    n_picks = len(picks) or stats.get("picks_total", 0)
+    n_picks = len(picks) or (0 if non_papers else stats.get("picks_total", 0))
     stage.row("Today's picks", _fmt_int(n_picks))
     stage.row("Picks with usable abstract", f"{with_abs} of {n_picks}")
     if stats:

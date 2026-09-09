@@ -167,7 +167,31 @@ def check_health(conn: sqlite3.Connection) -> list[dict]:
            ORDER BY started_at DESC""",
         (cutoff_24h,),
     ).fetchall()
+    # A failure that a later successful run of the same source superseded
+    # is reported as a WARNING (logged, not emailed): the same 19:36 twitter
+    # budget failure was emailed three times on 8-9 Sep after two runs had
+    # already succeeded.
+    last_ok_by_source: dict[str, str] = {}
+    for src, started_ok in conn.execute(
+        """SELECT source, MAX(started_at)
+           FROM collection_runs
+           WHERE completed_at IS NOT NULL AND COALESCE(error, '') = ''
+           GROUP BY source"""
+    ).fetchall():
+        if started_ok:
+            last_ok_by_source[src] = started_ok
     for source, err, started in err_rows:
+        cleared_by = last_ok_by_source.get(source)
+        if cleared_by and cleared_by > started:
+            problems.append({
+                "severity": "WARNING",
+                "stage": "collection",
+                "message": (
+                    f"{source} errored at {started[:16]} (cleared by the "
+                    f"successful run at {cleared_by[:16]}): {err[:150]}"
+                ),
+            })
+            continue
         problems.append({
             "severity": "FAILURE",
             "stage": "collection",
