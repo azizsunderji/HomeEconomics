@@ -133,22 +133,32 @@ def collect(
         r"&(?!(?:amp|lt|gt|quot|apos|#\d+|#x[0-9a-fA-F]+);)([A-Za-z][A-Za-z0-9]*);"
     )
     _XML_BARE_AMP_RE = _re_rss.compile(r"&(?!#?\w+;)")
+    # Characters XML 1.0 does not allow anywhere in a document: C0 controls
+    # other than tab, LF and CR; DEL; the non-characters U+FFFE and U+FFFF.
+    # A stray control byte in a description makes expat stop at that
+    # position with "not well-formed (invalid token)".
+    _XML_INVALID_CHAR_RE = _re_rss.compile(
+        "[\x00-\x08\x0b\x0c\x0e-\x1f\x7f\ufffe\uffff]"
+    )
 
     def _sanitize_xml_entities(b: bytes) -> bytes:
         """Replace undefined named entities and bare `&` so an XML parser
         that doesn't ship the HTML DTD can still parse the document.
 
+        - characters XML forbids (control characters, U+FFFE/U+FFFF) are
+          removed first
         - `&hellip;` / `&nbsp;` / other HTML-only entities → `&amp;hellip;`
           etc. (escape the ampersand so the parser sees the text intact)
         - bare `&` not followed by a known entity → `&amp;`
-        Both transformations are conservative: known XML entities (amp,
-        lt, gt, quot, apos) and numeric entities (`&#123;`, `&#x7B;`)
+        The entity transformations are conservative: known XML entities
+        (amp, lt, gt, quot, apos) and numeric entities (`&#123;`, `&#x7B;`)
         pass through untouched.
         """
         try:
             text = b.decode("utf-8", errors="replace")
         except Exception:
             return b
+        text = _XML_INVALID_CHAR_RE.sub("", text)
         text = _XML_BAD_ENTITY_RE.sub(r"&amp;\1;", text)
         text = _XML_BARE_AMP_RE.sub("&amp;", text)
         return text.encode("utf-8", errors="replace")
@@ -176,6 +186,14 @@ def collect(
             return body
         return None
 
+    def _is_html_page(body: bytes) -> bool:
+        """True when a 200 response is a web page, not a feed. Springer's
+        search.rss answers httpx with a 200 "Client Challenge" page (a bot
+        check) while serving urllib the feed; parsing the page as XML fails
+        at line 15 and was logged as a feed error twice a run."""
+        head = body[:2000].lstrip().lower()
+        return head.startswith(b"<!doctype html") or b"<html" in head[:600]
+
     mirror_rescued = 0
     for feed_info in feeds:
         try:
@@ -197,20 +215,23 @@ def collect(
                     )
                     continue
             mirrored = None
-            if r is None or r.status_code != 200:
+            direct_html = r is not None and r.status_code == 200 and _is_html_page(r.content)
+            if r is None or r.status_code != 200 or direct_html:
                 mirrored = _from_mirror(feed_info["url"])
                 if mirrored is not None:
                     mirror_rescued += 1
                     logger.info(f"Feed '{feed_info['title']}' read from the droplet mirror"
-                                + (f" (direct fetch HTTP {r.status_code})" if r is not None else ""))
-            if mirrored is None and r.status_code != 200:
+                                + (" (direct fetch answered an HTML page)" if direct_html
+                                   else f" (direct fetch HTTP {r.status_code})" if r is not None else ""))
+            if mirrored is None and (r.status_code != 200 or direct_html):
+                reason = "HTTP 200 but HTML, not a feed" if direct_html else f"HTTP {r.status_code}"
                 record_collector_error(
                     "rss",
-                    RuntimeError(f"HTTP {r.status_code}"),
+                    RuntimeError(reason),
                     context=f"feed={feed_info['title']}",
                 )
                 logger.warning(
-                    f"Feed '{feed_info['title']}' returned HTTP {r.status_code}"
+                    f"Feed '{feed_info['title']}' returned {reason}"
                 )
                 continue
 
@@ -229,6 +250,18 @@ def collect(
                             f"entity sanitization: {len(parsed_retry.entries)} entries"
                         )
                         parsed = parsed_retry
+
+            # Last resort: the droplet's copy of the feed, if the direct
+            # bytes still do not parse.
+            if parsed.bozo and not parsed.entries and mirrored is None:
+                mirrored = _from_mirror(feed_info["url"])
+                if mirrored is not None:
+                    parsed_mirror = feedparser.parse(mirrored)
+                    if parsed_mirror.entries:
+                        mirror_rescued += 1
+                        logger.info(f"Feed '{feed_info['title']}' read from the droplet mirror "
+                                    f"(direct bytes did not parse: {parsed.bozo_exception})")
+                        parsed = parsed_mirror
 
             if parsed.bozo and not parsed.entries:
                 record_collector_error(
