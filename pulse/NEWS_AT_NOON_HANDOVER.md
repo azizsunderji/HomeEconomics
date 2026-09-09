@@ -437,3 +437,45 @@ PULSE_UNSUB_SECRET in `~/.noon_env` before `NOON_SEND_MODE=subscribers`. Until D
   the Stripe key is not on the droplet, so there is no customer-creation-time fallback.
 - End-to-end test 2026-09-08: `/noon?src=test-0908` → form → Clerk `source == "test-0908"` →
   signed unsubscribe → listed in a `--hours 1` report. Test address removed from the list.
+
+---
+
+## 13. Status update — 2026-09-09: four chronic health-report warnings
+
+- **Twitter "1 Apify error in last 24h"**: the only error was the 19:36 budget-exhausted run
+  of 8 Sep, superseded by two successful runs. `pipeline_health_report._last_successful_run`
+  now floors the error window at the source's latest successful `collection_runs` row;
+  older errors appear as a note ("N earlier errors, cleared by the run at HH:MM UTC") and do
+  not degrade. `analysis/pipeline_health.py` stage 2 downgrades such errors to WARNING, which
+  is logged but not emailed (the "Pulse collection broken" alert was sent three times for the
+  one stale failure).
+- **RSS news "48 collector errors"** was six feeds times eight runs. Causes and fixes:
+  Springer's two search feeds (Annals of Regional Science, J. of Real Estate Finance and
+  Economics) answer httpx with **HTTP 200 and a "Client Challenge" HTML page** while serving
+  urllib the feed; the collector only consulted the mirror on a non-200 status, so it parsed
+  the HTML and logged SAXParseException 15:4. `rss_feeds.py` now treats a 200 HTML body as a
+  failed fetch (mirror first, else "HTTP 200 but HTML, not a feed"), tries the mirror when the
+  direct bytes do not parse, and the sanitizer strips characters XML forbids. Century 21 (403
+  everywhere) and Seattle Times real estate (202 bot check everywhere) removed from the OPML.
+  Wiley's Real Estate Economics and Journal of Regional Science (403 everywhere) are now built
+  on the droplet from the Crossref API (`CROSSREF_JOURNALS` in `mirror_feeds.py`, files
+  `cr_real-estate-economics.xml` and `cr_journal-of-regional-science.xml`, DOI links, abstract
+  as description); the OPML points at the mirror URLs under the unchanged titles. The mirror
+  skips its own `noon.homeeconomics.us/feeds/` URLs in the OPML pass.
+- **Substack "14 of 45 feeds silent 14d+"**: silence no longer degrades `_probe_rss_subset`;
+  only collector errors in the latest run or zero items do, and the silent list is a 30-day
+  informational note. Both RSS stages now show errors from the latest run and the 24h total.
+  `COMPETITOR_SUBSTACKS`: Apricitas (no post since 3 May, same feed on both hosts), Ezra Klein
+  (NYT feeds cover him) and David Pierce (consumer tech) removed; Conor Sen's Bloomberg feed
+  ("Former Bloomberg Opinion Columnist") replaced by his Substack "The Housing Frame";
+  Mike DelPrete (valid feed, last post 22 Jan 2026) and Miller Samuel (valid feed, last post
+  19 Aug 2026, URL set to the redirect target) kept.
+- **Journal abstracts "1 of 5 picks missing"**: the pick was "Editorial Board".
+  `config.is_non_paper_title` (Editorial Board, Issue Information, Table of Contents, Erratum,
+  Corrigendum, Retraction, Correction, Announcement, Call for Papers, Front Matter, Masthead...;
+  at the start of a title, or anywhere in a title under four words) is applied in both journal
+  pools in `run_pipeline.py`, in `fetch_journal_abstracts._pick_todays_5`, in the Crossref
+  mirror, and in the abstract probe.
+- Local render (read-only DB) after the change: Twitter ok, Substack ok, journal abstracts ok;
+  RSS news still degraded on the six errors of the 09:05 run, which clears at the next run.
+  Scripts 111–125 in `NewsAtNoon/scripts/`; backups in `NewsAtNoon/data/backups/`.
