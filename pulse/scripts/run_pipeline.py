@@ -270,6 +270,7 @@ def cmd_daily(args):
         # papers mentioning "household" or "property" generically (e.g. NBER's
         # "Colonial Monopoly... Exclusive Trading Companies" slipped through
         # because the abstract contained "households" once).
+        from config import is_non_paper_title as _is_non_paper_title
         HOUSING_KEYWORD_RE = _re_journal.compile(
             r"\b(hous(?:ing|ed?)|mortgage|rent(?:al|er|ing)?s?|"
             r"home(?:owner|ownership|buyer|builder|building|price)|"
@@ -303,6 +304,8 @@ def cmd_daily(args):
             if published and published < cutoff_24h:
                 continue
             title = item.get("title", "") or ""
+            if _is_non_paper_title(title):
+                continue  # Editorial Board, Issue Information, Corrigendum...
             # Auto-accept items from housing-focused journals; otherwise
             # require a housing keyword in the title.
             HOUSING_JOURNAL_NAMES_DAILY = {
@@ -610,6 +613,7 @@ def cmd_synthesize(args):
         # in passing (e.g. "Colonial Monopoly... Exclusive Trading Companies"
         # had "households" once in the abstract and slipped through).
         import re as _re_journal_filter
+        from config import is_non_paper_title as _is_non_paper_title
         HOUSING_KEYWORD_RE = _re_journal_filter.compile(
             r"\b(hous(?:ing|ed?)|mortgage|rent(?:al|er|ing)?s?|"
             r"home(?:owner|ownership|buyer|builder|building|price)|"
@@ -647,6 +651,8 @@ def cmd_synthesize(args):
             item = dict(row)
             title = item.get("title", "") or ""
             feed = item.get("feed_name", "") or ""
+            if _is_non_paper_title(title):
+                continue  # Editorial Board, Issue Information, Corrigendum...
             # If the journal itself is housing-focused, accept the paper.
             # Otherwise require a housing keyword in the title (body too liberal).
             if feed not in HOUSING_JOURNAL_NAMES and not HOUSING_KEYWORD_RE.search(title):

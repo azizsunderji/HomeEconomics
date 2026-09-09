@@ -67,6 +67,7 @@ def _pick_todays_5(conn: sqlite3.Connection) -> list[dict]:
     # Find all journal-priority feeds from the OPML
     sys.path.insert(0, str(Path(__file__).parent / "scripts"))
     from collectors.rss_feeds import parse_opml, DEFAULT_OPML_PATH
+    from config import is_non_paper_title
     feeds = parse_opml(DEFAULT_OPML_PATH)
     journal_feed_names = [f["title"] for f in feeds if f.get("priority") == "journal"]
     if not journal_feed_names:
@@ -84,6 +85,8 @@ def _pick_todays_5(conn: sqlite3.Connection) -> list[dict]:
         key = (item.get("title") or "")[:80].lower().strip()
         if not key or key in seen:
             continue
+        if is_non_paper_title(item.get("title") or ""):
+            continue  # Editorial Board, Issue Information, Corrigendum: no abstract to fetch
         seen.add(key)
         pool.append(item)
     pool.sort(key=lambda x: (x.get("title") or "").lower())

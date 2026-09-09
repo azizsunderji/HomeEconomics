@@ -133,14 +133,17 @@ COMPETITOR_SUBSTACKS = [
     ("Calculated Risk", "https://calculatedrisk.substack.com/feed"),
     ("Kevin Erdmann", "https://kevinerdmann.substack.com/feed"),
     ("Logan Mohtashami", "https://loganmohtashami.com/feed/"),
-    ("Apricitas Economics", "https://www.apricitas.io/feed"),
+    # Removed 2026-09-09: apricitas.io/feed (same feed as apricitas.substack.com) has no post since 3 May 2026.
+    #   ("Apricitas Economics", "https://www.apricitas.io/feed"),
     ("Construction Physics", "https://www.construction-physics.com/feed"),
     ("Ben Carlson", "https://awealthofcommonsense.com/feed/"),
     ("Matthew Yglesias - Slow Boring", "https://www.slowboring.com/feed"),
     ("Noah Smith - Noahpinion", "https://www.noahpinion.blog/feed"),
     # Removed 2026-06-17: resiclub.com/feed returns 404 — Lance Lambert appears to have moved.
     #   ("Lance Lambert - ResiClub", "https://www.resiclub.com/feed"),
-    ("Conor Sen - Bloomberg Opinion", "https://www.bloomberg.com/authors/ATA2uaN4m4A/conor-sen.rss"),
+    # 2026-09-09: the Bloomberg author feed is now "Former Bloomberg Opinion Columnist" (last item
+    # 26 Jun 2026); his Substack replaces it.
+    ("Conor Sen - The Housing Frame", "https://conorsen.substack.com/feed"),
     ("Employ America", "https://www.employamerica.org/feed"),
     ("Matthew Klein - The Overshoot", "https://theovershoot.co/feed"),
     ("Ernie Tedeschi", "https://www.stripeeconomics.com/feed"),
@@ -155,16 +158,18 @@ COMPETITOR_SUBSTACKS = [
     # Economics/Demographics
     ("Matt Clancy - New Things Under the Sun", "https://mattsclancy.substack.com/feed"),
     ("Derek Thompson", "https://derekthompson.substack.com/feed"),
-    ("Ezra Klein", "https://www.nytimes.com/svc/collections/v1/publish/www.nytimes.com/column/ezra-klein/rss.xml"),
+    # Removed 2026-09-09: last item 24 Aug 2026, and the NYT feeds already carry his columns.
+    #   ("Ezra Klein", "https://www.nytimes.com/svc/collections/v1/publish/www.nytimes.com/column/ezra-klein/rss.xml"),
     ("Lenny Rachitsky", "https://www.lennysnewsletter.com/feed"),
     ("Tangle", "https://www.readtangle.com/feed"),
     ("Paul Goldsmith-Pinkham", "https://paulgp.substack.com/feed"),
     ("Heather Cox Richardson", "https://heathercoxrichardson.substack.com/feed"),
     ("Cameron Murray", "https://fresheconomicthinking.substack.com/feed"),
     ("Not Boring", "https://www.notboring.co/feed"),
-    ("David Pierce", "https://www.theverge.com/authors/david-pierce/rss"),
+    # Removed 2026-09-09: Verge consumer-tech author feed, unrelated to housing, last item 15 Aug 2026.
+    #   ("David Pierce", "https://www.theverge.com/authors/david-pierce/rss"),
     ("Ryan Avent", "https://ryanavent.substack.com/feed"),
-    ("Mike DelPrete", "https://www.mikedp.com/articles?format=rss"),
+    ("Mike DelPrete", "https://www.mikedp.com/articles?format=rss"),  # valid feed; last post 22 Jan 2026
     ("Alexander Kustov", "https://alexanderkustov.substack.com/feed"),
     ("Sarah O'Connor - FT", "https://www.ft.com/sarah-o-connor?format=rss"),
     ("Jonathan Levin - Bloomberg Opinion", "https://www.bloomberg.com/authors/APdpbRfjZ5g/jonathan-levin.rss"),
@@ -174,7 +179,7 @@ COMPETITOR_SUBSTACKS = [
     ("L.A. Reported", "https://lareported.substack.com/feed"),
     ("Casey Newton (Platformer)", "https://www.platformer.news/rss/"),
     ("Paul Krugman", "https://paulkrugman.substack.com/feed"),
-    ("Jonathan Miller - Miller Samuel", "https://www.millersamuel.com/feed/"),
+    ("Jonathan Miller - Miller Samuel", "https://millersamuel.com/feed/"),  # posts a few times a year
     ("The Argument", "https://www.theargumentmag.com/feed"),
     ("Understanding AI (Tim Lee)", "https://www.understandingai.org/feed"),
     ("SemiAnalysis (Dylan Patel)", "https://newsletter.semianalysis.com/feed"),
@@ -637,6 +642,33 @@ DATA_LAKE_CATALOG_PATH = os.environ.get("DATA_LAKE_CATALOG_PATH", "/Users/azizsu
 # (analysis/synthesize.py) and the v4b runner read this so they agree.
 CORPUS_LOOKBACK_HOURS = 24
 MONDAY_LOOKBACK_HOURS = 72
+
+
+# ── Journal feeds: non-paper entries ────────────────────────────────────────
+# Journal RSS feeds and Crossref list front matter alongside papers. These are
+# excluded from the daily journal picks and from the abstract fetcher (an
+# "Editorial Board" pick has no abstract and was counted as a fetch miss).
+import re as _re_journal_cfg
+JOURNAL_NON_PAPER_TITLE_RE = _re_journal_cfg.compile(
+    r"\b(editorial\s+board|issue\s+information|table\s+of\s+contents|erratum|errata|"
+    r"corrigendum|corrigenda|retraction|retracted|correction|announcement|call\s+for\s+papers|"
+    r"front\s+matter|back\s+matter|masthead|editor'?s'?\s+note|list\s+of\s+reviewers|"
+    r"acknowledg(?:e)?ment\s+(?:of|to)\s+reviewers|volume\s+contents|author\s+index)\b",
+    _re_journal_cfg.IGNORECASE,
+)
+
+
+def is_non_paper_title(title: str) -> bool:
+    """True for journal-feed entries that are not papers: a title that starts
+    with one of the front-matter phrases (e.g. "Corrigendum to ..."), or a
+    title under four words that contains one (e.g. "Editorial Board")."""
+    t = " ".join((title or "").split()).strip(" .:-—–")
+    if not t:
+        return True
+    m = JOURNAL_NON_PAPER_TITLE_RE.search(t)
+    if not m:
+        return False
+    return m.start() == 0 or len(t.split()) < 4
 
 
 def corpus_lookback_hours(now=None) -> int:
