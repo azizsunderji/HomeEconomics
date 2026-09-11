@@ -409,14 +409,14 @@ async def upload_image(request: Request, file: UploadFile = File(...)):
 def draft_cards(request: Request, date: str):
     """Owner: render this draft's four social cards now and show them for saving.
 
-    Writes to the normal cards folder; the send's own render overwrites them."""
+    Uses publish_cards, so they land in the normal cards folder and mirror to Dropbox
+    immediately; the send's own render later overwrites both copies."""
     _require(request)
     import cards
     row = drafts.get(date)
     if row is None:
         raise HTTPException(status_code=404, detail="no such draft")
-    out_dir = cards.CARDS_DIR
-    paths = cards.render_cards(row["json"], out_dir)
+    paths = cards.publish_cards(row["json"])
     items = "".join(
         f'<figure><a href="/cards/{date}/{i}" download><img src="/cards/{date}/{i}"></a>'
         f'<figcaption>Card {i} &middot; <a href="/cards/{date}/{i}" download>save</a></figcaption></figure>'
