@@ -987,6 +987,42 @@ def _paper_body(summary: str, body_text: str) -> str:
     return f'<div style="{body_text} margin:0 0 16px 0;">{"".join(inner)}</div>'
 
 
+_BARE_URL_RE = re.compile(r"(?<![\"'=/@.\w])(https?://[^\s<>\"']+|www\.[^\s<>\"']+)")
+
+
+def _autolink_bare_urls(html: str) -> str:
+    """Wrap bare URLs sitting in body text in our own anchor, in the house style.
+    Walks the HTML tag by tag so nothing inside a tag's attributes or inside an
+    existing <a>...</a> is touched. Trailing punctuation stays outside the link."""
+    out, pos, depth = [], 0, 0
+    for m in re.finditer(r"<[^>]+>", html):
+        chunk = html[pos:m.start()]
+        out.append(chunk if depth else _BARE_URL_RE.sub(_bare_url_anchor, chunk))
+        tag = m.group(0)
+        low = tag.lower()
+        if low.startswith("<a"):
+            depth += 1
+        elif low.startswith("</a") and depth:
+            depth -= 1
+        out.append(tag)
+        pos = m.end()
+    rest = html[pos:]
+    out.append(rest if depth else _BARE_URL_RE.sub(_bare_url_anchor, rest))
+    return "".join(out)
+
+
+def _bare_url_anchor(m: re.Match) -> str:
+    raw = m.group(0)
+    tail = ""
+    while raw and raw[-1] in ").,;:!?":
+        tail = raw[-1] + tail
+        raw = raw[:-1]
+    if not raw:
+        return m.group(0)
+    href = raw if raw.startswith("http") else "https://" + raw
+    return f'<a href="{href}" target="_blank" style="{BODY_LINK_STYLE}">{raw}</a>{tail}'
+
+
 def _body_links(text: str) -> str:
     """_md_links() with every anchor restyled for body copy: ink-coloured,
     underlined with a 2px rule, never blue and never visited-purple. Keeps
@@ -1009,7 +1045,7 @@ def _body_links(text: str) -> str:
         free = ' data-free="1"' if _DATA_FREE_RE.search(m.group(0)) else ""
         return f'<a href="{m.group(1)}"{free} target="_blank" style="{BODY_LINK_STYLE}">'
 
-    return re.sub(r'<a\s+href="([^"]+)"[^>]*>', _restyle, html)
+    return _autolink_bare_urls(re.sub(r'<a\s+href="([^"]+)"[^>]*>', _restyle, html))
 
 
 def _link(text: str, url: str, color: str = BLUE, weight: str = "normal") -> str:
