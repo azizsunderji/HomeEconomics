@@ -409,14 +409,13 @@ async def upload_image(request: Request, file: UploadFile = File(...)):
 def draft_cards(request: Request, date: str):
     """Owner: render this draft's four social cards now and show them for saving.
 
-    Renders into a preview folder, never the published cards the send writes, so a
-    pre-send render cannot overwrite an edition that already went out."""
+    Writes to the normal cards folder; the send's own render overwrites them."""
     _require(request)
     import cards
     row = drafts.get(date)
     if row is None:
         raise HTTPException(status_code=404, detail="no such draft")
-    out_dir = cards.CARDS_DIR / "preview"
+    out_dir = cards.CARDS_DIR
     paths = cards.render_cards(row["json"], out_dir)
     items = "".join(
         f'<figure><a href="/cards/{date}/{i}" download><img src="/cards/{date}/{i}"></a>'
@@ -439,7 +438,7 @@ def draft_cards(request: Request, date: str):
 def draft_card_png(request: Request, date: str, n: int):
     _require(request)
     import cards
-    f = cards.CARDS_DIR / "preview" / f"News at Noon {date} card{int(n)}.png"
+    f = cards.CARDS_DIR / f"News at Noon {date} card{int(n)}.png"
     if not f.exists():
         raise HTTPException(status_code=404, detail="card not rendered")
     return FileResponse(str(f), media_type="image/png",
