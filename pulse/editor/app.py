@@ -405,6 +405,48 @@ async def upload_image(request: Request, file: UploadFile = File(...)):
     return {"url": f"{paths.BASE_URL}/images/{rel}", "width": width, "height": height, "bytes": len(data)}
 
 
+@app.get("/cards/{date}", response_class=HTMLResponse)
+def draft_cards(request: Request, date: str):
+    """Owner: render this draft's four social cards now and show them for saving.
+
+    Renders into a preview folder, never the published cards the send writes, so a
+    pre-send render cannot overwrite an edition that already went out."""
+    _require(request)
+    import cards
+    row = drafts.get(date)
+    if row is None:
+        raise HTTPException(status_code=404, detail="no such draft")
+    out_dir = cards.CARDS_DIR / "preview"
+    paths = cards.render_cards(row["json"], out_dir)
+    items = "".join(
+        f'<figure><a href="/cards/{date}/{i}" download><img src="/cards/{date}/{i}"></a>'
+        f'<figcaption>Card {i} &middot; <a href="/cards/{date}/{i}" download>save</a></figcaption></figure>'
+        for i, _p in enumerate(paths, start=1))
+    html = (
+        "<!doctype html><meta name=viewport content='width=device-width,initial-scale=1'>"
+        f"<title>Cards &middot; {date}</title>"
+        "<style>body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;"
+        "background:#F6F7F3;color:#3D3733;margin:0;padding:24px;}"
+        "h1{font-size:20px;font-weight:600;margin:0 0 4px 0;}p{color:#777370;font-size:14px;margin:0 0 24px 0;}"
+        "figure{margin:0 0 28px 0;}img{width:100%;max-width:540px;height:auto;display:block;}"
+        "figcaption{font-size:13px;color:#777370;margin-top:6px;}a{color:#3D3733;}</style>"
+        f"<h1>Cards for {date}</h1><p>Rendered from the draft as it stands. "
+        "Long-press an image to save it, or use the save link.</p>" + items)
+    return HTMLResponse(html, headers={"Cache-Control": "no-store"})
+
+
+@app.get("/cards/{date}/{n}")
+def draft_card_png(request: Request, date: str, n: int):
+    _require(request)
+    import cards
+    f = cards.CARDS_DIR / "preview" / f"News at Noon {date} card{int(n)}.png"
+    if not f.exists():
+        raise HTTPException(status_code=404, detail="card not rendered")
+    return FileResponse(str(f), media_type="image/png",
+                        headers={"Cache-Control": "no-store",
+                                 "Content-Disposition": f'inline; filename="News at Noon {date} card{int(n)}.png"'})
+
+
 @app.get("/api/drafts")
 def list_drafts(request: Request):
     _require(request)
