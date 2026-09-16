@@ -479,3 +479,22 @@ PULSE_UNSUB_SECRET in `~/.noon_env` before `NOON_SEND_MODE=subscribers`. Until D
 - Local render (read-only DB) after the change: Twitter ok, Substack ok, journal abstracts ok;
   RSS news still degraded on the six errors of the 09:05 run, which clears at the next run.
   Scripts 111–125 in `NewsAtNoon/scripts/`; backups in `NewsAtNoon/data/backups/`.
+
+## 14. Status update — 2026-09-16: LinkedIn sources page
+
+- New owner-only page at https://noon.homeeconomics.us/sources (linked from the editor's
+  bottom buttons as "LinkedIn sources"). Code: `pulse/editor/sources.py`,
+  `static/sources.html`, `static/sources.js`; routes listed in `app.py`'s docstring.
+- It lists the 31 current LinkedIn targets plus the 482 housing contacts from the
+  2026-09-03 interactions list (CSV in Dropbox, `2026_09_03_LinkedIn_HousingVoices/outputs/
+  housing_contacts.csv`; kept out of this public repo). Same person under a public slug and
+  an internal ID is merged by name.
+- Recent activity: posts already collected in `pulse.db` (last 30 days, free); for other
+  accounts a "Load recent posts" button runs Apify (month window, 5 posts, about $0.0075 per
+  account at most; batches of 25). Previews cache to `~/work/noon/linkedin_previews.json`.
+  Internal-ID URLs (`/in/ACoAA…`) work with the actor (tested on Ian Kennedy).
+- Add/Remove rewrites `linkedin_targets.json` in this clone at once; Publish commits only
+  that file and pushes to main, so the next `pulse-daily` run reads it. The collector cap is
+  80 accounts (`LINKEDIN_MAX_TARGETS`); the page refuses to go past it.
+- Also on 2026-09-16: `noon-report.timer` had not been enabled on OVH after the migration;
+  enabled it. The old droplet's timers could not be verified as stopped.

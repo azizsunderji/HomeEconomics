@@ -22,6 +22,11 @@ Routes
   GET  /pdf/{date}?tier=    owner: render the draft to PDF now
                             (tier = premium | free | social)
   GET  /health
+  GET  /sources               owner: LinkedIn accounts the collector reads (sources.py)
+  GET  /api/sources           accounts with recent activity and include state
+  POST /api/sources/include   {key, include} -> rewrites linkedin_targets.json
+  POST /api/sources/fetch     {keys} -> recent posts from Apify (<= 25 accounts, cached)
+  POST /api/sources/publish   commit and push linkedin_targets.json
 """
 from __future__ import annotations
 
@@ -44,6 +49,7 @@ import ingest
 import render
 import sender
 import drafts
+import sources
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
 logger = logging.getLogger("noon.app")
@@ -460,3 +466,46 @@ def preview(request: Request, date: str, tier: str = "free"):
         raise HTTPException(status_code=404, detail="no such draft")
     tier = "premium" if tier == "premium" else "free"
     return HTMLResponse(render.preview(row["json"], tier))
+
+
+# ── LinkedIn sources ────────────────────────────────────────────────────
+
+@app.get("/sources", response_class=HTMLResponse)
+def sources_page(request: Request):
+    if not _authed(request):
+        return RedirectResponse("/login", status_code=302)
+    return FileResponse(STATIC / "sources.html", headers={"Cache-Control": "no-store"})
+
+
+@app.get("/api/sources")
+def sources_list(request: Request):
+    _require(request)
+    return sources.overview()
+
+
+@app.post("/api/sources/include")
+def sources_include(request: Request, body: dict[str, Any] = Body(...)):
+    _require(request)
+    try:
+        return sources.set_included(str(body.get("key") or ""), bool(body.get("include")))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/sources/fetch")
+def sources_fetch(request: Request, body: dict[str, Any] = Body(...)):
+    _require(request)
+    try:
+        return sources.fetch_previews([str(k) for k in body.get("keys") or []])
+    except Exception as e:  # noqa: BLE001
+        logger.exception("sources fetch failed")
+        raise HTTPException(status_code=502, detail=f"Apify fetch failed: {e}")
+
+
+@app.post("/api/sources/publish")
+def sources_publish(request: Request):
+    _require(request)
+    try:
+        return sources.publish()
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))

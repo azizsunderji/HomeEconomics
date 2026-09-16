@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Housing at Noon — LinkedIn sources</title>
+<link rel="icon" href="/icon.svg" type="image/svg+xml"><link rel="icon" href="/static/favicon.png" sizes="64x64" type="image/png"><link rel="shortcut icon" href="/favicon.ico">
+<link rel="stylesheet" href="/static/style.css"></head>
+<body>
+<div class="topbar"><div class="inner">
+  <a class="brand" href="/" style="text-decoration:none">Housing at Noon</a>
+  <span class="datelabel">LinkedIn sources</span>
+  <span class="spacer"></span>
+  <span class="chip" id="countChip">Loading</span>
+</div></div>
+
+<div class="wrap">
+  <div class="banner" id="banner" hidden></div>
+
+  <p class="muted" id="intro">Accounts marked “In” are read by the LinkedIn collector four times a day.
+    Changes save here straight away and reach the collector when you press Publish.</p>
+
+  <div class="src-controls">
+    <div class="seg" id="filter">
+      <button data-f="in" class="on">In</button>
+      <button data-f="out">Not in</button>
+      <button data-f="all">All</button>
+    </div>
+    <input type="search" id="q" placeholder="Search name or headline" autocomplete="off">
+  </div>
+  <div class="src-controls">
+    <select id="sort">
+      <option value="interactions">Sort: your interactions</option>
+      <option value="activity">Sort: recent posts</option>
+      <option value="name">Sort: name</option>
+    </select>
+    <button class="btn" id="btnBatch">Load posts for next 25</button>
+  </div>
+  <p class="muted" id="costNote"></p>
+
+  <div id="list"></div>
+  <button class="btn" id="btnMore" hidden>Show more</button>
+</div>
+
+<div class="actions"><div class="inner">
+  <a class="btn" href="/">Back to editor</a>
+  <button class="btn primary" id="btnPublish" disabled>Publish</button>
+</div></div>
+<script src="/static/sources.js"></script>
+</body></html>

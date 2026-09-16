@@ -131,3 +131,21 @@ body.login { background: var(--soft); }
   .linkbox .freeopt { min-height: 44px; }
   .linkbox .freeopt input { width: 22px; height: 22px; }
 }
+
+/* LinkedIn sources page */
+.src-controls { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 12px 0; }
+.src-controls input[type=search], .src-controls select { flex: 1 1 200px; font: inherit; font-size: 15px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); color: var(--ink); }
+.src { padding: 14px 0 16px 0; border-top: 1px solid var(--line); }
+.src.in { background: linear-gradient(90deg, var(--green), var(--green)) no-repeat; background-size: 4px 100%; padding-left: 14px; }
+.src-head { display: flex; gap: 12px; align-items: flex-start; justify-content: space-between; }
+.src-name { font-family: var(--serif); font-size: 19px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.src-name a { text-decoration: none; }
+.src-headline { margin-top: 2px; }
+.src-meta { font-size: 14px; margin-top: 6px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.src-meta .btn { padding: 4px 10px; font-size: 13px; }
+.src details { margin-top: 6px; font-size: 14px; }
+.src summary { cursor: pointer; color: var(--muted); }
+.src-posts { margin: 6px 0 0 0; padding-left: 18px; }
+.src-posts li { margin-bottom: 8px; }
+.src-posts a { text-decoration: none; }
+#btnMore { margin-top: 16px; }
