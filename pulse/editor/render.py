@@ -104,7 +104,9 @@ def date_label(date: str) -> str:
 
 
 def subject(date: str) -> str:
-    return f"{PRODUCT_NAME}: {date_label(date)}"
+    # The From name is already the product name, so repeating it here only
+    # pushes the date out of the visible part of the inbox line.
+    return date_label(date)
 
 
 def preview(draft: dict, tier: str) -> str:
