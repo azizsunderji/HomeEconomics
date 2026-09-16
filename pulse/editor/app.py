@@ -1,4 +1,4 @@
-"""News at Noon editor — FastAPI app (127.0.0.1:8240 behind Caddy).
+"""Housing at Noon editor — FastAPI app (127.0.0.1:8240 behind Caddy).
 
 Routes
   GET  /                     editor UI (owner only)
@@ -48,7 +48,7 @@ import drafts
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
 logger = logging.getLogger("noon.app")
 
-app = FastAPI(title="News at Noon editor", docs_url=None, redoc_url=None)
+app = FastAPI(title="Housing at Noon editor", docs_url=None, redoc_url=None)
 STATIC = paths.EDITOR_DIR / "static"
 app.mount("/static", StaticFiles(directory=str(STATIC)), name="static")
 # Images the owner drops into a theme from the editor (POST /api/upload). Served by

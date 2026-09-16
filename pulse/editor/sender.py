@@ -49,7 +49,7 @@ def _api_key() -> str:
     return key
 
 
-# Replies go to the owner. The From stays 'News at Noon <pulse@home-economics.us>',
+# Replies go to the owner. The From stays 'Housing at Noon <pulse@home-economics.us>',
 # which is not a mailbox (probe 2026-09-08: mail to it never arrived), so without
 # this a reader who hits Reply gets a bounce.
 REPLY_TO = os.environ.get("NOON_REPLY_TO", paths.OWNER_EMAIL)
@@ -133,7 +133,7 @@ def send_notification(date: str, magic_url: str, shown: int, total: int) -> bool
     html = (
         '<div style="font-family:-apple-system,Helvetica,Arial,sans-serif;font-size:17px;'
         'line-height:1.5;color:#3D3733;max-width:560px;margin:0 auto;padding:24px 16px;">'
-        f'<p style="margin:0 0 16px 0;">The News at Noon draft for {label} is ready. '
+        f'<p style="margin:0 0 16px 0;">The Housing at Noon draft for {label} is ready. '
         f'It has {total} themes; free readers currently get {shown}.</p>'
         f'<p style="margin:0 0 24px 0;"><a href="{magic_url}" style="display:inline-block;'
         'background:#0BB4FF;color:#ffffff;text-decoration:none;padding:12px 20px;'
@@ -153,7 +153,7 @@ def send_alert(subject: str, text: str) -> bool:
     try:
         return _post_resend(_api_key(), "https://api.resend.com/emails",
                             {"from": render.EMAIL_FROM, "to": [paths.OWNER_EMAIL],
-                             "subject": f"[News at Noon] {subject}", "text": text})
+                             "subject": f"[Housing at Noon] {subject}", "text": text})
     except Exception as e:  # noqa: BLE001
         logger.error(f"alert could not be sent: {e}")
         return False

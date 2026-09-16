@@ -1,5 +1,5 @@
 [Unit]
-Description=News at Noon: mirror the substack.com feeds that block GitHub Actions
+Description=Housing at Noon: mirror the substack.com feeds that block GitHub Actions
 
 [Service]
 Type=oneshot

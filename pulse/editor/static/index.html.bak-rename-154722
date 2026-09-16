@@ -1,12 +1,12 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Housing at Noon — editor</title>
+<title>News at Noon — editor</title>
 <link rel="icon" href="/icon.svg" type="image/svg+xml"><link rel="icon" href="/static/favicon.png" sizes="64x64" type="image/png"><link rel="shortcut icon" href="/favicon.ico">
 <link rel="stylesheet" href="/static/style.css"></head>
 <body>
 <div class="topbar"><div class="inner">
-  <span class="brand">Housing at Noon</span>
+  <span class="brand">News at Noon</span>
   <span class="datelabel" id="dateLabel"></span>
   <span class="spacer"></span>
   <span class="chip" id="saveChip">Loading</span>

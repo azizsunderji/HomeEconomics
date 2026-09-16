@@ -962,7 +962,7 @@ def _restore_own_links(html: str, keep: dict) -> str:
 
 
 def _render_lunch_variants(v4b: dict) -> tuple[str, str, str]:
-    """News at Noon premium + free variants. Premium: every entry,
+    """Housing at Noon premium + free variants. Premium: every entry,
     working links (archive.ph scrubbed). Free: tiered render (banner,
     top-N entries, withheld list) with every external link walled, except
     links to our own domains."""
@@ -982,7 +982,7 @@ def _noon_date_str() -> str:
 
 
 def _lunch_subject(top_title: str | None = None) -> str:
-    """Subject is date-based by the owner's decision: 'News at Noon: <date>'.
+    """Subject is date-based by the owner's decision: 'Housing at Noon: <date>'.
     top_title is accepted for call-site compatibility and ignored."""
     return f"{PRODUCT_NAME}: {_noon_date_str()}"
 
@@ -1031,7 +1031,7 @@ def send_v4b_shadow_email(v4b: dict, to: str, source_v1_id: int,
 
 def send_lunch_to_subscribers(v4b: dict, source_v1_id: int) -> bool:
     """Subscriber-mode send, mirroring v3_1_runner.send_v3_email_to_subscribers
-    but with the News at Noon template and footer. Free tier gets the
+    but with the Housing at Noon template and footer. Free tier gets the
     tiered/walled variant, premium gets working links. Not exercised in
     shadow mode."""
     api_key = os.environ.get("RESEND_API_KEY", "")

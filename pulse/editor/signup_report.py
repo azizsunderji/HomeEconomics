@@ -47,7 +47,7 @@ from delivery.subscribers import (
 logger = logging.getLogger("noon.report")
 
 ET = ZoneInfo("America/New_York")
-EMAIL_FROM = "News at Noon <pulse@home-economics.us>"
+EMAIL_FROM = "Housing at Noon <pulse@home-economics.us>"
 INK = "#3D3733"
 MUTED = "#8A8580"
 FONT = "-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, Arial, sans-serif"
@@ -102,7 +102,7 @@ def _parse_iso(value) -> datetime | None:
 
 def summarise_user(u: dict) -> dict | None:
     """Flatten one Clerk user into the fields the report needs, or None when
-    the user has never touched News at Noon (no pulseNewsletter and no
+    the user has never touched Housing at Noon (no pulseNewsletter and no
     tools.pulse)."""
     meta = u.get("public_metadata") if isinstance(u.get("public_metadata"), dict) else {}
     pn = meta.get("pulseNewsletter") if isinstance(meta.get("pulseNewsletter"), dict) else None
@@ -262,7 +262,7 @@ def render_html(rep: dict) -> str:
         '<meta name="viewport" content="width=device-width, initial-scale=1"></head>'
         f'<body style="margin:0;padding:0;background:#ffffff;">'
         f'<div style="max-width:560px;margin:0 auto;padding:28px 20px 40px 20px;font-family:{FONT};color:{INK};">',
-        f'<p style="margin:0;font-family:{HEAD_FONT};font-size:24px;line-height:1.25;color:{INK};">News at Noon signups</p>',
+        f'<p style="margin:0;font-family:{HEAD_FONT};font-size:24px;line-height:1.25;color:{INK};">Housing at Noon signups</p>',
         f'<p style="margin:6px 0 0 0;font-size:14px;line-height:1.5;color:{MUTED};">'
         f'{_e(now_local.strftime("%A, %B %-d, %Y, %-I:%M %p ET").replace("AM ET", "am ET").replace("PM ET", "pm ET"))}'
         f' &middot; covering {_e(win)}</p>',
@@ -333,7 +333,7 @@ def render_html(rep: dict) -> str:
 
     parts.append(
         f'<p style="margin:36px 0 0 0;font-size:12px;line-height:1.5;color:{MUTED};">'
-        f'Clerk: {rep["n_users"]} accounts, {rep["n_rows"]} with a News at Noon record. '
+        f'Clerk: {rep["n_users"]} accounts, {rep["n_rows"]} with a Housing at Noon record. '
         "Source is the ?src= tag on the link the reader arrived with, or ref:&lt;site&gt; when there was none; "
         "addresses that signed up before tagging began are (untagged).</p>"
     )
@@ -343,7 +343,7 @@ def render_html(rep: dict) -> str:
 
 def subject_line(now: datetime | None = None) -> str:
     local = (now or datetime.now(timezone.utc)).astimezone(ET)
-    return f"News at Noon signups: {local.strftime('%A, %B %-d')}"
+    return f"Housing at Noon signups: {local.strftime('%A, %B %-d')}"
 
 
 # --------------------------------------------------------------------------

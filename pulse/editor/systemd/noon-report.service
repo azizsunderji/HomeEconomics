@@ -1,5 +1,5 @@
 [Unit]
-Description=News at Noon: morning signup report to the owner (signups, upgrades, unsubscribes, sources)
+Description=Housing at Noon: morning signup report to the owner (signups, upgrades, unsubscribes, sources)
 
 [Service]
 Type=oneshot

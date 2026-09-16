@@ -1,7 +1,7 @@
-"""News at Noon — email renderer (v4b briefing dict -> HTML).
+"""Housing at Noon — email renderer (v4b briefing dict -> HTML).
 
 Replaces the "Pulse"-era template in delivery/email_briefing.py for the
-daily brief now called "News at Noon". Renders
+daily brief now called "Housing at Noon". Renders
 from `briefing["entries"]` (the canonical ranked list produced by
 v4b_runner) rather than the `conversation_themes` back-mapping.
 
@@ -10,7 +10,7 @@ Design rules (owner's brief, 2026-09):
   * No dark horizontal rules, no bordered boxes. Sections separate by
     whitespace. The only permitted separator colour is #F6F7F3 at 1px.
   * Masthead: Home Economics logo (LOGO_URL, ~140px, left-aligned) above
-    the "News at Noon" text title, then the date. A wordmark image can
+    the "Housing at Noon" text title, then the date. A wordmark image can
     replace the text title later via WORDMARK_URL. No small-caps kicker.
   * "Today's Themes": one synthesis paragraph at the top (never bullets),
     under its own section heading.
@@ -73,7 +73,7 @@ LOGO_WIDTH = 100
 # link wall leaves it alone.
 WEB_URL = "https://noon.homeeconomics.us/latest"
 
-# Wordmark slot. When a "News at Noon" wordmark graphic exists, set this to
+# Wordmark slot. When a "Housing at Noon" wordmark graphic exists, set this to
 # its URL and the masthead renders it as an <img> (WORDMARK_WIDTH px wide,
 # alt=TITLE) in place of the <h1> text title. Leave empty for the text title.
 WORDMARK_URL = ""
@@ -1184,7 +1184,7 @@ def _split_entries(entries: list[dict], tier: str) -> tuple[list[dict], list[dic
 # ── Main renderer ───────────────────────────────────────────────────────
 
 def render_lunch_html(briefing: dict, tier: str = "premium") -> tuple[str, str, int]:
-    """Render a v4b briefing as the News at Noon email.
+    """Render a v4b briefing as the Housing at Noon email.
 
     Returns (html, top_entry_title, entry_count) where entry_count is the
     number of entries rendered in full for this tier. Mirrors the return

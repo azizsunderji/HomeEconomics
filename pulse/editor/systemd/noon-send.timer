@@ -1,5 +1,5 @@
 [Unit]
-Description=News at Noon send at 11:59 US Eastern, Monday to Friday (lands at noon)
+Description=Housing at Noon send at 11:59 US Eastern, Monday to Friday (lands at noon)
 
 [Timer]
 OnCalendar=Mon..Fri *-*-* 11:59:00 America/New_York

@@ -1,4 +1,4 @@
-# News at Noon editor. Add `import /etc/caddy/conf.d/*.caddy` to /etc/caddy/Caddyfile
+# Housing at Noon editor. Add `import /etc/caddy/conf.d/*.caddy` to /etc/caddy/Caddyfile
 # and copy this file to /etc/caddy/conf.d/. Needs an A record:
 #   noon.homeeconomics.us -> 104.236.210.18
 noon.homeeconomics.us {

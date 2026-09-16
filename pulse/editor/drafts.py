@@ -1,4 +1,4 @@
-"""Draft store for the News at Noon editor.
+"""Draft store for the Housing at Noon editor.
 
 One row per calendar day (US Eastern). The JSON is the v4b briefing dict
 with the editor's fields added (`intro`, per-entry `tier`, edited titles

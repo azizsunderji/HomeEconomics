@@ -1,5 +1,5 @@
 [Unit]
-Description=News at Noon: build today's draft from the synced brief and email the edit link
+Description=Housing at Noon: build today's draft from the synced brief and email the edit link
 
 [Service]
 Type=oneshot

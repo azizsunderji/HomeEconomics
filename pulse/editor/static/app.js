@@ -1,4 +1,4 @@
-/* News at Noon editor. Plain JS, no build step.
+/* Housing at Noon editor. Plain JS, no build step.
    Content model: the draft JSON from /api/draft. Summaries are markdown with
    [text](url) links; the contenteditable blocks convert to and from that.
    A link the owner wants to stay live in the free edition carries the
@@ -479,7 +479,7 @@
     state.date = data.date; state.json = data.json; state.dirty = false; state.blocked = false;
     applyMeta(data);
     $('#dateLabel').textContent = data.date_label;
-    document.title = 'News at Noon — ' + data.date_label;
+    document.title = 'Housing at Noon — ' + data.date_label;
     const intro = $('#intro'); intro.innerHTML = mdToHtml(state.json.intro || '');
     renderEntries(); renderPaper(); chip('Saved');
   }

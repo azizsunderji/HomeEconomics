@@ -1,5 +1,5 @@
 [Unit]
-Description=News at Noon signup report at 07:00 US Eastern, every day
+Description=Housing at Noon signup report at 07:00 US Eastern, every day
 
 [Timer]
 OnCalendar=*-*-* 07:00:00 America/New_York

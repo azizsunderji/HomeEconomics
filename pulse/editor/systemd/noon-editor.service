@@ -1,5 +1,5 @@
 [Unit]
-Description=News at Noon editor (127.0.0.1:8240)
+Description=Housing at Noon editor (127.0.0.1:8240)
 After=network.target
 
 [Service]

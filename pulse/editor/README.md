@@ -1,4 +1,4 @@
-# News at Noon editor (`pulse/editor/`)
+# Housing at Noon editor (`pulse/editor/`)
 
 Owner-only web editor for the daily draft, plus the noon ET send (timer fires 11:59 ET so it lands at noon). Runs on
 the droplet as user-level systemd units (see `install.sh`); the Python
@@ -32,7 +32,7 @@ Logs: `~/work/noon/logs/`. CLI: `python cli.py ingest|send|render|test`.
 
 `noon-report.timer` runs `signup_report.py` at 07:00 America/New_York every day
 (Persistent=true; log `~/work/noon/logs/report.log`). It reads the Clerk user list and
-emails NOON_OWNER_EMAIL "News at Noon signups: <weekday, month day>": free signups,
+emails NOON_OWNER_EMAIL "Housing at Noon signups: <weekday, month day>": free signups,
 premium subscriptions and unsubscribes in the last 24 hours (email, time ET, source; for
 unsubscribes also how long they were subscribed), then totals (subscribers now, free and
 premium; signups, premium and unsubscribes over 7 days; signups by source over 7 days and

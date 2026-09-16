@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Render (and optionally send) News at Noon design previews.
+"""Render (and optionally send) Housing at Noon design previews.
 
 Usage (after `source ~/.pulse_dev_env`):
     python preview_lunch.py                          # both tiers from the sample JSON
@@ -12,7 +12,7 @@ Output files: {--out}/noon_free.html and/or {--out}/noon_premium.html.
 Variant pipeline matches v4b_runner._render_lunch_variants:
     premium = scrub_archive_links(render_lunch_html(b, "premium"))
     free    = make_free_variant(scrub_archive_links(render_lunch_html(b, "free")))
-Sends get the News at Noon compliance footer via v4b_runner._lunch_footer
+Sends get the Housing at Noon compliance footer via v4b_runner._lunch_footer
 with a demo unsubscribe URL, use v4b_runner.EMAIL_FROM, and go out through
 v3_1_runner._post_resend.
 """
@@ -72,7 +72,7 @@ def send_preview(html: str, tier: str, top_title: str, to: str,
                  from_addr: str | None) -> bool:
     # Imported lazily: v4b_runner pulls in anthropic/numpy and is only
     # needed for sending. EMAIL_FROM / PRODUCT_NAME / _lunch_footer are the
-    # News at Noon versions (the v3_1 ones still say "Pulse").
+    # Housing at Noon versions (the v3_1 ones still say "Pulse").
     from v3_1_runner import _post_resend
     from v4b_runner import EMAIL_FROM, PRODUCT_NAME, _lunch_footer, _noon_date_str
     api_key = os.environ.get("RESEND_API_KEY")

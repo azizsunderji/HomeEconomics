@@ -636,7 +636,7 @@ DATA_LAKE_CATALOG_PATH = os.environ.get("DATA_LAKE_CATALOG_PATH", "/Users/azizsu
 
 
 # ── Corpus window ─────────────────────────────────────────────────────────────
-# News at Noon is a Monday-to-Friday product (owner decision 2026-09-04). The
+# Housing at Noon is a Monday-to-Friday product (owner decision 2026-09-04). The
 # Monday edition covers the weekend: its "today" pool reaches back 72 hours
 # (Friday 7am ET to Monday 7am ET) instead of 24. Both the v1 synthesis
 # (analysis/synthesize.py) and the v4b runner read this so they agree.

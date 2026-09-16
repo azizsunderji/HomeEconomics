@@ -4,10 +4,10 @@ Two files per edition, rendered through headless Chromium (Playwright)
 onto US Letter pages and kept in NOON_PDF_DIR (and, when set, mirrored
 to NOON_PDF_DROPBOX_DIR so they land on the Mac):
 
-  premium  `News at Noon YYYY-MM-DD.pdf`      + `latest.pdf`
+  premium  `Housing at Noon YYYY-MM-DD.pdf`      + `latest.pdf`
            every theme, working links, no upgrade boxes (owner only:
            served at /latest-premium.pdf).
-  social   `News at Noon YYYY-MM-DD free.pdf` + `latest-free.pdf`
+  social   `Housing at Noon YYYY-MM-DD free.pdf` + `latest-free.pdf`
            the free edition with sign-up copy and links walled to the
            sign-up page; this is what /latest.pdf serves publicly and
            what gets posted on social media.
@@ -89,9 +89,9 @@ def publish_pdf(draft: dict, tier: str = PDF_TIER) -> Path:
     """Write both edition PDFs and refresh the `latest` copies, then mirror
     all four files to Dropbox if configured.
 
-    `tier` selects what goes into the main file (`News at Noon DATE.pdf` /
+    `tier` selects what goes into the main file (`Housing at Noon DATE.pdf` /
     `latest.pdf`; premium by default — `cli.py pdf --tier` can override).
-    The social file (`News at Noon DATE free.pdf` / `latest-free.pdf`) is
+    The social file (`Housing at Noon DATE free.pdf` / `latest-free.pdf`) is
     always written. Returns the main (premium) path, as callers expect.
     """
     date = draft["date"]

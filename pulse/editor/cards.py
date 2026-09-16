@@ -1,4 +1,4 @@
-"""Social image cards for a News at Noon edition.
+"""Social image cards for a Housing at Noon edition.
 
 Four 1080x1350 PNGs (the 4:5 portrait X and LinkedIn show largest), rendered
 from the draft JSON with Playwright in the house style: cream ground, ink text,
@@ -8,7 +8,7 @@ blue numbers, ABC Oracle Edu for sans and Gelasio for the standfirst.
   card 2-4  the first three free themes: number, title, opening paragraph,
             source pills
 
-Files: `News at Noon YYYY-MM-DD card1.png` … `card4.png` in NOON_CARDS_DIR
+Files: `Housing at Noon YYYY-MM-DD card1.png` … `card4.png` in NOON_CARDS_DIR
 (default NOON_PDF_DIR/cards), mirrored to NOON_PDF_DROPBOX_DIR/cards when set.
 
     python cards.py            # today's draft

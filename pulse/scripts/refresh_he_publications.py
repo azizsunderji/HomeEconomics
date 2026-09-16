@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Refresh the tracked publications snapshot used by the News at Noon
+"""Refresh the tracked publications snapshot used by the Housing at Noon
 "From Home Economics" section (delivery/he_publications.json). Run from
 pulse/scripts/ on a machine that can reach Substack, then commit the file.
 """

@@ -4,7 +4,7 @@
                          from the synced brief and email the edit link once
   python cli.py send     11:59 ET (lands at noon): send today's draft unless held/sent
 
-News at Noon is a Monday-to-Friday product: ingest and send do nothing on a
+Housing at Noon is a Monday-to-Friday product: ingest and send do nothing on a
 Saturday or Sunday date unless --force is given. The timers are already
 Mon..Fri; this guard covers a Persistent catch-up run after downtime and
 manual starts.
@@ -44,7 +44,7 @@ def is_weekend(date: str) -> bool:
 def cmd_ingest(args) -> int:
     date = args.date or drafts.today_et()
     if is_weekend(date) and not args.force:
-        logger.info(f"{date} is a weekend: News at Noon is Monday to Friday; not ingesting")
+        logger.info(f"{date} is a weekend: Housing at Noon is Monday to Friday; not ingesting")
         return 0
     row = ingest.ingest(date, replace=args.replace)
     if row is None:
@@ -61,7 +61,7 @@ def cmd_ingest(args) -> int:
 def cmd_send(args) -> int:
     date = args.date or drafts.today_et()
     if is_weekend(date) and not args.force:
-        logger.info(f"{date} is a weekend: News at Noon is Monday to Friday; not sending")
+        logger.info(f"{date} is a weekend: Housing at Noon is Monday to Friday; not sending")
         return 0
     row = drafts.get(date) or ingest.ingest(date)
     if row is None:
