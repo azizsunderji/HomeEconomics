@@ -80,6 +80,11 @@ def _run_actor(api_key: str, target_urls: list[str], posted_limit: str, max_post
 
 def _to_item(post: dict) -> PulseItem | None:
     content = (post.get("content") or "").strip()
+    article = post.get("article") or {}
+    if not content and article.get("title"):
+        # Link-only shares (e.g. The Builder's Daily) carry no text of their own;
+        # the shared article's headline and outlet stand in for it.
+        content = " — ".join(x for x in (article.get("title"), article.get("subtitle")) if x).strip()
     post_id = str(post.get("id") or post.get("entityId") or "").strip()
     url = (post.get("linkedinUrl") or "").strip()
     if not content or not post_id or not url:
