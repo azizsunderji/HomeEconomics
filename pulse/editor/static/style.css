@@ -133,19 +133,22 @@ body.login { background: var(--soft); }
 }
 
 /* LinkedIn sources page */
-.src-controls { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 12px 0; }
+.src-controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin: 16px 0; }
 .src-controls input[type=search], .src-controls select { flex: 1 1 200px; font: inherit; font-size: 15px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); color: var(--ink); }
-.src { padding: 14px 0 16px 0; border-top: 1px solid var(--line); }
+.src { padding: 28px 0 32px 0; border-top: 1px solid var(--line); }
+.src + .src { margin-top: 8px; }
 .src.in { background: linear-gradient(90deg, var(--green), var(--green)) no-repeat; background-size: 4px 100%; padding-left: 14px; }
 .src-head { display: flex; gap: 12px; align-items: flex-start; justify-content: space-between; }
 .src-name { font-family: var(--serif); font-size: 19px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .src-name a { text-decoration: none; }
-.src-headline { margin-top: 2px; }
-.src-meta { font-size: 14px; margin-top: 6px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.src-headline { margin-top: 8px; line-height: 1.55; }
+.src-meta { font-size: 14px; margin-top: 14px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .src-meta .btn { padding: 4px 10px; font-size: 13px; }
-.src details { margin-top: 6px; font-size: 14px; }
+.src details { margin-top: 14px; font-size: 14px; }
 .src summary { cursor: pointer; color: var(--muted); }
-.src-posts { margin: 6px 0 0 0; padding-left: 18px; }
-.src-posts li { margin-bottom: 8px; }
+.src-posts { margin: 12px 0 0 0; padding-left: 18px; }
+.src-posts li { margin-bottom: 16px; line-height: 1.5; }
 .src-posts a { text-decoration: none; }
-#btnMore { margin-top: 16px; }
+#btnMore { margin-top: 24px; }
+#costNote { margin: 8px 0 24px 0; }
+#list { border-bottom: 1px solid var(--line); }
