@@ -44,7 +44,7 @@ SERIF = 'Gelasio, Georgia, "Times New Roman", serif'
 _LINK_RE = re.compile(r"\[([^\]]+)\]\((?:[^)\s]+)(?:\s+(?:\"[^\"]*\"|'[^']*'))?\)")
 
 
-_LINK_FULL = re.compile(r"\[([^\]]+)\]\((https?://[^\s)]+)\)")
+_LINK_FULL = re.compile(r"""\[([^\]]+)\]\((https?://[^\s)]+)(?:\s+(?:"[^"]*"|'[^']*'))?\)""")
 # An image dropped in from the editor (![caption](url) on its own line) is left
 # out of the cards: they are images themselves.
 _IMG_LINE = re.compile(r"^[ \t]*!\[[^\]\n]*\]\(https?://[^\s)]+\)[ \t]*$", re.M)
