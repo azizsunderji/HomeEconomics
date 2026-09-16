@@ -139,7 +139,7 @@ def _base_css() -> str:
 
 def _foot(label: str, links: bool = False) -> str:
     cta = (f'<a href="https://{SIGNUP}?src=cards">{SIGNUP}</a>' if links else SIGNUP)
-    return (f'<div class="foot"><span><b>News at Noon</b> · {_esc(label)}</span>'
+    return (f'<div class="foot"><span><b>Housing at Noon</b> · {_esc(label)}</span>'
             f'<span class="cta">Free daily at noon ET → {cta}</span></div>')
 
 
@@ -168,7 +168,7 @@ def card_cover(draft: dict, entries: list[dict], links: bool = False) -> str:
     return f"""
 <div class="card">
   <div class="head"><img src="{LOGO_URL}" alt="Home Economics"><span class="date">{_esc(date_label(date))}</span></div>
-  <div class="title">News at Noon</div>
+  <div class="title">Housing at Noon</div>
   <div class="stand">{_card_links(stand_md)}</div>
   <ul class="toc">{items}</ul>
   {_foot("a daily brief on the U.S. housing market", links)}
@@ -281,7 +281,7 @@ def render_cards(draft: dict, out_dir: Path) -> list[Path]:
 
         # cover
         show(card_cover(draft, entries))
-        out = out_dir / f"News at Noon {date} card1.png"
+        out = out_dir / f"Housing at Noon {date} card1.png"
         page.screenshot(path=str(out), clip={"x": 0, "y": 0, "width": W, "height": H})
         outs.append(out)
         # themes: as much of the opening as fits — try 3 paragraphs at 33px,
@@ -298,7 +298,7 @@ def render_cards(draft: dict, out_dir: Path) -> list[Path]:
                     break
             if not fitted:
                 show(card_theme(draft, e, n, max_paras=1, max_chars=640, body_px=27))
-            out = out_dir / f"News at Noon {date} card{k}.png"
+            out = out_dir / f"Housing at Noon {date} card{k}.png"
             page.screenshot(path=str(out), clip={"x": 0, "y": 0, "width": W, "height": H})
             outs.append(out)
         browser.close()

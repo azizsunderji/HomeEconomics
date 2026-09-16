@@ -108,8 +108,8 @@ from v4_runner import (  # noqa: E402
 logger = logging.getLogger("v4b_runner")
 
 BRIEFING_TYPE = "daily_v4b_attach"
-EMAIL_FROM = "News at Noon <pulse@home-economics.us>"
-PRODUCT_NAME = "News at Noon"
+EMAIL_FROM = "Housing at Noon <pulse@home-economics.us>"
+PRODUCT_NAME = "Housing at Noon"
 OWN_DOMAINS = ("homeeconomics.substack.com", "home-economics.us", "homeeconomics.us")
 SHADOW_SUBJECT_PREFIX = "[V4B SHADOW] "
 

@@ -95,10 +95,10 @@ def publish_pdf(draft: dict, tier: str = PDF_TIER) -> Path:
     always written. Returns the main (premium) path, as callers expect.
     """
     date = draft["date"]
-    dated = PDF_DIR / f"News at Noon {date}.pdf"
+    dated = PDF_DIR / f"Housing at Noon {date}.pdf"
     make_pdf(draft, dated, tier)
     shutil.copyfile(dated, PDF_DIR / "latest.pdf")
-    social = PDF_DIR / f"News at Noon {date} free.pdf"
+    social = PDF_DIR / f"Housing at Noon {date} free.pdf"
     make_pdf(draft, social, "social")
     shutil.copyfile(social, PDF_DIR / "latest-free.pdf")
     logger.info(f"pdf published: {dated.name} ({tier}) and {social.name} (social)")

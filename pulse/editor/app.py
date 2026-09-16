@@ -163,7 +163,7 @@ def latest_pdf():
     if not f.exists():
         raise HTTPException(status_code=404, detail="no PDF yet")
     return FileResponse(str(f), media_type="application/pdf",
-                        headers={"Cache-Control": "no-store", "Content-Disposition": "inline; filename=\"News at Noon.pdf\""})
+                        headers={"Cache-Control": "no-store", "Content-Disposition": "inline; filename=\"Housing at Noon.pdf\""})
 
 
 @app.get("/latest-premium.pdf")
@@ -175,7 +175,7 @@ def latest_premium_pdf(request: Request):
     if not f.exists():
         raise HTTPException(status_code=404, detail="no PDF yet")
     return FileResponse(str(f), media_type="application/pdf",
-                        headers={"Cache-Control": "no-store", "Content-Disposition": "inline; filename=\"News at Noon premium.pdf\""})
+                        headers={"Cache-Control": "no-store", "Content-Disposition": "inline; filename=\"Housing at Noon premium.pdf\""})
 
 
 @app.get("/pdf/{date}")
@@ -187,11 +187,11 @@ def draft_pdf(request: Request, date: str, tier: str = "premium"):
     if row is None:
         raise HTTPException(status_code=404, detail="no such draft")
     tier = tier if tier in ("premium", "free", "social") else "free"
-    out = pdf.PDF_DIR / "preview" / f"News at Noon {date} {tier}.pdf"
+    out = pdf.PDF_DIR / "preview" / f"Housing at Noon {date} {tier}.pdf"
     pdf.make_pdf(row["json"], out, tier)
     return FileResponse(str(out), media_type="application/pdf",
                         headers={"Cache-Control": "no-store",
-                                 "Content-Disposition": f"inline; filename=\"News at Noon {date}.pdf\""})
+                                 "Content-Disposition": f"inline; filename=\"Housing at Noon {date}.pdf\""})
 
 
 @app.get("/health")
@@ -438,12 +438,12 @@ def draft_cards(request: Request, date: str):
 def draft_card_png(request: Request, date: str, n: int):
     _require(request)
     import cards
-    f = cards.CARDS_DIR / f"News at Noon {date} card{int(n)}.png"
+    f = cards.CARDS_DIR / f"Housing at Noon {date} card{int(n)}.png"
     if not f.exists():
         raise HTTPException(status_code=404, detail="card not rendered")
     return FileResponse(str(f), media_type="image/png",
                         headers={"Cache-Control": "no-store",
-                                 "Content-Disposition": f'inline; filename="News at Noon {date} card{int(n)}.png"'})
+                                 "Content-Disposition": f'inline; filename="Housing at Noon {date} card{int(n)}.png"'})
 
 
 @app.get("/api/drafts")

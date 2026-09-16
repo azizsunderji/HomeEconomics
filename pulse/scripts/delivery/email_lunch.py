@@ -60,7 +60,7 @@ logger = logging.getLogger(__name__)
 
 # ── Constants ───────────────────────────────────────────────────────────
 
-TITLE = "News at Noon"
+TITLE = "Housing at Noon"
 PUBLISHER = "Home Economics"
 
 # Masthead logo: black PNG on transparent, ~14 KB, deployed 2026-09-02

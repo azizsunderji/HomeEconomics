@@ -16,8 +16,8 @@ import paths  # noqa: F401  (sys.path setup)
 from delivery.email_lunch import SIGNUP_URL, render_lunch_html
 from delivery.variants import make_free_variant, scrub_archive_links
 
-PRODUCT_NAME = "News at Noon"
-EMAIL_FROM = "News at Noon <pulse@home-economics.us>"
+PRODUCT_NAME = "Housing at Noon"
+EMAIL_FROM = "Housing at Noon <pulse@home-economics.us>"
 OWN_DOMAINS = ("homeeconomics.substack.com", "home-economics.us", "homeeconomics.us")
 # The owner's own posts are advertising: they stay live in the free email and
 # the social PDF. Matched by handle in the URL, plus the exact URLs of the
