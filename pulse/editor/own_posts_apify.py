@@ -1,10 +1,13 @@
-"""The owner's own recent X posts for the "Recent posts" subsection.
+"""The owner's own recent X and LinkedIn posts for the "Recent posts" subsection.
 
 X does not let an account be added to a list it owns, so the daily list
 scrape never sees @azizsunderji. This pulls the timeline directly with
 the apidojo/tweet-scraper actor (pay per result, ~30 items a day) at
 draft-build time. Returns the same shape delivery/own_posts.load_own_posts
-returns: [{text, url, likes, date}], most liked first.
+returns: [{text, url, likes, date}], most liked first. LinkedIn posts come
+from fetch_own_linkedin_posts (harvestapi/linkedin-profile-posts, the actor the
+LinkedIn collector uses) and carry "platform": "linkedin"; X posts have no
+platform key, which the renderer reads as X.
 """
 from __future__ import annotations
 
@@ -24,6 +27,8 @@ DAYS = 5
 LIMIT = 3
 MIN_LIKES = 1
 MAX_ITEMS = 40
+LINKEDIN_URL = os.environ.get("NOON_OWN_LINKEDIN", "https://www.linkedin.com/in/azizsunderji/")
+LINKEDIN_LIMIT = 2
 
 
 def _parse_date(s: str | None) -> datetime | None:
@@ -102,7 +107,51 @@ def fetch_own_posts(handle: str = HANDLE, days: int = DAYS, limit: int = LIMIT,
     return posts[:limit]
 
 
+def fetch_own_linkedin_posts(profile_url: str = LINKEDIN_URL, days: int = DAYS,
+                             limit: int = LINKEDIN_LIMIT, min_likes: int = MIN_LIKES) -> list[dict]:
+    """The owner's LinkedIn posts from the last `days` days, most reactions first."""
+    api_key = os.environ.get("APIFY_API_KEY", "")
+    if not api_key or not profile_url:
+        return []
+    try:
+        from collectors.linkedin_apify import _run_actor  # pulse/scripts is on sys.path via paths
+        items = _run_actor(api_key, [profile_url], "week", 10)
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"Apify LinkedIn request failed: {type(e).__name__}: {e}")
+        return []
+    since = datetime.now(timezone.utc) - timedelta(days=days)
+    posts: list[dict] = []
+    for it in items:
+        if not isinstance(it, dict) or it.get("repostId") or it.get("repost"):
+            continue  # a bare repost is not the owner's own post
+        text = (it.get("content") or "").strip()
+        if not text:
+            text = ((it.get("article") or {}).get("title") or "").strip()
+        if not text:
+            continue
+        ts = (it.get("postedAt") or {}).get("timestamp")
+        created = datetime.fromtimestamp(ts / 1000, tz=timezone.utc) if ts else None
+        if created and created < since:
+            continue
+        eng = it.get("engagement") or {}
+        likes = int(eng.get("likes") or 0)
+        if likes < min_likes:
+            continue
+        posts.append({
+            "text": text,
+            "url": it.get("linkedinUrl") or "",
+            "likes": likes,
+            "date": created.strftime("%Y-%m-%d") if created else "",
+            "platform": "linkedin",
+        })
+    posts.sort(key=lambda p: -p["likes"])
+    logger.info(f"own LinkedIn posts: {len(items)} items from Apify, {len(posts)} kept, top {limit} used")
+    return posts[:limit]
+
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     for p in fetch_own_posts():
         print(p["likes"], p["date"], p["url"], "—", p["text"][:80])
+    for p in fetch_own_linkedin_posts():
+        print("LinkedIn", p["likes"], p["date"], p["url"], "—", p["text"][:80])

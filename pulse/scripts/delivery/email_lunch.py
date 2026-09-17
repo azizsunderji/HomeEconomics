@@ -1461,23 +1461,45 @@ def render_lunch_html(briefing: dict, tier: str = "premium") -> tuple[str, str, 
             )
         subsections.append(_subkicker("Home Economics in the News") + "".join(rows))
 
-    # 4. Recent posts: the owner's most-liked X posts, last five days.
-    #    Omitted entirely when there are none (the account must be on a
-    #    scraped X list for any to exist).
+    # 4. Recent posts: the owner's most-liked X posts (up to 3) and LinkedIn
+    #    posts (up to 2, "platform": "linkedin"), last five days. Omitted
+    #    entirely when there are none.
     own_posts = briefing.get("_own_posts") or []
     if own_posts:
         rows = []
-        for post in own_posts[:3]:
+        x_posts = [p for p in own_posts if p.get("platform", "x") != "linkedin"][:3]
+        # The owner cross-posts: a LinkedIn post with the same opening as an X
+        # post becomes a second link on that row, not a duplicate row.
+        _key = lambda p: re.sub(r"[^a-z0-9]", "", (p.get("text") or "").lower())[:50]  # noqa: E731
+        x_by_key = {_key(p): p for p in x_posts if len(_key(p)) >= 20}
+        li_posts, li_twin = [], {}
+        for p in own_posts:
+            if p.get("platform") != "linkedin":
+                continue
+            twin = x_by_key.get(_key(p))
+            if twin is not None:
+                li_twin[id(twin)] = p
+            elif len(li_posts) < 2:
+                li_posts.append(p)
+        for post in x_posts + li_posts:
             text = (post.get("text") or "").strip()
             if len(text) > 200:
                 text = text[:200].rsplit(" ", 1)[0] + "…"
             likes = int(post.get("likes") or 0)
-            meta = f'{likes:,} like{"s" if likes != 1 else ""}'
+            on_li = post.get("platform") == "linkedin"
+            meta = (f'{likes:,} reaction{"s" if likes != 1 else ""}' if on_li
+                    else f'{likes:,} like{"s" if likes != 1 else ""}')
+            li_extra = ""
+            twin = li_twin.get(id(post))
+            if twin is not None:
+                n = int(twin.get("likes") or 0)
+                li_extra = (f' &middot; {n:,} reaction{"s" if n != 1 else ""} &middot; '
+                            f'{_link("On LinkedIn →", twin.get("url") or "#", weight="600")}')
             rows.append(
                 f'<div style="{body_text} font-size:16px; margin:0 0 10px 0;">'
                 f'&ldquo;{_esc(text)}&rdquo; '
                 f'<span style="color:{MUTED}; font-size:13px; white-space:nowrap;">{meta} &middot; '
-                f'{_link("On X →", post.get("url") or "#", weight="600")}</span></div>\n'
+                f'{_link("On LinkedIn →" if on_li else "On X →", post.get("url") or "#", weight="600")}{li_extra}</span></div>\n'
             )
         subsections.append(_subkicker("Recent posts") + "".join(rows))
 
