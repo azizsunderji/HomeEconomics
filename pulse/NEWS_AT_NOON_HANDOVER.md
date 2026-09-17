@@ -498,3 +498,19 @@ PULSE_UNSUB_SECRET in `~/.noon_env` before `NOON_SEND_MODE=subscribers`. Until D
   80 accounts (`LINKEDIN_MAX_TARGETS`); the page refuses to go past it.
 - Also on 2026-09-16: `noon-report.timer` had not been enabled on OVH after the migration;
   enabled it. The old droplet's timers could not be verified as stopped.
+
+## 15. Status update — 2026-09-17: Paper of the Day is never left empty
+
+- On 2026-09-17 the synthesis model returned `paper_of_the_day: null` (none of the 6 journal
+  items in the 24h window was about housing) and the section was omitted, although the 30-day
+  pool held 24 unused housing papers. Owner's rule: every edition has a Paper of the Day.
+- `run_pipeline.py`: the post-synthesis repeat check now also fires when the pick is empty and
+  fills the slot from the 30-day pool (first candidate by relevance whose RSS body works as a
+  summary, else an OpenAlex/Semantic Scholar/Crossref abstract, else title only). If the pool
+  is empty the section is still omitted. Fallback picks carry an empty `key_finding`.
+- Repeat matching now also catches titles the model shortened (`_paper_recently_used`, first
+  40 letters/digits). Before this, "Frozen Markets, Falling Prices…" (run 2026-09-15) was
+  still in the pool because the stored title was a shortened form.
+- The 2026-09-17 edition had the Amsterdam low-income rental housing paper (Journal of Housing
+  Economics, doi:10.1016/j.jhe.2026.102176) inserted by hand; summary written from the
+  OpenAlex abstract. Helper: `NewsAtNoon/scripts/insert_paper_2026_09_17.py` in Dropbox.

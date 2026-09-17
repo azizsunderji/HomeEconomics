@@ -55,6 +55,21 @@ def _canonical_paper_title(t: str) -> str:
     return t.lower()
 
 
+def _paper_recently_used(title: str, recent_canon: set) -> bool:
+    """True if `title` matches a recent pick. Exact canonical match, or the same
+    first 40 letters/digits: the model sometimes shortens the title it writes
+    ("... in U.S. Neighborhoods" for the feed's "... in U.S. Neighborhood
+    Housing Markets"), which let a 2026-09-15 pick back into the pool."""
+    c = _canonical_paper_title(title)
+    if not c:
+        return False
+    if c in recent_canon:
+        return True
+    key = lambda t: _re_paper.sub(r"[^a-z0-9]", "", t)[:40]  # noqa: E731
+    k = key(c)
+    return len(k) >= 25 and any(key(r) == k for r in recent_canon)
+
+
 def _recent_paper_picks(conn, days: int = 14) -> tuple[set, list]:
     """Paper-of-the-day picks from daily briefings in the last `days` days.
 
@@ -685,7 +700,7 @@ def cmd_synthesize(args):
             before_excl = len(pool)
             pool = [
                 p for p in pool
-                if _canonical_paper_title(p.get("title") or "") not in recent_paper_canon
+                if not _paper_recently_used(p.get("title") or "", recent_paper_canon)
             ]
             logger.info(
                 f"Excluded {before_excl - len(pool)} paper(s) shown in last "
@@ -708,7 +723,13 @@ def cmd_synthesize(args):
                 potd = potd[0] if potd else {}
             potd_title = (potd.get("title") or "") if isinstance(potd, dict) else ""
             potd_canon = _canonical_paper_title(potd_title)
-            if potd_canon and potd_canon in recent_paper_canon:
+            # Also fill the slot when the model returned no paper at all (it is told
+            # to return null when no journal item from the last 24h is credible, and
+            # on 2026-09-17 did so with 24 unused housing papers in the 30-day pool;
+            # the owner wants a Paper of the Day every edition).
+            potd_reason = ("no paper picked" if not potd_canon
+                           else f"repeat '{potd_title[:80]}' (featured within 14 days)")
+            if not potd_canon or _paper_recently_used(potd_title, recent_paper_canon):
                 # Candidates in descending relevance. The replacement must
                 # ship with a usable summary — prefer the highest-relevance
                 # candidate whose RSS body survives boilerplate cleanup;
@@ -785,8 +806,7 @@ def cmd_synthesize(args):
 
                 if replacement is None:
                     logger.warning(
-                        f"Paper of the Day repeat detected ('{potd_title[:80]}' "
-                        "already featured within 14 days) and no unused candidate "
+                        f"Paper of the Day: {potd_reason} and no unused candidate "
                         "in 30-day pool — dropping the section for today"
                     )
                     briefing["paper_of_the_day"] = None
@@ -816,8 +836,7 @@ def cmd_synthesize(args):
                         "key_finding": "",
                     }
                     logger.warning(
-                        f"Paper of the Day repeat detected — swapped "
-                        f"'{potd_title[:80]}' (featured within 14 days) for "
+                        f"Paper of the Day: {potd_reason} — filled with "
                         f"'{r_title[:80]}' (relevance "
                         f"{replacement.get('relevance_score') or 0})"
                     )
