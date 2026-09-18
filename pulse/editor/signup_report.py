@@ -248,16 +248,6 @@ def _table(headers: list[str], rows: list[list[str]], align_right: set[int] = fr
     return "".join(out)
 
 
-MAX_ROWS = 25  # owner, 2026-09-18: 114 signups in a day made the email far too long
-
-
-def _more_line(n_hidden: int, what: str) -> str:
-    if n_hidden <= 0:
-        return ""
-    return (f'<p style="margin:10px 0 0 0;font-size:13px;line-height:1.5;color:{MUTED};">'
-            f'and {n_hidden} more {what}.</p>')
-
-
 def _window_label(hours: float) -> str:
     if abs(hours - 24) < 0.01:
         return "the last 24 hours"
@@ -287,9 +277,8 @@ def render_html(rep: dict) -> str:
         parts.append(_table(
             ["Email", "Time (ET)", "Source"],
             [[r["email"], fmt_time(r["since"]), (r["source"] or UNTAGGED) + (" · premium" if r["premium"] else "")]
-             for r in rep["signups"][:MAX_ROWS]],
+             for r in rep["signups"]],
         ))
-        parts.append(_more_line(len(rep["signups"]) - MAX_ROWS, "signups, oldest first"))
     else:
         parts.append(_none())
 
@@ -298,10 +287,8 @@ def render_html(rep: dict) -> str:
     if rep["premium"]:
         parts.append(_table(
             ["Email", "Time (ET)", "Source"],
-            [[r["email"], fmt_time(r["premium_since"]), r["source"] or UNTAGGED]
-             for r in rep["premium"][:MAX_ROWS]],
+            [[r["email"], fmt_time(r["premium_since"]), r["source"] or UNTAGGED] for r in rep["premium"]],
         ))
-        parts.append(_more_line(len(rep["premium"]) - MAX_ROWS, "premium subscriptions"))
     else:
         parts.append(_none())
     parts.append(
@@ -317,9 +304,8 @@ def render_html(rep: dict) -> str:
         parts.append(_table(
             ["Email", "Time (ET)", "Subscribed for", "Source"],
             [[r["email"], fmt_time(r["unsubscribed_at"]), fmt_duration(r["since"], r["unsubscribed_at"]),
-              r["source"] or UNTAGGED] for r in rep["unsubs"][:MAX_ROWS]],
+              r["source"] or UNTAGGED] for r in rep["unsubs"]],
         ))
-        parts.append(_more_line(len(rep["unsubs"]) - MAX_ROWS, "unsubscribes"))
     else:
         parts.append(_none())
 
