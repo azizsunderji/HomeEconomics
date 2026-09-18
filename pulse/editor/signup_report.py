@@ -222,7 +222,7 @@ def _none() -> str:
 
 def _table(headers: list[str], rows: list[list[str]], align_right: set[int] = frozenset()) -> str:
     cell = (f"font-family:{FONT};font-size:14px;line-height:1.45;color:{INK};"
-            "padding:4px 16px 4px 0;vertical-align:top;")
+            "padding:7px 14px 7px 0;vertical-align:top;")
     head = (f"font-family:{FONT};font-size:11px;letter-spacing:0.08em;text-transform:uppercase;"
             f"color:{MUTED};padding:0 16px 6px 0;vertical-align:bottom;")
     out = ['<table role="presentation" cellpadding="0" cellspacing="0" border="0" '
@@ -237,8 +237,11 @@ def _table(headers: list[str], rows: list[list[str]], align_right: set[int] = fr
         for i, v in enumerate(r):
             ta = "right" if i in align_right else "left"
             last = "padding-right:0;" if i == len(r) - 1 else ""
-            # Emails may break anywhere; times and durations stay on one line.
-            wrap = "word-break:break-all;" if i == 0 else "white-space:nowrap;"
+            # The first column (usually an email) takes the leftover width and
+            # breaks only when a single address is too long for it; the other
+            # columns are short and stay on one line.
+            wrap = ("width:100%;overflow-wrap:break-word;" if i == 0
+                    else "white-space:nowrap;")
             out.append(f'<td style="{cell}{last}text-align:{ta};{wrap}">{_e(v)}</td>')
         out.append("</tr>")
     out.append("</table>")
@@ -261,7 +264,7 @@ def render_html(rep: dict) -> str:
         '<!doctype html><html><head><meta charset="utf-8">'
         '<meta name="viewport" content="width=device-width, initial-scale=1"></head>'
         f'<body style="margin:0;padding:0;background:#ffffff;">'
-        f'<div style="max-width:560px;margin:0 auto;padding:28px 20px 40px 20px;font-family:{FONT};color:{INK};">',
+        f'<div style="max-width:720px;margin:0 auto;padding:28px 20px 40px 20px;font-family:{FONT};color:{INK};">',
         f'<p style="margin:0;font-family:{HEAD_FONT};font-size:24px;line-height:1.25;color:{INK};">Housing at Noon signups</p>',
         f'<p style="margin:6px 0 0 0;font-size:14px;line-height:1.5;color:{MUTED};">'
         f'{_e(now_local.strftime("%A, %B %-d, %Y, %-I:%M %p ET").replace("AM ET", "am ET").replace("PM ET", "pm ET"))}'
