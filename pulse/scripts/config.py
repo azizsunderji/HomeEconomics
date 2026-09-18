@@ -537,6 +537,10 @@ GMAIL_NEWSLETTER_SENDERS = [
     "brandondonnelly",          # Brandon Donnelly (Paragraph)
     "newsletters.ft.com",       # FT newsletters (Unhedged/Robert Armstrong, etc.)
     "noreply@news.bloomberg",   # Bloomberg Opinion newsletters (Conor Sen, etc.)
+    # Owner, 2026-09-18: ResiClub should compete for themes like any other
+    # newsletter. It was only on INSTITUTIONAL_SENDER_ALLOWLIST below, which
+    # keeps an item out of the newsletter/columnist pool the synthesis reads.
+    "resiclubanalytics",        # Lance Lambert (ResiClub); the site has no public RSS
 ]
 
 # Gmail senders that should route to Headlines section
