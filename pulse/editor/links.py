@@ -133,6 +133,47 @@ def outlets_for(entry: dict) -> list[str]:
     return out
 
 
+_TITLE_KEY = re.compile(r"[^a-z0-9]")
+
+
+def public_paper_url(title: str, url: str) -> str:
+    """A link anyone can open, instead of a publisher link tied to one reader's access.
+
+    Owner, 2026-09-18: a ScienceDirect RSS link sent him to the login page for his own
+    kind of access. Crossref gives the DOI for the title; https://doi.org/<doi> is the
+    canonical public address. Falls back to the url with tracking parameters stripped.
+    """
+    clean = _strip_tracking(url or "")
+    t = (title or "").strip()
+    if not t or "doi.org/" in clean:
+        return clean
+    try:
+        with httpx.Client(timeout=TIMEOUT, headers={"User-Agent": _UA}) as c:
+            r = c.get("https://api.crossref.org/works",
+                      params={"query.bibliographic": t, "rows": 5, "select": "DOI,title,type",
+                              "mailto": "aziz@home-economics.us"})
+            r.raise_for_status()
+            items = r.json()["message"]["items"]
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"paper DOI lookup failed: {type(e).__name__}: {e}")
+        return clean
+    key = lambda x: _TITLE_KEY.sub("", (x or "").lower())[:60]  # noqa: E731
+    matches = [i for i in items if key((i.get("title") or [""])[0]) == key(t)]
+    if not matches:
+        logger.info(f"paper DOI lookup: no title match for {t[:60]!r}")
+        return clean
+    # The same paper is often registered twice — as a journal article and as a
+    # working paper or preprint. Prefer the version the citation names: the
+    # publisher whose site the link points at, then a journal article.
+    host_prefix = {"sciencedirect.com": "10.1016", "onlinelibrary.wiley.com": ("10.1111", "10.1002"),
+                   "link.springer.com": "10.1007", "tandfonline.com": "10.1080"}
+    want = host_prefix.get(urlsplit(clean).netloc.replace("www.", ""))
+    matches.sort(key=lambda i: (
+        0 if want and i["DOI"].startswith(want) else 1,
+        0 if i.get("type") == "journal-article" else 1))
+    return f"https://doi.org/{matches[0]['DOI']}"
+
+
 def clean_draft(draft: dict) -> dict:
     """Resolve redirects in every entry (and the paper), then rebuild each
     entry's news_outlets from the cited URLs. Mutates and returns the draft."""
@@ -146,9 +187,15 @@ def clean_draft(draft: dict) -> dict:
         e["news_outlets"] = outlets_for(e)
         e["_pills"] = list(e["news_outlets"])  # the renderer shows exactly these
     paper = draft.get("paper_of_the_day")
-    if isinstance(paper, dict) and paper.get("summary"):
-        paper["summary"], n = resolve_summary(paper["summary"], cache)
-        changed += n
+    if isinstance(paper, dict):
+        if paper.get("summary"):
+            paper["summary"], n = resolve_summary(paper["summary"], cache)
+            changed += n
+        if paper.get("url"):
+            before = paper["url"]
+            paper["url"] = public_paper_url(paper.get("title") or "", before)
+            if paper["url"] != before:
+                logger.info(f"paper link -> {paper['url']}")
     draft["_links_resolved"] = changed
     logger.info(f"links: {changed} redirect(s) resolved across {len(cache)} URLs")
     return draft
