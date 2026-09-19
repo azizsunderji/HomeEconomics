@@ -1712,7 +1712,7 @@ def probe_frontpages_local(stage: Stage, conn: sqlite3.Connection) -> None:
 
 
 def probe_frontpages_remote(stage: Stage, conn: sqlite3.Connection) -> None:
-    url = "https://home-economics.us/pulse-screenshots/headlines.json"
+    url = "https://noon.homeeconomics.us/frontpages/headlines.json"
     try:
         resp = httpx.get(url, timeout=HTTP_TIMEOUT)
     except Exception as e:
@@ -1925,10 +1925,11 @@ UPSTREAM_STAGES = [
         probe_frontpages_local,
     ),
     (
-        "6.3", "Front pages — Bluehost SFTP upload",
-        "The page snapshots + headlines.json are uploaded to Bluehost so the "
+        "6.3", "Front pages — published on noon.homeeconomics.us",
+        "The noon server captures the page snapshots + headlines.json "
+        "(noon-frontpages.timer) and serves them under /frontpages/ so the "
         "email can reference them by URL. A live HTTP probe checks the "
-        "uploaded headlines.json is fresh and parseable.",
+        "published headlines.json is reachable and parseable.",
         probe_frontpages_remote,
     ),
 ]

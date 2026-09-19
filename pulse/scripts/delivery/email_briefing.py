@@ -32,6 +32,7 @@ def _load_front_pages_json() -> dict | None:
     candidates = [
         Path(__file__).resolve().parent.parent.parent / "data" / "screenshots" / "headlines.json",
         Path("/tmp/front_pages/headlines.json"),
+        Path("/home/aziz/work/noon/frontpages/headlines.json"),
     ]
     for p in candidates:
         try:
@@ -41,14 +42,14 @@ def _load_front_pages_json() -> dict | None:
             logger.warning(f"failed to load {p}: {e}")
     try:
         resp = httpx.get(
-            "https://home-economics.us/pulse-screenshots/headlines.json",
+            "https://noon.homeeconomics.us/frontpages/headlines.json",
             timeout=10,
         )
         if resp.status_code == 200:
             return resp.json()
-        logger.warning(f"bluehost headlines.json fetch returned {resp.status_code}")
+        logger.warning(f"headlines.json fetch returned {resp.status_code}")
     except Exception as e:
-        logger.warning(f"bluehost headlines.json fetch failed: {e}")
+        logger.warning(f"headlines.json fetch failed: {e}")
     return None
 
 
@@ -507,7 +508,7 @@ def render_briefing_html(briefing: dict, with_sources_box: bool = False) -> tupl
 
             html += f"""<table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 24px;"><tr class="fp-row">
 <td class="fp-cell fp-cell-img" width="45%" valign="top" style="padding-right: 16px;">
-  <a href="{paper_url}" target="_blank"><img src="https://home-economics.us/pulse-screenshots/{slug}.jpg?v={_cb}" alt="{_esc(masthead)} front page" width="100%" style="width: 100%; max-width: 270px; height: auto; display: block;"/></a>
+  <a href="{paper_url}" target="_blank"><img src="https://noon.homeeconomics.us/frontpages/{slug}.jpg?v={_cb}" alt="{_esc(masthead)} front page" width="100%" style="width: 100%; max-width: 270px; height: auto; display: block;"/></a>
 </td>
 <td class="fp-cell" width="55%" valign="top">
   {headline_list}

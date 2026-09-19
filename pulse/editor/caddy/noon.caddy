@@ -9,6 +9,13 @@ noon.homeeconomics.us {
 		root * /home/aziz/work/noon/feeds
 		file_server
 	}
+	# Front-page images and headlines.json for the email (capture_frontpages.py
+	# --publish-dir, noon-frontpages.timer). Hosted on Bluehost until 19 Sep 2026.
+	handle_path /frontpages/* {
+		root * /home/aziz/work/noon/frontpages
+		header Cache-Control "public, max-age=3600"
+		file_server
+	}
 	reverse_proxy 127.0.0.1:8240
 	log {
 		output file /var/log/caddy/noon.log {

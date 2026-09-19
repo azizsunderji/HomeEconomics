@@ -475,6 +475,10 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--no-upload", action="store_true",
                     help="Skip the Bluehost SFTP step (local preview only).")
+    ap.add_argument("--publish-dir", default="",
+                    help="Copy the JPGs and headlines.json into this directory instead of "
+                         "uploading to Bluehost (the noon server serves it via Caddy). "
+                         "PDFs are always re-downloaded, since /tmp persists between runs there.")
     args = ap.parse_args()
 
     print("Capturing print-edition front pages (page-only composites)...")
@@ -486,6 +490,8 @@ def main():
         slug = paper["slug"]
         print(f"\n[{name}] slug={slug}")
         pdf_path = OUT_DIR / f"{slug}.pdf"
+        if args.publish_dir and pdf_path.exists():
+            pdf_path.unlink()  # yesterday's PDF on a long-lived server
         if not pdf_path.exists():
             if not _download_pdf(slug, pdf_path):
                 continue
@@ -552,10 +558,22 @@ def main():
         print(f"  {SCREENSHOTS_DIR}")
         return
 
+    if args.publish_dir:
+        import shutil
+        dest = Path(args.publish_dir)
+        dest.mkdir(parents=True, exist_ok=True)
+        for f in uploads:
+            # copy then rename, so a reader never gets a half-written image
+            tmp = dest / (os.path.basename(f) + ".tmp")
+            shutil.copyfile(f, tmp)
+            os.replace(tmp, dest / os.path.basename(f))
+            print(f"  Published {dest / os.path.basename(f)}")
+        return
+
     if _upload_to_bluehost(uploads):
         print("\nDone. Assets live at:")
         for f in uploads:
-            print(f"  https://home-economics.us/pulse-screenshots/{os.path.basename(f)}")
+            print(f"  https://home-economics.us/pulse-screenshots/{os.path.basename(f)}  (legacy Bluehost path)")
     else:
         print("Upload step skipped/failed; local PNGs are in", SCREENSHOTS_DIR)
 

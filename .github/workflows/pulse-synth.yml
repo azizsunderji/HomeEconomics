@@ -43,9 +43,6 @@ jobs:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       GMAIL_IMAP_USER: ${{ secrets.GMAIL_IMAP_USER }}
       GMAIL_IMAP_PASSWORD: ${{ secrets.GMAIL_IMAP_PASSWORD }}
-      SFTP_HOST: ${{ secrets.SFTP_HOST }}
-      SFTP_USER: ${{ secrets.SFTP_USER }}
-      SFTP_KEY: ${{ secrets.SFTP_KEY }}
       DATA_LAKE_PATH: /tmp/data-lake
       DATA_LAKE_CATALOG_PATH: /tmp/reference/data_lake_catalog.md
 
@@ -210,7 +207,7 @@ jobs:
       - name: Capture FT/NYT frontpage screenshots
         if: steps.guard.outputs.should_run == 'true'
         working-directory: pulse
-        run: python capture_frontpages.py || echo "Screenshots failed — continuing without"
+        run: python capture_frontpages.py --no-upload || echo "Screenshots failed — continuing without"
 
       - name: Run synthesis (store v1 briefing as v3.1 scaffold; no v1 email)
         # Computes + stores the v1 briefing so v3.1 can reuse its News Themes /

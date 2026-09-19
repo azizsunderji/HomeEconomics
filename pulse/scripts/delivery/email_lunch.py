@@ -1369,7 +1369,7 @@ def render_lunch_html(briefing: dict, tier: str = "premium") -> tuple[str, str, 
     cells = []
     for slug, label, ff_slug in papers:
         pdf_url = f"https://cdn.freedomforum.org/dfp/pdf{_ff_day}/{ff_slug}.pdf"
-        img_url = f"https://home-economics.us/pulse-screenshots/{slug}.jpg?v={_cb}"
+        img_url = f"https://noon.homeeconomics.us/frontpages/{slug}.jpg?v={_cb}"
         # images only: the masthead and its own headlines are legible at this
         # size, so no paper label and no pulled headline (owner's call)
         cells.append(
