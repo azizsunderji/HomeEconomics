@@ -654,7 +654,7 @@ MONDAY_LOOKBACK_HOURS = 72
 # "Editorial Board" pick has no abstract and was counted as a fetch miss).
 import re as _re_journal_cfg
 JOURNAL_NON_PAPER_TITLE_RE = _re_journal_cfg.compile(
-    r"\b(editorial\s+board|issue\s+information|table\s+of\s+contents|erratum|errata|"
+    r"\b(foreword|preface|editorial\s+board|issue\s+information|table\s+of\s+contents|erratum|errata|"
     r"corrigendum|corrigenda|retraction|retracted|correction|announcement|call\s+for\s+papers|"
     r"front\s+matter|back\s+matter|masthead|editor'?s'?\s+note|list\s+of\s+reviewers|"
     r"acknowledg(?:e)?ment\s+(?:of|to)\s+reviewers|volume\s+contents|author\s+index)\b",

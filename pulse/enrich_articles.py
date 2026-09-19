@@ -477,6 +477,12 @@ async def _check_paywall_auth(context) -> list[dict]:
             await page.goto(url, wait_until="domcontentloaded", timeout=30000)
             await page.wait_for_timeout(4000)
             text = (await page.inner_text("body")).lower()
+            if len(text) < 500:
+                # slow render (nytimes.com read as len=0 on 2026-09-19 while
+                # logged in): reload once and wait longer before calling it unknown
+                await page.goto(url, wait_until="domcontentloaded", timeout=30000)
+                await page.wait_for_timeout(10000)
+                text = (await page.inner_text("body")).lower()
             hits_out = [m for m in out_markers if m in text]
             hits_in = [m for m in in_markers if m in text]
             if len(text) < 500:
