@@ -514,3 +514,21 @@ PULSE_UNSUB_SECRET in `~/.noon_env` before `NOON_SEND_MODE=subscribers`. Until D
 - The 2026-09-17 edition had the Amsterdam low-income rental housing paper (Journal of Housing
   Economics, doi:10.1016/j.jhe.2026.102176) inserted by hand; summary written from the
   OpenAlex abstract. Helper: `NewsAtNoon/scripts/insert_paper_2026_09_17.py` in Dropbox.
+
+## Status update — 19 Sep 2026: front pages moved off Bluehost
+
+- The owner set a site-wide 301 on home-economics.us (Bluehost) to homeeconomics.us on 18 Sep and
+  will shut Bluehost down. That broke `home-economics.us/pulse-screenshots/*`, which the email's
+  "On the Front Pages" images and the health probe used. Images in editions sent before 19 Sep
+  no longer load; this was accepted rather than exempting the path on Bluehost.
+- Front pages are now captured on the noon server: `noon-frontpages.timer` (Mon–Fri 11:05 and
+  15:00 UTC) runs `capture_frontpages.py --publish-dir /home/aziz/work/noon/frontpages`; Caddy
+  serves that folder at `https://noon.homeeconomics.us/frontpages/`. Log: `~/work/noon/logs/frontpages.log`.
+  Re-capture by hand: `systemctl --user start noon-frontpages.service` (replaces the removed
+  `pulse-frontpages.yml` workflow). The synth workflow still captures locally for its own
+  headlines, with `--no-upload`.
+- Health report: the paywall login probe retries once before reporting "unknown"; "Foreword" and
+  "Preface" are treated as non-paper journal titles.
+- Other workflows in this repo still upload to Bluehost over SFTP (not Housing at Noon):
+  monthly-ces-update, deploy-metro-explorer, update_price_maps, upload-social-charts,
+  weekly-social-charts, weekly-rankings, weekly-charts.
