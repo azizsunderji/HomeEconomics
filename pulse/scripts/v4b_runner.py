@@ -1512,6 +1512,9 @@ def main() -> None:
               f"{e['origin']:<14} size={e['cluster_size']:<2} news={e['n_news_sources']} "
               f"att={e['attached_cluster_ids']} {e['title'][:70]}")
 
+    from config import monday_week_phrasing
+    v4b = monday_week_phrasing(v4b)  # Monday: "earlier this week" -> "last week"
+
     if args.dump_json:
         with open(args.dump_json, "w") as f:
             json.dump(v4b, f, indent=2, default=str)

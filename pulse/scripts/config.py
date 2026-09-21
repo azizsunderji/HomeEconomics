@@ -675,6 +675,39 @@ def is_non_paper_title(title: str) -> bool:
     return m.start() == 0 or len(t.split()) < 4
 
 
+_MONDAY_WEEK_PHRASES = (
+    ("Earlier this week", "Last week"), ("earlier this week", "last week"),
+    ("Earlier in the week", "Last week"), ("earlier in the week", "last week"),
+)
+
+
+def monday_week_phrasing(obj, now=None):
+    """On a Monday (US Eastern) the past-6-days items the prompts stamp as
+    "Earlier this week" are from the week before, so the Monday edition says
+    "Last week" (owner, 21 Sep 2026). Walks every string in a briefing dict;
+    returns obj unchanged on other days."""
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+    et = ZoneInfo("America/New_York")
+    now = now or datetime.now(et)
+    if now.tzinfo is not None:
+        now = now.astimezone(et)
+    if now.weekday() != 0:
+        return obj
+
+    def walk(v):
+        if isinstance(v, str):
+            for old, new in _MONDAY_WEEK_PHRASES:
+                v = v.replace(old, new)
+            return v
+        if isinstance(v, list):
+            return [walk(x) for x in v]
+        if isinstance(v, dict):
+            return {k: walk(x) for k, x in v.items()}
+        return v
+    return walk(obj)
+
+
 def corpus_lookback_hours(now=None) -> int:
     """Hours of items the daily synthesis treats as today's pool.
 
