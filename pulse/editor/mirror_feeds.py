@@ -65,6 +65,17 @@ CROSSREF_JOURNALS = [
 CROSSREF_ROWS = 25
 CROSSREF_MAILTO = "aziz@home-economics.us"
 
+# (file slug, feed title, listing page, host). Sites with no RSS that answer 403 to plain clients
+# (urban.org blocks this server, GitHub Actions and Google News does not index it). Read through
+# Browserbase at most once per BROWSER_EVERY_HOURS; article text is cached, so each article is
+# visited once. 2026-09-21: How Housing Matters, the owner's Urban Institute housing newsletter.
+BROWSER_LISTINGS = [
+    ("urban-housing-matters", "Urban Institute: How Housing Matters",
+     "https://housingmatters.urban.org/", "housingmatters.urban.org"),
+]
+BROWSER_EVERY_HOURS = 20
+BROWSER_MAX_NEW = 8
+
 FEEDS_DIR = Path(os.environ.get("NOON_FEEDS_DIR", "/home/aziz/work/noon/feeds"))
 UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/128.0 Safari/537.36 NewsAtNoon/1.0")
@@ -171,6 +182,84 @@ def _crossref_feed(slug: str, title: str, issn: str) -> tuple[bool, str]:
     return bool(out_items), f"{len(works)} works, {len(out_items)} items ({skipped} non-papers skipped)"
 
 
+def _browser_feed(slug: str, title: str, listing: str, host: str, cache: dict) -> tuple[bool, str]:
+    """Read a listing page and its new articles through Browserbase, write bb_<slug>.xml. Returns (ok, note)."""
+    from email.utils import format_datetime
+    from browserbase import Browserbase
+    from playwright.sync_api import sync_playwright
+    env = dict(os.environ)
+    sec = Path.home() / ".secrets/browserbase.env"
+    if sec.exists():
+        for line in sec.read_text().splitlines():
+            if "=" in line and not line.strip().startswith("#"):
+                k, v = line.split("=", 1); env.setdefault(k.strip(), v.strip().strip('"'))
+    js_links = ("() => JSON.stringify([...document.querySelectorAll('a[href]')].map(a => "
+                "[a.href.split('#')[0].split('?')[0], (a.innerText||'').trim().replace(/\\s+/g,' ')]))")
+    js_body = ("() => JSON.stringify({text: [...document.querySelectorAll('article p, main p')].map(e => e.innerText.trim())"
+               ".filter(t => t.length > 45).join('\\n'), date: (document.querySelector('meta[property=\"article:published_time\"]')||{}).content"
+               " || (document.querySelector('time')||{}).innerText || ''})")
+    bb = Browserbase(api_key=env["BROWSERBASE_API_KEY"])
+    sess = bb.sessions.create(project_id=env["BROWSERBASE_PROJECT_ID"],
+                              browser_settings={"context": {"id": env["BROWSERBASE_CONTEXT_ID"], "persist": True}})
+    new = 0
+    try:
+        with sync_playwright() as pw:
+            b = pw.chromium.connect_over_cdp(sess.connect_url, timeout=90000)
+            pg = b.contexts[0].pages[0] if b.contexts[0].pages else b.contexts[0].new_page()
+            pg.goto(listing, wait_until="domcontentloaded", timeout=90000)
+            pg.wait_for_timeout(6000)
+            order = []
+            for href, text in json.loads(pg.evaluate(js_links)):
+                # an article link: on the host, below the root, with a headline-length anchor
+                if urlsplit(href).netloc == host and urlsplit(href).path.strip("/") and len(text) > 25 and href not in order:
+                    order.append(href)
+                    cache.setdefault(href, {"title": text, "first_seen": datetime.now(timezone.utc).isoformat()})
+            for href in [h for h in order if "body" not in cache[h]][:BROWSER_MAX_NEW]:
+                try:
+                    pg.goto(href, wait_until="domcontentloaded", timeout=90000)
+                    pg.wait_for_timeout(3500)
+                    d = json.loads(pg.evaluate(js_body))
+                    cache[href].update(body=d["text"][:8000], date=d["date"].strip()[:40])
+                    new += 1
+                except Exception as ex:  # noqa: BLE001
+                    log.warning(f"{title}: {href}: {ex}")
+            b.close()
+    finally:
+        try:
+            bb.sessions.update(sess.id, project_id=env["BROWSERBASE_PROJECT_ID"], status="REQUEST_RELEASE")
+        except Exception:  # noqa: BLE001
+            pass
+    items = []
+    for href in order:
+        c = cache[href]
+        if len(c.get("body") or "") < 300:
+            continue
+        when = None
+        for fmt in ("%B %d, %Y", "%b %d, %Y"):
+            try:
+                when = datetime.strptime(c.get("date", ""), fmt).replace(hour=12, tzinfo=timezone.utc)
+                break
+            except ValueError:
+                pass
+        if when is None:
+            try:
+                when = datetime.fromisoformat(c.get("date", "").replace("Z", "+00:00"))
+            except ValueError:
+                when = datetime.fromisoformat(c["first_seen"])  # no date on the page: first time this server saw it
+        items.append(f"<item><title>{html.escape(c['title'])}</title><link>{html.escape(href)}</link>"
+                     f"<guid>{html.escape(href)}</guid><pubDate>{format_datetime(when)}</pubDate>"
+                     f"<description>{html.escape(c['body'])}</description></item>")
+    xml = ("<?xml version=\"1.0\" encoding=\"UTF-8\"?><rss version=\"2.0\"><channel>"
+           f"<title>{html.escape(title)}</title><link>{html.escape(listing)}</link>"
+           f"<description>Built on the noon server through Browserbase from {html.escape(listing)}</description>"
+           + "".join(items) + "</channel></rss>").encode()
+    tmp = FEEDS_DIR / f"bb_{slug}.xml.tmp"
+    tmp.write_bytes(xml)
+    os.chmod(tmp, 0o644)
+    tmp.replace(FEEDS_DIR / f"bb_{slug}.xml")
+    return bool(items), f"{len(order)} listed, {len(items)} in feed ({new} articles read this run)"
+
+
 def slug_for(feed_url: str) -> str | None:
     host = urlsplit(feed_url).netloc.lower()
     return host.split(".")[0] if host.endswith(".substack.com") else None
@@ -250,6 +339,28 @@ def main() -> int:
             index[f"cr_{slug}"] = {"name": title, "url": f"crossref:{issn}", "ok": False, "error": str(e)[:200], "failed_at": now}
             log.warning(f"{title}: {e}")
         time.sleep(1.0)
+    # Browserbase-built feeds, at most once per BROWSER_EVERY_HOURS each.
+    bb_cache_path = FEEDS_DIR / "bb_cache.json"
+    try:
+        bb_cache = json.loads(bb_cache_path.read_text()) if bb_cache_path.exists() else {}
+    except Exception:
+        bb_cache = {}
+    for slug, title, listing, host in BROWSER_LISTINGS:
+        out = FEEDS_DIR / f"bb_{slug}.xml"
+        if out.exists() and time.time() - out.stat().st_mtime < BROWSER_EVERY_HOURS * 3600:
+            ok += 1
+            continue
+        now = datetime.now(timezone.utc).isoformat()
+        try:
+            good, note = _browser_feed(slug, title, listing, host, bb_cache.setdefault(slug, {}))
+            index[f"bb_{slug}"] = {"name": title, "url": listing, "ok": good, "fetched_at": now, "note": note}
+            log.info(f"{title}: {note}")
+            ok += int(good)
+        except Exception as e:  # noqa: BLE001
+            index[f"bb_{slug}"] = {"name": title, "url": listing, "ok": False, "error": str(e)[:200], "failed_at": now}
+            log.warning(f"{title}: {e}")
+    bb_cache_path.write_text(json.dumps(bb_cache))
+    os.chmod(bb_cache_path, 0o600)
     if len(cache) > 2000:
         cache = dict(list(cache.items())[-1500:])
     cache_path.write_text(json.dumps(cache))
@@ -257,7 +368,7 @@ def main() -> int:
     index_path.write_text(json.dumps({"generated_at": datetime.now(timezone.utc).isoformat(),
                                       "feeds": index}, indent=1))
     os.chmod(index_path, 0o644)
-    log.info(f"mirrored {ok} of {len(targets) + len(GNEWS_SEARCHES) + len(CROSSREF_JOURNALS)} feeds into {FEEDS_DIR}")
+    log.info(f"mirrored {ok} of {len(targets) + len(GNEWS_SEARCHES) + len(CROSSREF_JOURNALS) + len(BROWSER_LISTINGS)} feeds into {FEEDS_DIR}")
     return 0 if ok else 1
 
 
