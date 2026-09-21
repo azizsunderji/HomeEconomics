@@ -53,6 +53,10 @@ from collectors.rss_feeds import parse_opml, DEFAULT_OPML_PATH  # noqa: E402
 # (file slug, feed title, Google News query). Newest GNEWS_MAX items are decoded per run.
 GNEWS_SEARCHES = [
     ("wsj-real-estate", "WSJ > Real Estate (via Google News)", "site:wsj.com/real-estate"),
+    # 2026-09-21: urban.org answers 403 to this server and GitHub Actions and has no usable RSS. Covers the
+    # research behind the owner's Housing Finance Policy Update and Housing and Communities Policy Update emails.
+    ("urban-institute-housing", "Urban Institute: housing research (via Google News)",
+     "site:urban.org housing OR mortgage OR homeownership OR renters OR zoning when:14d"),
 ]
 GNEWS_MAX = 25
 
@@ -114,6 +118,8 @@ def _gnews_feed(slug: str, title: str, query: str, cache: dict) -> tuple[bool, s
                 cache[link] = real
         if not real:
             continue
+        if len((e.get("title") or "").rsplit(" - ", 1)[0].split()) < 3:
+            continue  # section index pages ("Urban Wire", "Press Releases"), not articles
         t = html.escape((e.get("title") or "").rsplit(" - ", 1)[0].strip())
         d = html.escape(e.get("published") or "")
         desc = html.escape(re.sub(r"<[^>]+>", "", e.get("summary") or "")[:500])

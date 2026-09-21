@@ -91,6 +91,7 @@
       <outline title="CNBC Real Estate" text="CNBC Real Estate" type="rss" htmlUrl="https://www.cnbc.com/real-estate/" xmlUrl="https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&amp;id=10000115" />
       <outline text="Washington Post Opinions" title="Washington Post Opinions" type="rss" xmlUrl="https://feeds.washingtonpost.com/rss/opinions" htmlUrl="https://www.washingtonpost.com/opinions" />
       <outline title="WSJ Markets" text="WSJ Markets" type="rss" htmlUrl="https://www.wsj.com/news/markets" xmlUrl="https://feeds.content.dowjones.io/public/rss/RSSMarketsMain" />
+      <outline text="Urban Institute: housing research (via Google News)" title="Urban Institute: housing research (via Google News)" type="rss" xmlUrl="https://noon.homeeconomics.us/feeds/gn_urban-institute-housing.xml" htmlUrl="https://www.urban.org/research-area/housing" />
       <outline text="Urban Institute: How Housing Matters" title="Urban Institute: How Housing Matters" type="rss" xmlUrl="https://noon.homeeconomics.us/feeds/bb_urban-housing-matters.xml" htmlUrl="https://housingmatters.urban.org/" />
       <outline text="WSJ > Real Estate (via Google News)" title="WSJ > Real Estate (via Google News)" type="rss" xmlUrl="https://noon.homeeconomics.us/feeds/gn_wsj-real-estate.xml" htmlUrl="https://www.wsj.com/real-estate" />
       <outline title="WSJ Tech" text="WSJ Tech" type="rss" htmlUrl="https://www.wsj.com/news/technology" xmlUrl="https://feeds.content.dowjones.io/public/rss/RSSWSJD" />
