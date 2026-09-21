@@ -53,6 +53,35 @@
     if (IMG_RE.test(paras[paras.length - 1])) out.push('<p><br></p>');
     return out.join('');
   }
+  // Clipboard HTML -> text plus <a href> only (data-free kept). Returns '' when there is
+  // no http(s) link, so the caller falls back to plain text. Several blocks become <p>s.
+  function pastedLinksHtml(html) {
+    if (!html || !/<a\s[^>]*href/i.test(html)) return '';
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    const BLOCK = /^(P|DIV|LI|UL|OL|H[1-6]|BLOCKQUOTE|TR|TABLE|SECTION|ARTICLE|FIGURE)$/;
+    const blocks = []; let cur = '', links = 0;
+    const flush = () => { if (cur.replace(/<br>/g, '').trim()) blocks.push(cur.replace(/^(<br>)+|(<br>)+$/g, '')); cur = ''; };
+    (function walk(node) {
+      for (const n of node.childNodes) {
+        if (n.nodeType === 3) { cur += esc(n.nodeValue.replace(/\s+/g, ' ')); continue; }
+        if (n.nodeType !== 1 || /^(SCRIPT|STYLE|META|TITLE|BUTTON|INPUT)$/.test(n.tagName)) continue;
+        if (n.tagName === 'BR') { cur += '<br>'; continue; }
+        if (n.tagName === 'A' && /^https?:\/\//i.test(n.getAttribute('href') || '') && n.textContent.trim()) {
+          links++;
+          cur += '<a href="' + escAttr(n.getAttribute('href')) + '"' + (n.hasAttribute('data-free') ? ' data-free="1"' : '') + '>' +
+            esc(n.textContent.replace(/\s+/g, ' ')) + '</a>';
+          continue;
+        }
+        const block = BLOCK.test(n.tagName);
+        if (block) flush();
+        walk(n);
+        if (block) flush();
+      }
+    })(doc.body);
+    flush();
+    if (!links) return '';
+    return blocks.length === 1 ? blocks[0] : blocks.map(b => '<p>' + b + '</p>').join('');
+  }
   function htmlToMd(root) {
     const paras = []; let cur = '';
     const flush = () => { const t = cur.replace(/ /g, ' ').replace(/[ \t]+\n/g, '\n').replace(/\n{2,}/g, '\n').trim(); if (t) paras.push(t); cur = ''; };
@@ -245,8 +274,12 @@
     input.addEventListener('keydown', ev => { if (ev.key === 'Enter') { ev.preventDefault(); applyLink(ed); } });
     input.addEventListener('input', () => { if (/[\r\n]/.test(input.value)) input.value = input.value.replace(/[\r\n]+/g, ' '); fitTitle(input); });
     ed.addEventListener('paste', ev => {
-      ev.preventDefault(); const t = (ev.clipboardData || window.clipboardData).getData('text/plain');
-      document.execCommand('insertText', false, t);
+      ev.preventDefault(); const cd = ev.clipboardData || window.clipboardData;
+      // Cut and paste inside the brief must not lose links: when the clipboard HTML has
+      // http(s) links, insert its text with those links and nothing else.
+      const linked = pastedLinksHtml(cd.getData('text/html'));
+      if (linked) document.execCommand('insertHTML', false, linked);
+      else document.execCommand('insertText', false, cd.getData('text/plain'));
     });
     ed.addEventListener('input', () => onRichInput(ed));
   }
