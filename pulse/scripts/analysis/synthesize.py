@@ -21,7 +21,7 @@ from urllib.parse import urlparse
 import anthropic
 import requests
 
-from config import TOPICS, RELEVANCE_THRESHOLD_HIGHLIGHT, SOURCE_WEIGHTS, corpus_lookback_hours
+from config import TOPICS, RELEVANCE_THRESHOLD_HIGHLIGHT, SOURCE_WEIGHTS, SAME_PERSON, corpus_lookback_hours
 from store import (
     get_db, get_items_since, get_conversation_items, add_story_opportunity,
     save_briefing, get_collection_stats,
@@ -277,7 +277,7 @@ def _format_items_for_conversation(items: list[dict], limit: int = 280,
         for suffix in (".bsky.social", ".bsky", "@twitter", "@x"):
             if a.endswith(suffix):
                 a = a[: -len(suffix)]
-        return a
+        return SAME_PERSON.get(a, a)
 
     author_counts: dict[str, int] = {}
     for item in sorted_items:
@@ -301,7 +301,7 @@ def _format_items_for_conversation(items: list[dict], limit: int = 280,
         for suffix in (".bsky.social", ".bsky", "@twitter", "@x"):
             if a.endswith(suffix):
                 a = a[: -len(suffix)]
-        return a
+        return SAME_PERSON.get(a, a)
 
     for tier in by_tier:
         social_items = [

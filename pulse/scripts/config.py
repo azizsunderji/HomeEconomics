@@ -300,6 +300,17 @@ AI_ROUNDUP_ACCOUNTS = [
 # Twitter handle → real name map. Used to prevent Sonnet from inventing
 # wrong names (e.g. calling @aarmlovi "Lubock"). If a handle isn't in
 # this map, use the @handle directly in the summary.
+# One person behind several handles or outlets. Keys are lower-case author keys after the
+# platform suffix (.bsky.social) is stripped; values are the canonical person key. The
+# synthesizer caps and groups social items per person, and the writer treats them as one
+# voice. Owner, 2026-09-24: @calculatedrisk.bsky.social is Bill McBride (Calculated Risk).
+SAME_PERSON = {
+    "calculatedrisk": "bill mcbride",
+    "billmcbride4": "bill mcbride",
+    "calculated risk": "bill mcbride",
+}
+SAME_PERSON_NOTE = "Bill McBride writes Calculated Risk and posts as @calculatedrisk.bsky.social on Bluesky and @BillMcBride4 on X: one voice, cite once."
+
 TWITTER_REAL_NAMES = {
     "arpitrage": "Arpit Gupta",
     "emollick": "Ethan Mollick",
@@ -333,7 +344,7 @@ TWITTER_REAL_NAMES = {
     "billmcbride4": "Bill McBride (Calculated Risk)",
     "bobknakal": "Bob Knakal",
     "bykylecampbell": "Kyle Campbell",
-    "calculatedrisk": "Calculated Risk",
+    "calculatedrisk": "Bill McBride (Calculated Risk)",
     "candaceetaylor": "Candace Taylor",
     "carolwalshreal1": "Carol Walsh",
     "conorsen": "Conor Sen",
