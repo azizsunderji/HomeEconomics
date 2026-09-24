@@ -899,6 +899,95 @@ def probe_paywall_auth(stage: Stage, conn: sqlite3.Connection) -> None:
         stage.headline = "all subscription sites logged in"
 
 
+LOGIN_STATUS_URL = "https://noon.homeeconomics.us/feeds/login_status.json"
+MECHANISM_LABEL = {"server chrome": "server Chrome", "browserbase": "Browserbase"}
+RELOGIN_TEXT = {
+    "server chrome": "re-login needed at browser.homeeconomics.us",
+    "browserbase": "re-login needed in the Browserbase context (ask Claude to open the login page there)",
+}
+
+
+def probe_server_logins(stage: Stage, conn: sqlite3.Connection) -> None:
+    """Login state of every subscription site, per mechanism that reads it.
+
+    2026-09-24 (owner: "make sure the health email tells me if this, or any
+    others, need me to re-login"). login_status.py on the noon server checks
+    the server's live Chrome (Goldman Sachs Research for gs_feed.py, plus
+    WSJ, NYT, FT, Bloomberg, Economist, Substack for ad hoc reads) daily at
+    10:30 UTC and publishes login_status.json. Browserbase rows (the context
+    enrich_articles.py uses for NYT/FT/WSJ bodies) are read here from this
+    run's paywall_auth table, the same source as stage 2.0, so the two
+    stages agree; the JSON's Browserbase rows are the fallback.
+    """
+    r = httpx.get(LOGIN_STATUS_URL, timeout=HTTP_TIMEOUT, follow_redirects=True)
+    if r.status_code != 200:
+        stage.set(STATUS_WARN, f"login_status.json unavailable (HTTP {r.status_code})")
+        return
+    data = r.json()
+    rows = [s for s in data.get("sites", []) if s.get("mechanism") != "browserbase"]
+    try:
+        bb = conn.execute(
+            "SELECT site, status, detail, MAX(checked_at) AS checked_at "
+            "FROM paywall_auth GROUP BY site ORDER BY site"
+        ).fetchall()
+    except sqlite3.OperationalError:
+        bb = []
+    if bb:
+        names = {"wsj.com": "WSJ", "nytimes.com": "NYT", "ft.com": "FT"}
+        for b in bb:
+            rows.append({"site": names.get(b["site"], b["site"]), "mechanism": "browserbase",
+                         "used_by": "enrich_articles.py article bodies",
+                         "status": b["status"], "checked_at": b["checked_at"], "detail": b["detail"] or ""})
+    else:
+        rows += [s for s in data.get("sites", []) if s.get("mechanism") == "browserbase"]
+
+    now = datetime.now(timezone.utc)
+    gen = data.get("generated_at", "")
+    try:
+        age_h = (now - datetime.fromisoformat(gen.replace("Z", "+00:00"))).total_seconds() / 3600
+    except ValueError:
+        age_h = 999.0
+    bb_cutoff = _last_24h_iso(48)
+    logged_out, unknown = [], []
+    rows.sort(key=lambda s: (s.get("mechanism") != "server chrome", s.get("site", "")))
+    for s in rows:
+        mech = s.get("mechanism", "server chrome")
+        who = f"{s.get('site')} ({MECHANISM_LABEL.get(mech, mech)})"
+        status = s.get("status", "unknown")
+        checked = (s.get("checked_at") or "")[:16]
+        if mech == "browserbase" and checked and checked < bb_cutoff[:16]:
+            status = "unknown"
+            s["detail"] = f"last check older than 48h; {s.get('detail', '')}"
+        value = {"logged_in": "logged in", "logged_out": "LOGGED OUT", "unknown": "unknown"}.get(status, status)
+        value += f" (checked {checked}Z)" if checked else " (never checked)"
+        if s.get("used_by"):
+            value += f" · used by {s['used_by']}"
+        if status == "logged_out":
+            value += f" · {RELOGIN_TEXT.get(mech, '')}"
+            logged_out.append((who, mech))
+        elif status != "logged_in":
+            value += f" · {(s.get('detail') or '')[:120]}"
+            unknown.append(who)
+        stage.row(who, value)
+    for n in data.get("notes", []):
+        stage.note(n)
+    if logged_out:
+        parts = []
+        for mech in ("server chrome", "browserbase"):
+            sites = [w.split(" (")[0] for w, m in logged_out if m == mech]
+            if sites:
+                parts.append(f"{', '.join(sites)} in {MECHANISM_LABEL[mech]}: {RELOGIN_TEXT[mech]}")
+        stage.set(STATUS_BROKEN, "logged out: " + "; ".join(parts))
+    elif age_h > 36:
+        stage.set(STATUS_WARN, f"login_status.json is {age_h:.0f}h old — noon-loginstatus.timer may not be running")
+    elif unknown:
+        stage.set(STATUS_WARN, "login state unknown: " + ", ".join(unknown))
+    else:
+        stage.headline = f"all {len(rows)} site logins OK (server Chrome and Browserbase)"
+    if age_h > 36 and logged_out:
+        stage.note(f"login_status.json is {age_h:.0f}h old — noon-loginstatus.timer may not be running")
+
+
 def probe_article_enrichment(stage: Stage, conn: sqlite3.Connection) -> None:
     """Enrichment status across all sources `enrich_articles.py` targets.
 
@@ -1873,20 +1962,30 @@ UPSTREAM_STAGES = [
         probe_paywall_auth,
     ),
     (
-        "2.1", "Article body enrichment (Browserbase)",
+        "2.1", "Server browser logins",
+        "Every subscription login the pipeline depends on, tagged by the "
+        "mechanism that reads the site: the noon server's live Chrome "
+        "(Goldman Sachs Research feed and ad hoc reads; re-login at "
+        "browser.homeeconomics.us) or the Browserbase context (NYT/WSJ/FT "
+        "article bodies; ask Claude to open the login page there). Server "
+        "Chrome rows come from login_status.json, checked daily at 10:30 UTC.",
+        probe_server_logins,
+    ),
+    (
+        "2.2", "Article body enrichment (Browserbase)",
         "RSS articles arrive with a 200-char teaser; Browserbase fetches the "
         "full body so the LLM has substantive text. High-relevance items "
         "still in teaser-state indicate enrichment skipped them.",
         probe_article_enrichment,
     ),
     (
-        "2.2", "Tweet link enrichment",
+        "2.3", "Tweet link enrichment",
         "Resolves t.co and quoted-tweet links so the synthesizer can read what "
         "tweets are actually referencing.",
         probe_tweet_link_enrichment,
     ),
     (
-        "2.3", "Journal abstract fetching",
+        "2.4", "Journal abstract fetching",
         "Pulls abstracts for journal items whose RSS only carries a title — "
         "needed for Paper of the Day picks to have substance.",
         probe_journal_abstracts,

@@ -1,0 +1,10 @@
+[Unit]
+Description=Housing at Noon: login status of the server Chrome and Browserbase sites (login_status.py)
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/aziz/work/HomeEconomics/pulse/editor
+EnvironmentFile=/home/aziz/.noon_env
+ExecStart=/home/aziz/work/pulse-venv/bin/python login_status.py
+StandardOutput=append:/home/aziz/work/noon/logs/loginstatus.log
+StandardError=append:/home/aziz/work/noon/logs/loginstatus.log

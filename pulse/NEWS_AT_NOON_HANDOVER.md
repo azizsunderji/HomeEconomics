@@ -532,3 +532,44 @@ PULSE_UNSUB_SECRET in `~/.noon_env` before `NOON_SEND_MODE=subscribers`. Until D
 - Other workflows in this repo still upload to Bluehost over SFTP (not Housing at Noon):
   monthly-ces-update, deploy-metro-explorer, update_price_maps, upload-social-charts,
   weekly-social-charts, weekly-rankings, weekly-charts.
+
+## Status update — 24 Sep 2026: Goldman Sachs Research feed and server browser logins
+
+Owner's rule (Aziz, 24 Sep 2026): "build it, series list is right, and make sure the health email
+tells me if this, or any others, need me to re-login".
+
+- **Goldman Sachs Research feed.** `pulse/editor/gs_feed.py` opens one new tab in the server's live
+  Chrome (CDP 9223, raw CDP through the new `pulse/editor/cdp_tab.py`; never Playwright on 9223; the
+  tab is closed at the end) and runs Goldman's own search URL filter for US Economics Analyst, Global
+  Views, US Weekly Kickstart, Europe Weekly Kickstart, Housing and Mortgage Monitor, Global Strategy
+  Views (title must start with the series name) and for housing research ("homebuilders" equity
+  results; "housing" and "mortgage" results with a housing title). Reports from the last 3 days are
+  read once (body up to 8000 characters), cached in `~/work/noon/feeds/gs_cache.json` (200 max) and
+  published at https://noon.homeeconomics.us/feeds/gs_research.xml (newest 40). Loads are 3-5 s
+  apart, 30 per run at most. The OPML lists it in HighPriority as "Goldman Sachs Research".
+  A login/SSO redirect, password form or empty report stops the run without retry, writes
+  `~/work/noon/gs_status.json` with `logged_out` and exits 2. Units `noon-gsfeed.service/.timer`
+  (Mon-Fri 10:00 UTC), log `~/work/noon/logs/gsfeed.log`. First run: 2 items (Global Views: Lower
+  Inflation, Limited Hikes; US Economics Analyst: A Broader Energy Shock).
+  Note: `collectors/rss_feeds.py` keeps only the first 2000 characters of a feed description, so the
+  synthesis sees 2000 of the 8000 characters. Not changed.
+- **Login status.** `pulse/editor/login_status.py` (units `noon-loginstatus.service/.timer`, daily
+  10:30 UTC, log `loginstatus.log`) writes https://noon.homeeconomics.us/feeds/login_status.json:
+  statuses only, no cookies. Each site is tagged with the mechanism that reads it:
+  - server Chrome (CDP 9223): Goldman Sachs Research (gs_feed.py), and WSJ, NYT, FT, Bloomberg,
+    Economist, Substack for ad hoc reads (live_tab_fetch.py, paywall_fetch.py). Checked live, one
+    tab, one page per site, 3-5 s apart. The Goldman row also carries gs_feed.py's last result.
+  - Browserbase: WSJ, NYT, FT, as checked by enrich_articles.py each run (pulse.db `paywall_auth`).
+    Bloomberg and Economist bodies also go through Browserbase but are not checked there.
+- **Health email.** New stage "2.1 — Server browser logins" in `pipeline_health_report.py`, next to
+  2.0 (kept). Former 2.1-2.3 are now 2.2-2.4. Server Chrome rows come from login_status.json;
+  Browserbase rows come from the report run's own `paywall_auth` table, so 2.0 and 2.1 agree.
+  BROKEN when any site is logged out (headline names the sites and where to log in), WARN when the
+  JSON is older than 36 hours or any site is unknown, OK otherwise.
+- **Re-login procedure.** Server Chrome sites: open https://browser.homeeconomics.us, log in on the
+  site in that browser, then `systemctl --user start noon-loginstatus.service` (and
+  `noon-gsfeed.service` for Goldman) to refresh the status. Browserbase sites: ask Claude to open
+  the site's login page in a Browserbase live-view session on the persistent context; the next
+  enrichment run records the new status.
+- On 24 Sep Bloomberg answered the server Chrome with a bot check ("access denied") after two test
+  loads, so its status reads unknown; do not retry Bloomberg in bursts.
