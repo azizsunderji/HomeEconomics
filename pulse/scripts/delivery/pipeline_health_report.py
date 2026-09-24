@@ -1092,6 +1092,72 @@ def probe_article_enrichment(stage: Stage, conn: sqlite3.Connection) -> None:
         stage.headline = f"{_fmt_int(enriched)} enriched, {pct:.0f}%"
 
 
+ENRICHED_BODIES_URL = "https://noon.homeeconomics.us/feeds/enriched_bodies.json"
+
+
+def probe_server_enrichment(stage: Stage, conn: sqlite3.Connection) -> None:
+    """Article bodies read in the noon server's live Chrome vs Browserbase.
+
+    Aziz, 24 Sep 2026: consolidate enrichment on the server Chrome;
+    Browserbase stays as fallback for a week, then is cancelled if the
+    health report shows no blocks. enrich_server.py (noon-enrich.timer,
+    Mon-Fri 10:15 UTC) publishes enriched_bodies.json; the synth workflow
+    applies it (enrich_mode='server_chrome') before the Browserbase step
+    (enrich_mode 'direct' or 'archive'). WARN if the file is older than
+    30 hours or the server run was blocked by any host.
+    """
+    cutoff = _last_24h_iso(24)
+    try:
+        modes = {r["m"]: r["c"] for r in conn.execute(
+            "SELECT COALESCE(enrich_mode, 'none') m, COUNT(*) c FROM items "
+            "WHERE source IN ('rss', 'gmail', 'substack', 'hackernews') "
+            "AND collected_at >= ? GROUP BY 1", (cutoff,)).fetchall()}
+    except sqlite3.OperationalError:
+        modes = {}
+    sc, direct, arch = modes.get("server_chrome", 0), modes.get("direct", 0), modes.get("archive", 0)
+    stage.row("Enriched by server Chrome (24h)", _fmt_int(sc))
+    stage.row("Enriched by Browserbase direct (24h)", _fmt_int(direct))
+    stage.row("Enriched by Browserbase via archive.ph (24h)", _fmt_int(arch))
+
+    r = httpx.get(ENRICHED_BODIES_URL, timeout=HTTP_TIMEOUT * 3, follow_redirects=True)
+    if r.status_code != 200:
+        stage.set(STATUS_WARN, f"enriched_bodies.json unavailable (HTTP {r.status_code})")
+        return
+    data = r.json()
+    gen = data.get("generated_at", "")
+    try:
+        age_h = (datetime.now(timezone.utc) - datetime.fromisoformat(gen.replace("Z", "+00:00"))).total_seconds() / 3600
+    except ValueError:
+        age_h = 999.0
+    run = data.get("run") or {}
+    stage.row("enriched_bodies.json age", f"{age_h:.1f}h (generated {gen[:16]}Z)")
+    stage.row("Last server run",
+              f"{_fmt_int(run.get('ok'))} ok, {_fmt_int(run.get('empty'))} empty, "
+              f"{_fmt_int(run.get('blocked'))} blocked of {_fmt_int(run.get('attempted'))} loads "
+              f"({_fmt_int(run.get('candidates'))} candidates)")
+    hosts = data.get("hosts") or {}
+    ranked = sorted(hosts.items(), key=lambda kv: (-kv[1].get("blocked", 0), -sum(kv[1].values()), kv[0]))
+    for host, c in ranked[:15]:
+        stage.row(f"host {host}", f"ok {c.get('ok', 0)} · blocked {c.get('blocked', 0)} · empty {c.get('empty', 0)}")
+    if len(ranked) > 15:
+        rest = ranked[15:]
+        stage.note(f"{len(rest)} more hosts: ok {sum(c.get('ok', 0) for _, c in rest)}, "
+                   f"empty {sum(c.get('empty', 0) for _, c in rest)}, "
+                   f"blocked {sum(c.get('blocked', 0) for _, c in rest)}")
+    blocked = data.get("blocked") or {}
+    for host, wording in blocked.items():
+        stage.note(f"{host} blocked the server Chrome: \"{wording[:160]}\"")
+    if run.get("error"):
+        stage.note(f"Server run error: {run['error']}")
+    if age_h > 30:
+        stage.set(STATUS_WARN, f"enriched_bodies.json is {age_h:.0f}h old — noon-enrich.timer may not be running")
+    if blocked:
+        stage.set(STATUS_WARN, "server Chrome blocked by " + ", ".join(sorted(blocked)))
+    if stage.status == STATUS_OK:
+        stage.headline = (f"{_fmt_int(sc)} server Chrome · {_fmt_int(direct)} Browserbase direct · "
+                          f"{_fmt_int(arch)} archive.ph (24h); no host blocked")
+
+
 def probe_tweet_link_enrichment(stage: Stage, conn: sqlite3.Connection) -> None:
     cutoff = _last_24h_iso(24)
     total = conn.execute(
@@ -1977,6 +2043,15 @@ UPSTREAM_STAGES = [
         "full body so the LLM has substantive text. High-relevance items "
         "still in teaser-state indicate enrichment skipped them.",
         probe_article_enrichment,
+    ),
+    (
+        "2.2b", "Article body enrichment (server Chrome)",
+        "Since 24 Sep 2026 the noon server's live Chrome reads article bodies "
+        "first (Mon-Fri 10:15 UTC) and the synthesis applies them before the "
+        "Browserbase step, which is now the fallback. Counts of bodies by "
+        "mechanism for the last 24 hours, and the server run's per-host "
+        "results. Browserbase is cancelled after a week with no blocks here.",
+        probe_server_enrichment,
     ),
     (
         "2.3", "Tweet link enrichment",
