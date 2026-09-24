@@ -163,25 +163,32 @@ jobs:
             --verbose --stats-one-line || true
           echo "=== Data lake size ===" && du -sh /tmp/data-lake/
 
-      - name: Re-collect Gmail (late newsletters)
+      - name: Re-collect Gmail, RSS and Substack (items published after the morning collection)
+        # The morning collection runs about 09:30 UTC and the brief is written at 11:00; WSJ,
+        # Bloomberg and most newsletters publish in between (a WSJ essay published at 09:30 on
+        # 24 Sep 2026 missed that day's brief by two minutes). Owner approved this step 24 Sep 2026.
         if: steps.guard.outputs.should_run == 'true'
         working-directory: pulse/scripts
+        env:
+          SUBSTACK_MIRROR_BASE: https://noon.homeeconomics.us/feeds
+          FEED_MIRROR_BASE: https://noon.homeeconomics.us/feeds
         run: |
           python -c "
           import sys
           sys.path.insert(0, '.')
           from store import get_db, bulk_upsert, log_collection_start, log_collection_end
-          from collectors import gmail
+          from collectors import gmail, rss_feeds, rss_substacks
           conn = get_db()
-          run_id = log_collection_start(conn, 'gmail')
-          try:
-              items = gmail.collect()
-              new, dupe = bulk_upsert(conn, items)
-              log_collection_end(conn, run_id, len(items), new, dupe)
-              print(f'Gmail re-collect: {new} new, {dupe} dupes (of {len(items)})')
-          except Exception as e:
-              log_collection_end(conn, run_id, 0, 0, 0, error=str(e))
-              print(f'Gmail re-collect failed: {e}')
+          for name, fn in (('gmail', gmail.collect), ('rss', lambda: rss_feeds.collect(max_age_hours=24)), ('substack', lambda: rss_substacks.collect(max_age_hours=24))):
+              run_id = log_collection_start(conn, name)
+              try:
+                  items = fn()
+                  new, dupe = bulk_upsert(conn, items)
+                  log_collection_end(conn, run_id, len(items), new, dupe)
+                  print(f'{name} re-collect: {new} new, {dupe} dupes (of {len(items)})')
+              except Exception as e:
+                  log_collection_end(conn, run_id, 0, 0, 0, error=str(e))
+                  print(f'{name} re-collect failed: {e}')
           "
 
       - name: Classify unclassified items
