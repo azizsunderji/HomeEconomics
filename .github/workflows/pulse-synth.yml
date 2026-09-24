@@ -196,6 +196,21 @@ jobs:
         working-directory: pulse/scripts
         run: python run_pipeline.py classify-only
 
+      - name: Apply server-Chrome enrichment
+        # Aziz, 24 Sep 2026: consolidate enrichment on the server Chrome; Browserbase stays as
+        # fallback for a week, then is cancelled if the health report shows no blocks.
+        # The noon server (enrich_server.py, Mon-Fri 10:15 UTC) publishes article bodies read in its
+        # live Chrome. Rows whose body is shorter than the server's get it, with
+        # enrich_mode='server_chrome'. Fail-soft: if the file is unreachable, Browserbase does it all.
+        if: steps.guard.outputs.should_run == 'true'
+        working-directory: pulse
+        run: |
+          if curl -fsS --max-time 60 -o /tmp/enriched_bodies.json https://noon.homeeconomics.us/feeds/enriched_bodies.json; then
+            python scripts/apply_server_enrichment.py /tmp/enriched_bodies.json || echo "::warning::applying server-Chrome bodies failed; continuing"
+          else
+            echo "::warning::enriched_bodies.json unreachable; Browserbase enriches alone"
+          fi
+
       - name: Enrich articles via Browserbase
         if: steps.guard.outputs.should_run == 'true'
         working-directory: pulse
