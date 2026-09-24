@@ -1,0 +1,10 @@
+[Unit]
+Description=Housing at Noon: Goldman Sachs Research feed from the server's live Chrome (gs_feed.py)
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/aziz/work/HomeEconomics/pulse/editor
+EnvironmentFile=/home/aziz/.noon_env
+ExecStart=/home/aziz/work/pulse-venv/bin/python gs_feed.py
+StandardOutput=append:/home/aziz/work/noon/logs/gsfeed.log
+StandardError=append:/home/aziz/work/noon/logs/gsfeed.log
