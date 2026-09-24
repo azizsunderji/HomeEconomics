@@ -91,6 +91,10 @@
       <outline title="CNBC Real Estate" text="CNBC Real Estate" type="rss" htmlUrl="https://www.cnbc.com/real-estate/" xmlUrl="https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&amp;id=10000115" />
       <outline text="Washington Post Opinions" title="Washington Post Opinions" type="rss" xmlUrl="https://feeds.washingtonpost.com/rss/opinions" htmlUrl="https://www.washingtonpost.com/opinions" />
       <outline title="WSJ Markets" text="WSJ Markets" type="rss" htmlUrl="https://www.wsj.com/news/markets" xmlUrl="https://feeds.content.dowjones.io/public/rss/RSSMarketsMain" />
+      <outline title="WSJ US Business" text="WSJ US Business" type="rss" htmlUrl="https://www.wsj.com/news/business" xmlUrl="https://feeds.content.dowjones.io/public/rss/WSJcomUSBusiness" />
+      <outline title="WSJ Personal Finance" text="WSJ Personal Finance" type="rss" htmlUrl="https://www.wsj.com/personal-finance" xmlUrl="https://feeds.content.dowjones.io/public/rss/RSSPersonalFinance" />
+      <outline title="WSJ US News" text="WSJ US News" type="rss" htmlUrl="https://www.wsj.com/news/us" xmlUrl="https://feeds.content.dowjones.io/public/rss/RSSUSNews" />
+      <outline title="WSJ Lifestyle" text="WSJ Lifestyle" type="rss" htmlUrl="https://www.wsj.com/lifestyle" xmlUrl="https://feeds.content.dowjones.io/public/rss/RSSLifestyle" />
       <outline text="Urban Institute: housing research (via Google News)" title="Urban Institute: housing research (via Google News)" type="rss" xmlUrl="https://noon.homeeconomics.us/feeds/gn_urban-institute-housing.xml" htmlUrl="https://www.urban.org/research-area/housing" />
       <outline text="ResiClub" title="ResiClub" type="rss" xmlUrl="https://noon.homeeconomics.us/feeds/sm_resiclub.xml" htmlUrl="https://www.resiclubanalytics.com/" />
       <outline text="Urban Institute: How Housing Matters" title="Urban Institute: How Housing Matters" type="rss" xmlUrl="https://noon.homeeconomics.us/feeds/bb_urban-housing-matters.xml" htmlUrl="https://housingmatters.urban.org/" />
