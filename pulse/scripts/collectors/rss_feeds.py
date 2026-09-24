@@ -290,10 +290,10 @@ def collect(
                 body = ""
                 if "summary" in entry:
                     import re
-                    body = re.sub(r"<[^>]+>", "", entry["summary"]).strip()[:2000]
+                    body = re.sub(r"<[^>]+>", "", entry["summary"]).strip()[:8000]  # was 2000; mirror feeds (Goldman, ResiClub, Urban) carry full text (owner, 24 Sep 2026)
                 elif "content" in entry and entry["content"]:
                     import re
-                    body = re.sub(r"<[^>]+>", "", entry["content"][0].get("value", "")).strip()[:2000]
+                    body = re.sub(r"<[^>]+>", "", entry["content"][0].get("value", "")).strip()[:8000]
 
                 item = PulseItem(
                     source="rss",
