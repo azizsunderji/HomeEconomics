@@ -78,6 +78,15 @@ BROWSER_LISTINGS = [
      "https://housingmatters.urban.org/", "housingmatters.urban.org"),
 ]
 BROWSER_EVERY_HOURS = 20
+
+# (file slug, feed title, sitemap URL, article path prefix). Sites with no usable RSS whose pages answer plain
+# requests: the newest SITEMAP_MAX article URLs by <lastmod> are fetched (once each, cached) and published as
+# sm_<slug>.xml with title, date and body text. 2026-09-24: ResiClub (beehiiv; no feed, emails carry only
+# link.mail.beehiiv.com tracking links that answer 403 to the link resolver, so briefs could not cite it).
+SITEMAP_SITES = [
+    ("resiclub", "ResiClub", "https://www.resiclubanalytics.com/sitemap.xml", "https://www.resiclubanalytics.com/p/"),
+]
+SITEMAP_MAX = 25
 BROWSER_MAX_NEW = 8
 
 FEEDS_DIR = Path(os.environ.get("NOON_FEEDS_DIR", "/home/aziz/work/noon/feeds"))
@@ -266,6 +275,59 @@ def _browser_feed(slug: str, title: str, listing: str, host: str, cache: dict) -
     return bool(items), f"{len(order)} listed, {len(items)} in feed ({new} articles read this run)"
 
 
+def _sitemap_feed(slug: str, title: str, sitemap: str, prefix: str, cache: dict) -> tuple[bool, str]:
+    """Newest article pages from a sitemap -> sm_<slug>.xml. Returns (ok, note)."""
+    import xml.etree.ElementTree as ET
+    from email.utils import format_datetime
+    req = urllib.request.Request(sitemap, headers={"User-Agent": UA})
+    with urllib.request.urlopen(req, timeout=30) as r:
+        root = ET.fromstring(r.read())
+    ns = {"s": "http://www.sitemaps.org/schemas/sitemap/0.9"}
+    pages = []
+    for u in root.findall("s:url", ns):
+        loc = (u.findtext("s:loc", default="", namespaces=ns) or "").strip()
+        mod = (u.findtext("s:lastmod", default="", namespaces=ns) or "").strip()
+        if loc.startswith(prefix):
+            pages.append((mod, loc))
+    pages.sort(reverse=True)
+    newest = [loc for _, loc in pages[:SITEMAP_MAX]]
+    fetched = 0
+    for loc in newest:
+        if loc in cache:
+            continue
+        try:
+            with urllib.request.urlopen(urllib.request.Request(loc, headers={"User-Agent": UA}), timeout=30) as r:
+                page = r.read().decode("utf-8", "replace")
+            def meta(prop):
+                m = re.search(r'<meta[^>]+(?:property|name)="%s"[^>]+content="([^"]*)"' % re.escape(prop), page)
+                return html.unescape(m.group(1)) if m else ""
+            paras = [re.sub(r"<[^>]+>", "", x) for x in re.findall(r"<p[^>]*>(.*?)</p>", page, re.S)]
+            body = "\n".join(html.unescape(t).strip() for t in paras if len(t.strip()) > 40)
+            cache[loc] = {"title": meta("og:title") or meta("twitter:title"), "date": meta("article:published_time"),
+                          "body": body[:8000], "fetched": datetime.now(timezone.utc).isoformat()}
+            fetched += 1
+            time.sleep(2)
+        except Exception as ex:  # noqa: BLE001
+            log.warning(f"{title}: {loc}: {ex}")
+    items = []
+    for loc in newest:
+        c = cache.get(loc)
+        if not c or not c["title"] or len(c["body"]) < 300:
+            continue
+        try:
+            when = datetime.fromisoformat(c["date"].replace("Z", "+00:00"))
+        except ValueError:
+            when = datetime.fromisoformat(c["fetched"])
+        items.append(f"<item><title>{html.escape(c['title'])}</title><link>{html.escape(loc)}</link><guid>{html.escape(loc)}</guid>"
+                     f"<pubDate>{format_datetime(when)}</pubDate><description>{html.escape(c['body'])}</description></item>")
+    xml = ("<?xml version=\"1.0\" encoding=\"UTF-8\"?><rss version=\"2.0\"><channel>"
+           f"<title>{html.escape(title)}</title><link>{html.escape(prefix)}</link>"
+           f"<description>Built on the noon server from {html.escape(sitemap)}</description>" + "".join(items) + "</channel></rss>").encode()
+    tmp = FEEDS_DIR / f"sm_{slug}.xml.tmp"
+    tmp.write_bytes(xml); os.chmod(tmp, 0o644); tmp.replace(FEEDS_DIR / f"sm_{slug}.xml")
+    return bool(items), f"{len(pages)} pages in sitemap, {len(items)} in feed ({fetched} fetched this run)"
+
+
 def slug_for(feed_url: str) -> str | None:
     host = urlsplit(feed_url).netloc.lower()
     return host.split(".")[0] if host.endswith(".substack.com") else None
@@ -365,6 +427,26 @@ def main() -> int:
         except Exception as e:  # noqa: BLE001
             index[f"bb_{slug}"] = {"name": title, "url": listing, "ok": False, "error": str(e)[:200], "failed_at": now}
             log.warning(f"{title}: {e}")
+    # Sitemap-built feeds (plain fetches, hourly; articles cached so each is read once).
+    sm_cache_path = FEEDS_DIR / "sitemap_cache.json"
+    try:
+        sm_cache = json.loads(sm_cache_path.read_text()) if sm_cache_path.exists() else {}
+    except Exception:
+        sm_cache = {}
+    for slug, title, sitemap, prefix in SITEMAP_SITES:
+        now = datetime.now(timezone.utc).isoformat()
+        try:
+            good, note = _sitemap_feed(slug, title, sitemap, prefix, sm_cache.setdefault(slug, {}))
+            index[f"sm_{slug}"] = {"name": title, "url": sitemap, "ok": good, "fetched_at": now, "note": note}
+            log.info(f"{title}: {note}")
+            ok += int(good)
+        except Exception as e:  # noqa: BLE001
+            index[f"sm_{slug}"] = {"name": title, "url": sitemap, "ok": False, "error": str(e)[:200], "failed_at": now}
+            log.warning(f"{title}: {e}")
+    for slug in list(sm_cache):  # keep the cache bounded
+        if len(sm_cache[slug]) > 200:
+            sm_cache[slug] = dict(sorted(sm_cache[slug].items(), key=lambda kv: kv[1].get("date", ""))[-150:])
+    sm_cache_path.write_text(json.dumps(sm_cache)); os.chmod(sm_cache_path, 0o600)
     bb_cache_path.write_text(json.dumps(bb_cache))
     os.chmod(bb_cache_path, 0o600)
     if len(cache) > 2000:
@@ -374,7 +456,7 @@ def main() -> int:
     index_path.write_text(json.dumps({"generated_at": datetime.now(timezone.utc).isoformat(),
                                       "feeds": index}, indent=1))
     os.chmod(index_path, 0o644)
-    log.info(f"mirrored {ok} of {len(targets) + len(GNEWS_SEARCHES) + len(CROSSREF_JOURNALS) + len(BROWSER_LISTINGS)} feeds into {FEEDS_DIR}")
+    log.info(f"mirrored {ok} of {len(targets) + len(GNEWS_SEARCHES) + len(CROSSREF_JOURNALS) + len(BROWSER_LISTINGS) + len(SITEMAP_SITES)} feeds into {FEEDS_DIR}")
     return 0 if ok else 1
 
 
