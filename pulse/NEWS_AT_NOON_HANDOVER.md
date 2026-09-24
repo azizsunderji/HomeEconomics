@@ -573,3 +573,53 @@ tells me if this, or any others, need me to re-login".
   enrichment run records the new status.
 - On 24 Sep Bloomberg answered the server Chrome with a bot check ("access denied") after two test
   loads, so its status reads unknown; do not retry Bloomberg in bursts.
+
+## Status update — 24 Sep 2026: article enrichment moves to the server Chrome (step 1)
+
+Owner's rule (Aziz, 24 Sep 2026): "consolidate enrichment on the server Chrome; Browserbase stays as
+fallback for a week, then is cancelled if the health report shows no blocks".
+
+- **What runs where.**
+  - Noon server: `pulse/editor/enrich_server.py`, units `noon-enrich.service/.timer` (Mon-Fri 10:15
+    UTC, Persistent), log `~/work/noon/logs/enrich.log`. It selects candidates from the read-only
+    Dropbox mirror of pulse.db with `enrich_articles._get_items_to_enrich` and `SKIP_DOMAINS` (sources
+    rss/gmail/substack/hackernews, last 24 hours, rss/hackernews bodies under 500 characters, no
+    relevance threshold, highest relevance first, cap 300). It also skips rows already enriched
+    (`enrich_mode` set) and fetches each URL once. It loads each URL in one new tab of the live Chrome
+    (CDP 9223, `cdp_tab.py`; tab closed at the end), 2-4 s between loads and at least 6 s between
+    loads to the same host (including the host a tracking link lands on). The first bot-check page from
+    a host stops that host for the run, with no retry. Bodies are extracted with
+    `enrich_articles._extract_article_text` on the page HTML, so the text matches what Browserbase
+    stores; 200+ characters counts as ok. No archive.ph fallback on the server. The run stops loading
+    after 40 minutes so the file is ready before the 11:00 synthesis. It never writes to pulse.db.
+  - GitHub Actions (`pulse-synth.yml`): new step "Apply server-Chrome enrichment" after the re-collect
+    and classify steps and before "Enrich articles via Browserbase". It curls the file (fail-soft) and
+    runs `pulse/scripts/apply_server_enrichment.py`, which sets `body` and `enrich_mode='server_chrome'`
+    on rows whose body is shorter than the file's body, and prints the count.
+- **File contract.** https://noon.homeeconomics.us/feeds/enriched_bodies.json
+  (`~/work/noon/feeds/enriched_bodies.json`): `{"generated_at", "run": {started_at, finished_at,
+  hours, limit, candidates, attempted, ok, empty, blocked, errors, skipped_blocked_host,
+  left_for_time, error}, "hosts": {host: {ok, blocked, empty}}, "blocked": {host: page wording},
+  "items": {url: {body (<= 8000 chars), title, fetched_at, mode: "server_chrome"}}}`. Items from the
+  last 3 days are kept; `hosts` and `blocked` describe the latest run only. Run summary also in
+  `~/work/noon/enrich_status.json` (not yet read by login_status.py).
+- **Fallback.** The Browserbase step is unchanged. It still runs after the apply step, and it
+  re-selects rss/hackernews rows under 500 characters and every gmail/substack row in the window
+  (its query does not look at body length or enrich_mode for those two sources), so for gmail and
+  substack it still refetches and overwrites `enrich_mode` with `direct`/`archive`.
+- **Health email.** New stage "2.2b — Article body enrichment (server Chrome)" next to 2.2: counts of
+  bodies by `enrich_mode` for the last 24 hours (server_chrome, direct, archive), the latest server
+  run's totals and per-host ok/blocked/empty, the file's age, and the wording of any block. WARN when
+  the file is older than 30 hours or any host blocked; OK otherwise.
+- **One-week review (through 1 Oct 2026).** Cancel Browserbase only if stage 2.2b shows no blocked
+  host on every weekday run and the server bodies cover the paywalled hosts (WSJ, FT, NYT, Economist,
+  Bloomberg). Before cancelling, the paywall-auth probe (stage 2.0), archive.ph fallback and the
+  Browserbase step itself need a replacement or a decision to drop them.
+- **First run (24 Sep 2026, 15:36-15:50 UTC, by hand).** 162 candidates, 125 loads: 106 ok, 18 empty,
+  1 blocked; 37 Bloomberg URLs skipped after the block. Per host: ft.com 33 ok / 2 empty, theverge.com
+  12, latimes.com 11, washingtonpost.com 9, economist.com 8, fortune.com 7, wsj.com 5 ok; bloomberg.com
+  1 ok then blocked on the second load ("Bloomberg - Are you a robot? ... We've detected unusual
+  activity from your computer network. To continue, please click the box below to let us know you're
+  not a robot."); urban.org 0 ok / 4 empty. Applied to a scratch copy of pulse.db: 102 rows updated.
+  Bloomberg is the largest single source of candidates (39 of 162), so as things stand it would stay on
+  Browserbase.
