@@ -1,11 +1,26 @@
-# Housing at Noon editor. Add `import /etc/caddy/conf.d/*.caddy` to /etc/caddy/Caddyfile
-# and copy this file to /etc/caddy/conf.d/. Needs an A record:
-#   noon.homeeconomics.us -> 104.236.210.18
+# Housing at Noon editor. Add `import /etc/caddy/conf.d/*.caddy` to /etc/caddy/Caddyfile.
+# Do not copy this file by hand: install it with render_noon_caddy.sh, which puts the path token
+# from ~/.noon_env in place of {$NOON_PRIVATE_TOKEN}, writes /etc/caddy/conf.d/noon.caddy
+# (root:caddy, 640), validates it and reloads Caddy. The token is never committed.
+# Needs an A record: noon.homeeconomics.us -> this server.
 noon.homeeconomics.us {
 	encode gzip
+	# Licensed text (Goldman Sachs Research feed, article bodies from the server Chrome) is kept
+	# out of the public folder: gs_feed.py and enrich_server.py write to ~/work/noon/feeds_private,
+	# served only under a secret path. GitHub Actions reads it with the NOON_PRIVATE_TOKEN secret.
+	# log_skip keeps the token out of the access log. (24 Sep 2026)
+	handle_path /private/{$NOON_PRIVATE_TOKEN}/* {
+		log_skip
+		root * /home/aziz/work/noon/feeds_private
+		header Cache-Control "no-store"
+		file_server
+	}
 	# Mirror of the substack.com feeds that block GitHub Actions (pulse/editor/mirror_feeds.py,
 	# hourly). The collector reads https://noon.homeeconomics.us/feeds/<slug>.xml first.
 	handle_path /feeds/* {
+		# These three moved to the private path above; answer 404 even if a stale copy reappears.
+		@licensed path /gs_research.xml /gs_cache.json /enriched_bodies.json
+		respond @licensed 404
 		root * /home/aziz/work/noon/feeds
 		file_server
 	}

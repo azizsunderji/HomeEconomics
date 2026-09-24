@@ -171,6 +171,7 @@ def collect(
     # only rescues a feed that failed or answered non-200.
     import hashlib as _hashlib
     import os as _os
+    from urllib.parse import urlparse
     _mirror_base = (_os.environ.get("FEED_MIRROR_BASE") or _os.environ.get("SUBSTACK_MIRROR_BASE") or "").rstrip("/")
 
     def _from_mirror(url: str) -> Optional[bytes]:
@@ -186,6 +187,25 @@ def collect(
             return body
         return None
 
+    # Private feeds (2026-09-24): licensed text built on the noon server (gs_feed.py) is not
+    # published under /feeds/. The OPML keeps the public /feeds/<file> URL, which answers 404,
+    # so no secret is committed; the real copy is at FEED_PRIVATE_BASE/<file>, where
+    # FEED_PRIVATE_BASE carries the NOON_PRIVATE_TOKEN path secret (GitHub Actions secret).
+    _private_base = _os.environ.get("FEED_PRIVATE_BASE", "").rstrip("/")
+    PRIVATE_FEEDS = {"gs_research.xml"}
+
+    def _private_url(url: str) -> Optional[str]:
+        """Private URL for a noon.homeeconomics.us/feeds/<file> feed, else None."""
+        if not _private_base:
+            return None
+        p = urlparse(url.strip())
+        if p.hostname != "noon.homeeconomics.us" or not p.path.startswith("/feeds/"):
+            return None
+        name = p.path[len("/feeds/"):]
+        if not name or "/" in name:
+            return None
+        return f"{_private_base}/{name}"
+
     def _is_html_page(body: bytes) -> bool:
         """True when a 200 response is a web page, not a feed. Springer's
         search.rss answers httpx with a 200 "Client Challenge" page (a bot
@@ -199,14 +219,30 @@ def collect(
         try:
             # Fetch via httpx (lets us swap UA, follow redirects, and
             # handle quirks consistently across feeds).
+            _hdrs = {"User-Agent": _UA, "Accept": "application/rss+xml, application/atom+xml, application/xml;q=0.9, */*;q=0.8"}
+            priv = _private_url(feed_info["url"])
+            fetch_url = feed_info["url"]
+            if priv and urlparse(fetch_url.strip()).path.rsplit("/", 1)[-1] in PRIVATE_FEEDS:
+                fetch_url = priv
             try:
                 r = _httpx.get(
-                    feed_info["url"],
+                    fetch_url,
                     timeout=20,
                     follow_redirects=True,
-                    headers={"User-Agent": _UA, "Accept": "application/rss+xml, application/atom+xml, application/xml;q=0.9, */*;q=0.8"},
+                    headers=_hdrs,
                 )
+                if priv and fetch_url != priv and r.status_code != 200:
+                    try:
+                        r_priv = _httpx.get(priv, timeout=20, follow_redirects=True, headers=_hdrs)
+                        if r_priv.status_code == 200:
+                            r = r_priv
+                            logger.info(f"Feed '{feed_info['title']}' read from the private path")
+                    except Exception:
+                        pass
             except Exception as fetch_err:
+                if fetch_url != feed_info["url"]:
+                    # Never let an error message carry the private URL (it holds the token).
+                    fetch_err = RuntimeError(f"private feed fetch failed ({type(fetch_err).__name__})")
                 r = None
                 if _from_mirror(feed_info["url"]) is None:
                     record_collector_error("rss", fetch_err, context=f"feed={feed_info['title']}")

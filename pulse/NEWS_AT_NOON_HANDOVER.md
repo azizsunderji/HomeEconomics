@@ -623,3 +623,43 @@ fallback for a week, then is cancelled if the health report shows no blocks".
   not a robot."); urban.org 0 ok / 4 empty. Applied to a scratch copy of pulse.db: 102 rows updated.
   Bloomberg is the largest single source of candidates (39 of 162), so as things stand it would stay on
   Browserbase.
+
+## Status update — 24 Sep 2026: licensed feeds moved off the public /feeds/ path
+
+`gs_research.xml`, `gs_cache.json` (Goldman Sachs Research text) and `enriched_bodies.json` (article
+bodies read in the server Chrome) hold licensed, paywalled text and were readable by anyone at
+https://noon.homeeconomics.us/feeds/. They now sit under a secret path.
+
+- **Folder.** `~/work/noon/feeds_private/` (owner aziz, group caddy, mode 2750; the setgid bit makes new
+  files group caddy so Caddy can read them). `gs_feed.py` and `enrich_server.py` write there (env
+  override `NOON_PRIVATE_FEEDS_DIR`; file names unchanged). The three files were moved from
+  `~/work/noon/feeds/`, and nothing of them is left there.
+- **Token.** A 32-hex path token, `NOON_PRIVATE_TOKEN`, kept only in `~/.noon_env` and in the GitHub
+  Actions secret of the same name (`gh secret set NOON_PRIVATE_TOKEN -R azizsunderji/HomeEconomics`,
+  piped from the env file). It is not in the repo, this file, or any log. To rotate: replace the line
+  in `~/.noon_env`, set the secret again the same way, and rerun the render script below.
+- **Caddy.** `pulse/editor/caddy/noon.caddy` has `handle_path /private/{$NOON_PRIVATE_TOKEN}/*`
+  serving the private folder with `Cache-Control: no-store` and `log_skip` (so the token does not
+  reach `/var/log/caddy/noon.log`). The `/feeds/*` block answers 404 for the three file names even if
+  a stale copy reappears. Install with `pulse/editor/caddy/render_noon_caddy.sh`: it substitutes the
+  token from `~/.noon_env`, writes `/etc/caddy/conf.d/noon.caddy` as root:caddy 640, validates and
+  reloads Caddy. A render step was chosen over loading `~/.noon_env` into caddy.service because that
+  unit runs `caddy run --environ`, which prints its whole environment to the journal. Never copy the
+  repo file to /etc by hand: the placeholder would become empty.
+- **GitHub Actions.** `pulse-synth.yml` "Apply server-Chrome enrichment" curls
+  `https://noon.homeeconomics.us/private/${{ secrets.NOON_PRIVATE_TOKEN }}/enriched_bodies.json`.
+  `FEED_PRIVATE_BASE` (same base URL) is set on the collection step of `pulse-daily.yml` and the
+  re-collect step of `pulse-synth.yml`; `NOON_PRIVATE_BASE` is set on the health-report step of
+  `pulse-synth.yml`. GitHub masks secret values in logs; no step echoes the URL.
+- **Collector.** `rss_feeds.py`: the OPML still lists the public
+  `https://noon.homeeconomics.us/feeds/gs_research.xml` (now 404), so no secret is committed. When
+  `FEED_PRIVATE_BASE` is set, a feed whose file name is in `PRIVATE_FEEDS` (`{"gs_research.xml"}`) is
+  fetched from `FEED_PRIVATE_BASE/<file>` directly; any other noon `/feeds/<file>` feed that answers
+  non-200 is retried there. Fetch errors on the private URL are reworded so the URL is not recorded.
+- **Health email.** Stage 2.2b reads `NOON_PRIVATE_BASE/enriched_bodies.json`; if the variable is
+  missing it shows WARN "private feed URL not configured". `login_status.json` holds no licensed text
+  and stays public at `/feeds/login_status.json`.
+- **Checked from the server, 24 Sep 2026.** Public `/feeds/` for all three files: 404. Private path
+  with the token: 200 for all three, `Cache-Control: no-store`. Wrong or empty token: 404. Other
+  public feeds and login_status.json: 200. The collector read the GS feed through the private path
+  (2 items in a 30-day window) and got 404 without `FEED_PRIVATE_BASE`.

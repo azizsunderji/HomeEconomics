@@ -7,8 +7,10 @@ never Playwright on 9223), runs the site's own search with Goldman's URL filter 
 NewsAtNoon/scripts/204_gs_tab.py `q` uses), keeps reports published in the last LOOKBACK_DAYS
 from the series in SERIES and housing reports from HOUSING_QUERIES, reads each new report once,
 caches it in FEEDS_DIR/gs_cache.json (newest CACHE_MAX kept) and writes FEEDS_DIR/gs_research.xml
-(RSS 2.0, newest FEED_MAX items, body text as description). Caddy serves both at
-https://noon.homeeconomics.us/feeds/. Loads are 3-5 seconds apart, at most MAX_LOADS per run.
+(RSS 2.0, newest FEED_MAX items, body text as description). FEEDS_DIR is the private folder
+/home/aziz/work/noon/feeds_private; Caddy serves it only at
+https://noon.homeeconomics.us/private/<NOON_PRIVATE_TOKEN>/ (the text is licensed; 24 Sep 2026).
+Loads are 3-5 seconds apart, at most MAX_LOADS per run.
 
 Login check: if a page lands on a login/SSO page, shows a password form, or a report comes back
 with no text, the run stops at once (no retry), still writes the feed from the cache, and records
@@ -34,7 +36,8 @@ from pathlib import Path
 
 from cdp_tab import CdpTab, LoadBudgetExceeded
 
-FEEDS_DIR = Path(os.environ.get("NOON_FEEDS_DIR", "/home/aziz/work/noon/feeds"))
+# Licensed text: written to the private folder, served only at /private/<NOON_PRIVATE_TOKEN>/ (24 Sep 2026).
+FEEDS_DIR = Path(os.environ.get("NOON_PRIVATE_FEEDS_DIR", "/home/aziz/work/noon/feeds_private"))
 CACHE_PATH = FEEDS_DIR / "gs_cache.json"
 FEED_PATH = FEEDS_DIR / "gs_research.xml"
 STATUS_PATH = Path(os.environ.get("NOON_GS_STATUS", "/home/aziz/work/noon/gs_status.json"))

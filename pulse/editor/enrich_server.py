@@ -20,7 +20,8 @@ What it does:
     what the Browserbase step would store. A body of 200+ characters counts as ok (same cut-off as
     enrich_articles.py). No archive.ph fallback here; the Browserbase step still does that.
 
-Writes (Caddy serves FEEDS_DIR at https://noon.homeeconomics.us/feeds/):
+Writes (FEEDS_DIR is the private folder ~/work/noon/feeds_private; Caddy serves it only at
+https://noon.homeeconomics.us/private/<NOON_PRIVATE_TOKEN>/, because the bodies are licensed text):
   FEEDS_DIR/enriched_bodies.json  {"generated_at", "run": {...}, "hosts": {host: {"ok", "blocked",
       "empty"}}, "blocked": {host: page wording}, "items": {url: {"body" (<= 8000 chars), "title",
       "fetched_at", "mode": "server_chrome"}}}; items from the last KEEP_DAYS days are kept.
@@ -62,7 +63,8 @@ OK_MIN = 200            # enrich_articles.py counts 200+ characters as a fetched
 KEEP_DAYS = 3
 
 PULSE_DB = os.environ.get("PULSE_DB_MIRROR", "/home/aziz/OVH/Data/Pulse/pulse.db")
-FEEDS_DIR = Path(os.environ.get("NOON_FEEDS_DIR", "/home/aziz/work/noon/feeds"))
+# Licensed text: written to the private folder, served only at /private/<NOON_PRIVATE_TOKEN>/ (24 Sep 2026).
+FEEDS_DIR = Path(os.environ.get("NOON_PRIVATE_FEEDS_DIR", "/home/aziz/work/noon/feeds_private"))
 OUT_PATH = FEEDS_DIR / "enriched_bodies.json"
 STATUS_PATH = Path(os.environ.get("NOON_ENRICH_STATUS", "/home/aziz/work/noon/enrich_status.json"))
 

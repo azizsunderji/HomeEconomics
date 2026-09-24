@@ -4,7 +4,8 @@
 week, then is cancelled if the health report shows no blocks"). Runs in pulse-synth.yml after the
 re-collect step and before "Enrich articles via Browserbase". The server (pulse/editor/
 enrich_server.py, noon-enrich.timer, Mon-Fri 10:15 UTC) publishes
-https://noon.homeeconomics.us/feeds/enriched_bodies.json; the workflow downloads it with curl and
+enriched_bodies.json under the secret path https://noon.homeeconomics.us/private/<NOON_PRIVATE_TOKEN>/
+(licensed text, not in the public /feeds/ since 24 Sep 2026); the workflow downloads it with curl and
 passes the path here.
 
 For each url in the file's items, rows whose body is shorter than the file's body get

@@ -102,6 +102,10 @@ jobs:
 
       - name: Collect and classify (synthesis runs locally at 7am)
         working-directory: pulse/scripts
+        env:
+          # Licensed feeds (gs_research.xml) sit under a secret path on the noon server; the RSS
+          # collector reads them there because their public /feeds/ URL in the OPML answers 404.
+          FEED_PRIVATE_BASE: https://noon.homeeconomics.us/private/${{ secrets.NOON_PRIVATE_TOKEN }}
         run: python run_pipeline.py collect
 
       - name: Sync DB back to Dropbox

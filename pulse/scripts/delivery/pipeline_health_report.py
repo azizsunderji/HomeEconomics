@@ -1092,7 +1092,7 @@ def probe_article_enrichment(stage: Stage, conn: sqlite3.Connection) -> None:
         stage.headline = f"{_fmt_int(enriched)} enriched, {pct:.0f}%"
 
 
-ENRICHED_BODIES_URL = "https://noon.homeeconomics.us/feeds/enriched_bodies.json"
+ENRICHED_BODIES_NAME = "enriched_bodies.json"  # under NOON_PRIVATE_BASE, not the public /feeds/
 
 
 def probe_server_enrichment(stage: Stage, conn: sqlite3.Connection) -> None:
@@ -1119,7 +1119,18 @@ def probe_server_enrichment(stage: Stage, conn: sqlite3.Connection) -> None:
     stage.row("Enriched by Browserbase direct (24h)", _fmt_int(direct))
     stage.row("Enriched by Browserbase via archive.ph (24h)", _fmt_int(arch))
 
-    r = httpx.get(ENRICHED_BODIES_URL, timeout=HTTP_TIMEOUT * 3, follow_redirects=True)
+    # The bodies are licensed text, so the file is served only under the secret path
+    # NOON_PRIVATE_BASE (https://noon.homeeconomics.us/private/<NOON_PRIVATE_TOKEN>, set from the
+    # GitHub secret). The URL is never written into the report or the log.
+    private_base = os.environ.get("NOON_PRIVATE_BASE", "").rstrip("/")
+    if not private_base:
+        stage.set(STATUS_WARN, "private feed URL not configured (NOON_PRIVATE_BASE unset)")
+        return
+    try:
+        r = httpx.get(f"{private_base}/{ENRICHED_BODIES_NAME}", timeout=HTTP_TIMEOUT * 3, follow_redirects=True)
+    except Exception as e:
+        stage.set(STATUS_WARN, f"enriched_bodies.json unreachable ({type(e).__name__})")
+        return
     if r.status_code != 200:
         stage.set(STATUS_WARN, f"enriched_bodies.json unavailable (HTTP {r.status_code})")
         return

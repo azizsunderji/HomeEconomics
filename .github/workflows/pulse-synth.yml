@@ -172,6 +172,8 @@ jobs:
         env:
           SUBSTACK_MIRROR_BASE: https://noon.homeeconomics.us/feeds
           FEED_MIRROR_BASE: https://noon.homeeconomics.us/feeds
+          # Licensed feeds (gs_research.xml) sit under a secret path on the noon server.
+          FEED_PRIVATE_BASE: https://noon.homeeconomics.us/private/${{ secrets.NOON_PRIVATE_TOKEN }}
         run: |
           python -c "
           import sys
@@ -203,9 +205,11 @@ jobs:
         # live Chrome. Rows whose body is shorter than the server's get it, with
         # enrich_mode='server_chrome'. Fail-soft: if the file is unreachable, Browserbase does it all.
         if: steps.guard.outputs.should_run == 'true'
+        # The bodies are licensed text, so the file sits under a secret path on the noon server
+        # (NOON_PRIVATE_TOKEN, 24 Sep 2026). GitHub masks the secret in the log; do not echo the URL.
         working-directory: pulse
         run: |
-          if curl -fsS --max-time 60 -o /tmp/enriched_bodies.json https://noon.homeeconomics.us/feeds/enriched_bodies.json; then
+          if curl -fsS --max-time 60 -o /tmp/enriched_bodies.json "https://noon.homeeconomics.us/private/${{ secrets.NOON_PRIVATE_TOKEN }}/enriched_bodies.json"; then
             python scripts/apply_server_enrichment.py /tmp/enriched_bodies.json || echo "::warning::applying server-Chrome bodies failed; continuing"
           else
             echo "::warning::enriched_bodies.json unreachable; Browserbase enriches alone"
@@ -301,6 +305,8 @@ jobs:
         working-directory: pulse/scripts
         env:
           PULSE_DB: ${{ github.workspace }}/pulse/data/pulse.db
+          # Stage 2.2b reads enriched_bodies.json from the secret path on the noon server.
+          NOON_PRIVATE_BASE: https://noon.homeeconomics.us/private/${{ secrets.NOON_PRIVATE_TOKEN }}
         run: python delivery/pipeline_health_report.py --variant v3 --to aziz@home-economics.us || echo "Health report (v3.1) failed — continuing without"
 
       - name: Push DB back to Dropbox
