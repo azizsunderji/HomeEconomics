@@ -1,12 +1,20 @@
-"""Social image cards for a Housing at Noon edition.
+"""Social image cards for a Housing at Noon edition, laid out as an X carousel.
 
-Four 1080x1350 PNGs (the 4:5 portrait X and LinkedIn show largest), rendered
-from the draft JSON with Playwright in the house style: cream ground, ink text,
-blue numbers, ABC Oracle Edu for sans and Gelasio for the standfirst.
+Four 1080x1350 PNGs (4:5 portrait), rendered from the draft JSON with Playwright in the
+house style: cream ground, ink text, blue numbers, ABC Oracle Edu. Nothing is set below
+28 px, and every card is checked for overflow and trimmed until it fits.
 
-  card 1  masthead, date, standfirst, numbered list of every theme title
-  card 2-4  the first three free themes: number, title, opening paragraph,
-            source pills
+  card 1  hook: date label, the edition's strongest line set large (first sentence of the
+          standfirst, or the first theme's title when there is no standfirst), then the
+          first theme's image when it has one, otherwise the Home Economics logo
+  card 2-3  the next themes: number, title, opening paragraph(s), source pills
+  card 4  one more theme above a call to action in the bottom quarter
+          ("Housing at Noon. Free edition every weekday at noon ET." homeeconomics.us/noon)
+
+Themes on cards 2-4 are the first three free-tier themes in edition order (filled from
+premium themes when fewer than three are free); when the hook is the first theme's own
+title, that theme is skipped. Owner's rule (27 Sep 2026): carousel format for posting to X
+after approval (xpost.py).
 
 Files: `Housing at Noon YYYY-MM-DD card1.png` … `card4.png` in NOON_CARDS_DIR
 (default NOON_PDF_DIR/cards), mirrored to NOON_PDF_DROPBOX_DIR/cards when set.
@@ -107,26 +115,37 @@ def _base_css() -> str:
   body {{ width:{W}px; height:{H}px; overflow:hidden; color:{INK}; font-family:{SANS};
           -webkit-font-smoothing:antialiased; }}
   .card {{ box-sizing:border-box; width:{W}px; height:{H}px; padding:72px 80px 64px 80px;
-           display:flex; flex-direction:column; }}
-  .head {{ display:flex; align-items:center; justify-content:space-between; }}
+           display:flex; flex-direction:column; overflow:hidden; }}
+  .head {{ display:flex; align-items:center; justify-content:space-between; flex:none; }}
   .head img {{ height:56px; width:auto; display:block; }}
-  .head .date {{ font-size:24px; color:{MUTED}; }}
-  .title {{ font-size:84px; font-weight:700; letter-spacing:-2px; line-height:1; margin:56px 0 12px 0; }}
-  .stand {{ font-family:{SERIF}; font-size:38px; line-height:1.32; margin:44px 0 0 0; }}
-  .toc {{ margin:44px 0 0 0; padding:0; list-style:none; }}
-  .toc li {{ display:flex; gap:22px; font-size:29px; line-height:1.28; margin:0 0 16px 0; }}
-  .toc .n {{ color:{BLUE}; font-weight:700; min-width:44px; text-align:right; }}
-  .toc .p {{ color:{MUTED}; font-size:22px; letter-spacing:.14em; text-transform:uppercase;
-             margin-left:auto; align-self:center; white-space:nowrap; }}
-  .num {{ color:{BLUE}; font-size:120px; font-weight:700; line-height:1; margin:60px 0 0 0; }}
-  .h {{ font-size:58px; font-weight:700; line-height:1.08; letter-spacing:-1.2px; margin:20px 0 36px 0; }}
-  .body {{ font-size:33px; line-height:1.42; }}
-  .pills {{ margin:40px 0 0 0; display:flex; flex-wrap:wrap; gap:12px; }}
-  .pill {{ background:{LIGHT}; color:{INK}; font-size:22px; padding:10px 18px; border-radius:999px; }}
-  .foot {{ margin-top:auto; padding-top:32px; display:flex;
-           justify-content:space-between; align-items:baseline; font-size:24px; color:{MUTED}; }}
+  .head .date {{ font-size:28px; color:{MUTED}; }}
+  .kicker {{ font-size:30px; color:{MUTED}; flex:none; }}
+  .kicker b {{ color:{INK}; font-weight:700; }}
+  .hookline {{ font-weight:700; line-height:1.08; letter-spacing:-0.035em; margin:44px 0 0 0; flex:none; }}
+  .visual {{ flex:1 1 auto; min-height:0; margin:48px 0 0 0; display:flex; flex-direction:column;
+             justify-content:flex-start; }}
+  .visual .imgbox {{ flex:1 1 auto; min-height:0; display:flex; align-items:flex-end; }}
+  .visual .imgbox img {{ max-width:100%; max-height:100%; object-fit:contain; display:block; }}
+  .visual .cap {{ font-size:28px; line-height:1.3; color:{MUTED}; margin-top:14px; flex:none; }}
+  .visual .logo {{ width:520px; height:auto; display:block; margin-top:auto; }}
+  .visual .tag {{ font-size:32px; line-height:1.3; color:{MUTED}; margin:24px 0 0 0; }}
+  .num {{ color:{BLUE}; font-size:120px; font-weight:700; line-height:1; margin:60px 0 0 0; flex:none; }}
+  .num.small {{ font-size:88px; margin-top:44px; }}
+  .h {{ font-size:58px; font-weight:700; line-height:1.08; letter-spacing:-1.2px; margin:20px 0 36px 0; flex:none; }}
+  .body {{ font-size:33px; line-height:1.42; flex:none; }}
+  .pills {{ margin:32px 0 0 0; display:flex; flex-wrap:wrap; gap:12px; flex:none; }}
+  .pill {{ background:{LIGHT}; color:{INK}; font-size:28px; padding:10px 20px; border-radius:999px; }}
+  .foot {{ margin-top:auto; padding-top:32px; display:flex; flex:none; white-space:nowrap;
+           justify-content:space-between; align-items:baseline; font-size:28px; color:{MUTED}; }}
   .foot b {{ color:{INK}; font-weight:500; }}
   .foot .cta {{ color:{INK}; }}
+  .ctabox {{ margin-top:auto; flex:none; box-sizing:border-box; height:{H // 4}px; margin-left:-80px;
+             margin-right:-80px; margin-bottom:-64px; padding:52px 80px 56px 80px; background:{LIGHT};
+             display:flex; flex-direction:column; justify-content:center; }}
+  .ctabox .l1 {{ font-size:46px; font-weight:700; line-height:1.15; letter-spacing:-0.02em; }}
+  .ctabox .l2 {{ font-size:40px; line-height:1.2; margin-top:6px; }}
+  .ctabox .url {{ font-size:46px; font-weight:700; color:{INK}; margin-top:26px; }}
+  .ctabox .url span {{ border-bottom:5px solid {BLUE}; padding-bottom:2px; }}
   a {{ color:{INK}; text-decoration:none; border-bottom:3px solid {BLUE}; padding-bottom:2px; }}
   /* PDF deck: one card per page, links live */
   body.deck {{ height:auto; overflow:visible; }}
@@ -140,38 +159,97 @@ def _base_css() -> str:
 def _foot(label: str, links: bool = False) -> str:
     cta = (f'<a href="https://{SIGNUP}?src=cards">{SIGNUP}</a>' if links else SIGNUP)
     return (f'<div class="foot"><span><b>Housing at Noon</b> · {_esc(label)}</span>'
-            f'<span class="cta">Free daily at noon ET → {cta}</span></div>')
+            f'<span class="cta">{cta}</span></div>')
 
 
-LATEST_URL = "https://noon.homeeconomics.us/latest"
+# ── hook card helpers ───────────────────────────────────────────────────
+
+_ABBREV = re.compile(r"(?:\b(?:[A-Z]\.){1,3}|\b(?:Mr|Mrs|Ms|Dr|St|Jr|Sr|vs|No|Inc|Co|Corp|Gov|Sen|Rep|Jan|Feb|"
+                     r"Mar|Apr|Aug|Sept|Sep|Oct|Nov|Dec|approx|est)\.)$")
+_SENT_BREAK = re.compile(r"[.?!][\"”’)]?\s+(?=[\"“‘(]?[A-Z0-9])")
 
 
-def card_cover(draft: dict, entries: list[dict], links: bool = False) -> str:
+def sentences(text: str) -> list[str]:
+    """Plain text -> sentences (paragraph breaks always end a sentence). Initialisms such
+    as 'U.S.' and common abbreviations do not end one."""
+    out: list[str] = []
+    for para in [p.strip() for p in str(text or "").split("\n\n") if p.strip()]:
+        para = " ".join(para.split())
+        start = 0
+        for m in _SENT_BREAK.finditer(para):
+            end = m.start() + len(m.group(0).rstrip())
+            if _ABBREV.search(para[start:m.start() + 1]):
+                continue
+            out.append(para[start:end].strip())
+            start = m.end()
+        if para[start:].strip():
+            out.append(para[start:].strip())
+    return out
+
+
+def hook_line(draft: dict) -> tuple[str, bool]:
+    """(the card-1 hook, whether it came from the first theme's title)."""
+    intro = plain(draft.get("intro") or "")
+    s = sentences(intro)
+    if s:
+        return s[0], False
+    entries = [e for e in (draft.get("entries") or []) if (e.get("title") or "").strip()]
+    return ((entries[0]["title"].strip(), True) if entries else ("Housing at Noon", False))
+
+
+_IMG_MD = re.compile(r"!\[([^\]\n]*)\]\((https?://[^\s)]+)\)")
+
+
+def first_image(entry: dict | None) -> tuple[str, str] | None:
+    """(url, caption) of the first image dropped into a theme's summary, if any."""
+    if not entry:
+        return None
+    m = _IMG_MD.search(str(entry.get("summary") or ""))
+    return (m.group(2), m.group(1).strip()) if m else None
+
+
+def _data_uri(path: Path) -> str:
+    import base64
+    kind = "jpeg" if path.suffix.lower() in (".jpg", ".jpeg") else "png"
+    return f"data:image/{kind};base64," + base64.b64encode(path.read_bytes()).decode()
+
+
+def _image_src(url: str) -> str:
+    """Images uploaded through the editor are read from disk (no network needed);
+    anything else is loaded from its URL."""
+    try:
+        import paths as _p
+        images_dir = Path(os.environ.get("NOON_IMAGES_DIR", str(Path.home() / "work" / "noon" / "images")))
+        for base in {_p.BASE_URL, "https://noon.homeeconomics.us"}:
+            prefix = base.rstrip("/") + "/images/"
+            if url.startswith(prefix):
+                f = images_dir / url[len(prefix):]
+                if f.is_file():
+                    return _data_uri(f)
+    except Exception:  # noqa: BLE001
+        pass
+    return url
+
+
+LOGO_LARGE = Path(__file__).resolve().parent / "static" / "he-large-black.png"
+
+
+def card_hook(draft: dict, hook: str, image: tuple[str, str] | None, hook_px: int = 84) -> str:
     date = draft.get("date") or datetime.now().strftime("%Y-%m-%d")
-    # standfirst keeps its links (underlined), cut on the plain-text length
-    stand_md = _paragraphs_md(draft.get("intro") or "", 1, 10_000)[0] if (draft.get("intro") or "").strip() else ""
-    if len(plain(stand_md)) > 300:
-        stand_md = _first_paragraph_md(stand_md, 300)
-    stand = plain(stand_md)
-    # fit the list to the card: fewer titles when the standfirst is long
-    max_items = 12 if len(stand) < 160 else 9 if len(stand) < 240 else 7
-    items = ""
-    for i, e in enumerate(entries, start=1):
-        if i > max_items:
-            items += f'<li><span class="n"></span><span style="color:{MUTED}">and {len(entries) - max_items} more</span></li>'
-            break
-        prem = '<span class="p">Premium</span>' if e.get("tier") == "premium" else ""
-        t = _esc(e.get("title") or "")
-        if links:
-            t = f'<a href="{LATEST_URL}">{t}</a>'
-        items += f'<li><span class="n">{i}</span><span>{t}</span>{prem}</li>'
+    if image:
+        cap = f'<div class="cap">{_esc(image[1])}</div>' if image[1] else ""
+        visual = (f'<div class="visual"><div class="imgbox"><img src="{_html.escape(_image_src(image[0]), quote=True)}" '
+                  f'alt=""></div>{cap}</div>')
+    else:
+        logo = _data_uri(LOGO_LARGE) if LOGO_LARGE.is_file() else LOGO_URL
+        visual = (f'<div class="visual"><img class="logo" src="{logo}" alt="Home Economics">'
+                  f'<div class="tag">A daily brief on the U.S. housing market</div></div>')
     return f"""
 <div class="card">
-  <div class="head"><img src="{LOGO_URL}" alt="Home Economics"><span class="date">{_esc(date_label(date))}</span></div>
-  <div class="title">Housing at Noon</div>
-  <div class="stand">{_card_links(stand_md)}</div>
-  <ul class="toc">{items}</ul>
-  {_foot("a daily brief on the U.S. housing market", links)}
+  <div class="kicker"><b>Housing at Noon</b> · {_esc(date_label(date))}</div>
+  <div class="hookline" style="font-size:{hook_px}px">{_esc(hook)}</div>
+  {visual}
+  <div class="foot"><span>Free edition daily at noon ET</span><span class="cta">{SIGNUP}</span></div>
 </div>"""
 
 
@@ -226,20 +304,38 @@ def _card_links(md_paragraph: str) -> str:
 
 
 def card_theme(draft: dict, entry: dict, number: int, links: bool = False,
-               max_paras: int = 3, max_chars: int = 1100, body_px: int = 33) -> str:
+               max_paras: int = 3, max_chars: int = 1100, body_px: int = 33,
+               cta: bool = False, trim_to: int | None = None, title_px: int = 58) -> str:
+    """One theme. `cta` = card 4: the theme above the call-to-action block, no pills.
+    `trim_to` cuts the opening paragraph to that many characters (sentence boundary
+    where possible, else a word boundary with an ellipsis)."""
     title = (entry.get("title") or "").strip()
-    paras = _paragraphs_md(entry.get("summary") or "", max_paras, max_chars)
-    pills = "".join(f'<span class="pill">{_esc(p)}</span>' for p in (entry.get("news_outlets") or [])[:5])
+    if trim_to:
+        paras = [_first_paragraph_md(entry.get("summary") or "", trim_to)]
+    else:
+        paras = _paragraphs_md(entry.get("summary") or "", max_paras, max_chars)
     date = draft.get("date") or ""
     body_html = "".join(f'<p style="margin:0 0 22px 0">{_card_links(x)}</p>' for x in paras)
+    head = (f'<div class="head"><img src="{LOGO_URL}" alt="Home Economics">'
+            f'<span class="date">{_esc(date_label(date))}</span></div>')
+    num_cls = "num small" if cta else "num"
+    top = (f'{head}<div class="{num_cls}">{number}</div>'
+           f'<div class="h" style="font-size:{title_px}px">{_esc(title)}</div>'
+           f'<div class="body" style="font-size:{body_px}px">{body_html}</div>')
+    if cta:
+        return f"""
+<div class="card">
+  {top}
+  <div class="ctabox"><div class="l1">Housing at Noon.</div>
+    <div class="l2">Free edition every weekday at noon ET.</div>
+    <div class="url"><span>{SIGNUP}</span></div></div>
+</div>"""
+    pills = "".join(f'<span class="pill">{_esc(p)}</span>' for p in (entry.get("news_outlets") or [])[:5])
     return f"""
 <div class="card">
-  <div class="head"><img src="{LOGO_URL}" alt="Home Economics"><span class="date">{_esc(date_label(date))}</span></div>
-  <div class="num">{number}</div>
-  <div class="h">{_esc(title)}</div>
-  <div class="body" style="font-size:{body_px}px">{body_html}</div>
+  {top}
   <div class="pills">{pills}</div>
-  {_foot("theme %d of today's edition" % number, links)}
+  {_foot("theme %d" % number, links)}
 </div>"""
 
 
@@ -249,14 +345,17 @@ def _doc(cards: list[str], deck: bool = False) -> str:
             f'<body{body_cls}>{"".join(cards)}</body></html>')
 
 
-def pick_entries(draft: dict) -> tuple[list[dict], list[tuple[int, dict]]]:
-    """(all entries in order, [(number, entry)] for the theme cards: first three
-    free-tier themes, filled from the rest if fewer than three)."""
+def pick_entries(draft: dict, skip_first: bool = False) -> tuple[list[dict], list[tuple[int, dict]]]:
+    """(all entries in order, [(number, entry)] for cards 2-4: the first three free-tier
+    themes, filled from the rest if fewer than three). `skip_first` leaves out theme 1
+    (used when the hook card already shows its title)."""
     entries = [e for e in (draft.get("entries") or []) if (e.get("title") or "").strip()]
-    free = [(i, e) for i, e in enumerate(entries, start=1) if e.get("tier") != "premium"]
+    pool = [(i, e) for i, e in enumerate(entries, start=1) if not (skip_first and i == 1)]
+    free = [(i, e) for i, e in pool if e.get("tier") != "premium"]
     chosen = free[:3]
     if len(chosen) < 3:
-        chosen += [(i, e) for i, e in enumerate(entries, start=1) if (i, e) not in chosen][: 3 - len(chosen)]
+        chosen += [(i, e) for i, e in pool if (i, e) not in chosen][: 3 - len(chosen)]
+        chosen.sort(key=lambda x: x[0])
     return entries, chosen
 
 
@@ -265,42 +364,66 @@ def render_cards(draft: dict, out_dir: Path) -> list[Path]:
 
     out_dir.mkdir(parents=True, exist_ok=True)
     date = draft.get("date") or datetime.now().strftime("%Y-%m-%d")
-    entries, chosen = pick_entries(draft)
+    hook, hook_is_title = hook_line(draft)
+    entries, chosen = pick_entries(draft, skip_first=hook_is_title)
+    image = first_image(entries[0] if entries else None)
     outs = []
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         page = browser.new_page(viewport={"width": W, "height": H}, device_scale_factor=1)
 
         def overflows() -> bool:
-            # the footer is pushed below the card when the body is too long
-            return page.evaluate("() => { const c = document.querySelector('.card'); return c.scrollHeight > c.clientHeight + 1; }")
+            # anything pushed past the card's bottom or right edge, or text wider than its box
+            return page.evaluate("""() => {
+              const c = document.querySelector('.card');
+              if (c.scrollHeight > c.clientHeight + 1 || c.scrollWidth > c.clientWidth + 1) return true;
+              const f = document.querySelector('.foot');
+              if (f && f.scrollWidth > f.clientWidth + 1) return true;
+              const v = document.querySelector('.visual .imgbox');
+              if (v && v.clientHeight < 380) return true;
+              const vis = document.querySelector('.visual');
+              if (vis && vis.scrollHeight > vis.clientHeight + 1) return true;
+              return false; }""")
 
         def show(html: str) -> None:
             page.set_content(_doc([html]), wait_until="networkidle")
             page.wait_for_timeout(150)
 
-        # cover
-        show(card_cover(draft, entries))
-        out = out_dir / f"Housing at Noon {date} card1.png"
-        page.screenshot(path=str(out), clip={"x": 0, "y": 0, "width": W, "height": H})
-        outs.append(out)
-        # themes: as much of the opening as fits — try 3 paragraphs at 33px,
-        # then smaller type, then fewer paragraphs
-        for k, (n, e) in enumerate(chosen, start=2):
-            fitted = None
-            for max_paras in (3, 2, 1):
-                for px in (33, 31, 29, 27):
-                    show(card_theme(draft, e, n, max_paras=max_paras, body_px=px))
-                    if not overflows():
-                        fitted = (max_paras, px)
-                        break
-                if fitted:
-                    break
-            if not fitted:
-                show(card_theme(draft, e, n, max_paras=1, max_chars=640, body_px=27))
+        def shot(k: int) -> None:
             out = out_dir / f"Housing at Noon {date} card{k}.png"
             page.screenshot(path=str(out), clip={"x": 0, "y": 0, "width": W, "height": H})
             outs.append(out)
+
+        # card 1: the hook, as large as fits; trimmed only if the smallest size overflows
+        fitted = False
+        for text in [hook] + [first_paragraph(hook, n) for n in (220, 170, 130, 90)]:
+            for px in (92, 84, 76, 68, 60, 54, 48):
+                show(card_hook(draft, text, image, hook_px=px))
+                if not overflows():
+                    fitted = True
+                    break
+            if fitted:
+                break
+        if not fitted and image:  # an image too tall to leave room: fall back to the logo
+            show(card_hook(draft, first_paragraph(hook, 170), None, hook_px=60))
+        shot(1)
+
+        # cards 2-4: as much of the opening as fits — 3 paragraphs at 33px, then smaller
+        # type (never below 28px), then fewer paragraphs, then a trimmed first paragraph
+        for k, (n, e) in enumerate(chosen, start=2):
+            cta = k == 4
+            attempts = [dict(max_paras=mp, body_px=px) for mp in ((2, 1) if cta else (3, 2, 1))
+                        for px in (33, 31, 29, 28)]
+            attempts += [dict(trim_to=t, body_px=px) for t in (1000, 880, 760, 640, 520, 420, 330, 250, 180, 120)
+                         for px in (31, 28)]
+            attempts += [dict(trim_to=t, body_px=28, title_px=46) for t in (180, 120, 80)]
+            for kw in attempts:
+                show(card_theme(draft, e, n, cta=cta, **kw))
+                if not overflows():
+                    break
+            else:
+                logger.warning(f"card {k}: theme {n} still overflows at the smallest setting")
+            shot(k)
         browser.close()
     return outs
 
