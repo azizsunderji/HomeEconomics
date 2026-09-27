@@ -663,3 +663,59 @@ https://noon.homeeconomics.us/feeds/. They now sit under a secret path.
   with the token: 200 for all three, `Cache-Control: no-store`. Wrong or empty token: 404. Other
   public feeds and login_status.json: 200. The collector read the GS feed through the private path
   (2 items in a 30-day window) and got 404 without `FEED_PRIVATE_BASE`.
+
+## Status update — 27 Sep 2026: X carousel cards and "post to X after approval"
+
+Owner's rule (Aziz, 27 Sep 2026: "Yes with approval pls"): each edition can go to X as one post with
+the four cards as a carousel, and only after he clicks "Approve and post". Nothing posts on a timer.
+
+- **Cards (`pulse/editor/cards.py`).** Still four 1080x1350 PNGs with the same file names, the same
+  `publish_cards` (after every send via pdf.py, and on the /cards page) and the same Dropbox mirror.
+  New layout:
+  - card 1 (hook): "Housing at Noon · <date>" small, then the first sentence of the standfirst set as
+    large as fits (92 px down to 48 px; trimmed only if 48 px still overflows); the first theme's
+    title is used when there is no standfirst. Below it, the first theme's image (the first
+    `![caption](url)` in its summary, read from disk when it was uploaded through the editor) with its
+    caption; otherwise the large Home Economics logo (`static/he-large-black.png`, copied from Brand
+    assets, force-added because `.gitignore` has `*.png`). No table of contents any more.
+  - cards 2-4: the first three free themes in edition order, as before (theme 1 is skipped when the
+    hook is its title). Card 4 puts the theme in the upper three quarters and, in the bottom quarter,
+    "Housing at Noon. / Free edition every weekday at noon ET. / homeeconomics.us/noon" (no query
+    string on the image). Card 4 has no source pills.
+  - Nothing is below 28 px (date, footer, pills, captions raised from 22-24 px; body 33 -> 28 px).
+    Every card is checked for vertical and horizontal overflow; a theme that does not fit drops
+    paragraphs, then trims its opening paragraph (sentence boundary where possible, otherwise a word
+    boundary with an ellipsis) at 1000 down to 80 characters. The small logo in the card header is an
+    image and its lettering is smaller than 28 px.
+  - Assumption to confirm with the owner: "cards 2 and 3 = the next two themes, card 4 = theme 4" was
+    read as the three themes that follow the hook (free themes 1-3), not edition themes 2-4, so theme 1
+    is not left out and premium themes stay off X.
+- **Posting (`pulse/editor/xpost.py`).** One new tab in the live Chrome (CDP 9223 through
+  `cdp_tab.CdpTab`, never Playwright), `https://x.com/compose/post`, the text typed with
+  Input.insertText (Enter key events for line breaks), the four PNGs attached with
+  DOM.setFileInputFiles on `input[data-testid="fileInput"]`, wait for four thumbnails, then:
+  `preview(date)` screenshots the composer to `~/work/noon/xposts/<date>_preview.png`, closes the
+  composer and clicks Discard in X's "Save post?" dialog; `post_carousel(date)` clicks
+  `tweetButton`, waits for X's toast, takes the post URL from its "View" link (else from the profile
+  page, a second load), screenshots `xposts/<date>.png`. Actions 1-3 s apart, at most 2 loads. A
+  login page stops the run with "not logged in: re-login at https://browser.homeeconomics.us".
+  State `~/work/noon/xposts/state.json` `{date: {status, url, posted_at, text, error, preview_at,
+  preview_note}}`; status draft | error (safe to retry) | posting | posted | unconfirmed. The last
+  three block any further post for that date. If a run dies after the click, the status becomes
+  `unconfirmed`; check X by hand, and edit state.json only if the post did not go out.
+  Default text: first two sentences of the standfirst (one sentence, then a word cut with "…", if
+  needed to stay under 280 plain characters), a blank line, then "Free edition daily at noon ET:
+  https://www.homeeconomics.us/noon?utm_source=x&utm_medium=social". The server refuses text over 280
+  as X counts it (links 23). CLI: `python xpost.py text DATE`, `python xpost.py preview DATE`.
+- **Editor.** `/cards/{date}` has a "Post to X" panel: editable text with both counts, the four
+  thumbnails, "Preview composer" (shows the screenshot inline) and "Approve and post" (confirm()
+  dialog, then posts; shows the URL and disables itself afterwards). Routes: `GET /api/xpost/{date}`,
+  `POST /api/xpost/{date}/preview` `{text}`, `POST /api/xpost/{date}/post` `{text}`,
+  `GET /api/xpost/{date}/preview.png|shot.png`; all owner-cookie only. The main editor shows a
+  "Cards and X post" button under the banner once the edition is sent. Script: `static/cards.js`.
+- **Tested 27 Sep 2026 on the 25 Sep edition.** Cards rendered (image hook card, since theme 1 has
+  the owner's hand-drawn diagram); a stress render with no image, a 330-character hook and a
+  1,500-character paragraph fitted. `preview` for real: X logged in as @AzizSunderji, four thumbnails,
+  text with the blank line intact, no warning from X; closing gave "Save post? … Save / Discard",
+  Discard was clicked, and X's drafts list afterwards showed only the owner's older drafts. Post was
+  not clicked. `noon_verify.py`: ALL PASS (renderer untouched).

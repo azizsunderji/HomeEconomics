@@ -22,6 +22,11 @@ Routes
   GET  /pdf/{date}?tier=    owner: render the draft to PDF now
                             (tier = premium | free | social)
   GET  /health
+  GET  /cards/{date}          owner: render the four cards; panel to post them to X
+  GET  /api/xpost/{date}      X post state + default text (xpost.py)
+  POST /api/xpost/{date}/preview  {text} -> composer screenshot, nothing posted
+  POST /api/xpost/{date}/post     {text} -> posts the carousel (owner's click only)
+  GET  /api/xpost/{date}/preview.png, /api/xpost/{date}/shot.png
   GET  /sources               owner: LinkedIn accounts the collector reads (sources.py)
   GET  /api/sources           accounts with recent activity and include state
   POST /api/sources/include   {key, include} -> rewrites linkedin_targets.json
@@ -436,8 +441,30 @@ def draft_cards(request: Request, date: str):
         "figure{margin:0 0 28px 0;}img{width:100%;max-width:540px;height:auto;display:block;}"
         "figcaption{font-size:13px;color:#777370;margin-top:6px;}a{color:#3D3733;}</style>"
         f"<h1>Cards for {date}</h1><p>Rendered from the draft as it stands. "
-        "Long-press an image to save it, or use the save link.</p>" + items)
+        "Long-press an image to save it, or use the save link.</p>" + _xpost_panel(date, len(paths)) + items)
     return HTMLResponse(html, headers={"Cache-Control": "no-store"})
+
+
+def _xpost_panel(date: str, n_cards: int) -> str:
+    """'Post to X' panel (owner's rule 27 Sep 2026: post only after his approval click).
+    Behaviour in static/cards.js; state and posting in xpost.py."""
+    thumbs = "".join(f'<img src="/cards/{date}/{i}" alt="Card {i}">' for i in range(1, n_cards + 1))
+    return (
+        "<style>.xp{background:#fff;border-radius:8px;padding:16px;margin:0 0 28px 0;max-width:540px;}"
+        ".xp h2{font-size:17px;margin:0 0 10px 0;}.xp textarea{width:100%;box-sizing:border-box;font:15px/1.4 inherit;"
+        "font-family:inherit;padding:10px;border:1px solid #DADFCE;border-radius:6px;min-height:140px;}"
+        ".xp .cnt{font-size:13px;color:#777370;margin:4px 0 12px 0;}.xp .cnt.bad{color:#F4743B;}"
+        ".xp .th{display:flex;gap:6px;margin:0 0 12px 0;}.xp .th img{width:24%;max-width:none;}"
+        ".xp button{border:1px solid #DADFCE;background:#fff;padding:9px 14px;font-size:14px;border-radius:6px;"
+        "cursor:pointer;margin:0 8px 8px 0;color:#3D3733;}.xp button.primary{background:#0BB4FF;border-color:#0BB4FF;color:#fff;}"
+        ".xp button:disabled{opacity:.45;cursor:default;}.xp .st{font-size:14px;margin:6px 0;}"
+        ".xp .st.err{color:#F4743B;}.xp .shot img{width:100%;max-width:none;margin-top:10px;border:1px solid #DADFCE;}</style>"
+        f'<div class="xp" id="xp" data-date="{date}"><h2>Post to X</h2>'
+        '<textarea id="xpText" spellcheck="true"></textarea><div class="cnt" id="xpCount"></div>'
+        f'<div class="th">{thumbs}</div>'
+        '<button id="xpPreview">Preview composer</button><button class="primary" id="xpPost">Approve and post</button>'
+        '<div class="st" id="xpStatus"></div><div class="shot" id="xpShot"></div></div>'
+        '<script src="/static/cards.js"></script>')
 
 
 @app.get("/cards/{date}/{n}")
@@ -450,6 +477,65 @@ def draft_card_png(request: Request, date: str, n: int):
     return FileResponse(str(f), media_type="image/png",
                         headers={"Cache-Control": "no-store",
                                  "Content-Disposition": f'inline; filename="Housing at Noon {date} card{int(n)}.png"'})
+
+
+# ── X carousel post (xpost.py; owner's click only, 27 Sep 2026) ────────
+
+def _xpost_call(fn, *args):
+    import xpost
+    try:
+        return fn(*args)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="no such draft")
+    except (xpost.NotLoggedIn, xpost.AlreadyPosted) as e:
+        raise HTTPException(status_code=409, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:  # noqa: BLE001
+        logger.exception("xpost failed")
+        raise HTTPException(status_code=502, detail=f"{type(e).__name__}: {e}")
+
+
+def _xpost_text(body: dict) -> str | None:
+    t = body.get("text")
+    return t.replace("\r\n", "\n") if isinstance(t, str) else None
+
+
+@app.get("/api/xpost/{date}")
+def xpost_get(request: Request, date: str):
+    _require(request)
+    import xpost
+    return _xpost_call(xpost.info, date)
+
+
+@app.post("/api/xpost/{date}/preview")
+def xpost_preview(request: Request, date: str, body: dict[str, Any] = Body(default={})):
+    _require(request)
+    import xpost
+    res = _xpost_call(xpost.preview, date, _xpost_text(body))
+    return {**xpost.info(date), "result": res}
+
+
+@app.post("/api/xpost/{date}/post")
+def xpost_post(request: Request, date: str, body: dict[str, Any] = Body(default={})):
+    _require(request)
+    import xpost
+    text = _xpost_text(body)
+    if not text:
+        raise HTTPException(status_code=400, detail="need {text}")
+    res = _xpost_call(xpost.post_carousel, date, text)
+    return {**xpost.info(date), "result": res}
+
+
+@app.get("/api/xpost/{date}/{kind}.png")
+def xpost_png(request: Request, date: str, kind: str):
+    _require(request)
+    import xpost
+    name = {"preview": f"{date}_preview.png", "shot": f"{date}.png"}.get(kind)
+    f = xpost.XPOST_DIR / name if name else None
+    if f is None or not f.exists() or "/" in date:
+        raise HTTPException(status_code=404, detail="no screenshot")
+    return FileResponse(str(f), media_type="image/png", headers={"Cache-Control": "no-store"})
 
 
 @app.get("/api/drafts")

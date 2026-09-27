@@ -152,3 +152,6 @@ body.login { background: var(--soft); }
 #btnMore { margin-top: 24px; }
 #costNote { margin: 8px 0 24px 0; }
 #list { border-bottom: 1px solid var(--line); }
+
+.sentline { margin: 14px 0; }
+.sentline[hidden] { display: none; }
