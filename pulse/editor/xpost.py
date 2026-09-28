@@ -1,4 +1,10 @@
-"""Post an edition's four cards to X as one carousel post, only after the owner approves.
+"""UNUSED since 28 Sep 2026. Aziz set this module aside ("I think we don't need the
+elaborate posting mechanism, just the cards formatted right, for both platforms"): the
+editor no longer imports it, its /api/xpost routes and the "Post to X" panel were removed,
+and the ~/work/noon/xposts state folder was deleted (it held no posted entries). Kept in
+the repo for reference only.
+
+Post an edition's four cards to X as one carousel post, only after the owner approves.
 
 Owner's rule (Aziz, 27 Sep 2026: "Yes with approval pls"): nothing posts without his click
 on "Approve and post" on the /cards/{date} page. There is no timer and no automatic post.

@@ -124,7 +124,7 @@
     $('#btnHold').textContent = state.status === 'held' ? 'Resume today’s send' : 'Hold today’s send';
     const locked = state.status === 'sent';
     ['#btnHold', '#btnSendNow', '#btnReset'].forEach(s => { $(s).disabled = locked; });
-    // after the send: link to the cards page, where the X carousel post is approved (27 Sep 2026)
+    // after the send: link to the cards page (four PNGs for X, carousel PDF for LinkedIn; 28 Sep 2026)
     $('#sentLine').hidden = !locked;
     if (state.date) $('#lnkCards').href = '/cards/' + state.date;
   }

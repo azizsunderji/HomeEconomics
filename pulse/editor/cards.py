@@ -1,23 +1,30 @@
-"""Social image cards for a Housing at Noon edition, laid out as an X carousel.
+"""Social image cards for a Housing at Noon edition, for X and LinkedIn.
 
 Four 1080x1350 PNGs (4:5 portrait), rendered from the draft JSON with Playwright in the
 house style: cream ground, ink text, blue numbers, ABC Oracle Edu. Nothing is set below
-28 px, and every card is checked for overflow and trimmed until it fits.
+28 px, and every card is checked for overflow and trimmed until it fits. The same four
+cards are also written as one four-page PDF (`... carousel.pdf`, pages 1080x1350 px, no
+margins) for a LinkedIn document post; X takes the four PNGs as one post.
 
-  card 1  hook: date label, the edition's strongest line set large (first sentence of the
-          standfirst, or the first theme's title when there is no standfirst), then the
-          first theme's image when it has one, otherwise the Home Economics logo
+  card 1  intro: "Housing at Noon · date", then the whole standfirst set as large as fits
+          (56 px down to 34 px; first sentence in Medium, the rest Regular), then the
+          first theme's image with its caption when it has one, otherwise the large logo.
+          If the standfirst does not fit at 34 px even with the logo, it is cut at a
+          sentence end with an ellipsis. With no standfirst, the first theme's title is
+          set large instead (and that theme is left out of cards 2-4).
   card 2-3  the next themes: number, title, opening paragraph(s), source pills
   card 4  one more theme above a call to action in the bottom quarter
           ("Housing at Noon. Free edition every weekday at noon ET." homeeconomics.us/noon)
 
 Themes on cards 2-4 are the first three free-tier themes in edition order (filled from
 premium themes when fewer than three are free); when the hook is the first theme's own
-title, that theme is skipped. Owner's rule (27 Sep 2026): carousel format for posting to X
-after approval (xpost.py).
+title, that theme is skipped. Owner's rules: carousel format (27 Sep 2026); card 1 carries
+the whole standfirst, and the cards are made for X and LinkedIn without a posting step
+(28 Sep 2026: "just the cards formatted right, for both platforms, with the CTA").
 
-Files: `Housing at Noon YYYY-MM-DD card1.png` … `card4.png` in NOON_CARDS_DIR
-(default NOON_PDF_DIR/cards), mirrored to NOON_PDF_DROPBOX_DIR/cards when set.
+Files: `Housing at Noon YYYY-MM-DD card1.png` … `card4.png` and
+`Housing at Noon YYYY-MM-DD carousel.pdf` in NOON_CARDS_DIR (default NOON_PDF_DIR/cards),
+mirrored to NOON_PDF_DROPBOX_DIR/cards when set.
 
     python cards.py            # today's draft
     python cards.py --date 2026-09-04 --out /tmp/cards
@@ -122,6 +129,10 @@ def _base_css() -> str:
   .kicker {{ font-size:30px; color:{MUTED}; flex:none; }}
   .kicker b {{ color:{INK}; font-weight:700; }}
   .hookline {{ font-weight:700; line-height:1.08; letter-spacing:-0.035em; margin:44px 0 0 0; flex:none; }}
+  .intro {{ font-weight:400; line-height:1.28; letter-spacing:-0.012em; margin:40px 0 0 0; flex:none; }}
+  .intro p {{ margin:0 0 0.55em 0; }}
+  .intro p:last-child {{ margin-bottom:0; }}
+  .intro .lead {{ font-weight:500; }}
   .visual {{ flex:1 1 auto; min-height:0; margin:48px 0 0 0; display:flex; flex-direction:column;
              justify-content:flex-start; }}
   .visual .imgbox {{ flex:1 1 auto; min-height:0; display:flex; align-items:flex-end; }}
@@ -187,6 +198,42 @@ def sentences(text: str) -> list[str]:
     return out
 
 
+def intro_paragraphs(draft: dict) -> list[list[str]]:
+    """The standfirst as plain text: paragraphs, each a list of sentences (images and
+    link markup removed)."""
+    intro = plain(draft.get("intro") or "")
+    return [sentences(p) for p in intro.split("\n\n") if p.strip()]
+
+
+def trim_intro(paras: list[list[str]], keep: int) -> list[list[str]]:
+    """The first `keep` sentences of the standfirst, with an ellipsis after the last one
+    when anything was cut."""
+    total = sum(len(p) for p in paras)
+    if keep >= total:
+        return paras
+    out: list[list[str]] = []
+    left = keep
+    for p in paras:
+        if left <= 0:
+            break
+        out.append(p[:left])
+        left -= len(p[:left])
+    out[-1] = out[-1][:-1] + [out[-1][-1] + " …"]
+    return out
+
+
+def intro_html(paras: list[list[str]]) -> str:
+    """Paragraphs of sentences -> HTML, the first sentence in Medium."""
+    out = []
+    for i, p in enumerate(paras):
+        if i == 0 and p:
+            body = f'<span class="lead">{_esc(p[0])}</span>' + (" " + _esc(" ".join(p[1:])) if p[1:] else "")
+        else:
+            body = _esc(" ".join(p))
+        out.append(f"<p>{body}</p>")
+    return "".join(out)
+
+
 def hook_line(draft: dict) -> tuple[str, bool]:
     """(the card-1 hook, whether it came from the first theme's title)."""
     intro = plain(draft.get("intro") or "")
@@ -234,7 +281,10 @@ def _image_src(url: str) -> str:
 LOGO_LARGE = Path(__file__).resolve().parent / "static" / "he-large-black.png"
 
 
-def card_hook(draft: dict, hook: str, image: tuple[str, str] | None, hook_px: int = 84) -> str:
+def card_hook(draft: dict, hook: str, image: tuple[str, str] | None, hook_px: int = 84,
+              paras: list[list[str]] | None = None) -> str:
+    """Card 1. With `paras` (the standfirst) the text is the standfirst in `.intro`;
+    otherwise `hook` (a theme title) in the bold `.hookline`."""
     date = draft.get("date") or datetime.now().strftime("%Y-%m-%d")
     if image:
         cap = f'<div class="cap">{_esc(image[1])}</div>' if image[1] else ""
@@ -244,10 +294,12 @@ def card_hook(draft: dict, hook: str, image: tuple[str, str] | None, hook_px: in
         logo = _data_uri(LOGO_LARGE) if LOGO_LARGE.is_file() else LOGO_URL
         visual = (f'<div class="visual"><img class="logo" src="{logo}" alt="Home Economics">'
                   f'<div class="tag">A daily brief on the U.S. housing market</div></div>')
+    text = (f'<div class="intro" style="font-size:{hook_px}px">{intro_html(paras)}</div>' if paras
+            else f'<div class="hookline" style="font-size:{hook_px}px">{_esc(hook)}</div>')
     return f"""
 <div class="card">
   <div class="kicker"><b>Housing at Noon</b> · {_esc(date_label(date))}</div>
-  <div class="hookline" style="font-size:{hook_px}px">{_esc(hook)}</div>
+  {text}
   {visual}
   <div class="foot"><span>Free edition daily at noon ET</span><span class="cta">{SIGNUP}</span></div>
 </div>"""
@@ -360,11 +412,13 @@ def pick_entries(draft: dict, skip_first: bool = False) -> tuple[list[dict], lis
 
 
 def render_cards(draft: dict, out_dir: Path) -> list[Path]:
+    """Writes card1-4.png and the carousel PDF; returns the four PNG paths then the PDF."""
     from playwright.sync_api import sync_playwright
 
     out_dir.mkdir(parents=True, exist_ok=True)
     date = draft.get("date") or datetime.now().strftime("%Y-%m-%d")
     hook, hook_is_title = hook_line(draft)
+    intro = intro_paragraphs(draft)
     entries, chosen = pick_entries(draft, skip_first=hook_is_title)
     image = first_image(entries[0] if entries else None)
     outs = []
@@ -394,18 +448,34 @@ def render_cards(draft: dict, out_dir: Path) -> list[Path]:
             page.screenshot(path=str(out), clip={"x": 0, "y": 0, "width": W, "height": H})
             outs.append(out)
 
-        # card 1: the hook, as large as fits; trimmed only if the smallest size overflows
+        # card 1 (owner's rule 28 Sep 2026: the whole standfirst, as large as fits, never
+        # below 34 px). Order: with the image, then with the logo, then cut at a sentence
+        # end (with the logo) until it fits.
         fitted = False
-        for text in [hook] + [first_paragraph(hook, n) for n in (220, 170, 130, 90)]:
-            for px in (92, 84, 76, 68, 60, 54, 48):
-                show(card_hook(draft, text, image, hook_px=px))
+        if intro:
+            n_sent = sum(len(x) for x in intro)
+            tries = [(intro, image, px) for px in range(56, 33, -2)]
+            if image:
+                tries += [(intro, None, px) for px in range(56, 33, -2)]
+            tries += [(trim_intro(intro, k), None, 34) for k in range(n_sent - 1, 0, -1)]
+            for paras, img, px in tries:
+                show(card_hook(draft, hook, img, hook_px=px, paras=paras))
                 if not overflows():
                     fitted = True
                     break
-            if fitted:
-                break
-        if not fitted and image:  # an image too tall to leave room: fall back to the logo
-            show(card_hook(draft, first_paragraph(hook, 170), None, hook_px=60))
+            if not fitted:
+                logger.warning("card 1: the standfirst's first sentence overflows at 34 px")
+        else:
+            for text in [hook] + [first_paragraph(hook, n) for n in (220, 170, 130, 90)]:
+                for px in (92, 84, 76, 68, 60, 54, 48):
+                    show(card_hook(draft, text, image, hook_px=px))
+                    if not overflows():
+                        fitted = True
+                        break
+                if fitted:
+                    break
+            if not fitted and image:  # an image too tall to leave room: fall back to the logo
+                show(card_hook(draft, first_paragraph(hook, 170), None, hook_px=60))
         shot(1)
 
         # cards 2-4: as much of the opening as fits — 3 paragraphs at 33px, then smaller
@@ -424,8 +494,29 @@ def render_cards(draft: dict, out_dir: Path) -> list[Path]:
             else:
                 logger.warning(f"card {k}: theme {n} still overflows at the smallest setting")
             shot(k)
+
         browser.close()
+    # LinkedIn carousel: the same four PNGs as the pages of one PDF. Each page is
+    # 1080x1350 px at 96 dpi (810x1012.5 pt), no margins, the PNG filling the page
+    # (embedded losslessly), so every page is exactly one card. PyMuPDF rather than
+    # Chromium's page.pdf, which rounds the page height to 1013.04 pt.
+    pdf_out = out_dir / f"Housing at Noon {date} carousel.pdf"
+    make_carousel_pdf(outs, pdf_out)
+    outs.append(pdf_out)
     return outs
+
+
+def make_carousel_pdf(pngs: list[Path], out: Path) -> Path:
+    import pymupdf as fitz  # PyMuPDF (pulse/requirements.txt)
+    w_pt, h_pt = W * 72 / 96, H * 72 / 96
+    doc = fitz.open()
+    for png in pngs:
+        page = doc.new_page(width=w_pt, height=h_pt)
+        page.insert_image(fitz.Rect(0, 0, w_pt, h_pt), filename=str(png), keep_proportion=False)
+    doc.set_metadata({"title": out.stem, "author": "Home Economics", "creator": "Housing at Noon cards.py"})
+    doc.save(str(out), deflate=True, garbage=3)
+    doc.close()
+    return out
 
 
 def publish_cards(draft: dict) -> list[Path]:
