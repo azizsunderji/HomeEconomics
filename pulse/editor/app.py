@@ -22,7 +22,7 @@ Routes
   GET  /pdf/{date}?tier=    owner: render the draft to PDF now
                             (tier = premium | free | social)
   GET  /health
-  GET  /cards/{date}          owner: render the four cards and the LinkedIn carousel PDF
+  GET  /cards/{date}          owner: render the cards (one per free theme) and the carousel PDF
   GET  /cards/{date}/{n}      owner: card n (PNG); /cards/{date}/carousel.pdf the PDF
   GET  /sources               owner: LinkedIn accounts the collector reads (sources.py)
   GET  /api/sources           accounts with recent activity and include state
@@ -415,9 +415,10 @@ async def upload_image(request: Request, file: UploadFile = File(...)):
 
 @app.get("/cards/{date}", response_class=HTMLResponse)
 def draft_cards(request: Request, date: str):
-    """Owner: render this draft's four social cards and the carousel PDF now, and show
-    them for saving. Owner's rule (28 Sep 2026): the cards formatted for X and LinkedIn,
-    with no posting step; he posts them himself.
+    """Owner: render this draft's social cards and the carousel PDF now, and show them
+    for saving. Owner's rules (28 Sep 2026): no posting step, he posts them himself; no
+    intro card, one card per free theme with its entire text (up to 10 cards), for
+    Instagram and X carousels and a LinkedIn document PDF.
 
     Uses publish_cards, so they land in the normal cards folder and mirror to Dropbox
     immediately; the send's own render later overwrites both copies."""
@@ -430,7 +431,7 @@ def draft_cards(request: Request, date: str):
     pngs = [o for o in outs if o.suffix == ".png"]
     has_pdf = any(o.suffix == ".pdf" for o in outs)
     pdf_link = (f'<p class="dl"><a href="/cards/{date}/carousel.pdf" download>'
-                f'Download the LinkedIn carousel (PDF, {len(pngs)} pages)</a></p>' if has_pdf else "")
+                f'Download the carousel PDF ({len(pngs)} pages)</a></p>' if has_pdf else "")
     items = "".join(
         f'<figure><a href="/cards/{date}/{i}" download><img src="/cards/{date}/{i}"></a>'
         f'<figcaption>Card {i} &middot; <a href="/cards/{date}/{i}" download>save</a></figcaption></figure>'
@@ -445,7 +446,7 @@ def draft_cards(request: Request, date: str):
         "figure{margin:0 0 28px 0;}img{width:100%;max-width:540px;height:auto;display:block;}"
         "figcaption{font-size:13px;color:#777370;margin-top:6px;}a{color:#3D3733;}</style>"
         f"<h1>Cards for {date}</h1>"
-        "<p>X: attach the four PNGs to one post (they display as a carousel). "
+        "<p>Instagram: post all cards as one carousel (max 10). X: post the first four cards. "
         "LinkedIn: upload the PDF as a document post.</p>" + pdf_link + items)
     return HTMLResponse(html, headers={"Cache-Control": "no-store"})
 
