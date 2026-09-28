@@ -833,7 +833,7 @@ the section above.
   cut. At this compression (budgets are 35-85% of the theme length) numbers and attributions are
   lost. In the committed cache: 25 Sep Theme Three lost Lance Lambert's LinkedIn point (5.99% before
   Khamenei's death) and @JonKutsmeda's $5,912 per $100K. 25 Sep Theme Two (2,160 visible characters)
-  lost Kevin Erdmann, the NAHB attribution and most of Aziz's home-size commentary. 28 Sep Theme Four lost
+  lost Kevin Erdmann, Census/HUD as the source, HousingWire as the source of the median-price figure, the 6% average price cut, and all of Aziz's home-size commentary (the final sentence cut removed it). 28 Sep Theme Four lost
   its second paragraph (the FT post; 30-year rates above 7%). 28 Sep Theme Two lost "near-7.5% rates" and
   the 37% BMO figure. Options for the owner: a third request, a smaller body size, or accepting these
   losses.
