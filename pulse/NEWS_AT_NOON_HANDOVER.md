@@ -719,3 +719,34 @@ the four cards as a carousel, and only after he clicks "Approve and post". Nothi
   text with the blank line intact, no warning from X; closing gave "Save post? … Save / Discard",
   Discard was clicked, and X's drafts list afterwards showed only the owner's older drafts. Post was
   not clicked. `noon_verify.py`: ALL PASS (renderer untouched).
+
+## Status update — 28 Sep 2026: card 1 carries the whole standfirst; LinkedIn carousel PDF; X posting removed
+
+Owner's rule (Aziz, 28 Sep 2026): "Card 1 doesn't have enough info. We can have the lead but it should
+have the whole intro para, since it's short. I think we don't need the elaborate posting mechanism, just
+the cards formatted right, for both platforms [X and LinkedIn], with the CTA."
+
+- **Card 1 (`cards.py`).** "Housing at Noon · <date>" small, then the whole standfirst (plain text,
+  images and link markup removed, paragraph breaks kept), first sentence in ABC Oracle Edu Medium, the
+  rest Regular, set as large as fits from 56 px down to 34 px in 2 px steps. Below it the first theme's
+  image with caption (image area at least 380 px tall), otherwise the large logo and tagline. Footer
+  "Free edition daily at noon ET / homeeconomics.us/noon" kept. Fitting order: text + image at 56-34 px;
+  then text + logo at 56-34 px; then the standfirst cut at a sentence end with " …" (logo, 34 px),
+  dropping one sentence at a time. With no standfirst the old behaviour holds (first theme's title,
+  bold, and that theme left out of cards 2-4). Note: recent standfirsts are 540-640 characters, not
+  about 300; all of 22-28 Sep fit whole at 34-44 px, and 24/25 Sep kept their images. A 1,935-character
+  stress test was cut at a sentence end and fitted.
+- **Cards 2-4 unchanged.** The four PNGs keep their names and layout (for X: attach all four to one post).
+- **LinkedIn carousel PDF.** `render_cards` also writes `Housing at Noon <date> carousel.pdf`: four
+  pages, each 810 x 1012.5 pt (1080 x 1350 px at 96 dpi), no margins, the card PNG filling the page
+  and embedded losslessly (PyMuPDF, `make_carousel_pdf`). Chromium's `page.pdf` was tried first but
+  rounds the page to 810 x 1013.04 pt, so it was not used. `publish_cards` mirrors it to the same
+  Dropbox `editions/cards` folder. Checked on 25 and 28 Sep: pdfinfo 4 pages, 810 x 1012.5 pt; each
+  page's embedded image is pixel-identical to its PNG; a pdftoppm render at 1080x1350 differs from the
+  PNG by a mean of 3-4.5 of 255 (poppler smoothing), no layout difference.
+- **Editor.** `/cards/{date}` shows one line ("X: attach the four PNGs to one post (they display as a
+  carousel). LinkedIn: upload the PDF as a document post."), a download link for the PDF
+  (`/cards/{date}/carousel.pdf`), and the four cards. The "Post to X" panel, `static/cards.js` and all
+  `/api/xpost/*` routes are gone. The main page's post-send button is now "Cards".
+- **`xpost.py`** stays in the repo, unused, with a docstring saying so. `~/work/noon/xposts/` was
+  deleted after checking `state.json`: one entry (25 Sep) with status `draft`, nothing posted.
