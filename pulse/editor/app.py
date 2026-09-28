@@ -22,7 +22,7 @@ Routes
   GET  /pdf/{date}?tier=    owner: render the draft to PDF now
                             (tier = premium | free | social)
   GET  /health
-  GET  /cards/{date}          owner: render the cards (one per free theme) and the carousel PDF
+  GET  /cards/{date}          owner: render the cards (one per free theme, then a sign-up card) and the carousel PDF
   GET  /cards/{date}/{n}      owner: card n (PNG); /cards/{date}/carousel.pdf the PDF
   GET  /sources               owner: LinkedIn accounts the collector reads (sources.py)
   GET  /api/sources           accounts with recent activity and include state
@@ -417,8 +417,10 @@ async def upload_image(request: Request, file: UploadFile = File(...)):
 def draft_cards(request: Request, date: str):
     """Owner: render this draft's social cards and the carousel PDF now, and show them
     for saving. Owner's rules (28 Sep 2026): no posting step, he posts them himself; no
-    intro card, one card per free theme with its entire text (up to 10 cards), for
-    Instagram and X carousels and a LinkedIn document PDF.
+    intro card; every free theme on ONE card at a fixed body size, condensed by Claude when
+    it is too long (no continuation cards), then a closing sign-up card; for Instagram and X
+    carousels and a LinkedIn document PDF. The first render of a date calls Claude (a few
+    cents); later renders use ~/work/noon/cards_cache.json.
 
     Uses publish_cards, so they land in the normal cards folder and mirror to Dropbox
     immediately; the send's own render later overwrites both copies."""
@@ -446,7 +448,7 @@ def draft_cards(request: Request, date: str):
         "figure{margin:0 0 28px 0;}img{width:100%;max-width:540px;height:auto;display:block;}"
         "figcaption{font-size:13px;color:#777370;margin-top:6px;}a{color:#3D3733;}</style>"
         f"<h1>Cards for {date}</h1>"
-        "<p>Instagram: post all cards as one carousel (max 10). X: post the first four cards. "
+        "<p>Instagram: post all cards as one carousel. X: post the first four cards. "
         "LinkedIn: upload the PDF as a document post.</p>" + pdf_link + items)
     return HTMLResponse(html, headers={"Cache-Control": "no-store"})
 

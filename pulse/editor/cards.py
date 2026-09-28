@@ -1,29 +1,38 @@
 """Social image cards for a Housing at Noon edition: Instagram and X carousels, and a
 LinkedIn document PDF.
 
-Owner's rule (Aziz, 28 Sep 2026): no opening or intro card; one card per FREE theme with the
-theme's entire text; a format that works for Instagram and X carousels (1080x1350).
+Owner's rules (Aziz, 28 Sep 2026):
+  * One card per FREE theme, in free-edition order, and every theme fits on ONE card at a
+    fixed body size (36 px). No continuation cards.
+  * When a theme's text is longer than the card holds, the builder condenses it with
+    Claude to fit, more aggressively the longer the theme is. The condensed text keeps
+    the theme's meaning, every number and every attribution, and at most two paragraphs.
+  * "It should look really good, that's the key for social": an eyebrow line ("Theme
+    One", "Theme Two" ... by position in the free edition, not the entry's rank), a strong
+    title (Medium, 54 px), body 36 px at 1.35 leading, source pills (as in the email) on
+    every card, and the small Home Economics logo in the footer of every card.
+  * The set ends with a standalone call-to-action card (large logo, "Housing at Noon",
+    one line of description, homeeconomics.us/noon). Instagram's cap of 10 includes it,
+    so at most 9 themes; beyond that the last themes are dropped (logged), never the CTA.
 
-  * The themes are exactly the free edition's, in its order and with its numbers
-    (email_lunch._split_entries on the rank-sorted entries; the number is the rank).
-  * Each theme gets one card, continuing onto a second (or third) card when its text does
-    not fit. Layout: a thin header with the theme number and title (continuation cards show
-    "Title (continued)" small), the body at 40 px stepping down to 34 px to fit, paragraphs
-    kept, links as plain text (the email's anchor words, no underline), source pills on the
-    theme's last card only, and a footer "Housing at Noon · <date>" with a "2/2" marker on
-    continuation cards. Margins 64 px. Nothing is set below 28 px.
-  * The last card of the set carries the sign-up band ("Housing at Noon. / Free edition
-    every weekday at noon ET. / homeeconomics.us/noon").
-  * At most 10 cards (Instagram's limit). When the themes need more, the last theme's text
-    is cut at a sentence end with " …" (then the one before it, if still needed); no theme
-    is dropped, and the cut is logged.
-  * Every card is measured after rendering: the font steps down first, then the text
-    splits onto another card; nothing is clipped.
+How a theme is fitted:
+  1. Budget. The card is rendered with this theme's own title and pills and a filler body
+     (the theme's words, two paragraphs), and the longest filler that fits at 36 px is
+     the character budget. A two-line title or a second row of pills lowers it.
+  2. If the visible text (links reduced to their anchor words) is within the budget, it
+     is used unchanged. Otherwise Claude condenses it to at most N = 95% of the budget
+     characters; if the reply is longer than N it is asked once more with N cut by 10%,
+     and if that is still too long the text is cut at a sentence end.
+  3. The card is measured again. If it still overflows (rare), the body steps to 34 px,
+     then the text is cut at a sentence end. Nothing is clipped.
+Condensed text is cached in NOON_CARDS_CACHE (default ~/work/noon/cards_cache.json), keyed
+by sha1(theme markdown + budget), so re-rendering the same draft gives the same cards at
+no cost. Each condensation and the token usage are logged.
 
-Files: `Housing at Noon YYYY-MM-DD card1.png` … `cardK.png` (K varies; stale higher-numbered
-cards from an earlier render of the same date are removed) and `Housing at Noon YYYY-MM-DD
-carousel.pdf` (all cards as 1080x1350 px pages), in NOON_CARDS_DIR (default
-NOON_PDF_DIR/cards), mirrored to NOON_PDF_DROPBOX_DIR/cards when set.
+Files: `Housing at Noon YYYY-MM-DD card1.png` … `cardK.png` (the themes, then the CTA
+card; stale higher-numbered cards from an earlier render of the same date are removed)
+and `Housing at Noon YYYY-MM-DD carousel.pdf` (all cards, 1080x1350 px pages), in
+NOON_CARDS_DIR (default NOON_PDF_DIR/cards), mirrored to NOON_PDF_DROPBOX_DIR/cards.
 
     python cards.py            # today's draft
     python cards.py --date 2026-09-04 --out /tmp/cards
@@ -31,12 +40,15 @@ NOON_PDF_DIR/cards), mirrored to NOON_PDF_DROPBOX_DIR/cards when set.
 from __future__ import annotations
 
 import argparse
+import base64
+import hashlib
 import html as _html
+import json
 import logging
 import os
 import re
 import shutil
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 import paths  # noqa: F401  (sys.path setup)
@@ -47,14 +59,26 @@ logger = logging.getLogger("noon.cards")
 PDF_DIR = Path(os.environ.get("NOON_PDF_DIR", str(Path.home() / "work" / "noon" / "pdf")))
 CARDS_DIR = Path(os.environ.get("NOON_CARDS_DIR", str(PDF_DIR / "cards")))
 DROPBOX_DIR = os.environ.get("NOON_PDF_DROPBOX_DIR", "")
+CACHE_PATH = Path(os.environ.get("NOON_CARDS_CACHE", str(Path.home() / "work" / "noon" / "cards_cache.json")))
 SIGNUP = "homeeconomics.us/noon"
 W, H = 1080, 1350
-MAX_CARDS = 10          # Instagram's carousel limit
-BODY_PX = (40, 38, 36, 34)
-MARGIN = 64
+MAX_CARDS = 10          # Instagram's carousel limit, CTA card included
+BODY_PX = 36
+FALLBACK_PX = 34
+MARGIN = 80
+# The pipeline's live synthesis (v4b) has no Sonnet step (Opus writes, Haiku gates), so
+# the owner's default applies.
+CONDENSE_MODEL = os.environ.get("NOON_CARDS_MODEL", "claude-sonnet-5")
+PRICE_PER_MTOK = {"claude-sonnet-5": (2.00, 10.00)}   # input, output USD
 
 INK, MUTED, BLUE, CREAM, LIGHT = "#3D3733", "#7F7570", "#0BB4FF", "#F6F7F3", "#DADFCE"
 SANS = '"ABC Oracle Edu", "Helvetica Neue", Helvetica, Arial, sans-serif'
+STATIC = Path(__file__).resolve().parent / "static"
+LOGO_SVG = STATIC / "he-large-black.svg"
+LOGO_PNG = STATIC / "he-large-black.png"
+
+NUM_WORDS = ["One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten",
+             "Eleven", "Twelve"]
 
 _LINK_RE = re.compile(r"\[([^\]]+)\]\((?:[^)\s]+)(?:\s+(?:\"[^\"]*\"|'[^']*'))?\)")
 # An image dropped in from the editor (![caption](url) on its own line) is left
@@ -104,6 +128,10 @@ def sentences(text: str) -> list[str]:
     return out
 
 
+def _para_sentences(text: str) -> list[list[str]]:
+    return [sentences(p) for p in text.split("\n\n") if p.strip()]
+
+
 def hook_line(draft: dict) -> tuple[str, bool]:
     """(first sentence of the standfirst, whether it came from the first theme's title).
     No longer used by the cards; kept for xpost.py."""
@@ -117,9 +145,12 @@ def hook_line(draft: dict) -> tuple[str, bool]:
 # ── the free edition's themes, as the email shows them ──────────────────
 
 def free_themes(draft: dict) -> list[dict]:
-    """[{num, title, paras: [[sentence, ...], ...], pills}] for the free edition, in its
-    order: the same entry set, numbers, title casing, sentence-start fixes, link narrowing
-    ("On X," before handles) and pills as email_lunch.render_lunch_html(tier="free")."""
+    """[{pos, num, title, text, md, pills}] for the free edition, in its order: the same
+    entry set, title casing, sentence-start fixes, link narrowing ("On X," before handles)
+    and pills as email_lunch.render_lunch_html(tier="free"). `pos` is the position in the
+    free edition (1..n, used for "Theme One"); `num` is the entry's rank; `text` is the
+    visible text (links reduced to their anchor words, paragraphs separated by a blank
+    line); `md` is the summary markdown."""
     from delivery import email_lunch as el
     entries = [e for e in (draft.get("entries") or []) if isinstance(e, dict)]
     entries.sort(key=lambda e: (e.get("rank") is None, e.get("rank", 10**6)))
@@ -129,21 +160,42 @@ def free_themes(draft: dict) -> list[dict]:
         num = e.get("rank") if isinstance(e.get("rank"), int) else i
         title = (e.get("title") or "").strip()
         title = title[:1].upper() + title[1:]
-        summary = el._fix_sentence_starts(_no_images(e.get("summary") or "").strip())
-        body = el._body_links(summary)
+        md = _no_images(e.get("summary") or "").strip()
+        body = el._body_links(el._fix_sentence_starts(md))
         paras = []
         for p in re.split(r"(?:<br\s*/?>\s*){2,}", body):
             t = _html.unescape(re.sub(r"<[^>]+>", "", re.sub(r"<br\s*/?>", " ", p)))
             t = " ".join(t.split())
             if t:
-                paras.append(sentences(t))
-        if re.search(r"https?://", " ".join(" ".join(p) for p in paras)):
+                paras.append(t)
+        text = "\n\n".join(paras)
+        if re.search(r"https?://", text):
             logger.warning(f"theme {num}: a bare URL is in the card text")
-        out.append({"num": num, "title": title, "paras": paras, "pills": el._entry_pills(e)})
+        out.append({"pos": i, "num": num, "title": title, "text": text, "md": md,
+                    "pills": el._entry_pills(e)})
     return out
 
 
+def theme_word(pos: int) -> str:
+    return f"Theme {NUM_WORDS[pos - 1]}" if 1 <= pos <= len(NUM_WORDS) else f"Theme {pos}"
+
+
 # ── HTML ────────────────────────────────────────────────────────────────
+
+def _data_uri(path: Path) -> str:
+    kind = "svg+xml" if path.suffix == ".svg" else "png"
+    return f"data:image/{kind};base64," + base64.b64encode(path.read_bytes()).decode()
+
+
+_LOGO_CACHE: dict[str, str] = {}
+
+
+def _logo() -> str:
+    if "u" not in _LOGO_CACHE:
+        p = LOGO_SVG if LOGO_SVG.is_file() else LOGO_PNG
+        _LOGO_CACHE["u"] = _data_uri(p) if p.is_file() else "https://homeeconomics.us/logo-email.png"
+    return _LOGO_CACHE["u"]
+
 
 def _base_css() -> str:
     m = MARGIN
@@ -151,66 +203,64 @@ def _base_css() -> str:
 <style>
   html, body {{ margin:0; padding:0; background:{CREAM}; }}
   body {{ width:{W}px; height:{H}px; overflow:hidden; color:{INK}; font-family:{SANS};
-          -webkit-font-smoothing:antialiased; }}
-  .card {{ box-sizing:border-box; width:{W}px; height:{H}px; padding:{m}px {m}px {m - 8}px {m}px;
-           display:flex; flex-direction:column; overflow:hidden; }}
-  .th {{ display:flex; align-items:baseline; gap:20px; flex:none; margin:0 0 30px 0; }}
-  .th .n {{ color:{BLUE}; font-weight:700; font-size:46px; line-height:1.1; flex:none; }}
-  .th .t {{ font-weight:700; font-size:46px; line-height:1.1; letter-spacing:-0.02em; }}
-  .th.cont {{ margin-bottom:24px; }}
-  .th.cont .n, .th.cont .t {{ font-size:30px; font-weight:500; line-height:1.25; letter-spacing:0; }}
-  .th.cont .t {{ color:{MUTED}; }}
-  .body {{ line-height:1.36; letter-spacing:-0.005em; flex:none; }}
-  .body p {{ margin:0 0 0.6em 0; }}
+          -webkit-font-smoothing:antialiased; font-kerning:normal; }}
+  .card {{ box-sizing:border-box; width:{W}px; height:{H}px; padding:{m}px {m}px 60px {m}px;
+           display:flex; flex-direction:column; overflow:hidden; background:{CREAM}; }}
+  .eb {{ flex:none; color:{BLUE}; font-weight:500; font-size:30px; line-height:1; letter-spacing:0.01em;
+         margin:0 0 26px 0; }}
+  .tt {{ flex:none; font-weight:500; font-size:54px; line-height:1.08; letter-spacing:-0.03em;
+         margin:0 0 40px 0; text-wrap:balance; }}
+  .body {{ flex:none; line-height:1.35; letter-spacing:-0.005em; }}
+  .body p {{ margin:0 0 0.72em 0; hyphens:manual; }}
   .body p:last-child {{ margin-bottom:0; }}
-  .pills {{ margin:28px 0 0 0; display:flex; flex-wrap:wrap; gap:12px; flex:none; }}
-  .pill {{ background:{LIGHT}; color:{INK}; font-size:28px; line-height:1.2; padding:8px 20px;
-           border-radius:999px; }}
-  .foot {{ margin-top:auto; padding-top:28px; display:flex; flex:none; white-space:nowrap;
-           justify-content:space-between; align-items:baseline; font-size:28px; color:{MUTED}; }}
-  .foot b {{ color:{INK}; font-weight:500; }}
-  .ctabox {{ flex:none; box-sizing:border-box; margin:24px -{m}px -{m - 8}px -{m}px;
-             padding:40px {m}px 44px {m}px; background:{LIGHT}; }}
-  .ctabox .l1 {{ font-size:42px; font-weight:700; line-height:1.15; letter-spacing:-0.02em; }}
-  .ctabox .l2 {{ font-size:36px; line-height:1.2; margin-top:4px; }}
-  .ctabox .url {{ font-size:42px; font-weight:700; color:{INK}; margin-top:18px; }}
-  .ctabox .url span {{ border-bottom:5px solid {BLUE}; padding-bottom:2px; }}
+  .pills {{ margin:auto 0 0 0; padding-top:40px; display:flex; flex-wrap:wrap; gap:14px; flex:none; }}
+  .pills + .foot {{ margin-top:0; }}
+  .pill {{ background:{LIGHT}; color:{INK}; font-size:28px; line-height:1.2; padding:9px 22px 10px;
+           border-radius:999px; white-space:nowrap; }}
+  .foot {{ margin-top:auto; padding-top:40px; display:flex; flex:none; white-space:nowrap;
+           justify-content:space-between; align-items:center; font-size:28px; color:{MUTED}; }}
+  .foot img {{ height:52px; width:auto; display:block; }}
+  /* the closing call-to-action card */
+  .cta {{ justify-content:center; padding:{m}px 96px; background:{BLUE}; }}
+  .cta .logo {{ width:560px; height:auto; display:block; margin:0 0 84px 0; }}
+  .cta h1 {{ margin:0; font-weight:500; font-size:104px; line-height:1.0; letter-spacing:-0.04em; }}
+  .cta .desc {{ margin:36px 0 0 0; font-size:42px; line-height:1.3; letter-spacing:-0.01em; max-width:840px;
+                text-wrap:balance; }}
+  .cta .addr {{ margin:72px 0 0 0; align-self:flex-start; background:{CREAM}; color:{INK}; font-weight:500;
+                font-size:48px; letter-spacing:-0.02em; line-height:1; padding:30px 40px 32px;
+                border-radius:18px; }}
+  .cta .date {{ margin-top:auto; font-size:28px; color:{MUTED}; }}
 </style>
 """
 
 
-def card_html(theme: dict, date: str, units: list[tuple[int, str]], *, px: int, first: bool,
-              last: bool, cta: bool, marker: str = "", ellipsis: bool = False) -> str:
-    """One card. `units` = (paragraph index, sentence) pairs for this card's text;
-    `first` = the theme's first card (full title), `last` = its last (pills), `cta` = the
-    set's final card (sign-up band)."""
-    if first:
-        head = (f'<div class="th"><span class="n">{theme["num"]}</span>'
-                f'<span class="t">{_esc(theme["title"])}</span></div>')
-    else:
-        head = (f'<div class="th cont"><span class="n">{theme["num"]}</span>'
-                f'<span class="t">{_esc(theme["title"])} (continued)</span></div>')
-    paras: list[list[str]] = []
-    prev = None
-    for pi, s in units:
-        if pi != prev:
-            paras.append([])
-            prev = pi
-        paras[-1].append(s)
-    if ellipsis and paras:
-        paras[-1][-1] = paras[-1][-1] + " …"
-    body = "".join(f"<p>{_esc(' '.join(p))}</p>" for p in paras)
+def card_html(theme: dict, date: str, text: str, *, px: int = BODY_PX) -> str:
+    """One theme card: eyebrow, title, body (paragraphs separated by a blank line), pills,
+    footer with the small logo."""
+    paras = [" ".join(p.split()) for p in str(text or "").split("\n\n") if p.strip()]
+    # a paragraph never ends on a one-word line: its last two words are bound together
+    body = "".join(f"<p>{_esc(_bind_last(p))}</p>" for p in paras)
     pills = ""
-    if last and theme["pills"]:
+    if theme.get("pills"):
         pills = '<div class="pills">' + "".join(
             f'<span class="pill">{_esc(p)}</span>' for p in theme["pills"][:6]) + "</div>"
-    foot = (f'<div class="foot"><span><b>Housing at Noon</b> · {_esc(date_label(date))}</span>'
-            f'<span>{_esc(marker)}</span></div>')
-    band = (f'<div class="ctabox"><div class="l1">Housing at Noon.</div>'
-            f'<div class="l2">Free edition every weekday at noon ET.</div>'
-            f'<div class="url"><span>{SIGNUP}</span></div></div>') if cta else ""
-    return (f'<div class="card">{head}<div class="body" style="font-size:{px}px">{body}</div>'
-            f'{pills}{foot}{band}</div>')
+    foot = (f'<div class="foot"><img src="{_logo()}" alt="Home Economics">'
+            f'<span>Housing at Noon · {_esc(date_label(date))}</span></div>')
+    return (f'<div class="card"><div class="eb">{theme_word(theme["pos"])}</div>'
+            f'<div class="tt">{_esc(theme["title"])}</div>'
+            f'<div class="body" style="font-size:{px}px">{body}</div>{pills}{foot}</div>')
+
+
+def _bind_last(p: str) -> str:
+    i = p.rfind(" ")
+    return p if i < 0 or len(p) - i > 30 else p[:i] + "\u00a0" + p[i + 1:]
+
+
+def cta_html(date: str) -> str:
+    return (f'<div class="card cta"><img class="logo" src="{_logo()}" alt="Home Economics">'
+            f'<h1>Housing at Noon</h1>'
+            f'<div class="desc">A daily brief on the U.S. housing market, free every weekday at noon ET</div>'
+            f'<div class="addr">{SIGNUP}</div></div>')
 
 
 def _doc(inner: str = "") -> str:
@@ -218,13 +268,13 @@ def _doc(inner: str = "") -> str:
             f'<body>{inner}</body></html>')
 
 
-# ── fitting ─────────────────────────────────────────────────────────────
+# ── measuring ───────────────────────────────────────────────────────────
 
 class _Fitter:
     """Measures card HTML in one Playwright page (body swapped in place, no reloads)."""
 
-    def __init__(self, page, date: str):
-        self.page, self.date = page, date
+    def __init__(self, page):
+        self.page = page
         page.set_content(_doc(), wait_until="load")
         page.evaluate("() => document.fonts.ready")
 
@@ -235,123 +285,290 @@ class _Fitter:
           if (c.scrollHeight > c.clientHeight + 1 || c.scrollWidth > c.clientWidth + 1) return true;
           const f = document.querySelector('.foot');
           if (f && f.scrollWidth > f.clientWidth + 1) return true;
-          const b = document.querySelector('.ctabox');
-          if (b && b.getBoundingClientRect().bottom > c.clientHeight + 1) return true;
           return false; }""", html)
 
-    def pack(self, theme: dict, px: int, cta_last: bool, max_cards: int | None = None
-             ) -> list[dict] | None:
-        """Greedy split of a theme's sentences into cards at `px`. Returns [{units, first,
-        last, ellipsis}] or None when a single sentence cannot fit. With `max_cards`, the
-        text is cut at a sentence end (with " …") so the theme ends on that card."""
-        units = [(pi, s) for pi, p in enumerate(theme["paras"]) for s in p]
-        cards: list[dict] = []
-        a = 0
+    def budget(self, theme: dict, date: str, px: int = BODY_PX) -> int:
+        """Characters of body text that fit on this theme's card at `px`, measured with the
+        theme's own title and pills and a two-paragraph filler made of its own words."""
+        words = theme["text"].split() or ["housing"]
+        filler_words: list[str] = []
+        while len(" ".join(filler_words)) < 6000:
+            filler_words.extend(words)
 
-        def fit(u, first, last, ell=False):
-            return self.fits(card_html(theme, self.date, u, px=px, first=first, last=last,
-                                       cta=cta_last and last, marker="0/0", ellipsis=ell))
+        def filler(n: int) -> str:
+            s = " ".join(filler_words)[:n].rsplit(" ", 1)[0]
+            cut = int(len(s) * 0.55)
+            sp = s.find(" ", cut)
+            return s if sp < 0 else s[:sp] + "\n\n" + s[sp + 1:]
 
-        while True:
-            first = not cards
-            rest = units[a:]
-            if fit(rest, first, True):
-                cards.append(dict(units=rest, first=first, last=True, ellipsis=False))
-                return cards
-            if max_cards is not None and len(cards) + 1 >= max_cards:
-                # the theme must end here: as many sentences as fit, then " …"
-                lo, hi = a, len(units) - 1   # keep units[a:b], b in (a, hi]
-                best = None
-                while lo < hi:
-                    mid = (lo + hi + 1) // 2
-                    if fit(units[a:mid], first, True, ell=True):
-                        best, lo = mid, mid
-                    else:
-                        hi = mid - 1
-                if best is None:
-                    if not fit(units[a:a + 1], first, True, ell=True):
-                        return None
-                    best = a + 1
-                cards.append(dict(units=units[a:best], first=first, last=True, ellipsis=True,
-                                  dropped=len(units) - best))
-                return cards
-            # a card that continues: the most sentences that fit, leaving at least one
-            lo, hi, best = a + 1, len(units) - 1, None
-            while lo <= hi:
-                mid = (lo + hi) // 2
-                if fit(units[a:mid], first, False):
-                    best, lo = mid, mid + 1
-                else:
-                    hi = mid - 1
-            if best is None:
-                # one sentence is taller than a card: split it at a word boundary
-                pi, s = units[a]
-                words = s.split(" ")
-                if len(words) < 2:
-                    return None
-                h = len(words) // 2
-                units[a:a + 1] = [(pi, " ".join(words[:h])), (pi, " ".join(words[h:]))]
-                continue
-            cards.append(dict(units=units[a:best], first=first, last=False, ellipsis=False))
-            a = best
-
-    def layout(self, theme: dict, cta_last: bool) -> tuple[int, list[dict]]:
-        """(px, cards) for a whole theme: one card at the largest size from 40 to 34 px;
-        otherwise the fewest cards (as packed at 34 px), at the largest size that keeps
-        that count."""
-        units = [(pi, s) for pi, p in enumerate(theme["paras"]) for s in p]
-        for px in BODY_PX:
-            if self.fits(card_html(theme, self.date, units, px=px, first=True, last=True,
-                                   cta=cta_last, marker="")):
-                return px, [dict(units=units, first=True, last=True, ellipsis=False)]
-        best = self.pack(theme, BODY_PX[-1], cta_last)
-        if best is None:
-            raise RuntimeError(f"theme {theme['num']}: a sentence does not fit on a card")
-        px_best = BODY_PX[-1]
-        for px in BODY_PX[:-1]:
-            c = self.pack(theme, px, cta_last)
-            if c is not None and len(c) <= len(best):
-                return px, c
-        return px_best, best
+        lo, hi = 0, 6000
+        while lo < hi:
+            mid = (lo + hi + 1) // 2
+            if self.fits(card_html(theme, date, filler(mid), px=px)):
+                lo = mid
+            else:
+                hi = mid - 1
+        return len(filler(lo)) if lo else 0
 
 
-def plan_cards(fitter: _Fitter, themes: list[dict]) -> tuple[list[tuple[dict, int, list[dict]]], list[str]]:
-    """[(theme, px, cards)] for the whole set, capped at MAX_CARDS; plus log notes."""
+def _cut_to_fit(fitter: _Fitter, theme: dict, date: str, text: str, px: int) -> str:
+    """Longest prefix of whole sentences (paragraphs kept) that fits at `px`."""
+    units = [(pi, s) for pi, p in enumerate(_para_sentences(text)) for s in p]
+
+    def join(k: int) -> str:
+        paras: dict[int, list[str]] = {}
+        for pi, s in units[:k]:
+            paras.setdefault(pi, []).append(s)
+        return "\n\n".join(" ".join(v) for v in paras.values())
+
+    lo, hi = 1, len(units)
+    best = 1
+    while lo <= hi:
+        mid = (lo + hi) // 2
+        if fitter.fits(card_html(theme, date, join(mid), px=px)):
+            best, lo = mid, mid + 1
+        else:
+            hi = mid - 1
+    return join(best)
+
+
+def _cut_sentences(text: str, ok) -> str:
+    """Drop whole sentences from the end, one at a time, until ok(text) is true (measured
+    by rendering the card). Keeps at least one sentence."""
+    paras = _para_sentences(text)
+    join = lambda ps: "\n\n".join(" ".join(p) for p in ps if p)  # noqa: E731
+    while not ok(join(paras)) and sum(len(p) for p in paras) > 1:
+        paras[-1].pop()
+        paras = [p for p in paras if p]
+    return join(paras)
+
+
+def _cut_to_chars(text: str, n: int) -> str:
+    """Whole sentences (paragraphs kept) up to n characters; at least one sentence."""
+    paras = _para_sentences(text)
+    out: list[list[str]] = []
+    total = 0
+    for p in paras:
+        cur: list[str] = []
+        for s in p:
+            add = len(s) + (1 if cur else (2 if out else 0))
+            if total + add > n and (out or cur):
+                if cur:
+                    out.append(cur)
+                return "\n\n".join(" ".join(x) for x in out)
+            cur.append(s)
+            total += add
+        out.append(cur)
+    return "\n\n".join(" ".join(x) for x in out)
+
+
+# ── condensing with Claude ──────────────────────────────────────────────
+
+_SYSTEM = ("You condense sections of Housing at Noon, a daily brief on the U.S. housing market, "
+           "so that each section fits on one social-media card. You shorten wording; you never "
+           "add facts, opinions or emphasis.")
+
+
+def _aim(theme: dict, n: int) -> int:
+    """The length suggested to the model, below the hard limit n. The model overshoots
+    more the harder it has to compress, so the longer the theme is relative to n, the
+    lower the suggestion: 85% of n for light cuts, down to 60% for a theme 3-4 times n."""
+    r = len(theme["text"]) / max(1, n)
+    return int(n * max(0.60, min(0.85, 0.95 - 0.12 * (r - 1))))
+
+
+def _prompt(theme: dict, n: int) -> str:
+    aim = _aim(theme, n)
+    return (
+        f"Condense the theme below to AT MOST {n} characters in total, counting spaces and "
+        f"punctuation; aim for about {aim} characters (roughly {max(20, aim // 6)} "
+        f"words), since going over the limit is not allowed. The original is {len(theme['text'])} "
+        f"characters, so cut about {max(0, 100 - round(100 * n / max(1, len(theme['text']))))}% of it.\n\n"
+        "Rules:\n"
+        "- Keep the theme's meaning and its main point.\n"
+        "- Keep every number exactly as written (percentages, dollar amounts, counts, rates, "
+        "dates, rankings).\n"
+        "- Keep every attribution: who reported, said, estimated, found or wrote each fact "
+        "(people, firms, agencies, publications, and platform lead-ins such as \"On X,\" or "
+        "\"On LinkedIn,\").\n"
+        "- Passages in the first person (\"I\", \"my\", \"to me\") are the author's own commentary, "
+        "the most distinctive part of the brief. Keep that view, condensed, in the first person, "
+        "as the last paragraph. Leave out only a sentence that points to something not on the "
+        "card (\"the map below\", \"see my post\", \"I wrote about this here\").\n"
+        "- Numbers and attributions take priority over descriptive wording: cut restatement, "
+        "background, adjectives and connecting phrases first.\n"
+        "- Keep the paragraph structure, with at most 2 paragraphs separated by one blank line "
+        "(the reported facts first, the author's commentary, if any, second).\n"
+        "- Plain text only: no markdown links (keep only the anchor words), no headings, no "
+        "bullets, no bold or italics, no quotation of this prompt.\n"
+        "- Write in the brief's register: measured, precise, restrained, no sensationalism.\n"
+        f"- Return only the condensed text, at most {n} characters.\n\n"
+        f"Theme title (context only; do not repeat it): {theme['title']}\n\n"
+        f"Theme text:\n{theme['text']}"
+    )
+
+
+def _clean_reply(t: str) -> str:
+    t = _LINK_RE.sub(r"\1", str(t or "")).replace("\r", "")
+    t = re.sub(r"^\s*\[\d+\]\s*", "", t, flags=re.M)
+    t = re.sub(r"^\s*(?:#+\s*|[-*•]\s+)", "", t, flags=re.M)
+    t = re.sub(r"(\*\*|__|`)", "", t)
+    paras = [" ".join(p.split()) for p in re.split(r"\n\s*\n", t.strip()) if p.strip()]
+    if len(paras) > 2:
+        paras = [paras[0], " ".join(paras[1:])]
+    return "\n\n".join(paras)
+
+
+class _Condenser:
+    def __init__(self):
+        self.client = None
+        self.usage = {"calls": 0, "input": 0, "output": 0}
+        self.cache = self._load()
+        self.dirty = False
+
+    @staticmethod
+    def _load() -> dict:
+        try:
+            return json.loads(CACHE_PATH.read_text())
+        except Exception:  # noqa: BLE001
+            return {}
+
+    def save(self) -> None:
+        if not self.dirty:
+            return
+        CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
+        tmp = CACHE_PATH.with_suffix(".json.tmp")
+        tmp.write_text(json.dumps(self.cache, indent=1, ensure_ascii=False, sort_keys=True))
+        tmp.replace(CACHE_PATH)
+        self.dirty = False
+
+    @staticmethod
+    def key(theme: dict, budget: int) -> str:
+        return hashlib.sha1((theme["md"] + "\x00" + str(budget)).encode("utf-8")).hexdigest()
+
+    def _ask(self, theme: dict, n: int, previous: str | None = None, n0: int | None = None) -> str:
+        """One request. With `previous`, the model is shown its earlier reply (which was
+        over n0) and asked to shorten that to at most n."""
+        import anthropic
+        if self.client is None:
+            self.client = anthropic.Anthropic()
+        messages = [{"role": "user", "content": _prompt(theme, n0 or n)}]
+        if previous is not None:
+            # show the reply's sentences with their lengths: the model does the arithmetic
+            # far better than it estimates length
+            listing = "\n".join(
+                f"[{len(x)}] {x}" for para in _para_sentences(previous) for x in para)
+            cut = len(previous) - int(n * 0.9)
+            messages += [
+                {"role": "assistant", "content": previous},
+                {"role": "user", "content": (
+                    f"That is {len(previous)} characters; the limit is now {n}, so about {cut} "
+                    "characters must go. Here are your sentences with their lengths in characters:\n\n"
+                    f"{listing}\n\n"
+                    "Shorten or merge sentences until the lengths add up to at most "
+                    f"{int(n * 0.9)} (plus about 1 per space between sentences). Remove background, "
+                    "restatement, adjectives and connecting words first. Keep the numbers, attributions "
+                    "and the author's first-person commentary. The limit is strict: only if it cannot be "
+                    "met otherwise, drop the least important reported fact (with its number and its "
+                    "source) rather than go over, and keep the commentary. At most 2 paragraphs. Return "
+                    "only the text, without the bracketed lengths.")}]
+        resp = self.client.messages.create(
+            model=CONDENSE_MODEL, max_tokens=4000, system=_SYSTEM,
+            thinking={"type": "disabled"}, messages=messages)
+        self.usage["calls"] += 1
+        self.usage["input"] += resp.usage.input_tokens
+        self.usage["output"] += resp.usage.output_tokens
+        if resp.stop_reason == "refusal":
+            raise RuntimeError("the model declined")
+        return _clean_reply("".join(b.text for b in resp.content if b.type == "text"))
+
+    def condense(self, theme: dict, budget: int, fits=None) -> tuple[str, str]:
+        """(text within N = 95% of budget characters, how it was made). `fits(text)` renders
+        the card: a second reply that is over N but still fits at 36 px is kept, since the
+        5% margin only exists to make the text fit; otherwise it is cut at a sentence end."""
+        k = self.key(theme, budget)
+        hit = self.cache.get(k)
+        if hit and hit.get("text"):
+            return hit["text"], "cache"
+        n = int(budget * 0.95)
+        how = "claude"
+        try:
+            out = self._ask(theme, n)
+            if len(out) > n:
+                logger.info(f"theme {theme['num']}: first reply {len(out)} chars > {n}; asking again")
+                first = len(out)
+                out = self._ask(theme, int(n * 0.9), previous=out, n0=n)
+                how = f"claude (second try; first reply {first} chars, second {len(out)})"
+            if len(out) > n and fits is not None and fits(out):
+                how += f", over N={n} but fits at {BODY_PX} px, kept"
+            elif len(out) > n:
+                before = len(out)
+                out = (_cut_sentences(out, fits) if fits is not None else _cut_to_chars(out, n))
+                how += f", cut at a sentence end ({before} -> {len(out)} chars)"
+        except Exception as e:  # noqa: BLE001  (no key, network, refusal): never block the cards
+            logger.warning(f"theme {theme['num']}: condensation failed ({e}); cutting at a sentence end")
+            t2 = _cut_sentences(theme["text"], fits) if fits is not None else _cut_to_chars(theme["text"], n)
+            return t2, "cut (no condensation)"
+        self.cache[k] = {"text": out, "budget": budget, "n": n, "model": CONDENSE_MODEL,
+                         "title": theme["title"], "original_chars": len(theme["text"]),
+                         "created": datetime.now(timezone.utc).isoformat(timespec="seconds")}
+        self.dirty = True
+        return out, how
+
+    def cost_usd(self) -> float:
+        pin, pout = PRICE_PER_MTOK.get(CONDENSE_MODEL, (2.0, 10.0))
+        return self.usage["input"] * pin / 1e6 + self.usage["output"] * pout / 1e6
+
+
+# ── planning ────────────────────────────────────────────────────────────
+
+def plan_cards(fitter: _Fitter, themes: list[dict], date: str) -> tuple[list[dict], list[str]]:
+    """[{theme, text, px, budget, condensed, how}] for each theme (at most MAX_CARDS-1),
+    plus log notes."""
     notes: list[str] = []
+    if len(themes) > MAX_CARDS - 1:
+        dropped = themes[MAX_CARDS - 1:]
+        themes = themes[:MAX_CARDS - 1]
+        note = (f"{len(dropped)} theme(s) left off to stay within {MAX_CARDS} cards with the "
+                f"sign-up card: " + ", ".join(str(t["num"]) for t in dropped))
+        logger.warning(note)
+        notes.append(note)
+    cond = _Condenser()
     plan = []
-    for k, t in enumerate(themes):
-        px, cards = fitter.layout(t, cta_last=(k == len(themes) - 1))
-        plan.append((t, px, cards))
-    total = sum(len(c) for _t, _p, c in plan)
-    # over the cap: cut the last theme's text (then the one before it) at a sentence end
-    for k in range(len(plan) - 1, -1, -1):
-        if total <= MAX_CARDS:
-            break
-        t, px, cards = plan[k]
-        others = total - len(cards)
-        allowed = max(1, MAX_CARDS - others)
-        if allowed >= len(cards):
-            continue
-        cut = fitter.pack(t, BODY_PX[-1], cta_last=(k == len(plan) - 1), max_cards=allowed)
-        if cut is None:
-            continue
-        dropped = cut[-1].get("dropped", 0)
-        kept = sum(len(c["units"]) for c in cut)
-        note = (f"theme {t['num']} cut to {len(cut)} card(s) at {BODY_PX[-1]} px to stay within "
-                f"{MAX_CARDS} cards: {kept} of {kept + dropped} sentences kept, ending with ' …'")
-        logger.warning(note)
+    for t in themes:
+        budget = fitter.budget(t, date)
+        text, how, condensed = t["text"], "unchanged", False
+        if len(text) > budget or not fitter.fits(card_html(t, date, text, px=BODY_PX)):
+            text, how = cond.condense(
+                t, budget, fits=lambda x, t=t: fitter.fits(card_html(t, date, x, px=BODY_PX)))
+            condensed = True
+        px = BODY_PX
+        if not fitter.fits(card_html(t, date, text, px=px)):
+            px = FALLBACK_PX
+            if not fitter.fits(card_html(t, date, text, px=px)):
+                text = _cut_to_fit(fitter, t, date, text, px)
+                how += f", cut at a sentence end at {px} px"
+            logger.warning(f"theme {t['num']}: overflowed at {BODY_PX} px; set at {px} px")
+        note = (f"theme {t['pos']} (entry {t['num']}): original {len(t['text'])} chars, budget "
+                f"{budget}, final {len(text)} chars, {how}, {px} px")
+        logger.info(note)
         notes.append(note)
-        plan[k] = (t, BODY_PX[-1], cut)
-        total = others + len(cut)
-    if total > MAX_CARDS:
-        note = f"{total} cards even after cutting: more than {MAX_CARDS} free themes"
-        logger.warning(note)
-        notes.append(note)
+        plan.append(dict(theme=t, text=text, px=px, budget=budget, condensed=condensed, how=how))
+    cond.save()
+    if cond.usage["calls"]:
+        note = (f"condensation: {cond.usage['calls']} call(s) to {CONDENSE_MODEL}, "
+                f"{cond.usage['input']} input + {cond.usage['output']} output tokens, "
+                f"about ${cond.cost_usd():.3f}")
+    else:
+        note = "condensation: no API calls (all themes fit or came from the cache)"
+    logger.info(note)
+    notes.append(note)
     return plan, notes
 
 
-def render_cards(draft: dict, out_dir: Path) -> list[Path]:
-    """Writes card1..cardK.png and the carousel PDF; returns the PNG paths then the PDF."""
+def render_cards(draft: dict, out_dir: Path, notes: list | None = None) -> list[Path]:
+    """Writes card1..cardK.png (themes, then the CTA card) and the carousel PDF; returns
+    the PNG paths then the PDF. `notes`, when given, receives the per-theme log lines."""
     from playwright.sync_api import sync_playwright
 
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -363,22 +580,17 @@ def render_cards(draft: dict, out_dir: Path) -> list[Path]:
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         page = browser.new_page(viewport={"width": W, "height": H}, device_scale_factor=1)
-        fitter = _Fitter(page, date)
-        plan, _notes = plan_cards(fitter, themes)
-        n_total = sum(len(c) for _t, _p, c in plan)
-        k = 0
-        for ti, (t, px, cards) in enumerate(plan):
-            for ci, c in enumerate(cards):
-                k += 1
-                marker = f"{ci + 1}/{len(cards)}" if ci > 0 else ""
-                html = card_html(t, date, c["units"], px=px, first=c["first"], last=c["last"],
-                                 cta=(k == n_total), marker=marker, ellipsis=c["ellipsis"])
-                if not fitter.fits(html):  # the packing measured this exact card; never expected
-                    logger.warning(f"card {k}: theme {t['num']} overflows")
-                out = out_dir / f"Housing at Noon {date} card{k}.png"
-                page.screenshot(path=str(out), clip={"x": 0, "y": 0, "width": W, "height": H})
-                outs.append(out)
-            logger.info(f"theme {t['num']}: {len(cards)} card(s) at {px} px")
+        fitter = _Fitter(page)
+        plan, pnotes = plan_cards(fitter, themes, date)
+        if notes is not None:
+            notes.extend(pnotes)
+        htmls = [card_html(c["theme"], date, c["text"], px=c["px"]) for c in plan] + [cta_html(date)]
+        for k, h in enumerate(htmls, start=1):
+            if not fitter.fits(h):  # measured above; never expected
+                logger.warning(f"card {k} overflows")
+            out = out_dir / f"Housing at Noon {date} card{k}.png"
+            page.screenshot(path=str(out), clip={"x": 0, "y": 0, "width": W, "height": H})
+            outs.append(out)
         browser.close()
     _remove_stale(out_dir, date, len(outs))
     # Carousel PDF: the PNGs as pages, each 1080x1350 px at 96 dpi (810x1012.5 pt), no
