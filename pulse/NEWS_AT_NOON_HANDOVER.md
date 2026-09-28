@@ -789,3 +789,56 @@ card and cards 2-4 described in the two sections above.
   cards at 40 px). `noon_verify.py`: ALL PASS. `xpost.py` (unused) still imports.
 - **Open point for the owner.** Editions with seven or more long free themes (like 25 Sep) will
   lose text from the later themes to stay within 10 cards.
+
+## Status update — 28 Sep 2026 (cards v4): every free theme on ONE card at 36 px, condensed to fit; closing sign-up card
+
+Owner's rules (Aziz, 28 Sep 2026): every free theme fits on one card, no continuation cards, at a fixed
+text size; the builder condenses the theme text to fit, more aggressively when the theme is long. "It
+should look really good, that's the key for social." Eyebrow "Theme One" ... by position in the free
+edition (not the entry's rank). Source pills on every card. Small Home Economics logo in every footer. The
+last card is a standalone call-to-action card. This replaces the continuation cards and 10-card cutting in
+the section above.
+
+- **Layout (`cards.py`).** 80 px side margins. Eyebrow "Theme One" (blue, Medium 30 px); title Medium
+  54 px, -0.03em, balanced wrapping; body 36 px, line height 1.35, at most two paragraphs; each paragraph's
+  last two words are bound so no line holds a single word (CSS `text-wrap: pretty` was tried and dropped:
+  it made short paragraphs ragged). The pills (cream #DADFCE, ink, 28 px, as in the email) sit just above
+  the footer, so they are in the same place on every slide. Footer: HE wordmark (52 px,
+  `static/he-large-black.svg`, copied from Brand assets) left, "Housing at Noon · <date>" right. CTA card:
+  brand blue background, large logo, "Housing at Noon" 104 px, "A daily brief on the U.S. housing market,
+  free every weekday at noon ET", and homeeconomics.us/noon in a cream box. Up to 9 themes plus the CTA
+  (Instagram's 10); beyond 9, the last themes are left off and logged, and the CTA card stays.
+- **Fitting.** Budget = the most characters of a two-paragraph filler (the theme's own words) that fit at
+  36 px with the theme's own title and pills, found by rendering. Recent budgets are 727-898 characters.
+  If the visible text is within the budget and fits as it is, it is used unchanged. Otherwise
+  `claude-sonnet-5` condenses it. The pipeline has no Sonnet step, since v4b uses Opus and Haiku, so the
+  owner's default model applies (`NOON_CARDS_MODEL` overrides). The prompt states N = 95% of the budget
+  and asks the model to keep the meaning, every number and every attribution, and the author's
+  first-person commentary as the last paragraph. It also asks for at most 2 paragraphs, no links,
+  headings or bullets, and a measured register. The first run dropped every one of Aziz's first-person
+  paragraphs until the commentary rule was added. A reply over N gets one retry: the reply's sentences
+  are shown with their lengths and the target is 0.9N. A second reply that is still over N but fits on
+  the card at 36 px is kept, because the 5% margin exists only to make it fit. This departs from the
+  brief's "cut", and the owner can reverse it. Otherwise whole sentences are dropped from the end until
+  it fits. Overflow at 36 px after that steps to 34 px, then cuts. Nothing is clipped.
+- **Cache and cost.** `~/work/noon/cards_cache.json`, keyed by sha1(theme markdown + budget). A second
+  render of 25 and 28 Sep through `/cards/<date>` was byte-identical and made no API calls. Cost per
+  edition, logged with token counts: about $0.09 for 25 Sep (14 calls, 21.8k input + 4.5k output tokens)
+  and about $0.065 for 28 Sep (11 calls). `ANTHROPIC_API_KEY` was added to `~/.noon_env` (it was not
+  there; the same key as `~/.pulse_dev_env`); backup at `~/.noon_env.bak_20260928`. Without a key the
+  builder cuts at sentence ends instead and logs a warning.
+- **Limitation, measured.** Sonnet 5 with thinking off does not hold a character limit. First replies
+  ran 5-50% over N. Adaptive thinking at low, medium and high effort did not help: it barely thought, and
+  the replies were 6-53% over. Across repeated runs, 1 to 5 of the 13 themes still ended in a sentence
+  cut. At this compression (budgets are 35-85% of the theme length) numbers and attributions are
+  lost. In the committed cache: 25 Sep Theme Three lost Lance Lambert's LinkedIn point (5.99% before
+  Khamenei's death) and @JonKutsmeda's $5,912 per $100K. 25 Sep Theme Two (2,160 visible characters)
+  lost Kevin Erdmann, the NAHB attribution and most of Aziz's home-size commentary. 28 Sep Theme Four lost
+  its second paragraph (the FT post; 30-year rates above 7%). 28 Sep Theme Two lost "near-7.5% rates" and
+  the 37% BMO figure. Options for the owner: a third request, a smaller body size, or accepting these
+  losses.
+- **Editor.** `/cards/{date}` line: "Instagram: post all cards as one carousel. X: post the first four
+  cards. LinkedIn: upload the PDF as a document post." The first render of a date takes about 30-60 s
+  (Claude calls).
+- **Tested.** 25 Sep: 7 themes + CTA = 8 cards. 28 Sep: 6 + CTA = 7. All at 36 px. Stale card9/card10
+  from v3 were deleted. `noon_verify.py`: ALL PASS. Previews: `OVH/NewsAtNoon/outputs/cards_v4_<date>_*`.
