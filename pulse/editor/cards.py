@@ -20,14 +20,36 @@ How a theme is fitted:
      (the theme's words, two paragraphs), and the longest filler that fits at 36 px is
      the character budget. A two-line title or a second row of pills lowers it.
   2. If the visible text (links reduced to their anchor words) is within the budget, it
-     is used unchanged. Otherwise Claude condenses it to at most N = 95% of the budget
-     characters; if the reply is longer than N it is asked once more with N cut by 10%,
-     and if that is still too long the text is cut at a sentence end.
-  3. The card is measured again. If it still overflows (rare), the body steps to 34 px,
-     then the text is cut at a sentence end. Nothing is clipped.
-Condensed text is cached in NOON_CARDS_CACHE (default ~/work/noon/cards_cache.json), keyed
-by sha1(theme markdown + budget), so re-rendering the same draft gives the same cards at
-no cost. Each condensation and the token usage are logged.
+     is used unchanged. Otherwise it is condensed, under the owner's rule (Aziz, 28 Sep
+     2026): a card must keep every number and every attribution.
+     a. Facts to keep are extracted from the visible text, less its pointer sentences
+        ("My X post on this is here"): every number, percentage, dollar figure and date
+        (regexes, with a few words of context), every @handle and "On X,"-style platform
+        lead-in (regexes), every source pill the text names, and every other named source
+        or person (Claude Haiku; names not found in the text are
+        discarded).
+     b. Claude Sonnet condenses the text, given the facts list, a target of 85% of the
+        budget and a hard ceiling of the budget, and asked to keep the author's
+        commentary (first-person sentences, and an unattributed closing paragraph) and to
+        add nothing; at most two paragraphs, plain text.
+     c. The reply is checked: every number and date verbatim, every name case-insensitive
+        on word boundaries, every handle verbatim, the commentary present (by its
+        distinctive words, and in the first person if it was), and the text within the
+        budget and fitting at 36 px. If any check fails, a repair request lists the
+        missing facts and the exact excess characters, measured on the card when the
+        text is within the budget but does not fit (up to 3 repair rounds; only the
+        latest draft is sent back, to keep the cost down).
+  3. A condensed text is never cut at a sentence end. If no draft passes after 3 repairs,
+     each draft is judged by what the card would show (the body steps to 34 px, then
+     32 px, to fit it whole) and the one that loses the fewest facts, at the largest
+     size, is used; a WARNING names the theme and what is missing. The last
+     guard (overflow at 32 px) cuts at a sentence end and logs a WARNING; nothing is
+     clipped.
+Results are cached in NOON_CARDS_CACHE (default ~/work/noon/cards_cache.json), keyed by
+sha1(PROMPT_VERSION + theme markdown + budget), so re-rendering the same draft gives the
+same cards at no cost; bumping PROMPT_VERSION retires every cached text. Each
+condensation, its fidelity (facts kept / total, repair rounds) and the token usage and
+cost per model are logged.
 
 Files: `Housing at Noon YYYY-MM-DD card1.png` … `cardK.png` (the themes, then the CTA
 card; stale higher-numbered cards from an earlier render of the same date are removed)
@@ -64,12 +86,17 @@ SIGNUP = "homeeconomics.us/noon"
 W, H = 1080, 1350
 MAX_CARDS = 10          # Instagram's carousel limit, CTA card included
 BODY_PX = 36
-FALLBACK_PX = 34
+FALLBACK_PXS = (34, 32)   # tried in order when a condensed text still does not fit at 36
 MARGIN = 80
-# The pipeline's live synthesis (v4b) has no Sonnet step (Opus writes, Haiku gates), so
-# the owner's default applies.
+# Sonnet condenses and repairs; Haiku extracts names (owner's choice, 28 Sep 2026).
 CONDENSE_MODEL = os.environ.get("NOON_CARDS_MODEL", "claude-sonnet-5")
-PRICE_PER_MTOK = {"claude-sonnet-5": (2.00, 10.00)}   # input, output USD
+EXTRACT_MODEL = os.environ.get("NOON_CARDS_EXTRACT_MODEL", "claude-haiku-4-5")
+PRICE_PER_MTOK = {"claude-sonnet-5": (2.00, 10.00), "claude-haiku-4-5": (1.00, 5.00)}  # in, out USD
+# Part of the cache key: bump it whenever the prompts or the checks change, so texts made
+# under older rules are not reused.
+PROMPT_VERSION = "cards-v5-2026-09-28-facts"
+TARGET_SHARE = 0.85       # target length as a share of the budget; the budget is the ceiling
+MAX_REPAIRS = 3
 
 INK, MUTED, BLUE, CREAM, LIGHT = "#3D3733", "#7F7570", "#0BB4FF", "#F6F7F3", "#DADFCE"
 SANS = '"ABC Oracle Edu", "Helvetica Neue", Helvetica, Arial, sans-serif'
@@ -171,8 +198,16 @@ def free_themes(draft: dict) -> list[dict]:
         text = "\n\n".join(paras)
         if re.search(r"https?://", text):
             logger.warning(f"theme {num}: a bare URL is in the card text")
+        # A cleaned draft stores its pills at ingest (links.clean_draft). They are rebuilt
+        # here with the same rule, so a display name added to source_names.json later
+        # (e.g. "Kevinerdmann" -> "Kevin Erdmann") also reaches cards of earlier drafts.
+        if isinstance(e.get("_pills"), list):
+            import links
+            pills = links.outlets_for(e)
+        else:
+            pills = el._entry_pills(e)
         out.append({"pos": i, "num": num, "title": title, "text": text, "md": md,
-                    "pills": el._entry_pills(e)})
+                    "pills": pills})
     return out
 
 
@@ -311,6 +346,29 @@ class _Fitter:
         return len(filler(lo)) if lo else 0
 
 
+def _capacity(fitter: _Fitter, theme: dict, date: str, text: str, px: int) -> int:
+    """How many characters of `text` (a prefix, ending at a word) fit on the card at `px`.
+    Used only to tell the model the exact excess; the text itself is never cut here."""
+    lo, hi = 0, len(text)
+    while lo < hi:
+        mid = (lo + hi + 1) // 2
+        cut = text[:mid].rsplit(" ", 1)[0] if mid < len(text) else text
+        if fitter.fits(card_html(theme, date, cut, px=px)):
+            lo = mid
+        else:
+            hi = mid - 1
+    return len(text[:lo].rsplit(" ", 1)[0]) if lo < len(text) else lo
+
+
+def _outcome(fitter: _Fitter, theme: dict, date: str, text: str) -> tuple[str, int | None]:
+    """(text as the card would show it, px): the largest of 36/34/32 px that fits the whole
+    text, or (the last-guard cut at 32 px, None)."""
+    for p in (BODY_PX, *FALLBACK_PXS):
+        if fitter.fits(card_html(theme, date, text, px=p)):
+            return text, p
+    return _cut_to_fit(fitter, theme, date, text, FALLBACK_PXS[-1]), None
+
+
 def _cut_to_fit(fitter: _Fitter, theme: dict, date: str, text: str, px: int) -> str:
     """Longest prefix of whole sentences (paragraphs kept) that fits at `px`."""
     units = [(pi, s) for pi, p in enumerate(_para_sentences(text)) for s in p]
@@ -332,80 +390,269 @@ def _cut_to_fit(fitter: _Fitter, theme: dict, date: str, text: str, px: int) -> 
     return join(best)
 
 
-def _cut_sentences(text: str, ok) -> str:
-    """Drop whole sentences from the end, one at a time, until ok(text) is true (measured
-    by rendering the card). Keeps at least one sentence."""
-    paras = _para_sentences(text)
-    join = lambda ps: "\n\n".join(" ".join(p) for p in ps if p)  # noqa: E731
-    while not ok(join(paras)) and sum(len(p) for p in paras) > 1:
-        paras[-1].pop()
-        paras = [p for p in paras if p]
-    return join(paras)
+# ── facts to keep (owner, 28 Sep 2026: never lose a number or an attribution) ──
+
+_MONTH = (r"(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|June?|July?|Aug(?:ust)?|"
+          r"Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)")
+_DATE_RE = re.compile(rf"\b{_MONTH}\.?\s+\d{{1,2}}(?:st|nd|rd|th)?(?:,\s*\d{{4}})?(?!\d)"
+                      rf"|\b{_MONTH}\.?\s+\d{{4}}(?!\d)")
+# a figure: optional currency sign, digits with separators, optional unit (%, K, bn, million ...)
+_NUM_RE = re.compile(r"(?<![\w.])[$€£]?\d+(?:[.,]\d+)*"
+                     r"(?:\s?(?:%|percent\b|(?:[KkMBT]|bn|tn)\b|(?:thousand|million|billion|trillion)\b))?")
+_HANDLE_RE = re.compile(r"(?<![\w@])@[A-Za-z0-9_]{1,30}(?![A-Za-z0-9_])")
+_LEADIN_RE = re.compile(r"\b[Oo]n (X|LinkedIn|Bluesky|Threads|Substack|Reddit|YouTube|TikTok|Facebook|"
+                        r"Instagram|Mastodon)\b")
+_FIRST_PERSON = re.compile(r"(?<![\w’'])(?:I|I['’](?:m|ve|d|ll)|[Mm]y|me|[Mm]yself)(?![\w’'])")
 
 
-def _cut_to_chars(text: str, n: int) -> str:
-    """Whole sentences (paragraphs kept) up to n characters; at least one sentence."""
+def _norm_num(s: str) -> str:
+    return re.sub(r"\s?percent\b", "%", s.replace(" ", " "))
+
+
+def _context(text: str, start: int, end: int, span: int = 45) -> str:
+    a, b = max(0, start - span), min(len(text), end + span)
+    s = text[a:b].replace("\n", " ")
+    if a > 0:
+        s = "…" + s.split(" ", 1)[-1]
+    if b < len(text):
+        s = s.rsplit(" ", 1)[0] + "…"
+    return s
+
+
+def regex_facts(text: str) -> list[dict]:
+    """Numbers, dates and @handles in the visible text, each once, in order of first
+    appearance, with a few words of context."""
+    facts: list[dict] = []
+    seen: set[str] = set()
+    taken: list[tuple[int, int]] = []
+
+    def add(kind, value, m):
+        v = value.strip()
+        if v and v not in seen:
+            seen.add(v)
+            facts.append({"kind": kind, "value": v, "context": _context(text, m.start(), m.end()),
+                          "at": m.start()})
+
+    for m in _DATE_RE.finditer(text):
+        taken.append((m.start(), m.end()))
+        add("date", m.group(0), m)
+    for m in _NUM_RE.finditer(text):
+        if any(a <= m.start() < b for a, b in taken):
+            continue  # the day or year of a date already listed
+        add("number", m.group(0), m)
+    for m in _HANDLE_RE.finditer(text):
+        add("handle", m.group(0), m)
+    facts.sort(key=lambda f: f["at"])
+    for f in facts:
+        f.pop("at", None)
+    return facts
+
+
+def _has_name(name: str, text: str) -> bool:
+    return re.search(r"(?<![A-Za-z0-9])" + re.escape(name) + r"(?![A-Za-z0-9])", text, re.I) is not None
+
+
+def _has_fact(f: dict, text: str) -> bool:
+    k, v = f["kind"], f["value"]
+    if k in ("number", "date"):
+        return re.search(r"(?<![\d.,])" + re.escape(_norm_num(v)) + r"(?![.,]?\d)", _norm_num(text)) is not None
+    if k == "handle":
+        return re.search(re.escape(v) + r"(?![A-Za-z0-9_])", text) is not None
+    if k == "name":
+        return _has_name(v, text)
+    if k == "commentary":
+        if f.get("first_person") and not _FIRST_PERSON.search(text):
+            return False
+        kws = f.get("keywords") or []
+        low = {w[:5] for w in re.findall(r"[a-z]+", text.lower()) if len(w) >= 5}
+        return sum(1 for w in kws if w[:5] in low) >= min(2, len(kws))
+    return v in text
+
+
+def missing_facts(facts: list[dict], text: str) -> list[dict]:
+    return [f for f in facts if not _has_fact(f, text)]
+
+
+def _fact_label(f: dict) -> str:
+    if f["kind"] == "commentary":
+        return "the author's commentary"
+    return f["value"]
+
+
+# A sentence that only points elsewhere ("My X post on this is here", "the map below") is
+# not commentary the card can carry.
+_POINTER = re.compile(r"\b(?:here|below|above)\s*[.)]?\s*$|\bsee my\b|\bmy (?:X|Substack|LinkedIn|Bluesky|"
+                      r"Threads) post\b|\bI wrote about\b|\bI(?:'ve|’ve| have) written\b|\bthe map below\b", re.I)
+_STOP = set("""about above after again against along among another around because become been before
+being below between both could does doing during each either every first from further have having
+here hers herself himself into itself just least less like might more most much must myself never
+other ought ours ourselves over same shall should since some such than that their theirs them
+themselves then there these they this those though through under until upon very were what when
+where which while whom whose will with within without would your yours yourself yourselves also
+still even really quite rather indeed these those thing things lots something""".split())
+
+
+def commentary_fact(text: str, names: list[str], handles: set[str]) -> dict | None:
+    """The author's commentary, if any: sentences in the first person (pointer sentences
+    aside), and a last paragraph that names no source or handle (an unattributed closing
+    remark such as "Indeed, Staten Island is much less dense ..."). Checked in a condensed
+    text by its distinctive words (at least two must survive, compared on their first five
+    letters) and, when the original view was in the first person, by first-person wording.
+    The first-person check is not applied when the only first-person words were in pointer
+    sentences, so the model is never pushed to invent a first-person line."""
     paras = _para_sentences(text)
-    out: list[list[str]] = []
-    total = 0
+    if not paras:
+        return None
+    sents: list[str] = []
     for p in paras:
-        cur: list[str] = []
-        for s in p:
-            add = len(s) + (1 if cur else (2 if out else 0))
-            if total + add > n and (out or cur):
-                if cur:
-                    out.append(cur)
-                return "\n\n".join(" ".join(x) for x in out)
-            cur.append(s)
-            total += add
-        out.append(cur)
-    return "\n\n".join(" ".join(x) for x in out)
+        sents += [s for s in p if _FIRST_PERSON.search(s) and not _POINTER.search(s)]
+    last = " ".join(s for s in paras[-1] if not _POINTER.search(s))
+    if (len(paras) > 1 and last and not any(_has_name(n, last) for n in names)
+            and not any(h in last for h in handles)):
+        sents += [s for s in paras[-1] if not _POINTER.search(s) and s not in sents]
+    if not sents:
+        return None
+    body = " ".join(sents)
+    rest = text
+    for s in sents:
+        rest = rest.replace(s, " ")
+    rest_stems = {w[:5] for w in re.findall(r"[a-z]+", rest.lower()) if len(w) >= 5}
+    words = [w for w in dict.fromkeys(re.findall(r"[a-z]+", body.lower())) if len(w) >= 5 and w not in _STOP]
+    kws = [w for w in words if w[:5] not in rest_stems][:8] or words[:8]
+    fp = any(_FIRST_PERSON.search(s) for s in sents)
+    return {"kind": "commentary", "value": "the author's commentary",
+            "context": " ".join(body.split()[:10]) + " …", "keywords": kws, "first_person": fp}
+
+
+_NAMES_PROMPT = (
+    "Below is a passage from a newsletter about the U.S. housing market. List every named "
+    "source or person in it: people; news outlets, publications, newsletters and blogs; firms, "
+    "banks, brokerages and data providers; government agencies and bodies; think tanks and "
+    "universities; and social platforms named as the place where something was said (such as "
+    "X, LinkedIn or Bluesky). Do not list places, laws, programs, products or indexes, and do "
+    "not list the newsletter's own author (\"I\") or a platform mentioned only as the place of "
+    "the author's own post (\"see my X post\").\n"
+    "Give each entity on its own, by its name only, spelled as in the passage: from "
+    "\"Calculated Risk's Bill McBride\" list \"Calculated Risk\" and \"Bill McBride\"; from "
+    "\"Census and HUD data\" list \"Census\" and \"HUD\"; from \"the September NAHB survey\" list "
+    "\"NAHB\"; from \"HousingWire's coverage\" list \"HousingWire\". A person named in full and "
+    "later by surname appears once, in full. Reply with a JSON array of strings and nothing "
+    "else.\n\nPassage:\n")
+
+
+def _parse_names(reply: str) -> list[str]:
+    m = re.search(r"\[.*\]", reply or "", re.S)
+    if not m:
+        return []
+    try:
+        arr = json.loads(m.group(0))
+    except Exception:  # noqa: BLE001
+        return []
+    return [str(x).strip() for x in arr if isinstance(x, str) and str(x).strip()]
+
+
+def _clean_names(names: list[str], text: str, handles: set[str]) -> list[str]:
+    """Names that really occur in the text, without handles, duplicates, or a name that
+    only repeats part of a longer one ("Erdmann" when "Kevin Erdmann" is listed)."""
+    out: list[str] = []
+    # a possessive pair ("Calculated Risk's Bill McBride") is two names
+    names = [p for n in names for p in re.split(r"['’]s\s+", n)]
+    for n in names:
+        n = re.sub(r"['’]s?$", "", n.strip(" .,;:\"“”"))
+        if not n or n.startswith("@") or n in handles or not _has_name(n, text):
+            continue
+        if any(n.lower() == o.lower() for o in out):
+            continue
+        out.append(n)
+    # a surname alone is dropped when the full name is listed ("Erdmann" / "Kevin Erdmann");
+    # "FT" and "FT Property" are both kept
+    return [n for n in out if not any(o != n and o.lower().endswith(" " + n.lower()) for o in out)]
 
 
 # ── condensing with Claude ──────────────────────────────────────────────
 
 _SYSTEM = ("You condense sections of Housing at Noon, a daily brief on the U.S. housing market, "
            "so that each section fits on one social-media card. You shorten wording; you never "
-           "add facts, opinions or emphasis.")
+           "add facts, opinions or emphasis, and you never drop a fact you are told to keep.")
 
 
-def _aim(theme: dict, n: int) -> int:
-    """The length suggested to the model, below the hard limit n. The model overshoots
-    more the harder it has to compress, so the longer the theme is relative to n, the
-    lower the suggestion: 85% of n for light cuts, down to 60% for a theme 3-4 times n."""
-    r = len(theme["text"]) / max(1, n)
-    return int(n * max(0.60, min(0.85, 0.95 - 0.12 * (r - 1))))
+def _facts_block(facts: list[dict]) -> str:
+    lines = []
+    for f in facts:
+        if f["kind"] in ("number", "date"):
+            lines.append(f"- {f['value']}   (in: \"{f['context']}\")")
+        elif f["kind"] == "handle":
+            lines.append(f"- {f['value']}   (handle; keep it exactly)")
+        elif f["kind"] == "name":
+            lines.append(f"- {f['value']}   (source or person; keep the name as written)")
+        elif f["kind"] == "commentary":
+            lines.append(f"- the author's own commentary, which begins \"{f['context']}\" (keep its "
+                         "point, condensed, in the author's own words"
+                         + (", in the first person" if f.get("first_person") else "")
+                         + ", as the last paragraph)")
+    return "\n".join(lines)
 
 
-def _prompt(theme: dict, n: int) -> str:
-    aim = _aim(theme, n)
+def _prompt(theme: dict, budget: int, facts: list[dict]) -> str:
+    target = int(budget * TARGET_SHARE)
+    orig = len(theme["text"])
     return (
-        f"Condense the theme below to AT MOST {n} characters in total, counting spaces and "
-        f"punctuation; aim for about {aim} characters (roughly {max(20, aim // 6)} "
-        f"words), since going over the limit is not allowed. The original is {len(theme['text'])} "
-        f"characters, so cut about {max(0, 100 - round(100 * n / max(1, len(theme['text']))))}% of it.\n\n"
+        "Condense the theme below so it fits on one social-media card.\n\n"
+        f"Length: aim for about {target} characters in total, counting spaces and punctuation. "
+        f"The hard limit is {budget} characters; a reply over {budget} cannot be used. The "
+        f"original is {orig} characters, so about {max(0, 100 - round(100 * target / max(1, orig)))}% "
+        "of it must go.\n\n"
+        "Facts that must all appear in your text, each written exactly as listed (numbers and "
+        "dates character for character, names in full):\n"
+        f"{_facts_block(facts)}\n\n"
         "Rules:\n"
-        "- Keep the theme's meaning and its main point.\n"
-        "- Keep every number exactly as written (percentages, dollar amounts, counts, rates, "
-        "dates, rankings).\n"
-        "- Keep every attribution: who reported, said, estimated, found or wrote each fact "
-        "(people, firms, agencies, publications, and platform lead-ins such as \"On X,\" or "
-        "\"On LinkedIn,\").\n"
-        "- Passages in the first person (\"I\", \"my\", \"to me\") are the author's own commentary, "
-        "the most distinctive part of the brief. Keep that view, condensed, in the first person, "
-        "as the last paragraph. Leave out only a sentence that points to something not on the "
-        "card (\"the map below\", \"see my post\", \"I wrote about this here\").\n"
-        "- Numbers and attributions take priority over descriptive wording: cut restatement, "
-        "background, adjectives and connecting phrases first.\n"
-        "- Keep the paragraph structure, with at most 2 paragraphs separated by one blank line "
-        "(the reported facts first, the author's commentary, if any, second).\n"
-        "- Plain text only: no markdown links (keep only the anchor words), no headings, no "
-        "bullets, no bold or italics, no quotation of this prompt.\n"
-        "- Write in the brief's register: measured, precise, restrained, no sensationalism.\n"
-        f"- Return only the condensed text, at most {n} characters.\n\n"
+        "- Every listed fact must appear. To make room, cut restatement, background, adjectives, "
+        "examples that carry no listed fact, and connecting phrases; merge sentences; use short "
+        "attributions (\"per HousingWire\", \"Kevin Erdmann notes\").\n"
+        "- Keep each number with what it measures and with its source. Do not change any figure "
+        "or who said it.\n"
+        "- The author's own commentary (passages in the first person, and an unattributed closing "
+        "remark) is the most distinctive part of the brief. Keep it, condensed, in the author's "
+        "own words, as the last paragraph. Leave out only a sentence that points to something not "
+        "on the card (\"the map below\", \"see my post\").\n"
+        "- Do not add any statement, opinion or first-person wording that is not in the original.\n"
+        "- At most 2 paragraphs separated by one blank line (the reported facts first, the "
+        "author's commentary, if any, second).\n"
+        "- Plain text only: no links, markdown, headings, bullets, bold or italics.\n"
+        "- Write in the brief's register: measured, precise, restrained.\n"
+        "- Return only the condensed text.\n\n"
         f"Theme title (context only; do not repeat it): {theme['title']}\n\n"
         f"Theme text:\n{theme['text']}"
     )
+
+
+def _repair_prompt(draft: str, budget: int, missing: list[dict], fits36: bool,
+                   capacity: int | None = None) -> str:
+    """`capacity`: characters of this draft that fit on the card at 36 px, measured by
+    rendering (paragraph breaks and line ends make it lower than the budget)."""
+    limit = budget if fits36 or capacity is None else min(budget, capacity)
+    target = int(limit * (TARGET_SHARE if limit == budget else 0.95))
+    parts = ["That draft needs changes before it can be used:"]
+    if len(draft) > limit:
+        why = ("" if limit == budget else
+               f" (measured on the card: only the first {limit} characters of this draft fit, because "
+               "paragraph breaks and line ends take room)")
+        parts.append(f"- It is {len(draft)} characters; the limit is {limit}{why}, so at least "
+                     f"{len(draft) - limit} characters must go (aim for about {target}).")
+    elif not fits36:
+        parts.append(f"- It is {len(draft)} characters but does not fit on the card; shorten it by "
+                     f"about {max(30, len(draft) - int(budget * TARGET_SHARE))} characters.")
+    if missing:
+        parts.append("- These facts from the original are missing and must be restored, exactly as "
+                     "written:\n" + _facts_block(missing))
+    listing = "\n".join(f"[{len(x)}] {x}" for para in _para_sentences(draft) for x in para)
+    parts.append(f"\nYour sentences, with their lengths in characters:\n{listing}\n")
+    parts.append("Revise the draft: restore every missing fact, then shorten by merging sentences and "
+                 "cutting wording that carries no listed fact. Do not drop any listed fact to save "
+                 "space, keep the author's commentary, and add nothing that is not in the original. At most 2 "
+                 "paragraphs. Return "
+                 "only the revised text, without the bracketed lengths.")
+    return "\n".join(parts)
 
 
 def _clean_reply(t: str) -> str:
@@ -422,7 +669,7 @@ def _clean_reply(t: str) -> str:
 class _Condenser:
     def __init__(self):
         self.client = None
-        self.usage = {"calls": 0, "input": 0, "output": 0}
+        self.usage: dict[str, dict[str, int]] = {}
         self.cache = self._load()
         self.dirty = False
 
@@ -444,87 +691,147 @@ class _Condenser:
 
     @staticmethod
     def key(theme: dict, budget: int) -> str:
-        return hashlib.sha1((theme["md"] + "\x00" + str(budget)).encode("utf-8")).hexdigest()
+        return hashlib.sha1((PROMPT_VERSION + "\x00" + theme["md"] + "\x00" + str(budget))
+                            .encode("utf-8")).hexdigest()
 
-    def _ask(self, theme: dict, n: int, previous: str | None = None, n0: int | None = None) -> str:
-        """One request. With `previous`, the model is shown its earlier reply (which was
-        over n0) and asked to shorten that to at most n."""
+    def _call(self, model: str, messages: list, system: str | None = None, max_tokens: int = 4000) -> str:
         import anthropic
         if self.client is None:
             self.client = anthropic.Anthropic()
-        messages = [{"role": "user", "content": _prompt(theme, n0 or n)}]
-        if previous is not None:
-            # show the reply's sentences with their lengths: the model does the arithmetic
-            # far better than it estimates length
-            listing = "\n".join(
-                f"[{len(x)}] {x}" for para in _para_sentences(previous) for x in para)
-            cut = len(previous) - int(n * 0.9)
-            messages += [
-                {"role": "assistant", "content": previous},
-                {"role": "user", "content": (
-                    f"That is {len(previous)} characters; the limit is now {n}, so about {cut} "
-                    "characters must go. Here are your sentences with their lengths in characters:\n\n"
-                    f"{listing}\n\n"
-                    "Shorten or merge sentences until the lengths add up to at most "
-                    f"{int(n * 0.9)} (plus about 1 per space between sentences). Remove background, "
-                    "restatement, adjectives and connecting words first. Keep the numbers, attributions "
-                    "and the author's first-person commentary. The limit is strict: only if it cannot be "
-                    "met otherwise, drop the least important reported fact (with its number and its "
-                    "source) rather than go over, and keep the commentary. At most 2 paragraphs. Return "
-                    "only the text, without the bracketed lengths.")}]
-        resp = self.client.messages.create(
-            model=CONDENSE_MODEL, max_tokens=4000, system=_SYSTEM,
-            thinking={"type": "disabled"}, messages=messages)
-        self.usage["calls"] += 1
-        self.usage["input"] += resp.usage.input_tokens
-        self.usage["output"] += resp.usage.output_tokens
+        kw = dict(model=model, max_tokens=max_tokens, messages=messages)
+        if system:
+            kw["system"] = system
+        if model.startswith("claude-sonnet-5"):
+            kw["thinking"] = {"type": "disabled"}
+        resp = self.client.messages.create(**kw)
+        u = self.usage.setdefault(model, {"calls": 0, "input": 0, "output": 0})
+        u["calls"] += 1
+        u["input"] += resp.usage.input_tokens
+        u["output"] += resp.usage.output_tokens
         if resp.stop_reason == "refusal":
-            raise RuntimeError("the model declined")
-        return _clean_reply("".join(b.text for b in resp.content if b.type == "text"))
+            raise RuntimeError(f"{model} declined")
+        return "".join(b.text for b in resp.content if b.type == "text")
 
-    def condense(self, theme: dict, budget: int, fits=None) -> tuple[str, str]:
-        """(text within N = 95% of budget characters, how it was made). `fits(text)` renders
-        the card: a second reply that is over N but still fits at 36 px is kept, since the
-        5% margin only exists to make the text fit; otherwise it is cut at a sentence end."""
+    def facts(self, theme: dict) -> tuple[list[dict], bool]:
+        """(facts to keep, whether the name extraction worked). Cached per theme text."""
+        fk = "facts:" + hashlib.sha1((PROMPT_VERSION + "\x00" + theme["md"]).encode("utf-8")).hexdigest()
+        hit = self.cache.get(fk)
+        if hit and isinstance(hit.get("facts"), list):
+            return hit["facts"], True
+        # facts come from the text without its pointer sentences ("My X post on this is
+        # here", "I wrote about this on Substack here"): the card leaves those out, so a
+        # name or number found only there must not be demanded
+        text = "\n\n".join(" ".join(s for s in p if not _POINTER.search(s))
+                           for p in _para_sentences(theme["text"]))
+        facts = regex_facts(text)
+        handles = {f["value"] for f in facts if f["kind"] == "handle"}
+        ok = True
+        try:
+            names = _parse_names(self._call(EXTRACT_MODEL, [{"role": "user", "content": _NAMES_PROMPT + text}],
+                                            max_tokens=1000))
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"theme {theme['num']}: name extraction failed ({e}); numbers and handles only")
+            names, ok = [], False
+        # platform lead-ins ("On X,", "On LinkedIn,") are attributions; found by regex so
+        # they do not depend on the model
+        names = names + [m.group(1) for m in _LEADIN_RE.finditer(text)]
+        # the source pills (the cited outlets) are attributions whenever the text names them
+        names = names + [p for p in (theme.get("pills") or []) if _has_name(p, text)]
+        kept_names = _clean_names(names, text, handles)
+        for n in kept_names:
+            m = re.search(r"(?<![A-Za-z0-9])" + re.escape(n) + r"(?![A-Za-z0-9])", text, re.I)
+            facts.append({"kind": "name", "value": n,
+                          "context": _context(text, m.start(), m.end()) if m else ""})
+        c = commentary_fact(theme["text"], kept_names, handles)
+        if c:
+            facts.append(c)
+        if ok:
+            self.cache[fk] = {"facts": facts, "model": EXTRACT_MODEL, "title": theme["title"],
+                              "created": datetime.now(timezone.utc).isoformat(timespec="seconds")}
+            self.dirty = True
+        return facts, ok
+
+    def condense(self, theme: dict, budget: int, fits36, capacity=None, outcome=None) -> dict:
+        """{text, how, facts, missing, rounds, ok}. `fits36(text)` renders the card at 36 px;
+        `capacity(text)` gives how many of the text's characters fit on it (for the repair);
+        `outcome(text)` gives (text as the card would show it, px or None if it had to be cut).
+        A draft passes when every fact is present, it is within the budget and it fits at
+        36 px; otherwise up to MAX_REPAIRS repair requests follow. The result is never cut
+        here: after the last repair the draft with the fewest missing facts is returned
+        whole, and plan_cards sets it at a smaller size if it must."""
         k = self.key(theme, budget)
         hit = self.cache.get(k)
         if hit and hit.get("text"):
-            return hit["text"], "cache"
-        n = int(budget * 0.95)
-        how = "claude"
+            facts = hit.get("facts") or []
+            return {"text": hit["text"], "how": "cache", "facts": facts,
+                    "missing": missing_facts(facts, hit["text"]), "rounds": hit.get("rounds", 0),
+                    "ok": hit.get("ok", False)}
         try:
-            out = self._ask(theme, n)
-            if len(out) > n:
-                logger.info(f"theme {theme['num']}: first reply {len(out)} chars > {n}; asking again")
-                first = len(out)
-                out = self._ask(theme, int(n * 0.9), previous=out, n0=n)
-                how = f"claude (second try; first reply {first} chars, second {len(out)})"
-            if len(out) > n and fits is not None and fits(out):
-                how += f", over N={n} but fits at {BODY_PX} px, kept"
-            elif len(out) > n:
-                before = len(out)
-                out = (_cut_sentences(out, fits) if fits is not None else _cut_to_chars(out, n))
-                how += f", cut at a sentence end ({before} -> {len(out)} chars)"
+            facts, names_ok = self.facts(theme)
+            messages = [{"role": "user", "content": _prompt(theme, budget, facts)}]
+            drafts_: list[tuple[str, list[dict], bool]] = []
+            rounds = 0
+            while True:
+                out = _clean_reply(self._call(CONDENSE_MODEL, messages, system=_SYSTEM))
+                miss = missing_facts(facts, out)
+                fit = fits36(out)
+                drafts_.append((out, miss, fit))
+                if not miss and len(out) <= budget and fit:
+                    break
+                if rounds >= MAX_REPAIRS:
+                    break
+                rounds += 1
+                cap = capacity(out) if (capacity is not None and not fit) else None
+                logger.info(f"theme {theme['pos']}: repair {rounds}: {len(out)} chars (budget {budget}"
+                            + (f", {cap} fit on the card" if cap is not None else "") + "), "
+                            f"missing {[_fact_label(f) for f in miss]}, fits at {BODY_PX} px: {fit}")
+                # only the latest draft is sent back (not every earlier one): the repair
+                # request carries all that is needed, and the input stays small
+                messages = [messages[0], {"role": "assistant", "content": out},
+                            {"role": "user", "content": _repair_prompt(out, budget, miss, fit, cap)}]
         except Exception as e:  # noqa: BLE001  (no key, network, refusal): never block the cards
-            logger.warning(f"theme {theme['num']}: condensation failed ({e}); cutting at a sentence end")
-            t2 = _cut_sentences(theme["text"], fits) if fits is not None else _cut_to_chars(theme["text"], n)
-            return t2, "cut (no condensation)"
-        self.cache[k] = {"text": out, "budget": budget, "n": n, "model": CONDENSE_MODEL,
-                         "title": theme["title"], "original_chars": len(theme["text"]),
-                         "created": datetime.now(timezone.utc).isoformat(timespec="seconds")}
-        self.dirty = True
-        return out, how
+            logger.warning(f"theme {theme['num']}: condensation failed ({e}); the full text is used "
+                           "at a smaller size")
+            return {"text": theme["text"], "how": "not condensed (error)", "facts": [], "missing": [],
+                    "rounds": 0, "ok": False}
+        passing = [d for d in drafts_ if not d[1] and d[2] and len(d[0]) <= budget]
+        if passing:
+            out, miss, fit = passing[-1]
+        elif outcome is not None:
+            # none passed: judge each draft by what the card would show after the size
+            # fallback and, if it must, the last-guard cut; fewest facts lost, then the
+            # largest type, then the shortest
+            def score(d):
+                shown, px = outcome(d[0])
+                return (len(missing_facts(facts, shown)), px is None, -(px or 0), len(d[0]))
+            out, miss, fit = min(drafts_, key=score)
+        else:
+            out, miss, fit = min(drafts_, key=lambda d: (len(d[1]), not (d[2] and len(d[0]) <= budget), len(d[0])))
+        ok = not miss and fit and len(out) <= budget
+        how = "claude" + (f", {rounds} repair round(s)" if rounds else "")
+        if not ok:
+            how += f", unresolved after {rounds} repair(s)"
+        if names_ok:  # without the names the check was incomplete: do not keep the result
+            self.cache[k] = {"text": out, "budget": budget, "facts": facts, "rounds": rounds, "ok": ok,
+                             "model": CONDENSE_MODEL, "prompt_version": PROMPT_VERSION,
+                             "title": theme["title"], "original_chars": len(theme["text"]),
+                             "created": datetime.now(timezone.utc).isoformat(timespec="seconds")}
+            self.dirty = True
+        return {"text": out, "how": how, "facts": facts, "missing": miss, "rounds": rounds, "ok": ok}
 
     def cost_usd(self) -> float:
-        pin, pout = PRICE_PER_MTOK.get(CONDENSE_MODEL, (2.0, 10.0))
-        return self.usage["input"] * pin / 1e6 + self.usage["output"] * pout / 1e6
+        tot = 0.0
+        for model, u in self.usage.items():
+            pin, pout = PRICE_PER_MTOK.get(model, (2.0, 10.0))
+            tot += u["input"] * pin / 1e6 + u["output"] * pout / 1e6
+        return tot
 
 
 # ── planning ────────────────────────────────────────────────────────────
 
 def plan_cards(fitter: _Fitter, themes: list[dict], date: str) -> tuple[list[dict], list[str]]:
-    """[{theme, text, px, budget, condensed, how}] for each theme (at most MAX_CARDS-1),
-    plus log notes."""
+    """[{theme, text, px, budget, condensed, how, facts_total, facts_kept, missing, rounds}]
+    for each theme (at most MAX_CARDS-1), plus log notes."""
     notes: list[str] = []
     if len(themes) > MAX_CARDS - 1:
         dropped = themes[MAX_CARDS - 1:]
@@ -538,27 +845,42 @@ def plan_cards(fitter: _Fitter, themes: list[dict], date: str) -> tuple[list[dic
     for t in themes:
         budget = fitter.budget(t, date)
         text, how, condensed = t["text"], "unchanged", False
+        facts: list[dict] = []
+        rounds = 0
         if len(text) > budget or not fitter.fits(card_html(t, date, text, px=BODY_PX)):
-            text, how = cond.condense(
-                t, budget, fits=lambda x, t=t: fitter.fits(card_html(t, date, x, px=BODY_PX)))
-            condensed = True
-        px = BODY_PX
-        if not fitter.fits(card_html(t, date, text, px=px)):
-            px = FALLBACK_PX
-            if not fitter.fits(card_html(t, date, text, px=px)):
-                text = _cut_to_fit(fitter, t, date, text, px)
-                how += f", cut at a sentence end at {px} px"
-            logger.warning(f"theme {t['num']}: overflowed at {BODY_PX} px; set at {px} px")
+            r = cond.condense(t, budget, lambda x, t=t: fitter.fits(card_html(t, date, x, px=BODY_PX)),
+                              lambda x, t=t: _capacity(fitter, t, date, x, BODY_PX),
+                              lambda x, t=t: _outcome(fitter, t, date, x))
+            text, how, facts, rounds, condensed = r["text"], r["how"], r["facts"], r["rounds"], True
+        px = next((p for p in (BODY_PX, *FALLBACK_PXS) if fitter.fits(card_html(t, date, text, px=p))), None)
+        if px is None:  # last guard: never clip
+            px = FALLBACK_PXS[-1]
+            before = len(text)
+            text = _cut_to_fit(fitter, t, date, text, px)
+            how += f", CUT at a sentence end at {px} px ({before} -> {len(text)} chars)"
+            logger.warning(f"theme {t['pos']} (entry {t['num']}): did not fit at {px} px; cut at a "
+                           f"sentence end ({before} -> {len(text)} chars)")
+        if px != BODY_PX:
+            logger.warning(f"theme {t['pos']} (entry {t['num']}): set at {px} px to fit the whole text")
+        missing = missing_facts(facts, text)
+        if missing:
+            logger.warning(f"theme {t['pos']} (entry {t['num']}, {t['title']!r}): the card is missing "
+                           + "; ".join(_fact_label(f) for f in missing))
+        kept = len(facts) - len(missing)
+        fid = f"facts {kept}/{len(facts)}, {rounds} repair(s)" if condensed else "facts all (unchanged)"
         note = (f"theme {t['pos']} (entry {t['num']}): original {len(t['text'])} chars, budget "
-                f"{budget}, final {len(text)} chars, {how}, {px} px")
+                f"{budget}, final {len(text)} chars, {px} px, {fid}, {how}"
+                + (f"; MISSING: {', '.join(_fact_label(f) for f in missing)}" if missing else ""))
         logger.info(note)
         notes.append(note)
-        plan.append(dict(theme=t, text=text, px=px, budget=budget, condensed=condensed, how=how))
+        plan.append(dict(theme=t, text=text, px=px, budget=budget, condensed=condensed, how=how,
+                         facts=facts, facts_total=len(facts), facts_kept=kept, missing=missing,
+                         rounds=rounds))
     cond.save()
-    if cond.usage["calls"]:
-        note = (f"condensation: {cond.usage['calls']} call(s) to {CONDENSE_MODEL}, "
-                f"{cond.usage['input']} input + {cond.usage['output']} output tokens, "
-                f"about ${cond.cost_usd():.3f}")
+    if cond.usage:
+        parts = [f"{m}: {u['calls']} call(s), {u['input']} in + {u['output']} out tokens"
+                 for m, u in cond.usage.items()]
+        note = f"condensation: {'; '.join(parts)}; about ${cond.cost_usd():.3f} for this edition"
     else:
         note = "condensation: no API calls (all themes fit or came from the cache)"
     logger.info(note)
