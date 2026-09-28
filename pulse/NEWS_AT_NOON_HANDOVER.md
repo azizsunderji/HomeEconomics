@@ -842,3 +842,74 @@ the section above.
   (Claude calls).
 - **Tested.** 25 Sep: 7 themes + CTA = 8 cards. 28 Sep: 6 + CTA = 7. All at 36 px. Stale card9/card10
   from v3 were deleted. `noon_verify.py`: ALL PASS. Previews: `OVH/NewsAtNoon/outputs/cards_v4_<date>_*`.
+
+## Status update — 28 Sep 2026 (cards v5): condensed card texts keep every number and attribution; pill names
+
+Owner's rule (Aziz, 28 Sep 2026): cards must keep every number and attribution; fix pill names.
+Commit ebd315a. This replaces the "condense, retry once, else cut at a sentence end" step in the
+cards v4 section above.
+
+- **Facts to keep (`cards.py`).** Before condensing, the facts are taken from the visible text less its
+  pointer sentences ("My X post on this is here", "I wrote about this on Substack here", "the map below").
+  They are numbers, percentages, dollar figures and dates (regex, each with a few words of context),
+  @handles and "On X,"/"On LinkedIn,"-style lead-ins (regex), every source pill the text names, and
+  other named sources and people (`claude-haiku-4-5`; names not found in the text are dropped, possessive
+  pairs are split, and a surname is dropped only when the full name is listed). The author's commentary
+  is a fact as well: first-person sentences (pointer sentences aside), plus a last paragraph that names no
+  source. The check for it uses its distinctive words (at least two must survive), plus first-person
+  wording only if the original view was in the first person. That last condition matters. With a plain
+  first-person check, the model invented "I don't have a clean answer" for 25 Sep Theme One, whose only
+  first-person words were in pointer sentences. With names drawn from pointer sentences, it invented
+  "Via Substack."
+- **Condense, verify, repair.** `claude-sonnet-5` gets the facts list, a target of 85% of the card budget,
+  the budget as a hard ceiling, and an instruction to keep the commentary and add nothing. A reply passes
+  when every fact is present (numbers and handles verbatim, names case-insensitive on word boundaries),
+  it is within the budget, and it fits at 36 px. Otherwise up to 3 repair requests follow, each naming the
+  missing facts and the exact excess. When a draft is within the budget but still does not fit, the excess
+  is measured on the card: the filler-based budget overstates what real two-paragraph text can use by
+  about 2-10%. Only the latest draft is sent back with each repair, to keep the cost down.
+- **Never sentence-cut a condensed text.** If no draft passes, each draft is judged by what the card would
+  show (whole at 36, 34 or 32 px, else the last-guard cut). The builder picks the one that loses the
+  fewest facts at the largest size, and a WARNING names the theme and anything missing (visible in
+  `~/work/noon/logs/editor.log`). The render-time overflow cut at 32 px stays as the last guard.
+- **Cache.** Key = sha1(`PROMPT_VERSION` + theme markdown + budget); `PROMPT_VERSION =
+  "cards-v5-2026-09-28-facts"`. The old `~/work/noon/cards_cache.json` was deleted. Fact lists are cached
+  per theme text. A result made while the Haiku call failed is not cached. Note: `anthropic` 1.3.0 in
+  `pulse-venv` rejects `temperature`, so Haiku runs at its default. That is why the pill names are added
+  deterministically.
+- **Cost.** 25 Sep: Haiku 7 calls (4.1k in / 0.4k out), Sonnet 20 calls (49.6k in / 7.1k out), about
+  $0.18. 28 Sep: Haiku 6 calls, Sonnet 13 calls (27.1k in / 4.1k out), about $0.10. Across five test runs
+  of 25 Sep, the cost was $0.165-0.229; that edition is the heaviest case (seven long themes).
+- **Pills.** `free_themes` now rebuilds a cleaned draft's pills with `links.outlets_for` (the ingest rule),
+  so new display names reach cards of drafts ingested earlier. Stored `_pills` in `noon_drafts.db` were not
+  changed, so a re-render of an already-sent email keeps its old pill names; new ingests get the new
+  names. Added to `source_names.json` (file re-sorted by host): kevinerdmann.substack.com Kevin Erdmann;
+  theargumentmag.com The Argument; gs.com Goldman Sachs Research (covers idfs.gs.com, publishing.gs.com);
+  evansoltas.com Evan Soltas; theovershoot.co The Overshoot; robinjbrooks.substack.com Robin Brooks;
+  live-aia-web.pantheonsite.io AIA; aia.org AIA; brownstoner.com Brownstoner; thecityreporter.nyc The
+  City Reporter; fastcompany.com Fast Company; flsenate.gov Florida Senate; theverge.com The Verge;
+  gov.uk UK Government; supremecourt.gov Supreme Court; wnyc.org WNYC; worksinprogress.news Works in
+  Progress; buildingabundance.ca Building Abundance; ourworldindata.org Our World in Data.
+- **Result (committed cache).** Theme: original chars / budget / final chars / px / facts kept of total /
+  repairs.
+  25 Sep: 1: 1228/745/860/32/9 of 9/3. 2: 2160/727/747/32/31 of 32/3 (last-guard cut). 3: 1548/879/1024/32/36 of 36/3.
+  4: 1153/898/864/36/19 of 19/0. 5: 1455/836/822/36/12 of 12/2. 6: 1148/837/821/36/17 of 17/0. 7: 1321/831/809/36/10 of 10/2.
+  28 Sep: 1: 1361/809/783/36/22 of 22/1. 2: 1184/829/840/34/20 of 20/3. 3: 1475/850/885/34/13 of 13/3.
+  4: 979/828/776/36/5 of 5/0. 5: 770/827/678/36/8 of 8/0. 6: 871/819/757/36/18 of 18/0.
+  Every earlier loss named in the cards v4 section is now kept: Kevin Erdmann, Census/HUD, HousingWire,
+  6%, 5.99%, $5,912 per $100K, 28 Sep Theme Four's second paragraph (FT, 7%), 7.5% and 37%.
+- **Open for the owner.** (1) 25 Sep Theme Two (2,160 chars, 32 facts) does not reliably fit even at 32 px.
+  It fitted whole in two of five test runs. In the committed run the last guard removed Aziz's home-size
+  commentary. The per-figure HousingWire attribution for the median price is also gone, although
+  HousingWire is still named. Options: allow 30 px, allow more repair rounds, or accept the loss for
+  themes this dense. (2) The fact check cannot catch a changed meaning. On review, 28 Sep Theme Two said
+  that 37% of parents with young children "expect to give it this year" (the original says they expect
+  help from their own parents). That text was corrected by hand in the cache (entry marked
+  `hand_corrected`; script `OVH/NewsAtNoon/scripts/fix_cache_28sep_theme2.py`). A second-pass meaning
+  check, for example a Haiku comparison of each claim, would be the systematic fix. (3) Cards show at most
+  six pills (`card_html` `[:6]`), so 25 Sep Theme Three shows no MarketWatch pill, although the text names
+  MarketWatch.
+- **Checks.** py_compile; `noon_verify.py` ALL PASS; editor restarted, active; `/cards/2026-09-25` and
+  `/cards/2026-09-28` return 200 from the cache (no API calls). Previews:
+  `OVH/NewsAtNoon/outputs/cards_v5_<date>_card<N>.png` and `cards_v5_<date>_carousel.pdf`; fidelity data
+  with original and final texts: `OVH/NewsAtNoon/data/cards_v5_fidelity_<date>.json`.
