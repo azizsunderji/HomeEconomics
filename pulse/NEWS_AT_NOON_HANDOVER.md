@@ -750,3 +750,42 @@ the cards formatted right, for both platforms [X and LinkedIn], with the CTA."
   `/api/xpost/*` routes are gone. The main page's post-send button is now "Cards".
 - **`xpost.py`** stays in the repo, unused, with a docstring saying so. `~/work/noon/xposts/` was
   deleted after checking `state.json`: one entry (25 Sep) with status `draft`, nothing posted.
+
+## Status update — 28 Sep 2026 (later): one card per free theme, no intro card, up to 10 cards
+
+Owner's rule (Aziz, 28 Sep 2026): no opening/intro card; one card per FREE theme with the theme's
+entire text; a format that works for Instagram and X carousels (1080x1350). This replaces the hook
+card and cards 2-4 described in the two sections above.
+
+- **Which themes.** Exactly the free edition's: `cards.free_themes` sorts entries by rank and calls
+  `email_lunch._split_entries(entries, "free")`, so the set, order, numbers (rank), title casing,
+  sentence-start fixes, link narrowing ("On X," before handles) and pills (`_entry_pills`) match the
+  free email. Images in a summary are left out. Links appear as plain text (the anchor words, no
+  underline).
+- **Layout (`cards.py`).** 64 px margins. Thin header: blue number and bold 46 px title on a theme's
+  first card; "Title (continued)" at 30 px on continuation cards. Body 40 px, stepping down in 2 px
+  steps to 34 px; paragraphs kept. Pills (28 px) on the theme's last card only. Footer (28 px):
+  "Housing at Noon · <date>", and "2/2"-style markers on continuation cards (not on a theme's first
+  card). The last card of the set has the sign-up band ("Housing at Noon. / Free edition every
+  weekday at noon ET. / homeeconomics.us/noon") at the bottom, below the footer.
+- **Fitting.** All measuring happens in one Playwright page (the body is swapped in place). A theme
+  first tries one card at 40, 38, 36, 34 px. If it does not fit at 34 px it is split at sentence
+  ends (greedy fill, measured card by card; a sentence taller than a card would be split at a word):
+  the card count is the one needed at 34 px, and the font is the largest size that keeps that count.
+  Every final card is measured again before the screenshot; nothing is clipped.
+- **10-card cap.** If the set needs more than 10 cards, the last theme is cut at a sentence end
+  with " …" to fit the cards left (at least one card per theme); if that is not enough, the theme
+  before it is cut too, and so on. No theme is dropped. Each cut is logged as a WARNING
+  ("theme N cut to 1 card(s) at 34 px ... k of m sentences kept").
+- **Files.** `Housing at Noon <date> card1.png` … `cardK.png` (K varies) and `... carousel.pdf`
+  (all cards, PyMuPDF, 810 x 1012.5 pt pages). Stale `card(K+1).png` and higher from an earlier
+  render of the same date are deleted from the cards folder and from the Dropbox mirror.
+- **Editor.** `/cards/{date}` shows all cards, the PDF link, and "Instagram: post all cards as one
+  carousel (max 10). X: post the first four cards. LinkedIn: upload the PDF as a document post."
+- **Tested.** 25 Sep (7 free themes): themes 1, 2, 3 two cards each (40, 34, 40 px); themes 5, 6, 7,
+  11 needed at least 14 cards in total, so all four were cut to one card at 34 px (theme 5 kept 5 of
+  6 sentences, 6 kept 4 of 8, 7 kept 3 of 4, 11 kept 4 of 7). 28 Sep (6 free themes): 10 cards with
+  no cuts (themes 2, 3, 4 two cards at 40 px; 10 one card at 36 px; 16 one card at 38 px; 17 two
+  cards at 40 px). `noon_verify.py`: ALL PASS. `xpost.py` (unused) still imports.
+- **Open point for the owner.** Editions with seven or more long free themes (like 25 Sep) will
+  lose text from the later themes to stay within 10 cards.
