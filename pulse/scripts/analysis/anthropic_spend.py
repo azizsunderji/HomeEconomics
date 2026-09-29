@@ -50,6 +50,23 @@ PRICING_CENTS_PER_MTOK = {
     "claude-opus-4-8": {
         "input": 500, "cache_write": 625, "cache_read": 50, "output": 2500,
     },
+    # Added 29 Sep 2026 (owner). Per MTok: input / output as listed; cache write 1.25x
+    # input (5-minute cache) and cache read 10% of input, as for the entries above.
+    "claude-opus-5-5": {      # $4 / $20; cache read $0.20 (5%, per Anthropic's Opus 5.5 pricing)
+        "input": 400, "cache_write": 500, "cache_read": 20, "output": 2000,
+    },
+    "claude-opus-5": {        # $5 / $25
+        "input": 500, "cache_write": 625, "cache_read": 50, "output": 2500,
+    },
+    "claude-sonnet-5-5": {    # $2 / $10
+        "input": 200, "cache_write": 250, "cache_read": 20, "output": 1000,
+    },
+    "claude-sonnet-5": {      # $2 / $10
+        "input": 200, "cache_write": 250, "cache_read": 20, "output": 1000,
+    },
+    "claude-haiku-4-5": {     # $1 / $5 (alias of claude-haiku-4-5-20251001)
+        "input": 100, "cache_write": 125, "cache_read": 10, "output": 500,
+    },
 }
 
 
