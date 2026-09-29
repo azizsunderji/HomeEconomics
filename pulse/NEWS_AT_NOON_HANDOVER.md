@@ -1007,3 +1007,85 @@ before its one-week review ended.
   is also left in place. Rows already marked `enrich_mode='server_chrome'` in pulse.db stay as they are.
 - **Checked.** YAML parses; `pipeline_health_report.py` compiles; a `--dry-run` against a copy of
   pulse.db rendered 30 stages with no 2.2b and 2.1 OK ("all 10 site logins OK").
+
+## Status update — 29 Sep 2026: cards on Sonnet 5.5; Opus 5.5 shadow test; price table
+
+Owner's rules (Aziz, 29 Sep 2026, "do all three"): cards to Sonnet 5.5; a three-edition Opus 5.5
+shadow test of the brief with no subscriber impact; current prices in the spend tracker.
+Commits d9f2c16, 55cb30f, f5367bf.
+
+- **Cards (`editor/cards.py`).** `CONDENSE_MODEL` defaults to `claude-sonnet-5-5`. Sonnet 5.5
+  rejects thinking "disabled" with a 400, so it is sent `thinking: {"type": "between_tools"}` (its
+  lowest setting: no up-front thinking; accepted only at effort low/medium/high) with
+  `output_config.effort: "high"`. `PROMPT_VERSION = "cards-v8-2026-09-29-sonnet55"`;
+  `FACTS_VERSION` unchanged, so Haiku fact lists are reused. `NOON_CARDS_MODEL=claude-sonnet-5` in
+  `~/.noon_env` switches back (then bump `PROMPT_VERSION` again). Editor restarted.
+- **Cards comparison** (re-render into `OVH/NewsAtNoon/data/cards_s55/`; published cards and the
+  Dropbox mirror were not replaced). Condensed themes, facts kept / repair rounds, S5 -> S5.5:
+  28 Sep: 1 22/22, 3 -> 1; 2 20/20, 1 -> 1; 3 13/13, 2 -> 1; 4 5/5, 0 -> 0 (5 and 6 fit unchanged).
+  29 Sep: 1 8/8, 0 -> 0; 2 35/35, 5 + last-resort drop -> 1; 3 25/25, 1 -> 0; 4 17/17, 5 -> 0;
+  5 15/15, 4 -> 2; 6 14/14, 0 -> 0; 7 9/9, 1 -> 0; 8 14/14, 0 -> 1; 9 22/22, 1 -> 0.
+  Repair rounds 23 -> 7 (commit d9f2c16 says 30; 23 is correct). Cost and time: 28 Sep $0.09 /
+  44 s -> $0.058 / 33 s; 29 Sep $0.255 / about 119 s -> $0.111 / 56 s (the S5 29 Sep figure also
+  includes 9 Haiku fact calls, about $0.007). Every card at 36 px. Reading every condensed text
+  against its original found no reversed meaning. 28 Sep Theme Two now says "37% of parents with
+  young children expect help" (Sonnet 5 wrote "expect to give it"); "from their own parents" is
+  dropped, so it is vague but not wrong. 29 Sep Theme Two drops that Mohtashami rejects 9% as a
+  base case (it keeps his conditions) and Hepp's "not her baseline". 29 Sep Theme Four's title still
+  cannot be shortened to one line and wraps, as before. No card overrides existed; none were touched.
+  Previews: `OVH/NewsAtNoon/outputs/cards_s55_<date>_card<N>.png`; side-by-side texts:
+  `OVH/NewsAtNoon/data/cards_s55_compare.json`.
+- **Writer model override.** `PULSE_WRITER_MODEL` (or `--model` on `run_pipeline.py synthesize` and
+  `v4b_runner.py`) sets the writer for the v1 synthesis (`analysis/synthesize.py`) and the
+  v3.1/v4/v4b writers. Default `claude-opus-4-8`, whose requests are byte-for-byte as before (no
+  thinking field, default effort). For `claude-opus-5-5`, `synthesize.writer_request_kwargs` sends
+  thinking adaptive (5.5 cannot disable it), `output_config.effort: "high"` (5.5 defaults to
+  medium; high matches today), and doubles `max_tokens` (thinking counts toward it: 32768 -> 65536,
+  4096 -> 16384; all calls stream). `check_writer_refusal` raises on `stop_reason == "refusal"`.
+  No writer call uses tools, so the 5.5 ban on forced `tool_choice` does not apply.
+- **Shadow step (`pulse-synth.yml`, last step, after "Push DB back to Dropbox").** Runs on the
+  first production run of 30 Sep, 1 Oct and 2 Oct 2026 (UTC), once per day. It is gated on the
+  date, not on `github.event_name == 'schedule'`: the brief is actually written by the 11:00 UTC
+  workflow_dispatch run (actor azizsunderji); GitHub's cron fires hours late and those runs are
+  skipped by the guard, so a schedule-only gate would never fire. It runs `v4b_runner.py --model
+  claude-opus-5-5 --rewrite-v1-themes --briefing-type daily_v4b_shadow_opus55 --to
+  aziz@home-economics.us --subject-prefix "[SHADOW Opus 5.5] "`: the v1 synthesis again on 5.5
+  (not stored; "recently led themes" read from before today so the production brief is not
+  counted), its themes replace the stored scaffold's (paper, headlines and the injected lists stay
+  production's), then the full v4b chain on 5.5, stored as `daily_v4b_shadow_opus55` and emailed to
+  Aziz only; then pulse.db is pushed again. `editor/ingest.py` reads only `daily_v4b_attach`, so the
+  noon server never sees it. A non-production type without `--to`/`--no-send` exits, so a shadow
+  cannot reach `send_lunch_to_subscribers`. Non-fatal: `continue-on-error`, `timeout-minutes: 35`,
+  `|| echo`. Job timeout 60 -> 100 min (the production run takes about 50). Embeddings are not
+  shared with the production run (that would change the production step); they cost under 1 cent.
+  The trigger classifier's cache in pulse.db is reused, so it adds almost nothing.
+- **Estimated shadow cost (ESTIMATED): about $3 per day, $2.5-4.5, so about $10 for the three
+  days.** Basis: v1 synthesis on Opus 4.8 about $1.9/day (anthropic_spend minus the v4b cost),
+  v4b Opus $0.9-1.9 and Haiku $0.04-0.15 (last five `_v4b_meta.cost`); Opus 5.5 is 20% cheaper per
+  token but adds thinking tokens at effort high. The shadow's spend is recorded in the
+  `anthropic_spend` table under `claude-opus-5-5`, so that day's total there includes it.
+- **Local proof.** Against a copy of pulse.db (`OVH/NewsAtNoon/data/opus55_proof/`), two single
+  theme-rewrite calls on `claude-opus-5-5` (`scripts/models55_08_proof_opus55.py`): both returned
+  200 and parsed. The model returned keep_original both times, with correct reasons (the attached
+  items did not bear on the theme). The second call read 29,377 cached tokens. Total $0.19. The
+  full shadow chain (`--rewrite-v1-themes`) was not run end to end locally; its first real run is
+  30 Sep.
+- **How to read the shadow results.** Each test day Aziz gets an email "[SHADOW Opus 5.5] <usual
+  subject> | N entries ..." shortly after the production run. Compare it with that day's draft in the
+  editor. In pulse.db, `SELECT id, created_at FROM briefings WHERE briefing_type =
+  'daily_v4b_shadow_opus55'`; `content_json -> _v4b_meta` has `writer_model`, `cost`,
+  `timings_seconds`, `rewrite_log`, and the production themes it replaced are in
+  `_production_v1_theme_titles`. `preview_lunch.py` can re-render a stored id. The Actions log of the
+  step prints the counts, cost and each rewrite. After 2 Oct, delete the step.
+- **How to switch production to Opus 5.5 later.** Change `WRITER_MODEL_DEFAULT` in
+  `pulse/scripts/analysis/synthesize.py` and `OPUS_MODEL`'s default in `pulse/scripts/v3_1_runner.py`
+  to `claude-opus-5-5` (two constants), or set `PULSE_WRITER_MODEL: claude-opus-5-5` once in the
+  job-level `env:` of `pulse-synth.yml` (one line; covers both). Also consider the job timeout.
+- **Price table (`analysis/anthropic_spend.py`).** Added claude-opus-5-5 $4/$20 (cache read $0.20,
+  Anthropic's rate, not 10%), claude-opus-5 $5/$25, claude-sonnet-5-5 and claude-sonnet-5 $2/$10,
+  and the `claude-haiku-4-5` alias $1/$5; cache write 1.25x input and cache read 10% of input, as in
+  the existing entries. Old entries kept.
+- **Open.** (1) Shadow rows begin with "daily", so `run_pipeline._recent_paper_picks` (`LIKE
+  'daily%'`) sees them; their paper is production's, so the exclusion list does not change.
+  `dashboard/build_digest.py` lists all briefing types and will show them. (2) If the 30 Sep run
+  fails before the V4b step (as on 29 Sep), no shadow runs that day.
