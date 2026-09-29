@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import re
 import sqlite3
 import time
@@ -42,7 +43,43 @@ logger = logging.getLogger(__name__)
 # meaningfully better reasoning + 4x less likely to let unsupported claims
 # slip past. Directly relevant to our editorial-judgment use case.
 # max_tokens=32768 is preserved: Opus's max output cap is the same 32K.
-MODEL = "claude-opus-4-8"
+# Writer model override (owner, 29 Sep 2026): PULSE_WRITER_MODEL (or `run_pipeline.py
+# synthesize --model` / `v4b_runner.py --model`) selects the writer for the v1 scaffold and
+# the v3.1/v4/v4b writers alike. The default stays claude-opus-4-8; switching production
+# to Opus 5.5 later means changing WRITER_MODEL_DEFAULT (or setting the env var in
+# pulse-synth.yml).
+WRITER_MODEL_DEFAULT = "claude-opus-4-8"
+MODEL = os.environ.get("PULSE_WRITER_MODEL") or WRITER_MODEL_DEFAULT
+
+
+class WriterRefusal(RuntimeError):
+    """The writer model declined (stop_reason == "refusal")."""
+
+
+def writer_request_kwargs(model: str, max_tokens: int) -> dict:
+    """model / max_tokens / thinking / output_config for a writer call.
+
+    Opus 4.8 (the default) keeps its request exactly as before: no thinking field (it runs
+    without thinking) and the default effort (high). Claude Opus 5.5 cannot run with
+    thinking off (thinking "disabled" is a 400), and its default effort is medium, so effort
+    is set to "high" explicitly to match the current behaviour. Thinking tokens count
+    toward max_tokens, so the limit is raised (streamed calls only). No writer call forces
+    a tool (tool_choice any/tool is a 400 on 5.5); none uses tools at all."""
+    kw: dict = {"model": model, "max_tokens": max_tokens}
+    if model.startswith("claude-opus-5-5"):
+        kw["max_tokens"] = min(128000, max(2 * max_tokens, 16384))
+        kw["thinking"] = {"type": "adaptive"}
+        kw["output_config"] = {"effort": "high"}
+    return kw
+
+
+def check_writer_refusal(final, model: str, what: str) -> None:
+    """Raise WriterRefusal when the response was a policy decline (stop_reason
+    "refusal"); its text is empty or partial and must not be parsed as a brief."""
+    if getattr(final, "stop_reason", None) == "refusal":
+        det = getattr(final, "stop_details", None)
+        cat = getattr(det, "category", None) if det is not None else None
+        raise WriterRefusal(f"{model} declined the {what} request (refusal category: {cat})")
 
 # Two-tier system:
 # Tier 1: All current conversation and journalism — competes equally for themes
@@ -469,7 +506,8 @@ def _format_historical_items(items: list[dict]) -> str:
     return "\n".join(lines)
 
 
-def _fetch_recent_briefing_themes(conn: sqlite3.Connection, n: int = 2) -> list[dict]:
+def _fetch_recent_briefing_themes(conn: sqlite3.Connection, n: int = 2,
+                                  before_today: bool = False) -> list[dict]:
     """Pull theme titles from the last `n` briefings (most recent first).
 
     Used to tell the synthesis model what it already led with on prior days,
@@ -477,9 +515,13 @@ def _fetch_recent_briefing_themes(conn: sqlite3.Connection, n: int = 2) -> list[
     returned dict has {date: 'YYYY-MM-DD' (created_at-derived), themes: [titles]}.
     """
     try:
+        # before_today (shadow runs): today's production brief was already stored
+        # earlier in the same job and must not count as "already led".
         rows = conn.execute(
             "SELECT id, created_at, content_json FROM briefings "
-            "WHERE briefing_type = 'daily' ORDER BY id DESC LIMIT ?",
+            "WHERE briefing_type = 'daily' "
+            + ("AND date(created_at) < date('now') " if before_today else "")
+            + "ORDER BY id DESC LIMIT ?",
             (n,),
         ).fetchall()
     except Exception:
@@ -2742,6 +2784,8 @@ def generate_daily_briefing(
     conn: sqlite3.Connection,
     client: Optional[anthropic.Anthropic] = None,
     recently_used_paper_titles: Optional[list] = None,
+    store_as: Optional[str] = "daily",
+    recent_themes_before_today: bool = False,
 ) -> dict:
     """Generate the full daily briefing (conversation-focused).
 
@@ -2945,7 +2989,8 @@ def generate_daily_briefing(
     # on 2026-05-23: "Why Families Leave Cities" was lead theme #1 on
     # 5/22 and 5/23 because the 5/22 briefing was forwarded to a friend
     # and the reply thread re-entered the inbox as a high-relevance item.
-    recent_briefing_themes = _fetch_recent_briefing_themes(conn, n=2)
+    recent_briefing_themes = _fetch_recent_briefing_themes(
+        conn, n=2, before_today=recent_themes_before_today)
     if recent_briefing_themes:
         logger.info(
             "Recent briefing themes loaded for anti-repetition guidance: "
@@ -3043,8 +3088,7 @@ Generate the daily briefing JSON. LEAD WITH CONVERSATION — what are people deb
             try:
                 response_text = ""
                 with client.messages.stream(
-                    model=MODEL,
-                    max_tokens=32768,
+                    **writer_request_kwargs(MODEL, 32768),
                     system=SYSTEM_PROMPT,
                     messages=[{"role": "user", "content": user_content}],
                 ) as stream:
@@ -3056,6 +3100,7 @@ Generate the daily briefing JSON. LEAD WITH CONVERSATION — what are people deb
                     _rec_usage(MODEL, final.usage)
                 except Exception:
                     pass
+                check_writer_refusal(final, MODEL, "synthesis")
                 break  # success
             except (_httpx.RemoteProtocolError, _httpx.ReadError, _httpx.ReadTimeout,
                     anthropic.APIConnectionError) as transient:
@@ -3071,6 +3116,7 @@ Generate the daily briefing JSON. LEAD WITH CONVERSATION — what are people deb
 
         response_text = response_text.strip()
 
+        logger.info(f"Synthesis writer model: {MODEL}")
         if final.stop_reason == "max_tokens":
             logger.warning(f"Response truncated at max_tokens ({len(response_text)} chars).")
         logger.info(f"Synthesis response: {len(response_text)} chars, stop_reason={final.stop_reason}")
@@ -3253,8 +3299,13 @@ Generate the daily briefing JSON. LEAD WITH CONVERSATION — what are people deb
                 for e in collection_errors
             ]
 
+        briefing["_writer_model"] = MODEL
+        if store_as is None:  # shadow run: nothing written to the briefings table
+            logger.info(f"Generated daily briefing (not stored; writer {MODEL})")
+            return briefing
+
         # Save the briefing
-        briefing_id = save_briefing(conn, "daily", briefing)
+        briefing_id = save_briefing(conn, store_as, briefing)
         briefing["_briefing_id"] = briefing_id
 
         logger.info(f"Generated daily briefing (ID: {briefing_id})")

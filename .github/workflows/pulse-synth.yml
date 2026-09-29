@@ -22,7 +22,9 @@ on:
 jobs:
   synth:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    # 60 -> 100 (29 Sep 2026): the production run takes about 50 minutes; the Opus 5.5
+    # shadow step at the end (30 Sep - 2 Oct only) adds up to 35.
+    timeout-minutes: 100
     env:
       # GitHub token for the idempotency guard (lookup of prior successful runs)
       GH_TOKEN: ${{ github.token }}
@@ -301,3 +303,43 @@ jobs:
           rclone copy pulse/data/ "dropbox:Home Economics/Data/Pulse/" \
             --include "pulse.db" --include "*.json" \
             --verbose --stats-one-line
+
+      - name: "Shadow test: the brief written by Claude Opus 5.5 (30 Sep - 2 Oct 2026; email to Aziz only)"
+        # Owner, 29 Sep 2026: three-edition Opus 5.5 shadow test, no subscriber impact.
+        # Runs AFTER the production brief is written, stored and pushed, so the noon server
+        # gets the production brief at the usual time. It re-runs the whole writer path with
+        # PULSE_WRITER_MODEL=claude-opus-5-5: the v1 synthesis (--rewrite-v1-themes; its
+        # themes replace the stored scaffold's, nothing stored as 'daily'), then v4b
+        # (embeddings, clusters, gates, rewrites, standalone entries). The result is stored
+        # as briefing_type daily_v4b_shadow_opus55 (editor/ingest.py reads only
+        # daily_v4b_attach) and emailed to aziz@home-economics.us only, subject
+        # "[SHADOW Opus 5.5] ...". Once per UTC day, on the first production run of each
+        # test date: the daily run is the 11:00 UTC workflow_dispatch (GitHub's schedule fires
+        # hours late and those runs are skipped by the guard), so the gate is on the date,
+        # not on the event. Never fatal: continue-on-error, a step timeout, and `|| echo`.
+        # Remove this step after 2 Oct 2026.
+        if: success() && steps.guard.outputs.should_run == 'true' && vars.PULSE_PIPELINE == 'v4b'
+        continue-on-error: true
+        timeout-minutes: 35
+        working-directory: pulse/scripts
+        env:
+          PULSE_DB: ${{ github.workspace }}/pulse/data/pulse.db
+          PULSE_LOOKBACK_HOURS: ${{ steps.window.outputs.hours }}
+          PULSE_WRITER_MODEL: claude-opus-5-5
+        run: |
+          case "$(date -u +%Y-%m-%d)" in
+            2026-09-30|2026-10-01|2026-10-02) ;;
+            *) echo "Opus 5.5 shadow: $(date -u +%Y-%m-%d) is not a test date; skipping"; exit 0 ;;
+          esac
+          done_today=$(python -c "import os,sqlite3; print(sqlite3.connect(os.environ['PULSE_DB']).execute(\"SELECT COUNT(*) FROM briefings WHERE briefing_type='daily_v4b_shadow_opus55' AND date(created_at)=date('now')\").fetchone()[0])" || echo 0)
+          if [ "$done_today" != "0" ]; then
+            echo "Opus 5.5 shadow already ran today; skipping"; exit 0
+          fi
+          python -u v4b_runner.py --model claude-opus-5-5 --rewrite-v1-themes \
+            --briefing-type daily_v4b_shadow_opus55 \
+            --to aziz@home-economics.us --subject-prefix "[SHADOW Opus 5.5] " \
+            || echo "Opus 5.5 shadow run failed; the production brief is unaffected"
+          cd "$GITHUB_WORKSPACE"
+          rclone copy pulse/data/ "dropbox:Home Economics/Data/Pulse/" \
+            --include "pulse.db" --verbose --stats-one-line \
+            || echo "shadow DB push failed; the shadow row is only in this runner"

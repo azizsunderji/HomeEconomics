@@ -67,7 +67,8 @@ DEFAULT_DB = os.environ.get(
 )
 DEFAULT_TO = "aziz@home-economics.us"
 EMAIL_FROM = "Pulse V3.1 <pulse@home-economics.us>"
-OPUS_MODEL = "claude-opus-4-8"  # writer (match v1)
+# writer (match v1): PULSE_WRITER_MODEL overrides, default claude-opus-4-8 (owner, 29 Sep 2026)
+OPUS_MODEL = os.environ.get("PULSE_WRITER_MODEL") or "claude-opus-4-8"
 
 HAIKU_MODEL = "claude-haiku-4-5-20251001"
 SUBCLUSTER_MODEL = HAIKU_MODEL
@@ -684,9 +685,9 @@ def write_roundup_for_cluster(
 
     try:
         response_text = ""
+        from analysis.synthesize import writer_request_kwargs, check_writer_refusal
         with anthropic_client.messages.stream(
-            model=OPUS_MODEL,
-            max_tokens=4096,
+            **writer_request_kwargs(OPUS_MODEL, 4096),
             system=[{
                 "type": "text",
                 "text": system_prompt,
@@ -702,6 +703,7 @@ def write_roundup_for_cluster(
                 _rec_usage(OPUS_MODEL, _final.usage)
             except Exception:
                 pass
+            check_writer_refusal(stream.get_final_message(), OPUS_MODEL, "v3.1 cluster")
         response_text = response_text.strip()
     except Exception as e:
         logger.warning(f"cluster {cluster.cluster_id} Sonnet call failed: {e}")

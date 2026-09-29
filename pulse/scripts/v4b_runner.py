@@ -85,6 +85,7 @@ from analysis.roundup_clustering import (  # noqa: E402
 from analysis.synthesize import (  # noqa: E402
     SYSTEM_PROMPT as V1_SYSTEM_PROMPT,
     _split_sentences_for_validation,
+    writer_request_kwargs, check_writer_refusal,
 )
 from analysis.anthropic_spend import record_usage as _record_usage, get_spend_cents  # noqa: E402
 
@@ -405,8 +406,7 @@ def _opus_stream_text(anthropic_client, system_prompt: str, messages: list[dict]
     as v4's writer). Usage is recorded in the spend table and tracker."""
     response_text = ""
     with anthropic_client.messages.stream(
-        model=OPUS_MODEL,
-        max_tokens=4096,
+        **writer_request_kwargs(OPUS_MODEL, 4096),
         system=[{"type": "text", "text": system_prompt,
                  "cache_control": {"type": "ephemeral"}}],
         messages=messages,
@@ -420,6 +420,7 @@ def _opus_stream_text(anthropic_client, system_prompt: str, messages: list[dict]
                 tracker.add_anthropic(OPUS_MODEL, final.usage)
         except Exception:
             pass
+        check_writer_refusal(stream.get_final_message(), OPUS_MODEL, "theme rewrite")
     return response_text.strip()
 
 
@@ -1080,6 +1081,19 @@ def _opus_cents(tracker: RunCostTracker) -> float:
     return tracker.anthropic[OPUS_MODEL]["microcents"] / 100 if OPUS_MODEL in tracker.anthropic else 0.0
 
 
+def _set_writer_model(model: str) -> None:
+    """Point every writer call (v4b rewrites, v4 standalone entries, v3.1 helpers, the v1
+    synthesis) at `model`. Each module reads its own OPUS_MODEL/MODEL global at call time."""
+    global OPUS_MODEL
+    import v3_1_runner
+    import v4_runner
+    import analysis.synthesize as _synth
+    OPUS_MODEL = model
+    v3_1_runner.OPUS_MODEL = model
+    v4_runner.OPUS_MODEL = model
+    _synth.MODEL = model
+
+
 def main() -> None:
     p = argparse.ArgumentParser(description="Pulse v4b runner: v1 themes + attached clusters")
     p.add_argument("--db", default=DEFAULT_DB)
@@ -1099,7 +1113,28 @@ def main() -> None:
     p.add_argument("--no-send", action="store_true")
     p.add_argument("--no-store", action="store_true")
     p.add_argument("--dump-json", default=None)
+    # Shadow-test options (owner, 29 Sep 2026: three-edition Opus 5.5 shadow test)
+    p.add_argument("--model", default=None,
+                   help="writer model for the rewrites and standalone entries (and the v1 "
+                        "themes with --rewrite-v1-themes); default PULSE_WRITER_MODEL, else "
+                        "claude-opus-4-8")
+    p.add_argument("--briefing-type", default=BRIEFING_TYPE,
+                   help=f"briefing_type to store under (default {BRIEFING_TYPE}, the one the "
+                        "noon server ingests); any other value is a shadow run")
+    p.add_argument("--subject-prefix", default=None,
+                   help=f"subject prefix for the --to send (default {SHADOW_SUBJECT_PREFIX!r})")
+    p.add_argument("--rewrite-v1-themes", action="store_true",
+                   help="re-run the v1 synthesis with the writer model (not stored) and use "
+                        "its conversation_themes in place of the stored scaffold's")
     args = p.parse_args()
+    if args.briefing_type != BRIEFING_TYPE and not (args.to or args.no_send):
+        # a shadow run must never reach send_lunch_to_subscribers
+        raise SystemExit(f"--briefing-type {args.briefing_type} needs --to or --no-send")
+    if args.model:
+        _set_writer_model(args.model)
+    if args.subject_prefix is not None:
+        globals()["SHADOW_SUBJECT_PREFIX"] = args.subject_prefix
+    print(f"writer model: {OPUS_MODEL}; briefing_type: {args.briefing_type}")
 
     # Stream logs when stdout is redirected (tee / nohup).
     try:
@@ -1122,6 +1157,20 @@ def main() -> None:
     # 1. Scaffold — themes are the backbone
     v1_id, v1, v1_created = load_v1_scaffold(conn)
     v1["_briefing_id"] = v1_id
+    if args.rewrite_v1_themes:
+        # Shadow: the v1 synthesis again with the writer model, not stored; everything
+        # else in the scaffold (paper, headlines, injected lists) stays production's.
+        from analysis.synthesize import generate_daily_briefing
+        t0 = time.time()
+        shadow_v1 = generate_daily_briefing(conn, store_as=None, recent_themes_before_today=True)
+        if "error" in shadow_v1 or not shadow_v1.get("conversation_themes"):
+            raise SystemExit(f"shadow v1 synthesis failed: {shadow_v1.get('error') or 'no themes'}")
+        print(f"shadow v1 synthesis ({OPUS_MODEL}): {len(shadow_v1['conversation_themes'])} themes "
+              f"in {time.time() - t0:.0f}s, replacing the stored scaffold's "
+              f"{len(v1.get('conversation_themes') or [])}")
+        v1["_production_v1_theme_titles"] = [t.get("theme") for t in v1.get("conversation_themes") or []]
+        v1["conversation_themes"] = shadow_v1["conversation_themes"]
+        v1["_shadow_writer_model"] = OPUS_MODEL
     end_dt = datetime.fromisoformat(v1_created.replace("Z", "+00:00"))
     themes: list[dict] = list(v1.get("conversation_themes") or [])
     print(f"loaded v1 scaffold briefing #{v1_id} created at {v1_created}; "
@@ -1465,6 +1514,8 @@ def main() -> None:
     meta = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "pipeline": "v4b_attach",
+        "writer_model": OPUS_MODEL,
+        "briefing_type": args.briefing_type,
         "source_v1_briefing_id": v1_id,
         "v1_theme_titles": [t.get("theme") for t in themes],
         "counts": counts,
@@ -1538,11 +1589,11 @@ def main() -> None:
             cur = conn.execute(
                 "INSERT INTO briefings (briefing_type, content_json, created_at, "
                 "email_sent, email_sent_at) VALUES (?, ?, ?, ?, ?)",
-                (BRIEFING_TYPE, json.dumps(v4b, default=str), now_iso,
+                (args.briefing_type, json.dumps(v4b, default=str), now_iso,
                  1 if email_ok else 0, now_iso if email_ok else None),
             )
             conn.commit()
-            print(f"stored v4b briefing as id={cur.lastrowid} (type={BRIEFING_TYPE})")
+            print(f"stored v4b briefing as id={cur.lastrowid} (type={args.briefing_type})")
     else:
         print("--no-store set; not writing to briefings")
 

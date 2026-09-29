@@ -565,6 +565,10 @@ def cmd_synthesize(args):
     # Synthesize
     logger.info("Phase 4: Synthesis")
     from analysis.synthesize import generate_daily_briefing
+    if getattr(args, "model", None):  # writer model override (owner, 29 Sep 2026)
+        import analysis.synthesize as _synth
+        _synth.MODEL = args.model
+        logger.info(f"writer model override: {args.model}")
 
     # Build the 14-day paper-of-the-day exclusion set BEFORE synthesis.
     # generate_daily_briefing() saves today's briefing row before it
@@ -1323,6 +1327,11 @@ def main():
                 "--no-email", action="store_true",
                 help="Compute + store the v1 briefing (v3.1 reuses it as its "
                      "scaffold) but don't send the v1 email.",
+            )
+            sub.add_argument(
+                "--model", default=None,
+                help="writer model for the v1 synthesis (default: PULSE_WRITER_MODEL, "
+                     "else claude-opus-4-8)",
             )
 
     parser.add_argument("--verbose", "-v", action="store_true", help="Debug logging")

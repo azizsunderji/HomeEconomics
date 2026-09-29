@@ -443,9 +443,9 @@ def write_entry_for_cluster(cluster: Cluster,
     )
     try:
         response_text = ""
+        from analysis.synthesize import writer_request_kwargs, check_writer_refusal
         with anthropic_client.messages.stream(
-            model=OPUS_MODEL,
-            max_tokens=4096,
+            **writer_request_kwargs(OPUS_MODEL, 4096),
             system=[{
                 "type": "text",
                 "text": system_prompt,
@@ -462,6 +462,7 @@ def write_entry_for_cluster(cluster: Cluster,
                     tracker.add_anthropic(OPUS_MODEL, final.usage)
             except Exception:
                 pass
+            check_writer_refusal(stream.get_final_message(), OPUS_MODEL, "standalone entry")
         response_text = response_text.strip()
     except Exception as e:
         logger.warning(f"cluster {cluster.cluster_id} Opus call failed: {e}")
