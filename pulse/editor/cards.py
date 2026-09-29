@@ -96,12 +96,15 @@ TOP_PAD = 48               # above the numeral row (owner, 29 Sep 2026)
 BOTTOM_PAD = 40            # below the footer line
 CTA_DESC = "A daily brief on the U.S. housing market, free every weekday at noon ET"
 # Sonnet condenses and repairs; Haiku extracts names (owner's choice, 28 Sep 2026).
-CONDENSE_MODEL = os.environ.get("NOON_CARDS_MODEL", "claude-sonnet-5")
+# Condensation moved from claude-sonnet-5 to claude-sonnet-5-5 (owner, 29 Sep 2026).
+# NOON_CARDS_MODEL=claude-sonnet-5 switches back.
+CONDENSE_MODEL = os.environ.get("NOON_CARDS_MODEL", "claude-sonnet-5-5")
 EXTRACT_MODEL = os.environ.get("NOON_CARDS_EXTRACT_MODEL", "claude-haiku-4-5")
-PRICE_PER_MTOK = {"claude-sonnet-5": (2.00, 10.00), "claude-haiku-4-5": (1.00, 5.00)}  # in, out USD
-# Part of the cache key: bump it whenever the prompts or the checks change, so texts made
-# under older rules are not reused.
-PROMPT_VERSION = "cards-v7-2026-09-29-36px"
+PRICE_PER_MTOK = {"claude-sonnet-5-5": (2.00, 10.00), "claude-sonnet-5": (2.00, 10.00),
+                  "claude-haiku-4-5": (1.00, 5.00)}  # in, out USD
+# Part of the cache key: bump it whenever the prompts, the checks or the model change, so
+# texts made under older rules are not reused.
+PROMPT_VERSION = "cards-v8-2026-09-29-sonnet55"
 # The facts extraction did not change in v7, so its cache entries (and Haiku calls) are kept.
 FACTS_VERSION = "cards-v5-2026-09-28-facts"
 TARGET_SHARE = 0.85       # target length as a share of the budget; the budget is the ceiling
@@ -769,7 +772,12 @@ class _Condenser:
         kw = dict(model=model, max_tokens=max_tokens, messages=messages)
         if system:
             kw["system"] = system
-        if model.startswith("claude-sonnet-5"):
+        if model.startswith("claude-sonnet-5-5"):
+            # Sonnet 5.5 rejects thinking "disabled" (400). "between_tools" is its lowest
+            # setting: no up-front thinking; accepted at effort low/medium/high only.
+            kw["thinking"] = {"type": "between_tools"}
+            kw["output_config"] = {"effort": "high"}
+        elif model.startswith("claude-sonnet-5"):
             kw["thinking"] = {"type": "disabled"}
         resp = self.client.messages.create(**kw)
         u = self.usage.setdefault(model, {"calls": 0, "input": 0, "output": 0})
