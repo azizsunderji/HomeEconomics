@@ -2913,7 +2913,8 @@ def generate_daily_briefing(
             if i.get("feed_priority") == "journal":
                 continue  # academic papers aren't "takes"
             feed_name = (i.get("feed_name") or "").strip()
-            if not _is_columnist_feed(feed_name):
+            from config import INSTITUTIONAL_RESEARCH_FEEDS
+            if feed_name not in INSTITUTIONAL_RESEARCH_FEEDS and not _is_columnist_feed(feed_name):
                 continue
 
         title_key = title_lower[:60]

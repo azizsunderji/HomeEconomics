@@ -643,6 +643,11 @@ SOURCE_WEIGHTS = {
     "rss": 1,
 }
 
+# RSS feeds whose items are institutional research with full text (built on the noon server) and
+# should compete for the newsletter/columnist slots like the same research arriving by email.
+# Owner, 29 Sep 2026: Goldman research was rarely appearing in the brief.
+INSTITUTIONAL_RESEARCH_FEEDS = {"Goldman Sachs Research"}
+
 MIN_COMMENTS_FOR_CONVERSATION = 10  # Below this, a post is a link share, not a conversation
 
 # ── Data lake path (for crosswalk) ────────────────────────────────────────────
