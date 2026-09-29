@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Cards — Housing at Noon</title>
+<link rel="icon" href="/icon.svg" type="image/svg+xml"><link rel="shortcut icon" href="/favicon.ico">
+<link rel="stylesheet" href="/static/style.css">
+<style>@font-face { font-family: "Card Oracle"; src: url(/cards-font/medium.otf) format("opentype"); font-weight: 500; }</style>
+</head>
+<body class="cardspage">
+<div class="topbar"><div class="inner">
+  <span class="brand">Housing at Noon</span>
+  <span class="datelabel" id="dateLabel">Cards</span>
+  <span class="spacer"></span>
+  <span class="chip" id="saveChip">Loading</span>
+</div></div>
+
+<div class="wrap">
+  <div class="banner" id="banner" hidden></div>
+  <p class="cards-howto">Instagram: post all cards as one carousel. X: post the first four cards. LinkedIn: upload the PDF as a document post.</p>
+  <p class="cards-links"><a id="pdfLink" href="#" download>Download the carousel PDF</a> · <a id="editorLink" href="/">Back to the editor</a></p>
+  <p class="muted">Edit a card’s title or text beside its image; edits save as you type. Re-render redraws every card and the PDF with your text (no AI call). Reset to generated puts back the automatic text.</p>
+  <div id="cards"></div>
+</div>
+<script src="/static/cards.js"></script>
+</body></html>

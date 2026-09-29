@@ -43,6 +43,16 @@ CREATE TABLE IF NOT EXISTS draft_versions (
     saved_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS ix_versions_date ON draft_versions(date, version);
+-- the owner's edits to a social card's text (cards.py; owner, 29 Sep 2026). pos = the
+-- theme's position in the free edition (1..n); pos 0 = the CTA card's description line.
+CREATE TABLE IF NOT EXISTS card_overrides (
+    date       TEXT NOT NULL,
+    pos        INTEGER NOT NULL,
+    title      TEXT NOT NULL DEFAULT '',
+    body       TEXT NOT NULL DEFAULT '',
+    updated_at TEXT NOT NULL,
+    PRIMARY KEY (date, pos)
+);
 """
 
 
@@ -177,3 +187,32 @@ def latest_sent() -> dict | None:
         if r is None:
             r = conn.execute("SELECT * FROM drafts ORDER BY date DESC LIMIT 1").fetchone()
     return _row_to_dict(r) if r else None
+
+
+# ── social card text overrides (cards.py, /cards/{date}) ─────────────────
+
+def card_overrides(date: str) -> dict[int, dict]:
+    """{pos: {title, body, updated_at}} for this date's cards."""
+    with connect() as conn:
+        rows = conn.execute("SELECT pos, title, body, updated_at FROM card_overrides WHERE date = ?",
+                            (date,)).fetchall()
+    return {int(r["pos"]): {"title": r["title"], "body": r["body"], "updated_at": r["updated_at"]}
+            for r in rows}
+
+
+def set_card_override(date: str, pos: int, title: str, body: str) -> dict:
+    ts = now_iso()
+    with connect() as conn:
+        conn.execute(
+            "INSERT INTO card_overrides (date, pos, title, body, updated_at) VALUES (?, ?, ?, ?, ?) "
+            "ON CONFLICT(date, pos) DO UPDATE SET title = excluded.title, body = excluded.body, "
+            "updated_at = excluded.updated_at",
+            (date, int(pos), title, body, ts),
+        )
+    return {"date": date, "pos": int(pos), "title": title, "body": body, "updated_at": ts}
+
+
+def delete_card_override(date: str, pos: int) -> bool:
+    with connect() as conn:
+        cur = conn.execute("DELETE FROM card_overrides WHERE date = ? AND pos = ?", (date, int(pos)))
+    return cur.rowcount > 0

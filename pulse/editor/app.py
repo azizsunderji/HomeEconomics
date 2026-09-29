@@ -22,8 +22,14 @@ Routes
   GET  /pdf/{date}?tier=    owner: render the draft to PDF now
                             (tier = premium | free | social)
   GET  /health
-  GET  /cards/{date}          owner: render the cards (one per free theme, then a sign-up card) and the carousel PDF
+  GET  /cards/{date}          owner: render the cards (one per free theme, then a sign-up card) and the carousel
+                              PDF, and show them with a text panel per card (static/cards.html, cards.js)
   GET  /cards/{date}/{n}      owner: card n (PNG); /cards/{date}/carousel.pdf the PDF
+  GET  /api/cards/{date}      per card: pos, title, body, budget, has_override (+ image URL, title size, fit)
+  PUT  /api/cards/{date}/{pos}     {title, body} -> the owner's text for that card (pos 0 = CTA line)
+  DELETE /api/cards/{date}/{pos}   back to the generated text
+  POST /api/cards/{date}/render    re-render all cards and the PDF (no Claude call for edited cards)
+  GET  /cards-font/medium.otf owner: the card title font, so the panel can check the one-line title
   GET  /sources               owner: LinkedIn accounts the collector reads (sources.py)
   GET  /api/sources           accounts with recent activity and include state
   POST /api/sources/include   {key, include} -> rewrites linkedin_targets.json
@@ -35,6 +41,7 @@ from __future__ import annotations
 import hashlib
 import logging
 import os
+import re
 import struct
 import threading
 from datetime import datetime, timezone
@@ -413,44 +420,140 @@ async def upload_image(request: Request, file: UploadFile = File(...)):
     return {"url": f"{paths.BASE_URL}/images/{rel}", "width": width, "height": height, "bytes": len(data)}
 
 
-@app.get("/cards/{date}", response_class=HTMLResponse)
-def draft_cards(request: Request, date: str):
-    """Owner: render this draft's social cards and the carousel PDF now, and show them
-    for saving. Owner's rules (28 Sep 2026): no posting step, he posts them himself; no
-    intro card; every free theme on ONE card at a fixed body size, condensed by Claude when
-    it is too long (no continuation cards), then a closing sign-up card; for Instagram and X
-    carousels and a LinkedIn document PDF. The first render of a date calls Claude (a few
-    cents); later renders use ~/work/noon/cards_cache.json.
+# One render at a time: the page load, the Re-render button and the noon send's render all
+# write the same files.
+_CARDS_LOCK = threading.Lock()
+_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
-    Uses publish_cards, so they land in the normal cards folder and mirror to Dropbox
-    immediately; the send's own render later overwrites both copies."""
-    _require(request)
-    import cards
+
+def _cards_date(date: str) -> dict:
+    if not _DATE_RE.match(date):
+        raise HTTPException(status_code=404, detail="no such draft")
     row = drafts.get(date)
     if row is None:
         raise HTTPException(status_code=404, detail="no such draft")
-    outs = cards.publish_cards(row["json"])
-    pngs = [o for o in outs if o.suffix == ".png"]
-    has_pdf = any(o.suffix == ".pdf" for o in outs)
-    pdf_link = (f'<p class="dl"><a href="/cards/{date}/carousel.pdf" download>'
-                f'Download the carousel PDF ({len(pngs)} pages)</a></p>' if has_pdf else "")
-    items = "".join(
-        f'<figure><a href="/cards/{date}/{i}" download><img src="/cards/{date}/{i}"></a>'
-        f'<figcaption>Card {i} &middot; <a href="/cards/{date}/{i}" download>save</a></figcaption></figure>'
-        for i, _p in enumerate(pngs, start=1))
-    html = (
-        "<!doctype html><meta name=viewport content='width=device-width,initial-scale=1'>"
-        f"<title>Cards &middot; {date}</title>"
-        "<style>body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;"
-        "background:#F6F7F3;color:#3D3733;margin:0;padding:24px;}"
-        "h1{font-size:20px;font-weight:600;margin:0 0 4px 0;}p{color:#777370;font-size:14px;margin:0 0 16px 0;}"
-        "p.dl{font-size:16px;margin:0 0 28px 0;}p.dl a{color:#3D3733;font-weight:600;}"
-        "figure{margin:0 0 28px 0;}img{width:100%;max-width:540px;height:auto;display:block;}"
-        "figcaption{font-size:13px;color:#777370;margin-top:6px;}a{color:#3D3733;}</style>"
-        f"<h1>Cards for {date}</h1>"
-        "<p>Instagram: post all cards as one carousel. X: post the first four cards. "
-        "LinkedIn: upload the PDF as a document post.</p>" + pdf_link + items)
-    return HTMLResponse(html, headers={"Cache-Control": "no-store"})
+    return row
+
+
+def _render_cards(row: dict) -> None:
+    import cards
+    with _CARDS_LOCK:
+        cards.publish_cards(row["json"])
+
+
+def _cards_payload(date: str) -> dict:
+    """The card panel's data: the last render's manifest plus the stored overrides."""
+    import json as _json
+    import cards
+    mf = cards.manifest_path(date)
+    if not mf.exists():
+        raise HTTPException(status_code=409, detail="cards not rendered yet")
+    m = _json.loads(mf.read_text())
+    ovs = drafts.card_overrides(date)
+
+    def img(n: int) -> str:
+        f = cards.CARDS_DIR / f"Housing at Noon {date} card{n}.png"
+        v = f.stat().st_mtime_ns if f.exists() else 0
+        return f"/cards/{date}/{n}?v={v}"
+
+    out = []
+    for c in m["cards"]:
+        ov = ovs.get(c["pos"])
+        out.append({
+            "pos": c["pos"], "n": c["n"], "num": c["num"],
+            # the panel shows the owner's full text when there is one (the image may have cut it)
+            "title": (ov["title"] if ov and ov["title"].strip() else c["title"]),
+            "body": (ov["body"] if ov and ov["body"].strip() else c["full_body"]),
+            "budget": c["budget"], "has_override": ov is not None,
+            "gen_title": c["gen_title"], "title_px": c["title_px"], "title_wrap": c["title_wrap"],
+            "shown_chars": c["chars"], "cut": c["cut"], "missing": c["missing"], "how": c["how"],
+            "image": img(c["n"]), "updated_at": ov["updated_at"] if ov else None,
+        })
+    pdf = cards.CARDS_DIR / f"Housing at Noon {date} carousel.pdf"
+    cta = m["cta"]
+    return {"date": date, "date_label": render.date_label(date), "rendered_at": m["rendered_at"],
+            "cards": out,
+            "cta": {"pos": 0, "n": cta["n"], "desc": cta["desc"], "default_desc": cta["default_desc"],
+                    "has_override": 0 in ovs, "image": img(cta["n"])},
+            "pdf": f"/cards/{date}/carousel.pdf?v={pdf.stat().st_mtime_ns if pdf.exists() else 0}",
+            "title_limits": {"max_px": 54, "min_px": 40, "width_px": 920, "tracking_em": -0.03}}
+
+
+@app.get("/cards/{date}", response_class=HTMLResponse)
+def draft_cards(request: Request, date: str):
+    """Owner: render this draft's social cards and the carousel PDF now, and show them
+    for saving, each with a text panel for editing it. Owner's rules (28-29 Sep 2026): no
+    posting step, he posts them himself; no intro card; every free theme on ONE card at a
+    constant 36 px body, condensed by Claude when it is too long (no continuation cards),
+    then a closing sign-up card; for Instagram and X carousels and a LinkedIn document PDF.
+    "I want a way to edit the text, some kind of editor, like the main one": the panel's
+    text is stored as an override (drafts.card_overrides) and used by every later render.
+    The first render of a date calls Claude (a few cents); later renders use
+    ~/work/noon/cards_cache.json, and edited cards never call it.
+
+    Uses publish_cards, so they land in the normal cards folder and mirror to Dropbox
+    immediately; the send's own render later overwrites both copies (with the overrides)."""
+    _require(request)
+    row = _cards_date(date)
+    _render_cards(row)
+    return FileResponse(STATIC / "cards.html", headers={"Cache-Control": "no-store"})
+
+
+@app.get("/api/cards/{date}")
+def api_cards(request: Request, date: str):
+    _require(request)
+    row = _cards_date(date)
+    import cards
+    if not cards.manifest_path(date).exists():
+        _render_cards(row)
+    return _cards_payload(date)
+
+
+@app.put("/api/cards/{date}/{pos}")
+def api_card_put(request: Request, date: str, pos: int, body: dict[str, Any] = Body(...)):
+    """Store the owner's text for one card. No render and no Claude call here."""
+    _require(request)
+    _cards_date(date)
+    title, text = body.get("title", ""), body.get("body", "")
+    if not isinstance(title, str) or not isinstance(text, str):
+        raise HTTPException(status_code=400, detail="need {title: string, body: string}")
+    if len(title) > 300 or len(text) > 6000:
+        raise HTTPException(status_code=400, detail="text too long")
+    if pos < 0 or pos > 12:
+        raise HTTPException(status_code=404, detail="no such card")
+    if pos == 0:
+        title = ""
+    if not title.strip() and not text.strip():
+        drafts.delete_card_override(date, pos)
+        return {"ok": True, "has_override": False}
+    r = drafts.set_card_override(date, pos, " ".join(title.split()), text.replace("\r", "").strip())
+    return {"ok": True, "has_override": True, "updated_at": r["updated_at"]}
+
+
+@app.delete("/api/cards/{date}/{pos}")
+def api_card_delete(request: Request, date: str, pos: int):
+    _require(request)
+    _cards_date(date)
+    return {"ok": True, "removed": drafts.delete_card_override(date, pos)}
+
+
+@app.post("/api/cards/{date}/render")
+def api_cards_render(request: Request, date: str):
+    _require(request)
+    row = _cards_date(date)
+    _render_cards(row)
+    return _cards_payload(date)
+
+
+@app.get("/cards-font/medium.otf")
+def cards_font(request: Request):
+    """The card title font (ABC Oracle Edu Medium), owner only, so the card panel can
+    measure whether a typed title fits on one line."""
+    _require(request)
+    f = Path(os.environ.get("NOON_CARDS_FONT", str(Path.home() / ".local/share/fonts/ABCOracle-Medium.otf")))
+    if not f.exists():
+        raise HTTPException(status_code=404, detail="font not found")
+    return FileResponse(str(f), media_type="font/otf", headers={"Cache-Control": "private, max-age=86400"})
 
 
 @app.get("/cards/{date}/carousel.pdf")

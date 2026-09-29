@@ -155,3 +155,33 @@ body.login { background: var(--soft); }
 
 .sentline { margin: 14px 0; }
 .sentline[hidden] { display: none; }
+
+/* social cards page (/cards/{date}): image beside its text panel on a wide screen,
+   stacked on a phone. The panel reuses the editor's title and .rich styles. */
+body.cardspage .wrap, body.cardspage .topbar .inner { max-width: 1120px; }
+.cards-howto { font-size: 15px; margin: 18px 0 6px 0; }
+.cards-links { font-size: 15px; margin: 0 0 8px 0; }
+.cards-links a { font-weight: 600; }
+.crow { display: grid; grid-template-columns: minmax(0, 460px) minmax(0, 1fr); gap: 28px; align-items: start; margin-top: 18px; }
+.crow .cimg { margin: 0; }
+.crow .cimg img { width: 100%; height: auto; display: block; box-shadow: 0 0 0 1px var(--line); }
+.crow figcaption { font-size: 13px; color: var(--muted); margin-top: 6px; }
+.cpanel { min-width: 0; }
+.clabel { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+.clabel .num { color: var(--blue); font-weight: 700; font-size: 19px; }
+.cstate { font-size: 12px; letter-spacing: 1px; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; background: var(--soft); }
+.cstate.edited { background: #FEC439; }
+.crow .title { flex: none; display: block; border: 0; border-bottom: 1px solid var(--line); background: transparent; font: inherit; font-size: 19px; font-weight: 600; padding: 4px 0; margin: 0 0 4px 0; outline: none; width: 100%; resize: none; overflow: hidden; white-space: pre-wrap; overflow-wrap: anywhere; -webkit-appearance: none; appearance: none; border-radius: 0; color: var(--ink); }
+.crow .title:focus { border-bottom-color: var(--blue); }
+.crow .title.desc { font-weight: normal; font-size: 17px; }
+.crow .title.over { border-bottom-color: var(--red); }
+.tmeta { font-size: 13px; color: var(--muted); min-height: 1.3em; margin-bottom: 6px; }
+.tmeta.over, .counter.over, .cnote.over { color: var(--red); font-weight: 600; }
+.crow .cbody { border-bottom: 1px solid var(--line); }
+.cmeta { display: flex; gap: 12px; flex-wrap: wrap; font-size: 13px; color: var(--muted); margin-top: 8px; }
+.crow .tools { gap: 16px; }
+.crow .reset { font-size: 14px; color: var(--muted); }
+.crow .reset[hidden] { display: none; }
+@media (max-width: 760px) {
+  .crow { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+}

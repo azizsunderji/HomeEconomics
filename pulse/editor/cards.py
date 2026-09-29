@@ -1,50 +1,51 @@
 """Social image cards for a Housing at Noon edition: Instagram and X carousels, and a
 LinkedIn document PDF.
 
-Owner's rules (Aziz, 28 Sep 2026):
-  * One card per FREE theme, in free-edition order, and every theme fits on ONE card at a
-    fixed body size (36 px). No continuation cards.
+Owner's rules (Aziz, 28-29 Sep 2026):
+  * One card per FREE theme, in free-edition order, and every theme fits on ONE card. No
+    continuation cards.
+  * "Text size must be constant" (29 Sep): the body is always 36 px. There is no smaller
+    fallback size; nothing is ever set below 36 px and nothing is clipped.
+  * The title sits on ONE line (29 Sep): 54 px where it fits the width, else stepped down
+    2 px at a time to no less than 40 px. A generated title that does not fit at 40 px is
+    shortened by the condensing model to the characters that fit (logged).
+  * Layout (29 Sep): the theme's number as a 96 px bold blue numeral at top left, the small
+    Home Economics logo at top right on the same row, vertically centred on the numeral;
+    48 px top padding; the footer holds only "Housing at Noon · <date>", 40 px from the
+    bottom edge. Source pills (as in the email) sit just above the footer on every card.
   * When a theme's text is longer than the card holds, the builder condenses it with
-    Claude to fit, more aggressively the longer the theme is. The condensed text keeps
-    the theme's meaning, every number and every attribution, and at most two paragraphs.
-  * "It should look really good, that's the key for social": an eyebrow line ("Theme
-    One", "Theme Two" ... by position in the free edition, not the entry's rank), a strong
-    title (Medium, 54 px), body 36 px at 1.35 leading, source pills (as in the email) on
-    every card, and the small Home Economics logo in the footer of every card.
+    Claude to fit. The condensed text keeps the theme's meaning, every number and every
+    attribution, and at most two paragraphs.
+  * "I want a way to edit the text" (29 Sep): the owner can replace a card's title and body
+    on /cards/<date> (table card_overrides in the drafts DB, via drafts.py). An override is
+    used instead of the generated text, without any Claude call, in every later render
+    (including the one after the noon send). Position 0 holds an edited CTA description.
   * The set ends with a standalone call-to-action card (large logo, "Housing at Noon",
     one line of description, homeeconomics.us/noon). Instagram's cap of 10 includes it,
     so at most 9 themes; beyond that the last themes are dropped (logged), never the CTA.
 
 How a theme is fitted:
-  1. Budget. The card is rendered with this theme's own title and pills and a filler body
+  1. Title size: the largest of 54, 52 ... 40 px at which the title fits on one line.
+  2. Budget. The card is rendered with this theme's own title and pills and a filler body
      (the theme's words, two paragraphs), and the longest filler that fits at 36 px is
-     the character budget. A two-line title or a second row of pills lowers it.
-  2. If the visible text (links reduced to their anchor words) is within the budget, it
-     is used unchanged. Otherwise it is condensed, under the owner's rule (Aziz, 28 Sep
-     2026): a card must keep every number and every attribution.
+     the character budget.
+  3. If the visible text (links reduced to their anchor words) is within the budget and
+     fits, it is used unchanged. Otherwise it is condensed:
      a. Facts to keep are extracted from the visible text, less its pointer sentences
         ("My X post on this is here"): every number, percentage, dollar figure and date
-        (regexes, with a few words of context), every @handle and "On X,"-style platform
-        lead-in (regexes), every source pill the text names, and every other named source
-        or person (Claude Haiku; names not found in the text are
-        discarded).
+        (regexes), every @handle and "On X,"-style platform lead-in (regexes), every source
+        pill the text names, and every other named source or person (Claude Haiku).
      b. Claude Sonnet condenses the text, given the facts list, a target of 85% of the
-        budget and a hard ceiling of the budget, and asked to keep the author's
-        commentary (first-person sentences, and an unattributed closing paragraph) and to
-        add nothing; at most two paragraphs, plain text.
-     c. The reply is checked: every number and date verbatim, every name case-insensitive
-        on word boundaries, every handle verbatim, the commentary present (by its
-        distinctive words, and in the first person if it was), and the text within the
-        budget and fitting at 36 px. If any check fails, a repair request lists the
-        missing facts and the exact excess characters, measured on the card when the
-        text is within the budget but does not fit (up to 3 repair rounds; only the
-        latest draft is sent back, to keep the cost down).
-  3. A condensed text is never cut at a sentence end. If no draft passes after 3 repairs,
-     each draft is judged by what the card would show (the body steps to 34 px, then
-     32 px, to fit it whole) and the one that loses the fewest facts, at the largest
-     size, is used; a WARNING names the theme and what is missing. The last
-     guard (overflow at 32 px) cuts at a sentence end and logs a WARNING; nothing is
-     clipped.
+        budget and a hard ceiling of the budget, keeping the author's commentary.
+     c. A reply passes when every fact is present and the whole text fits at 36 px.
+        Otherwise up to 3 repair rounds follow, each naming the missing facts and the
+        excess measured on the card. If the latest draft still does not fit at 36 px,
+        up to 2 more repair rounds follow (5 in all) with a target of 75% of the budget.
+     d. Last resort, if no draft fits at 36 px: the model is asked once to drop its least
+        important sentence(s) while keeping every listed fact (WARNING logged).
+  4. A condensed text is never set smaller. The draft that fits at 36 px with the fewest
+     missing facts is used; a WARNING names anything missing. Only if no draft fits at all
+     does the last guard cut at a sentence end at 36 px (WARNING); nothing is clipped.
 Results are cached in NOON_CARDS_CACHE (default ~/work/noon/cards_cache.json), keyed by
 sha1(PROMPT_VERSION + theme markdown + budget), so re-rendering the same draft gives the
 same cards at no cost; bumping PROMPT_VERSION retires every cached text. Each
@@ -52,9 +53,11 @@ condensation, its fidelity (facts kept / total, repair rounds) and the token usa
 cost per model are logged.
 
 Files: `Housing at Noon YYYY-MM-DD card1.png` … `cardK.png` (the themes, then the CTA
-card; stale higher-numbered cards from an earlier render of the same date are removed)
-and `Housing at Noon YYYY-MM-DD carousel.pdf` (all cards, 1080x1350 px pages), in
-NOON_CARDS_DIR (default NOON_PDF_DIR/cards), mirrored to NOON_PDF_DROPBOX_DIR/cards.
+card; stale higher-numbered cards from an earlier render of the same date are removed),
+`Housing at Noon YYYY-MM-DD carousel.pdf` (all cards, 1080x1350 px pages), in
+NOON_CARDS_DIR (default NOON_PDF_DIR/cards), mirrored to NOON_PDF_DROPBOX_DIR/cards, and
+`Housing at Noon YYYY-MM-DD cards.json` (what each card shows, its budget and title size;
+read by the editor's card panel; not mirrored).
 
     python cards.py            # today's draft
     python cards.py --date 2026-09-04 --out /tmp/cards
@@ -85,18 +88,26 @@ CACHE_PATH = Path(os.environ.get("NOON_CARDS_CACHE", str(Path.home() / "work" / 
 SIGNUP = "homeeconomics.us/noon"
 W, H = 1080, 1350
 MAX_CARDS = 10          # Instagram's carousel limit, CTA card included
-BODY_PX = 36
-FALLBACK_PXS = (34, 32)   # tried in order when a condensed text still does not fit at 36
+BODY_PX = 36               # constant (owner, 29 Sep 2026); there is no smaller fallback
+TITLE_PXS = tuple(range(54, 39, -2))   # 54 ... 40: the largest that keeps the title on one line
+TITLE_MIN_PX = TITLE_PXS[-1]
 MARGIN = 80
+TOP_PAD = 48               # above the numeral row (owner, 29 Sep 2026)
+BOTTOM_PAD = 40            # below the footer line
+CTA_DESC = "A daily brief on the U.S. housing market, free every weekday at noon ET"
 # Sonnet condenses and repairs; Haiku extracts names (owner's choice, 28 Sep 2026).
 CONDENSE_MODEL = os.environ.get("NOON_CARDS_MODEL", "claude-sonnet-5")
 EXTRACT_MODEL = os.environ.get("NOON_CARDS_EXTRACT_MODEL", "claude-haiku-4-5")
 PRICE_PER_MTOK = {"claude-sonnet-5": (2.00, 10.00), "claude-haiku-4-5": (1.00, 5.00)}  # in, out USD
 # Part of the cache key: bump it whenever the prompts or the checks change, so texts made
 # under older rules are not reused.
-PROMPT_VERSION = "cards-v5-2026-09-28-facts"
+PROMPT_VERSION = "cards-v7-2026-09-29-36px"
+# The facts extraction did not change in v7, so its cache entries (and Haiku calls) are kept.
+FACTS_VERSION = "cards-v5-2026-09-28-facts"
 TARGET_SHARE = 0.85       # target length as a share of the budget; the budget is the ceiling
+FIT_TARGET_SHARE = 0.75   # target in the extra repair rounds for a draft that does not fit
 MAX_REPAIRS = 3
+MAX_FIT_REPAIRS = 5       # repair rounds in all when the latest draft still does not fit
 
 INK, MUTED, BLUE, CREAM, LIGHT = "#3D3733", "#7F7570", "#0BB4FF", "#F6F7F3", "#DADFCE"
 SANS = '"ABC Oracle Edu", "Helvetica Neue", Helvetica, Arial, sans-serif'
@@ -239,12 +250,16 @@ def _base_css() -> str:
   html, body {{ margin:0; padding:0; background:{CREAM}; }}
   body {{ width:{W}px; height:{H}px; overflow:hidden; color:{INK}; font-family:{SANS};
           -webkit-font-smoothing:antialiased; font-kerning:normal; }}
-  .card {{ box-sizing:border-box; width:{W}px; height:{H}px; padding:{m}px {m}px 60px {m}px;
+  .card {{ box-sizing:border-box; width:{W}px; height:{H}px; padding:{TOP_PAD}px {m}px {BOTTOM_PAD}px {m}px;
            display:flex; flex-direction:column; overflow:hidden; background:{CREAM}; }}
-  .eb {{ flex:none; color:{BLUE}; font-weight:500; font-size:30px; line-height:1; letter-spacing:0.01em;
-         margin:0 0 26px 0; }}
+  /* numeral top left, small logo top right, centred on the numeral (owner, 29 Sep 2026) */
+  .top {{ flex:none; display:flex; justify-content:space-between; align-items:center; margin:0 0 22px 0; }}
+  .eb {{ color:{BLUE}; font-weight:700; font-size:96px; line-height:0.9; letter-spacing:-0.03em; }}
+  .top img {{ height:52px; width:auto; display:block; }}
+  /* one line (owner, 29 Sep 2026); .wrap only for an owner's title too long even at 40 px */
   .tt {{ flex:none; font-weight:500; font-size:54px; line-height:1.08; letter-spacing:-0.03em;
-         margin:0 0 40px 0; text-wrap:balance; }}
+         margin:0 0 40px 0; white-space:nowrap; }}
+  .tt.wrap {{ white-space:normal; text-wrap:balance; }}
   .body {{ flex:none; line-height:1.35; letter-spacing:-0.005em; }}
   .body p {{ margin:0 0 0.72em 0; hyphens:manual; }}
   .body p:last-child {{ margin-bottom:0; }}
@@ -252,9 +267,8 @@ def _base_css() -> str:
   .pills + .foot {{ margin-top:0; }}
   .pill {{ background:{LIGHT}; color:{INK}; font-size:28px; line-height:1.2; padding:9px 22px 10px;
            border-radius:999px; white-space:nowrap; }}
-  .foot {{ margin-top:auto; padding-top:40px; display:flex; flex:none; white-space:nowrap;
-           justify-content:space-between; align-items:center; font-size:28px; color:{MUTED}; }}
-  .foot img {{ height:52px; width:auto; display:block; }}
+  .foot {{ margin-top:auto; padding-top:40px; flex:none; white-space:nowrap; font-size:28px; line-height:1;
+           color:{MUTED}; }}
   /* the closing call-to-action card */
   .cta {{ justify-content:center; padding:{m}px 96px; background:{BLUE}; }}
   .cta .logo {{ width:560px; height:auto; display:block; margin:0 0 84px 0; }}
@@ -270,8 +284,8 @@ def _base_css() -> str:
 
 
 def card_html(theme: dict, date: str, text: str, *, px: int = BODY_PX) -> str:
-    """One theme card: eyebrow, title, body (paragraphs separated by a blank line), pills,
-    footer with the small logo."""
+    """One theme card: numeral and small logo, title (one line at theme["title_px"], default
+    54 px), body (paragraphs separated by a blank line), pills, footer line."""
     paras = [" ".join(p.split()) for p in str(text or "").split("\n\n") if p.strip()]
     # a paragraph never ends on a one-word line: its last two words are bound together
     body = "".join(f"<p>{_esc(_bind_last(p))}</p>" for p in paras)
@@ -279,10 +293,12 @@ def card_html(theme: dict, date: str, text: str, *, px: int = BODY_PX) -> str:
     if theme.get("pills"):
         pills = '<div class="pills">' + "".join(
             f'<span class="pill">{_esc(p)}</span>' for p in theme["pills"][:6]) + "</div>"
-    foot = (f'<div class="foot"><img src="{_logo()}" alt="Home Economics">'
-            f'<span>Housing at Noon · {_esc(date_label(date))}</span></div>')
-    return (f'<div class="card"><div class="eb">{theme_word(theme["pos"])}</div>'
-            f'<div class="tt">{_esc(theme["title"])}</div>'
+    foot = f'<div class="foot">Housing at Noon · {_esc(date_label(date))}</div>'
+    tpx = int(theme.get("title_px") or TITLE_PXS[0])
+    tcls = "tt wrap" if theme.get("title_wrap") else "tt"
+    return (f'<div class="card"><div class="top"><div class="eb">{theme["pos"]}</div>'
+            f'<img src="{_logo()}" alt="Home Economics"></div>'
+            f'<div class="{tcls}" style="font-size:{tpx}px">{_esc(theme["title"])}</div>'
             f'<div class="body" style="font-size:{px}px">{body}</div>{pills}{foot}</div>')
 
 
@@ -291,10 +307,11 @@ def _bind_last(p: str) -> str:
     return p if i < 0 or len(p) - i > 30 else p[:i] + "\u00a0" + p[i + 1:]
 
 
-def cta_html(date: str) -> str:
+def cta_html(date: str, desc: str | None = None) -> str:
+    """The closing sign-up card; `desc` is the owner's edited description line, if any."""
     return (f'<div class="card cta"><img class="logo" src="{_logo()}" alt="Home Economics">'
             f'<h1>Housing at Noon</h1>'
-            f'<div class="desc">A daily brief on the U.S. housing market, free every weekday at noon ET</div>'
+            f'<div class="desc">{_esc(" ".join((desc or CTA_DESC).split()))}</div>'
             f'<div class="addr">{SIGNUP}</div></div>')
 
 
@@ -321,6 +338,30 @@ class _Fitter:
           const f = document.querySelector('.foot');
           if (f && f.scrollWidth > f.clientWidth + 1) return true;
           return false; }""", html)
+
+    def title_one_line(self, theme: dict, date: str, px: int) -> bool:
+        """Whether the title fits on one line at `px`."""
+        return bool(self.page.evaluate("""(h) => {
+          document.body.innerHTML = h;
+          const t = document.querySelector('.tt');
+          return t.scrollWidth <= t.clientWidth + 1; }""",
+            card_html(dict(theme, title_px=px, title_wrap=False), date, "")))
+
+    def title_px(self, theme: dict, date: str) -> int | None:
+        """The largest of TITLE_PXS at which the title is one line, else None."""
+        return next((p for p in TITLE_PXS if self.title_one_line(theme, date, p)), None)
+
+    def title_capacity(self, theme: dict, date: str) -> int:
+        """Characters of the title (a prefix ending at a word) that fit on one line at 40 px."""
+        t = theme["title"]
+        lo, hi = 0, len(t)
+        while lo < hi:
+            mid = (lo + hi + 1) // 2
+            if self.title_one_line(dict(theme, title=t[:mid].rstrip()), date, TITLE_MIN_PX):
+                lo = mid
+            else:
+                hi = mid - 1
+        return lo
 
     def budget(self, theme: dict, date: str, px: int = BODY_PX) -> int:
         """Characters of body text that fit on this theme's card at `px`, measured with the
@@ -361,12 +402,11 @@ def _capacity(fitter: _Fitter, theme: dict, date: str, text: str, px: int) -> in
 
 
 def _outcome(fitter: _Fitter, theme: dict, date: str, text: str) -> tuple[str, int | None]:
-    """(text as the card would show it, px): the largest of 36/34/32 px that fits the whole
-    text, or (the last-guard cut at 32 px, None)."""
-    for p in (BODY_PX, *FALLBACK_PXS):
-        if fitter.fits(card_html(theme, date, text, px=p)):
-            return text, p
-    return _cut_to_fit(fitter, theme, date, text, FALLBACK_PXS[-1]), None
+    """(text as the card would show it, px): (text, 36) when the whole text fits at 36 px,
+    else (the last-guard cut at 36 px, None). There is no smaller size (owner, 29 Sep 2026)."""
+    if fitter.fits(card_html(theme, date, text, px=BODY_PX)):
+        return text, BODY_PX
+    return _cut_to_fit(fitter, theme, date, text, BODY_PX), None
 
 
 def _cut_to_fit(fitter: _Fitter, theme: dict, date: str, text: str, px: int) -> str:
@@ -627,11 +667,15 @@ def _prompt(theme: dict, budget: int, facts: list[dict]) -> str:
 
 
 def _repair_prompt(draft: str, budget: int, missing: list[dict], fits36: bool,
-                   capacity: int | None = None) -> str:
+                   capacity: int | None = None, share: float = TARGET_SHARE) -> str:
     """`capacity`: characters of this draft that fit on the card at 36 px, measured by
-    rendering (paragraph breaks and line ends make it lower than the budget)."""
+    rendering (paragraph breaks and line ends make it lower than the budget). `share`:
+    the target as a share of the budget (0.75 in the extra rounds for a draft that does
+    not fit)."""
     limit = budget if fits36 or capacity is None else min(budget, capacity)
     target = int(limit * (TARGET_SHARE if limit == budget else 0.95))
+    if share < TARGET_SHARE:
+        target = min(target, int(budget * share))
     parts = ["That draft needs changes before it can be used:"]
     if len(draft) > limit:
         why = ("" if limit == budget else
@@ -641,7 +685,7 @@ def _repair_prompt(draft: str, budget: int, missing: list[dict], fits36: bool,
                      f"{len(draft) - limit} characters must go (aim for about {target}).")
     elif not fits36:
         parts.append(f"- It is {len(draft)} characters but does not fit on the card; shorten it by "
-                     f"about {max(30, len(draft) - int(budget * TARGET_SHARE))} characters.")
+                     f"about {max(30, len(draft) - int(budget * share))} characters.")
     if missing:
         parts.append("- These facts from the original are missing and must be restored, exactly as "
                      "written:\n" + _facts_block(missing))
@@ -653,6 +697,30 @@ def _repair_prompt(draft: str, budget: int, missing: list[dict], fits36: bool,
                  "paragraphs. Return "
                  "only the revised text, without the bracketed lengths.")
     return "\n".join(parts)
+
+
+def _drop_prompt(draft: str, capacity: int, facts: list[dict]) -> str:
+    """Last resort (owner, 29 Sep 2026): the draft still does not fit at 36 px after every
+    repair round, so the model deletes its least important sentence(s), keeping every fact."""
+    need = max(30, len(draft) - capacity)
+    listing = "\n".join(f"[{len(x)}] {x}" for para in _para_sentences(draft) for x in para)
+    return ("The draft still does not fit on the card: measured on the card, only the first "
+            f"{capacity} of its {len(draft)} characters fit, so at least {need} characters must go.\n\n"
+            "As a last step, delete the least important sentence or sentences: those that carry "
+            "none of the facts listed below, or the fewest of them. Every listed fact must still "
+            "appear, exactly as written:\n"
+            f"{_facts_block(facts)}\n\n"
+            f"Your sentences, with their lengths in characters:\n{listing}\n\n"
+            "Do not rewrite the sentences you keep beyond what joining them needs, keep the "
+            "author's commentary, and add nothing. At most 2 paragraphs. Return only the revised "
+            "text, without the bracketed lengths.")
+
+
+_TITLE_PROMPT = (
+    "Shorten this headline from a daily brief on the U.S. housing market to at most {n} "
+    "characters, counting spaces. Keep its meaning and its key terms (names, numbers, places). "
+    "Plain, measured wording; keep the original's capitalisation style; no final period. "
+    "Return only the headline.\n\nHeadline: {title}\n\nThe section it heads (context only):\n{text}")
 
 
 def _clean_reply(t: str) -> str:
@@ -714,7 +782,7 @@ class _Condenser:
 
     def facts(self, theme: dict) -> tuple[list[dict], bool]:
         """(facts to keep, whether the name extraction worked). Cached per theme text."""
-        fk = "facts:" + hashlib.sha1((PROMPT_VERSION + "\x00" + theme["md"]).encode("utf-8")).hexdigest()
+        fk = "facts:" + hashlib.sha1((FACTS_VERSION + "\x00" + theme["md"]).encode("utf-8")).hexdigest()
         hit = self.cache.get(fk)
         if hit and isinstance(hit.get("facts"), list):
             return hit["facts"], True
@@ -752,72 +820,118 @@ class _Condenser:
         return facts, ok
 
     def condense(self, theme: dict, budget: int, fits36, capacity=None, outcome=None) -> dict:
-        """{text, how, facts, missing, rounds, ok}. `fits36(text)` renders the card at 36 px;
-        `capacity(text)` gives how many of the text's characters fit on it (for the repair);
-        `outcome(text)` gives (text as the card would show it, px or None if it had to be cut).
-        A draft passes when every fact is present, it is within the budget and it fits at
-        36 px; otherwise up to MAX_REPAIRS repair requests follow. The result is never cut
-        here: after the last repair the draft with the fewest missing facts is returned
-        whole, and plan_cards sets it at a smaller size if it must."""
+        """{text, how, facts, missing, rounds, ok, last_resort}. `fits36(text)` renders the
+        card at 36 px; `capacity(text)` gives how many of the text's characters fit on it;
+        `outcome(text)` gives (text as the card would show it, 36 or None if it had to be cut).
+        A draft passes when every fact is present and the whole text fits at 36 px. Otherwise
+        up to MAX_REPAIRS repair rounds follow; if the latest draft still does not fit, up to
+        MAX_FIT_REPAIRS rounds in all, at FIT_TARGET_SHARE of the budget; if no draft fits at
+        all, one last request drops the least important sentence(s). The draft that fits with
+        the fewest missing facts is returned; the text is never cut here."""
         k = self.key(theme, budget)
         hit = self.cache.get(k)
         if hit and hit.get("text"):
             facts = hit.get("facts") or []
             return {"text": hit["text"], "how": "cache", "facts": facts,
                     "missing": missing_facts(facts, hit["text"]), "rounds": hit.get("rounds", 0),
-                    "ok": hit.get("ok", False)}
+                    "ok": hit.get("ok", False), "last_resort": hit.get("last_resort", False)}
+        last_resort = False
         try:
             facts, names_ok = self.facts(theme)
             messages = [{"role": "user", "content": _prompt(theme, budget, facts)}]
-            drafts_: list[tuple[str, list[dict], bool]] = []
+            drafts_: list[dict] = []
             rounds = 0
             while True:
                 out = _clean_reply(self._call(CONDENSE_MODEL, messages, system=_SYSTEM))
-                miss = missing_facts(facts, out)
-                fit = fits36(out)
-                drafts_.append((out, miss, fit))
-                if not miss and len(out) <= budget and fit:
+                d = {"text": out, "miss": missing_facts(facts, out), "fit": bool(fits36(out))}
+                drafts_.append(d)
+                if not d["miss"] and d["fit"]:
                     break
-                if rounds >= MAX_REPAIRS:
+                if rounds >= MAX_FIT_REPAIRS or (rounds >= MAX_REPAIRS and d["fit"]):
                     break
                 rounds += 1
-                cap = capacity(out) if (capacity is not None and not fit) else None
+                share = FIT_TARGET_SHARE if rounds > MAX_REPAIRS else TARGET_SHARE
+                cap = capacity(out) if (capacity is not None and not d["fit"]) else None
                 logger.info(f"theme {theme['pos']}: repair {rounds}: {len(out)} chars (budget {budget}"
                             + (f", {cap} fit on the card" if cap is not None else "") + "), "
-                            f"missing {[_fact_label(f) for f in miss]}, fits at {BODY_PX} px: {fit}")
+                            f"missing {[_fact_label(f) for f in d['miss']]}, fits at {BODY_PX} px: {d['fit']}"
+                            + (f", target {int(share * 100)}% of the budget" if share != TARGET_SHARE else ""))
                 # only the latest draft is sent back (not every earlier one): the repair
                 # request carries all that is needed, and the input stays small
                 messages = [messages[0], {"role": "assistant", "content": out},
-                            {"role": "user", "content": _repair_prompt(out, budget, miss, fit, cap)}]
+                            {"role": "user", "content": _repair_prompt(out, budget, d["miss"], d["fit"], cap, share)}]
+            if not any(d["fit"] for d in drafts_) and capacity is not None:
+                # last resort: drop the least important sentence(s) of the most complete draft
+                idx = min(range(len(drafts_)), key=lambda i: (len(drafts_[i]["miss"]), -i))
+                base = drafts_[idx]["text"]
+                cap = capacity(base)
+                logger.warning(f"theme {theme['pos']} (entry {theme['num']}, {theme['title']!r}): no draft "
+                               f"fits at {BODY_PX} px after {rounds} repair round(s); last resort: asking "
+                               f"the model to drop its least important sentence(s) ({len(base)} chars, "
+                               f"{cap} fit)")
+                out = _clean_reply(self._call(CONDENSE_MODEL, [
+                    messages[0], {"role": "assistant", "content": base},
+                    {"role": "user", "content": _drop_prompt(base, cap, facts)}], system=_SYSTEM))
+                drafts_.append({"text": out, "miss": missing_facts(facts, out), "fit": bool(fits36(out))})
+                last_resort = True
         except Exception as e:  # noqa: BLE001  (no key, network, refusal): never block the cards
-            logger.warning(f"theme {theme['num']}: condensation failed ({e}); the full text is used "
-                           "at a smaller size")
+            logger.warning(f"theme {theme['num']}: condensation failed ({e}); the full text is used and "
+                           "cut at a sentence end if it does not fit")
             return {"text": theme["text"], "how": "not condensed (error)", "facts": [], "missing": [],
-                    "rounds": 0, "ok": False}
-        passing = [d for d in drafts_ if not d[1] and d[2] and len(d[0]) <= budget]
+                    "rounds": 0, "ok": False, "last_resort": False}
+        order = {id(d): i for i, d in enumerate(drafts_)}
+        passing = [d for d in drafts_ if not d["miss"] and d["fit"]]
+        fitting = [d for d in drafts_ if d["fit"]]
         if passing:
-            out, miss, fit = passing[-1]
+            best = passing[-1]
+        elif fitting:  # fewest missing facts, then the latest
+            best = min(fitting, key=lambda d: (len(d["miss"]), -order[id(d)]))
         elif outcome is not None:
-            # none passed: judge each draft by what the card would show after the size
-            # fallback and, if it must, the last-guard cut; fewest facts lost, then the
-            # largest type, then the shortest
-            def score(d):
-                shown, px = outcome(d[0])
-                return (len(missing_facts(facts, shown)), px is None, -(px or 0), len(d[0]))
-            out, miss, fit = min(drafts_, key=score)
+            # none fits whole: judge each by what the last-guard cut at 36 px would leave
+            best = min(drafts_, key=lambda d: (len(missing_facts(facts, outcome(d["text"])[0])), -order[id(d)]))
         else:
-            out, miss, fit = min(drafts_, key=lambda d: (len(d[1]), not (d[2] and len(d[0]) <= budget), len(d[0])))
-        ok = not miss and fit and len(out) <= budget
+            best = min(drafts_, key=lambda d: (len(d["miss"]), -order[id(d)]))
+        out, miss = best["text"], best["miss"]
+        ok = not miss and best["fit"]
         how = "claude" + (f", {rounds} repair round(s)" if rounds else "")
+        if last_resort:
+            how += ", last-resort sentence drop" + ("" if best is drafts_[-1] else " (not used)")
         if not ok:
             how += f", unresolved after {rounds} repair(s)"
         if names_ok:  # without the names the check was incomplete: do not keep the result
             self.cache[k] = {"text": out, "budget": budget, "facts": facts, "rounds": rounds, "ok": ok,
+                             "last_resort": last_resort,
                              "model": CONDENSE_MODEL, "prompt_version": PROMPT_VERSION,
                              "title": theme["title"], "original_chars": len(theme["text"]),
                              "created": datetime.now(timezone.utc).isoformat(timespec="seconds")}
             self.dirty = True
-        return {"text": out, "how": how, "facts": facts, "missing": miss, "rounds": rounds, "ok": ok}
+        return {"text": out, "how": how, "facts": facts, "missing": miss, "rounds": rounds, "ok": ok,
+                "last_resort": last_resort}
+
+    def shorten_title(self, theme: dict, n: int, one_line) -> str | None:
+        """A generated title that does not fit on one line at 40 px: ask the condensing model
+        for one of at most `n` characters (cached). `one_line(title)` checks it on the card.
+        Returns None when no reply fits (the caller then lets the title wrap)."""
+        k = "title:" + hashlib.sha1((PROMPT_VERSION + "\x00" + theme["title"] + "\x00" + str(n))
+                                    .encode("utf-8")).hexdigest()
+        hit = self.cache.get(k)
+        if hit and hit.get("title") and one_line(hit["title"]):
+            return hit["title"]
+        for limit in (n, int(n * 0.9)):
+            try:
+                reply = self._call(CONDENSE_MODEL, [{"role": "user", "content": _TITLE_PROMPT.format(
+                    n=limit, title=theme["title"], text=theme["text"][:1500])}], system=_SYSTEM, max_tokens=200)
+            except Exception as e:  # noqa: BLE001
+                logger.warning(f"theme {theme['pos']}: title shortening failed ({e})")
+                return None
+            t = " ".join(_clean_reply(reply).split()).strip().strip('"“”').rstrip(".")
+            if t and one_line(t):
+                self.cache[k] = {"title": t, "original": theme["title"], "limit": n,
+                                 "model": CONDENSE_MODEL,
+                                 "created": datetime.now(timezone.utc).isoformat(timespec="seconds")}
+                self.dirty = True
+                return t
+        return None
 
     def cost_usd(self) -> float:
         tot = 0.0
@@ -829,9 +943,48 @@ class _Condenser:
 
 # ── planning ────────────────────────────────────────────────────────────
 
-def plan_cards(fitter: _Fitter, themes: list[dict], date: str) -> tuple[list[dict], list[str]]:
-    """[{theme, text, px, budget, condensed, how, facts_total, facts_kept, missing, rounds}]
-    for each theme (at most MAX_CARDS-1), plus log notes."""
+def _norm_body(text: str) -> str:
+    """Owner's text -> the card's body format: paragraphs separated by one blank line,
+    single line breaks inside a paragraph read as spaces."""
+    paras = [" ".join(p.split()) for p in re.split(r"\n\s*\n", str(text or "").replace("\r", ""))]
+    return "\n\n".join(p for p in paras if p)
+
+
+def _fit_title(fitter: _Fitter, cond: "_Condenser", t: dict, date: str, owner_title: bool) -> list[str]:
+    """Sets t["title_px"] (and t["title_wrap"] / a shortened t["title"]) so the title sits on
+    one line (owner, 29 Sep 2026). Returns log notes."""
+    notes: list[str] = []
+    px = fitter.title_px(t, date)
+    if px is None and not owner_title:
+        n = fitter.title_capacity(t, date)
+        new = cond.shorten_title(t, n, lambda s: fitter.title_px(dict(t, title=s), date) is not None)
+        if new:
+            note = (f"theme {t['pos']} (entry {t['num']}): title too long for one line at {TITLE_MIN_PX} px "
+                    f"({len(t['title'])} chars, {n} fit); shortened by the model to {new!r}")
+            logger.info(note)
+            notes.append(note)
+            t["title"] = new
+            px = fitter.title_px(t, date)
+    if px is None:
+        t["title_wrap"] = True
+        px = TITLE_MIN_PX
+        note = (f"theme {t['pos']} (entry {t['num']}): the title {t['title']!r} does not fit on one line "
+                f"at {TITLE_MIN_PX} px" + ("; it is the owner's title, so it wraps" if owner_title else
+                                           "; shortening failed, so it wraps"))
+        logger.warning(note)
+        notes.append(note)
+    t["title_px"] = px
+    return notes
+
+
+def plan_cards(fitter: _Fitter, themes: list[dict], date: str,
+               overrides: dict | None = None) -> tuple[list[dict], list[str]]:
+    """[{theme, text, px, budget, condensed, how, facts_total, facts_kept, missing, rounds,
+    override, cut, gen_title}] for each theme (at most MAX_CARDS-1), plus log notes.
+    `overrides`: {pos: {title, body}} from drafts.card_overrides (the owner's edits); an
+    override's title and body, when not empty, replace the generated ones, with no Claude
+    call."""
+    overrides = overrides or {}
     notes: list[str] = []
     if len(themes) > MAX_CARDS - 1:
         dropped = themes[MAX_CARDS - 1:]
@@ -842,47 +995,61 @@ def plan_cards(fitter: _Fitter, themes: list[dict], date: str) -> tuple[list[dic
         notes.append(note)
     cond = _Condenser()
     plan = []
-    for t in themes:
+    for t0 in themes:
+        t = dict(t0)
+        ov = overrides.get(t["pos"]) or {}
+        ov_title = " ".join(str(ov.get("title") or "").split())
+        ov_body = _norm_body(ov.get("body") or "")
+        if ov_title:
+            t["title"] = ov_title
+        notes += _fit_title(fitter, cond, t, date, owner_title=bool(ov_title))
         budget = fitter.budget(t, date)
         text, how, condensed = t["text"], "unchanged", False
         facts: list[dict] = []
         rounds = 0
-        if len(text) > budget or not fitter.fits(card_html(t, date, text, px=BODY_PX)):
+        last_resort = False
+        if ov_body:
+            text, how = ov_body, "owner's text"
+        elif len(text) > budget or not fitter.fits(card_html(t, date, text, px=BODY_PX)):
             r = cond.condense(t, budget, lambda x, t=t: fitter.fits(card_html(t, date, x, px=BODY_PX)),
                               lambda x, t=t: _capacity(fitter, t, date, x, BODY_PX),
                               lambda x, t=t: _outcome(fitter, t, date, x))
             text, how, facts, rounds, condensed = r["text"], r["how"], r["facts"], r["rounds"], True
-        px = next((p for p in (BODY_PX, *FALLBACK_PXS) if fitter.fits(card_html(t, date, text, px=p))), None)
-        if px is None:  # last guard: never clip
-            px = FALLBACK_PXS[-1]
+            last_resort = r.get("last_resort", False)
+        px = BODY_PX
+        cut = False
+        full = text
+        if not fitter.fits(card_html(t, date, text, px=BODY_PX)):  # last guard: never clip
             before = len(text)
-            text = _cut_to_fit(fitter, t, date, text, px)
-            how += f", CUT at a sentence end at {px} px ({before} -> {len(text)} chars)"
-            logger.warning(f"theme {t['pos']} (entry {t['num']}): did not fit at {px} px; cut at a "
-                           f"sentence end ({before} -> {len(text)} chars)")
-        if px != BODY_PX:
-            logger.warning(f"theme {t['pos']} (entry {t['num']}): set at {px} px to fit the whole text")
+            text = _cut_to_fit(fitter, t, date, text, BODY_PX)
+            cut = True
+            how += f", CUT at a sentence end at {BODY_PX} px ({before} -> {len(text)} chars)"
+            logger.warning(f"theme {t['pos']} (entry {t['num']}): did not fit at {BODY_PX} px; cut at a "
+                           f"sentence end ({before} -> {len(text)} chars)"
+                           + (" -- the owner's text is too long for the card" if ov_body else ""))
         missing = missing_facts(facts, text)
         if missing:
             logger.warning(f"theme {t['pos']} (entry {t['num']}, {t['title']!r}): the card is missing "
                            + "; ".join(_fact_label(f) for f in missing))
         kept = len(facts) - len(missing)
-        fid = f"facts {kept}/{len(facts)}, {rounds} repair(s)" if condensed else "facts all (unchanged)"
-        note = (f"theme {t['pos']} (entry {t['num']}): original {len(t['text'])} chars, budget "
-                f"{budget}, final {len(text)} chars, {px} px, {fid}, {how}"
+        fid = (f"facts {kept}/{len(facts)}, {rounds} repair(s)" if condensed else
+               "owner's text" if ov_body else "facts all (unchanged)")
+        note = (f"theme {t['pos']} (entry {t['num']}): original {len(t0['text'])} chars, budget "
+                f"{budget}, final {len(text)} chars, {px} px, title {t['title_px']} px, {fid}, {how}"
                 + (f"; MISSING: {', '.join(_fact_label(f) for f in missing)}" if missing else ""))
         logger.info(note)
         notes.append(note)
-        plan.append(dict(theme=t, text=text, px=px, budget=budget, condensed=condensed, how=how,
-                         facts=facts, facts_total=len(facts), facts_kept=kept, missing=missing,
-                         rounds=rounds))
+        plan.append(dict(theme=t, text=text, full_text=full, px=px, budget=budget, condensed=condensed,
+                         how=how, facts=facts, facts_total=len(facts), facts_kept=kept, missing=missing,
+                         rounds=rounds, last_resort=last_resort, cut=cut, gen_title=t0["title"],
+                         override={"title": bool(ov_title), "body": bool(ov_body)} if ov else None))
     cond.save()
     if cond.usage:
         parts = [f"{m}: {u['calls']} call(s), {u['input']} in + {u['output']} out tokens"
                  for m, u in cond.usage.items()]
         note = f"condensation: {'; '.join(parts)}; about ${cond.cost_usd():.3f} for this edition"
     else:
-        note = "condensation: no API calls (all themes fit or came from the cache)"
+        note = "condensation: no API calls (all themes fit, came from the cache, or were edited)"
     logger.info(note)
     notes.append(note)
     return plan, notes
@@ -899,14 +1066,20 @@ def render_cards(draft: dict, out_dir: Path, notes: list | None = None) -> list[
     if not themes:
         raise RuntimeError(f"{date}: no free themes, so no cards")
     outs: list[Path] = []
+    try:
+        overrides = drafts.card_overrides(date)
+    except Exception as e:  # noqa: BLE001  (never block the cards on the overrides table)
+        logger.warning(f"{date}: card overrides not read ({e}); generated text used")
+        overrides = {}
+    cta_desc = " ".join(str((overrides.get(0) or {}).get("body") or "").split()) or None
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         page = browser.new_page(viewport={"width": W, "height": H}, device_scale_factor=1)
         fitter = _Fitter(page)
-        plan, pnotes = plan_cards(fitter, themes, date)
+        plan, pnotes = plan_cards(fitter, themes, date, overrides)
         if notes is not None:
             notes.extend(pnotes)
-        htmls = [card_html(c["theme"], date, c["text"], px=c["px"]) for c in plan] + [cta_html(date)]
+        htmls = [card_html(c["theme"], date, c["text"], px=c["px"]) for c in plan] + [cta_html(date, cta_desc)]
         for k, h in enumerate(htmls, start=1):
             if not fitter.fits(h):  # measured above; never expected
                 logger.warning(f"card {k} overflows")
@@ -920,8 +1093,35 @@ def render_cards(draft: dict, out_dir: Path, notes: list | None = None) -> list[
     # the page height to 1013.04 pt.
     pdf_out = out_dir / f"Housing at Noon {date} carousel.pdf"
     make_carousel_pdf(outs, pdf_out)
+    _write_manifest(out_dir, date, plan, cta_desc)
     outs.append(pdf_out)
     return outs
+
+
+def manifest_path(date: str, folder: Path | None = None) -> Path:
+    return (folder or CARDS_DIR) / f"Housing at Noon {date} cards.json"
+
+
+def _write_manifest(folder: Path, date: str, plan: list[dict], cta_desc: str | None) -> None:
+    """What each card shows, for the editor's card panel (app.py /api/cards)."""
+    cards_ = []
+    for n, c in enumerate(plan, start=1):
+        t = c["theme"]
+        cards_.append({"n": n, "pos": t["pos"], "num": t["num"], "title": t["title"],
+                       "gen_title": c["gen_title"], "title_px": t.get("title_px"),
+                       "title_wrap": bool(t.get("title_wrap")), "body": c["text"],
+                       "full_body": c["full_text"], "budget": c["budget"], "chars": len(c["text"]),
+                       "px": c["px"], "cut": c["cut"], "override": c["override"], "how": c["how"],
+                       "facts_total": c["facts_total"], "facts_kept": c["facts_kept"],
+                       "missing": [_fact_label(f) for f in c["missing"]],
+                       "last_resort": c.get("last_resort", False)})
+    data = {"date": date, "rendered_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            "cards": cards_, "cta": {"n": len(plan) + 1, "desc": cta_desc or CTA_DESC,
+                                     "default_desc": CTA_DESC, "override": bool(cta_desc)}}
+    path = manifest_path(date, folder)
+    tmp = path.with_suffix(".json.tmp")
+    tmp.write_text(json.dumps(data, indent=1, ensure_ascii=False))
+    tmp.replace(path)
 
 
 def _remove_stale(folder: Path, date: str, k: int) -> None:
