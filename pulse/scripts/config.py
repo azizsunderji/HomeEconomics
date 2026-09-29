@@ -212,7 +212,7 @@ BLUESKY_ACCOUNTS = [
     "resi-analyst.bsky.social",         # Neal Hudson — UK housing market analyst
     "cwhitzman.bsky.social",            # Carolyn Whitzman — U of Toronto housing researcher
     "claesbackman.bsky.social",         # Claes Bäckman — housing/mortgage economist
-    "ternerhousing.bsky.social",        # Terner Center — UC Berkeley housing research
+    # "ternerhousing.bsky.social",      # Terner Center: account deleted (profile not found, 29 Sep 2026)
     "resnikoff.bsky.social",            # Ned Resnikoff — California housing/policy writer
 ]
 

@@ -134,11 +134,16 @@ def candidates(hours: int, limit: int) -> list[dict]:
     return out
 
 
+# Words that also occur in ordinary articles (a Manhattan Institute piece on surveillance cameras
+# was flagged on 29 Sep 2026): these count only when they appear in the page title.
+WEAK_MARKERS = {"captcha", "bot detection", "attention required", "access denied", "request unsuccessful"}
+
+
 def bot_wording(title: str, text: str) -> str:
     t = (title or "").lower()
     head = (text or "")[:1500].lower()
     for m in BOT_MARKERS:
-        if m in t or (len(text or "") < 4000 and m in head):
+        if m in t or (m not in WEAK_MARKERS and len(text or "") < 4000 and m in head):
             snippet = " ".join(((title or "") + " | " + (text or "")[:300]).split())
             return snippet[:300]
     return ""

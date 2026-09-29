@@ -1808,6 +1808,52 @@ def probe_v3_1_email(stage: Stage, conn: sqlite3.Connection) -> None:
         stage.headline = f"sent at {sent_at[:16]}"
 
 
+
+def probe_v4b_today(stage: Stage, conn: sqlite3.Connection) -> None:
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    row = conn.execute(
+        "SELECT id, created_at, length(content_json) AS n FROM briefings "
+        "WHERE briefing_type = 'daily_v4b_attach' AND created_at >= ? ORDER BY created_at DESC LIMIT 1",
+        (today,)).fetchone()
+    last = conn.execute(
+        "SELECT id, created_at FROM briefings WHERE briefing_type = 'daily_v4b_attach' "
+        "ORDER BY created_at DESC LIMIT 1").fetchone()
+    stage.row("Today (UTC)", today)
+    stage.row("Latest v4b brief", f"#{last[0]} at {last[1][:16]}" if last else "(none)")
+    if not row:
+        stage.set(STATUS_BROKEN, "no Housing at Noon brief for today: the V4b step failed or did not run")
+        return
+    stage.row("Today's brief", f"#{row[0]} at {row[1][:16]}, {row[2]:,} bytes")
+    if (row[2] or 0) < 5000:
+        stage.set(STATUS_WARN, "today's brief is unusually small")
+    else:
+        stage.headline = f"brief #{row[0]} written at {row[1][11:16]} UTC"
+
+
+def probe_openai_credits(stage: Stage, conn: sqlite3.Connection) -> None:
+    import urllib.request, urllib.error
+    key = os.environ.get("OPENAI_API_KEY", "")
+    if not key:
+        stage.set(STATUS_WARN, "OPENAI_API_KEY not set in this environment")
+        return
+    body = json.dumps({"model": "text-embedding-3-small", "input": "ok"}).encode()
+    req = urllib.request.Request("https://api.openai.com/v1/embeddings", data=body, method="POST",
+                                 headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=20) as r:
+            stage.row("Embeddings request", f"HTTP {r.status}")
+            stage.headline = "credits available"
+    except urllib.error.HTTPError as e:
+        detail = e.read().decode("utf-8", "replace")[:300]
+        stage.row("Embeddings request", f"HTTP {e.code}")
+        stage.row("Response", detail)
+        if e.code == 429 and "insufficient_quota" in detail:
+            stage.set(STATUS_BROKEN, "OpenAI account has no credits: add credits at platform.openai.com/settings/organization/billing")
+        else:
+            stage.set(STATUS_WARN, f"OpenAI answered HTTP {e.code}")
+    except Exception as e:  # noqa: BLE001
+        stage.set(STATUS_WARN, f"OpenAI probe failed: {type(e).__name__}: {e}")
+
 # ── V2 (clustering) ────────────────────────────────────────────────────
 
 def probe_v2(stage: Stage, conn: sqlite3.Connection) -> None:
@@ -2232,10 +2278,19 @@ V3_1_SYNTH_STAGES = [
         probe_v3_1_writing,
     ),
     (
-        "7.1", "V3.1 email send",
-        "Reads the latest daily_v3_1_hybrid briefing's email_sent + "
-        "email_sent_at to verify Resend delivery + DB acknowledgement.",
-        probe_v3_1_email,
+        "7.1", "Today's Housing at Noon brief (v4b)",
+        "The v4b brief (briefing_type daily_v4b_attach) that the noon server ingests and "
+        "sends at 11:59 ET must exist for today. On 29 Sep 2026 the V4b step failed (OpenAI "
+        "credits exhausted) and the workflow still reported success; this stage is BROKEN "
+        "whenever today's brief is missing.",
+        probe_v4b_today,
+    ),
+    (
+        "0.1", "OpenAI credit balance (embeddings)",
+        "The clustering step embeds the corpus with OpenAI text-embedding-3-small; nothing else "
+        "uses OpenAI. A one-token embeddings request is sent; 'insufficient_quota' means the "
+        "account has no credits and tomorrow's brief will not be written.",
+        probe_openai_credits,
     ),
 ]
 
