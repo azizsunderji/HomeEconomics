@@ -964,3 +964,15 @@ cards v4 and v5 sections.
 - Previews: `OVH/NewsAtNoon/outputs/cards_v7_2026-09-28_card<N>.png`, `cards_v7_2026-09-28_carousel.pdf`,
   `cards_v7_2026-09-28_card1_override_test.png`, `cards_editor_phone.png`, `cards_editor_phone_v2.png`
   (a whole card row at 390 px) and `cards_editor_desktop.png`.
+
+## Status update — 29 Sep 2026: no draft, OpenAI credits exhausted, send timer paused
+
+- The 11:00 UTC synthesis produced no v4b brief: the embeddings step got "You have no credits
+  remaining" from OpenAI (text-embedding-3-small is the pipeline's only OpenAI use). The V4b
+  workflow step is written `|| echo "V4b run failed — continuing without"`, so the run reported
+  success and the health email said "0 broken". Aziz is adding credits; the script
+  `NewsAtNoon/scripts/223_wait_for_openai_then_synth.sh` re-triggers pulse-synth.yml once they are live.
+- `noon-send.timer` was STOPPED at 15:28 UTC on Aziz's instruction so nothing goes out with no
+  draft. Re-enable with `systemctl --user start noon-send.timer` once today's edition is handled.
+- Follow-ups: fail the run when V4b fails; a BROKEN health stage when the day's brief is missing;
+  an OpenAI credit-balance probe in the health email.
