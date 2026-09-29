@@ -913,3 +913,54 @@ cards v4 section above.
   `/cards/2026-09-28` return 200 from the cache (no API calls). Previews:
   `OVH/NewsAtNoon/outputs/cards_v5_<date>_card<N>.png` and `cards_v5_<date>_carousel.pdf`; fidelity data
   with original and final texts: `OVH/NewsAtNoon/data/cards_v5_fidelity_<date>.json`.
+
+## Status update — 29 Sep 2026 (cards v7): constant 36 px body, one-line titles, new top row, card text editor
+
+Owner's rules (Aziz, 29 Sep 2026): "text size must be constant"; "I want a way to edit the text, some
+kind of editor, like the main one"; the logo moves to the top right, beside the numeral; the title sits
+on one line. Commit cfea8c2. This replaces the 34/32 px fallback and the footer logo described in the
+cards v4 and v5 sections.
+
+- **Layout (`cards.py`).** The top row has the 96 px bold blue numeral at the left (it replaced "Theme One"
+  in an uncommitted edit, now committed) and the small HE logo (52 px) at the right, centred on the numeral.
+  Top padding is 48 px. The footer holds only "Housing at Noon · <date>", left-aligned, 40 px from the
+  bottom. The title is on one line: 54 px, stepping down 2 px to 40 px. If a generated title does not fit
+  at 40 px, `claude-sonnet-5` shortens it to the characters that fit (cached, logged). If an owner's title
+  does not fit, it wraps and the panel flags it. Budgets rose by about 100 characters (28 Sep: 912-982,
+  against 809-850 before).
+- **Constant 36 px.** `FALLBACK_PXS` is removed. A draft passes when every fact is present and the whole
+  text fits at 36 px. After 3 repair rounds, if the latest draft still does not fit, up to 2 more rounds
+  follow (5 in all) with a target of 75% of the budget. If no draft fits at all, the model is asked once to
+  drop its least important sentence(s) and keep every listed fact (WARNING "last resort"). The draft that
+  fits with the fewest missing facts is used. Only if none fits does the last guard cut at a sentence end
+  at 36 px. `PROMPT_VERSION = "cards-v7-2026-09-29-36px"`. `FACTS_VERSION` stays at the v5 value, so the
+  Haiku fact lists are reused.
+- **Card text editor.** `/cards/{date}` (`static/cards.html`, `cards.js`, styles at the end of `style.css`)
+  renders the cards and then shows each image with a text panel. The panel has the title (one line; a
+  live check with the card font says what size it will be set at, and turns red if it cannot fit at
+  40 px), the body (contenteditable, one paragraph per block, plain text only), a counter against the
+  card's budget (red when over), Re-render, and Reset to generated. The CTA card's description line can
+  be edited the same way (pos 0). Edits save 1.2 s after typing stops (PUT) into the new table
+  `card_overrides` (date, pos, title, body, updated_at) in `noon_drafts.db`. Every render uses them,
+  including the one after the 11:59 send, and never calls Claude for an edited card. If an owner's body is
+  too long, the image leaves off the last sentence(s) and the panel says so. The API has
+  GET `/api/cards/{date}`, PUT/DELETE `/api/cards/{date}/{pos}` and POST `/api/cards/{date}/render`;
+  `/cards-font/medium.otf` (owner only) serves the title font for the live check. The render writes
+  `Housing at Noon <date> cards.json` (not mirrored) for the panel. Renders run one at a time behind a
+  lock. A re-render from the cache takes about 1 s.
+- **Tested (28 Sep).** First render under v7: 44 s, 16 Sonnet calls, about $0.09. Theme: original /
+  budget / final chars / facts kept / repairs: 1: 1361/936/890/22 of 22/3. 2: 1184/932/890/20 of 20/1.
+  3: 1475/982/946/13 of 13/2. 4: 979/920/815/5 of 5/0. 5: 770/912/770 unchanged. 6: 871/928/871
+  unchanged. All at 36 px. No theme needed the last-resort sentence drop. Four titles were shortened
+  by the model: 3 "UK housebuilder stocks surge on Burnham Help-to-Buy" -> "... on Help-to-Buy revival"
+  (Burnham dropped, "revival" added); 4 "becomes" -> "is"; 5 dropped "'s North Shore"; 6 dropped
+  "Mortgage". The API test saved an override for card 1 and re-rendered: the PNG and PDF page 1 changed.
+  The override was then deleted and the card re-rendered: both came back byte-identical. An overlong owner
+  body and title (card 2) were cut and wrapped, and flagged. No overrides are stored now.
+- **Open.** (1) 28 Sep Theme Two again says that 37% of parents with young children "expect to give it
+  this year". The source says they expect help from their own parents. The v5 hand correction lived in
+  the retired v5 cache entry. Fix it in the card panel (the override persists). (2) Overrides are keyed by
+  position. If the themes are reordered after an edit, the text stays with the position.
+- Previews: `OVH/NewsAtNoon/outputs/cards_v7_2026-09-28_card<N>.png`, `cards_v7_2026-09-28_carousel.pdf`,
+  `cards_v7_2026-09-28_card1_override_test.png`, `cards_editor_phone.png`, `cards_editor_phone_v2.png`
+  (a whole card row at 390 px) and `cards_editor_desktop.png`.
