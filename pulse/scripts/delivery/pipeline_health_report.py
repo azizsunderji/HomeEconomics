@@ -901,6 +901,9 @@ def probe_paywall_auth(stage: Stage, conn: sqlite3.Connection) -> None:
 
 LOGIN_STATUS_URL = "https://noon.homeeconomics.us/feeds/login_status.json"
 MECHANISM_LABEL = {"server chrome": "server Chrome", "browserbase": "Browserbase"}
+# 29 Sep 2026: article enrichment runs only on Browserbase; the server Chrome is not used for it.
+BROWSERBASE_USED_BY = "enrich_articles.py"
+CHROME_AD_HOC_USED_BY = "ad hoc reads only (not article enrichment)"
 RELOGIN_TEXT = {
     "server chrome": "re-login needed at browser.homeeconomics.us",
     "browserbase": "re-login needed in the Browserbase context (ask Claude to open the login page there)",
@@ -918,6 +921,10 @@ def probe_server_logins(stage: Stage, conn: sqlite3.Connection) -> None:
     enrich_articles.py uses for NYT/FT/WSJ bodies) are read here from this
     run's paywall_auth table, the same source as stage 2.0, so the two
     stages agree; the JSON's Browserbase rows are the fallback.
+
+    Aziz, 29 Sep 2026: Chrome is a poor way of doing enrichment, move all of
+    it to Browserbase. Server Chrome rows other than Goldman are labelled as
+    used only for ad hoc reads; Browserbase rows as used by enrich_articles.py.
     """
     r = httpx.get(LOGIN_STATUS_URL, timeout=HTTP_TIMEOUT, follow_redirects=True)
     if r.status_code != 200:
@@ -936,10 +943,15 @@ def probe_server_logins(stage: Stage, conn: sqlite3.Connection) -> None:
         names = {"wsj.com": "WSJ", "nytimes.com": "NYT", "ft.com": "FT"}
         for b in bb:
             rows.append({"site": names.get(b["site"], b["site"]), "mechanism": "browserbase",
-                         "used_by": "enrich_articles.py article bodies",
+                         "used_by": BROWSERBASE_USED_BY,
                          "status": b["status"], "checked_at": b["checked_at"], "detail": b["detail"] or ""})
     else:
         rows += [s for s in data.get("sites", []) if s.get("mechanism") == "browserbase"]
+    for s in rows:
+        if s.get("mechanism") == "browserbase":
+            s["used_by"] = BROWSERBASE_USED_BY
+        elif s.get("site") != "Goldman Sachs Research":
+            s["used_by"] = CHROME_AD_HOC_USED_BY
 
     now = datetime.now(timezone.utc)
     gen = data.get("generated_at", "")
@@ -1090,83 +1102,6 @@ def probe_article_enrichment(stage: Stage, conn: sqlite3.Connection) -> None:
                   "likely expired): " + ", ".join(drifted))
     else:
         stage.headline = f"{_fmt_int(enriched)} enriched, {pct:.0f}%"
-
-
-ENRICHED_BODIES_NAME = "enriched_bodies.json"  # under NOON_PRIVATE_BASE, not the public /feeds/
-
-
-def probe_server_enrichment(stage: Stage, conn: sqlite3.Connection) -> None:
-    """Article bodies read in the noon server's live Chrome vs Browserbase.
-
-    Aziz, 24 Sep 2026: consolidate enrichment on the server Chrome;
-    Browserbase stays as fallback for a week, then is cancelled if the
-    health report shows no blocks. enrich_server.py (noon-enrich.timer,
-    Mon-Fri 10:15 UTC) publishes enriched_bodies.json; the synth workflow
-    applies it (enrich_mode='server_chrome') before the Browserbase step
-    (enrich_mode 'direct' or 'archive'). WARN if the file is older than
-    30 hours or the server run was blocked by any host.
-    """
-    cutoff = _last_24h_iso(24)
-    try:
-        modes = {r["m"]: r["c"] for r in conn.execute(
-            "SELECT COALESCE(enrich_mode, 'none') m, COUNT(*) c FROM items "
-            "WHERE source IN ('rss', 'gmail', 'substack', 'hackernews') "
-            "AND collected_at >= ? GROUP BY 1", (cutoff,)).fetchall()}
-    except sqlite3.OperationalError:
-        modes = {}
-    sc, direct, arch = modes.get("server_chrome", 0), modes.get("direct", 0), modes.get("archive", 0)
-    stage.row("Enriched by server Chrome (24h)", _fmt_int(sc))
-    stage.row("Enriched by Browserbase direct (24h)", _fmt_int(direct))
-    stage.row("Enriched by Browserbase via archive.ph (24h)", _fmt_int(arch))
-
-    # The bodies are licensed text, so the file is served only under the secret path
-    # NOON_PRIVATE_BASE (https://noon.homeeconomics.us/private/<NOON_PRIVATE_TOKEN>, set from the
-    # GitHub secret). The URL is never written into the report or the log.
-    private_base = os.environ.get("NOON_PRIVATE_BASE", "").rstrip("/")
-    if not private_base:
-        stage.set(STATUS_WARN, "private feed URL not configured (NOON_PRIVATE_BASE unset)")
-        return
-    try:
-        r = httpx.get(f"{private_base}/{ENRICHED_BODIES_NAME}", timeout=HTTP_TIMEOUT * 3, follow_redirects=True)
-    except Exception as e:
-        stage.set(STATUS_WARN, f"enriched_bodies.json unreachable ({type(e).__name__})")
-        return
-    if r.status_code != 200:
-        stage.set(STATUS_WARN, f"enriched_bodies.json unavailable (HTTP {r.status_code})")
-        return
-    data = r.json()
-    gen = data.get("generated_at", "")
-    try:
-        age_h = (datetime.now(timezone.utc) - datetime.fromisoformat(gen.replace("Z", "+00:00"))).total_seconds() / 3600
-    except ValueError:
-        age_h = 999.0
-    run = data.get("run") or {}
-    stage.row("enriched_bodies.json age", f"{age_h:.1f}h (generated {gen[:16]}Z)")
-    stage.row("Last server run",
-              f"{_fmt_int(run.get('ok'))} ok, {_fmt_int(run.get('empty'))} empty, "
-              f"{_fmt_int(run.get('blocked'))} blocked of {_fmt_int(run.get('attempted'))} loads "
-              f"({_fmt_int(run.get('candidates'))} candidates)")
-    hosts = data.get("hosts") or {}
-    ranked = sorted(hosts.items(), key=lambda kv: (-kv[1].get("blocked", 0), -sum(kv[1].values()), kv[0]))
-    for host, c in ranked[:15]:
-        stage.row(f"host {host}", f"ok {c.get('ok', 0)} · blocked {c.get('blocked', 0)} · empty {c.get('empty', 0)}")
-    if len(ranked) > 15:
-        rest = ranked[15:]
-        stage.note(f"{len(rest)} more hosts: ok {sum(c.get('ok', 0) for _, c in rest)}, "
-                   f"empty {sum(c.get('empty', 0) for _, c in rest)}, "
-                   f"blocked {sum(c.get('blocked', 0) for _, c in rest)}")
-    blocked = data.get("blocked") or {}
-    for host, wording in blocked.items():
-        stage.note(f"{host} blocked the server Chrome: \"{wording[:160]}\"")
-    if run.get("error"):
-        stage.note(f"Server run error: {run['error']}")
-    if age_h > 30:
-        stage.set(STATUS_WARN, f"enriched_bodies.json is {age_h:.0f}h old — noon-enrich.timer may not be running")
-    if blocked:
-        stage.set(STATUS_WARN, "server Chrome blocked by " + ", ".join(sorted(blocked)))
-    if stage.status == STATUS_OK:
-        stage.headline = (f"{_fmt_int(sc)} server Chrome · {_fmt_int(direct)} Browserbase direct · "
-                          f"{_fmt_int(arch)} archive.ph (24h); no host blocked")
 
 
 def probe_tweet_link_enrichment(stage: Stage, conn: sqlite3.Connection) -> None:
@@ -2088,7 +2023,8 @@ UPSTREAM_STAGES = [
         "2.1", "Server browser logins",
         "Every subscription login the pipeline depends on, tagged by the "
         "mechanism that reads the site: the noon server's live Chrome "
-        "(Goldman Sachs Research feed and ad hoc reads; re-login at "
+        "(Goldman Sachs Research feed, and ad hoc reads only for the news "
+        "sites; re-login at "
         "browser.homeeconomics.us) or the Browserbase context (NYT/WSJ/FT "
         "article bodies; ask Claude to open the login page there). Server "
         "Chrome rows come from login_status.json, checked daily at 10:30 UTC.",
@@ -2100,15 +2036,6 @@ UPSTREAM_STAGES = [
         "full body so the LLM has substantive text. High-relevance items "
         "still in teaser-state indicate enrichment skipped them.",
         probe_article_enrichment,
-    ),
-    (
-        "2.2b", "Article body enrichment (server Chrome)",
-        "Since 24 Sep 2026 the noon server's live Chrome reads article bodies "
-        "first (Mon-Fri 10:15 UTC) and the synthesis applies them before the "
-        "Browserbase step, which is now the fallback. Counts of bodies by "
-        "mechanism for the last 24 hours, and the server run's per-host "
-        "results. Browserbase is cancelled after a week with no blocks here.",
-        probe_server_enrichment,
     ),
     (
         "2.3", "Tweet link enrichment",

@@ -6,7 +6,7 @@
 noon.homeeconomics.us {
 	encode gzip
 	# Licensed text (Goldman Sachs Research feed, article bodies from the server Chrome) is kept
-	# out of the public folder: gs_feed.py and enrich_server.py write to ~/work/noon/feeds_private,
+	# out of the public folder: gs_feed.py writes to ~/work/noon/feeds_private (enrich_server.py removed 29 Sep 2026),
 	# served only under a secret path. GitHub Actions reads it with the NOON_PRIVATE_TOKEN secret.
 	# log_skip keeps the token out of the access log. (24 Sep 2026)
 	handle_path /private/{$NOON_PRIVATE_TOKEN}/* {

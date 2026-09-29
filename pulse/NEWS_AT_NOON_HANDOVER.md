@@ -976,3 +976,34 @@ cards v4 and v5 sections.
   draft. Re-enable with `systemctl --user start noon-send.timer` once today's edition is handled.
 - Follow-ups: fail the run when V4b fails; a BROKEN health stage when the day's brief is missing;
   an OpenAI credit-balance probe in the health email.
+
+## Status update — 29 Sep 2026: server-Chrome article enrichment removed; Browserbase is the only enrichment
+
+Owner's rule (Aziz, 29 Sep 2026): "Chrome is a poor way of doing enrichment, move all of it to
+Browserbase." This reverses the 24 Sep section "article enrichment moves to the server Chrome (step 1)"
+before its one-week review ended.
+
+- **Removed.**
+  - Units `noon-enrich.service/.timer` (disabled, unit files deleted from `~/.config/systemd/user/`,
+    daemon reloaded).
+  - `pulse/editor/enrich_server.py` and `pulse/scripts/apply_server_enrichment.py` (git rm).
+  - The `pulse-synth.yml` step "Apply server-Chrome enrichment". The step "Enrich articles via
+    Browserbase" is unchanged and is now the only article-body enrichment.
+  - `~/work/noon/feeds_private/enriched_bodies.json` and `~/work/noon/enrich_status.json` (paywalled
+    text, no longer produced). `~/work/noon/logs/enrich.log` is left as a record of past runs.
+  - Health email stage "2.2b — Article body enrichment (server Chrome)" and its WARN "private feed URL
+    not configured". Stage 2.2 (Browserbase enrichment) is unchanged.
+- **Health email stage 2.1.** Server Chrome rows for WSJ, NYT, FT, Bloomberg, Economist and Substack
+  now read "used by ad hoc reads only (not article enrichment)"; Browserbase rows read "used by
+  enrich_articles.py". The Goldman row is unchanged. The report sets these labels itself; the
+  `used_by` text in login_status.json is not changed.
+- **Stays on the server Chrome.** The Goldman Sachs Research feed (`gs_feed.py`, `noon-gsfeed.timer`),
+  the login check (`login_status.py`, `noon-loginstatus.timer`), X posting (`xpost.py`), and ad hoc
+  reads (`live_tab_fetch.py`, `paywall_fetch.py`). `cdp_tab.py` stays because those scripts use it.
+- **Kept as is.** The private path (`~/work/noon/feeds_private/`, `/private/<NOON_PRIVATE_TOKEN>/` in
+  Caddy, `gs_research.xml` and `gs_cache.json`), `FEED_PRIVATE_BASE` on the collection and re-collect
+  steps (needed for the Goldman feed), and `NOON_PRIVATE_BASE` on the health-report step (no stage
+  reads it now; left in place, harmless). Caddy's 404 rule for a stray public `enriched_bodies.json`
+  is also left in place. Rows already marked `enrich_mode='server_chrome'` in pulse.db stay as they are.
+- **Checked.** YAML parses; `pipeline_health_report.py` compiles; a `--dry-run` against a copy of
+  pulse.db rendered 30 stages with no 2.2b and 2.1 OK ("all 10 site logins OK").
