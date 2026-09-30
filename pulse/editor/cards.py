@@ -15,7 +15,7 @@ Owner's rules (Aziz, 28-29 Sep 2026):
     bottom edge. Source pills (as in the email) sit just above the footer on every card.
   * When a theme's text is longer than the card holds, the builder condenses it with
     Claude to fit. The condensed text keeps the theme's meaning, every number and every
-    attribution, and at most two paragraphs.
+    attribution, and three or four short paragraphs.
   * "I want a way to edit the text" (29 Sep): the owner can replace a card's title and body
     on /cards/<date> (table card_overrides in the drafts DB, via drafts.py). An override is
     used instead of the generated text, without any Claude call, in every later render
@@ -27,7 +27,7 @@ Owner's rules (Aziz, 28-29 Sep 2026):
 How a theme is fitted:
   1. Title size: the largest of 54, 52 ... 40 px at which the title fits on one line.
   2. Budget. The card is rendered with this theme's own title and pills and a filler body
-     (the theme's words, two paragraphs), and the longest filler that fits at 36 px is
+     (the theme's words, three or four paragraphs), and the longest filler that fits at 36 px is
      the character budget.
   3. If the visible text (links reduced to their anchor words) is within the budget and
      fits, it is used unchanged. Otherwise it is condensed:
@@ -88,8 +88,8 @@ CACHE_PATH = Path(os.environ.get("NOON_CARDS_CACHE", str(Path.home() / "work" / 
 SIGNUP = "homeeconomics.us/noon"
 W, H = 1080, 1350
 MAX_CARDS = 10          # Instagram's carousel limit, CTA card included
-BODY_PX = 36               # constant (owner, 29 Sep 2026); there is no smaller fallback
-TITLE_PXS = tuple(range(54, 39, -2))   # 54 ... 40: the largest that keeps the title on one line
+BODY_PX = 40               # constant (owner, 29 Sep 2026; 40 px from 30 Sep 2026); there is no smaller fallback
+TITLE_PXS = tuple(range(64, 55, -2))   # 64 ... 56: shorter titles at a larger size (owner, 30 Sep 2026): the largest that keeps the title on one line
 TITLE_MIN_PX = TITLE_PXS[-1]
 MARGIN = 80
 TOP_PAD = 48               # above the numeral row (owner, 29 Sep 2026)
@@ -104,11 +104,11 @@ PRICE_PER_MTOK = {"claude-sonnet-5-5": (2.00, 10.00), "claude-sonnet-5": (2.00, 
                   "claude-haiku-4-5": (1.00, 5.00)}  # in, out USD
 # Part of the cache key: bump it whenever the prompts, the checks or the model change, so
 # texts made under older rules are not reused.
-PROMPT_VERSION = "cards-v8-2026-09-29-sonnet55"
+PROMPT_VERSION = "cards-v9b-2026-09-30-half"
 # The facts extraction did not change in v7, so its cache entries (and Haiku calls) are kept.
 FACTS_VERSION = "cards-v5-2026-09-28-facts"
-TARGET_SHARE = 0.85       # target length as a share of the budget; the budget is the ceiling
-FIT_TARGET_SHARE = 0.75   # target in the extra repair rounds for a draft that does not fit
+TARGET_SHARE = 0.5        # target length as a share of the budget (owner, 30 Sep 2026: about half); the budget is the ceiling
+FIT_TARGET_SHARE = 0.45   # target in the extra repair rounds for a draft that does not fit
 MAX_REPAIRS = 3
 MAX_FIT_REPAIRS = 5       # repair rounds in all when the latest draft still does not fit
 
@@ -256,14 +256,14 @@ def _base_css() -> str:
   .card {{ box-sizing:border-box; width:{W}px; height:{H}px; padding:{TOP_PAD}px {m}px {BOTTOM_PAD}px {m}px;
            display:flex; flex-direction:column; overflow:hidden; background:{CREAM}; }}
   /* numeral top left, small logo top right, centred on the numeral (owner, 29 Sep 2026) */
-  .top {{ flex:none; display:flex; justify-content:space-between; align-items:center; margin:0 0 22px 0; }}
+  .top {{ flex:none; display:flex; justify-content:space-between; align-items:center; margin:0 0 44px 0; }}
   .eb {{ color:{BLUE}; font-weight:700; font-size:96px; line-height:0.9; letter-spacing:-0.03em; }}
   .top img {{ height:52px; width:auto; display:block; }}
   /* one line (owner, 29 Sep 2026); .wrap only for an owner's title too long even at 40 px */
-  .tt {{ flex:none; font-weight:500; font-size:54px; line-height:1.08; letter-spacing:-0.03em;
+  .tt {{ flex:none; font-weight:500; font-size:64px; line-height:1.08; letter-spacing:-0.03em;
          margin:0 0 40px 0; white-space:nowrap; }}
   .tt.wrap {{ white-space:normal; text-wrap:balance; }}
-  .body {{ flex:none; line-height:1.35; letter-spacing:-0.005em; }}
+  .body {{ flex:none; line-height:1.32; letter-spacing:-0.005em; }}
   .body p {{ margin:0 0 0.72em 0; hyphens:manual; }}
   .body p:last-child {{ margin-bottom:0; }}
   .pills {{ margin:auto 0 0 0; padding-top:40px; display:flex; flex-wrap:wrap; gap:14px; flex:none; }}
@@ -513,12 +513,23 @@ def _has_fact(f: dict, text: str) -> bool:
 
 
 def missing_facts(facts: list[dict], text: str) -> list[dict]:
-    return [f for f in facts if not _has_fact(f, text)]
+    """Problems with a draft (owner, 30 Sep 2026: cards carry about half the text, so the model
+    chooses which facts to keep): the author's commentary if it was dropped, plus every number,
+    date or handle in the draft that is not one of the listed facts (altered or invented)."""
+    out = [f for f in facts if f["kind"] == "commentary" and not _has_fact(f, text)]
+    listed = [f for f in facts if f["kind"] in ("number", "date", "handle")]
+    for m in list(_DATE_RE.finditer(text)) + list(_NUM_RE.finditer(text)) + list(_HANDLE_RE.finditer(text)):
+        v = m.group(0).strip()
+        if not any(_has_fact(f, v) or _has_fact({"kind": f["kind"], "value": v}, f["value"]) for f in listed):
+            out.append({"kind": "invented", "value": v, "context": _context(text, m.start(), m.end())})
+    return out
 
 
 def _fact_label(f: dict) -> str:
     if f["kind"] == "commentary":
         return "the author's commentary"
+    if f["kind"] == "invented":
+        return f"{f['value']} (not in the original)"
     return f["value"]
 
 
@@ -645,13 +656,16 @@ def _prompt(theme: dict, budget: int, facts: list[dict]) -> str:
         f"The hard limit is {budget} characters; a reply over {budget} cannot be used. The "
         f"original is {orig} characters, so about {max(0, 100 - round(100 * target / max(1, orig)))}% "
         "of it must go.\n\n"
-        "Facts that must all appear in your text, each written exactly as listed (numbers and "
-        "dates character for character, names in full):\n"
+        "The facts of the original are listed below. Keep only the ones that matter most for the "
+        "point of the theme (its headline numbers and who reported them); leave the rest out. Any "
+        "fact you keep must be written exactly as listed (numbers and dates character for "
+        "character, names in full), and you may not add a number, date or name that is not "
+        "listed:\n"
         f"{_facts_block(facts)}\n\n"
         "Rules:\n"
-        "- Every listed fact must appear. To make room, cut restatement, background, adjectives, "
-        "examples that carry no listed fact, and connecting phrases; merge sentences; use short "
-        "attributions (\"per HousingWire\", \"Kevin Erdmann notes\").\n"
+        "- Keep about half of the listed facts, the most important ones. Cut restatement, "
+        "background, adjectives, secondary examples and connecting phrases; merge sentences; use "
+        "short attributions (\"per HousingWire\", \"Kevin Erdmann notes\").\n"
         "- Keep each number with what it measures and with its source. Do not change any figure "
         "or who said it.\n"
         "- The author's own commentary (passages in the first person, and an unattributed closing "
@@ -659,8 +673,8 @@ def _prompt(theme: dict, budget: int, facts: list[dict]) -> str:
         "own words, as the last paragraph. Leave out only a sentence that points to something not "
         "on the card (\"the map below\", \"see my post\").\n"
         "- Do not add any statement, opinion or first-person wording that is not in the original.\n"
-        "- At most 2 paragraphs separated by one blank line (the reported facts first, the "
-        "author's commentary, if any, second).\n"
+        "- Three or four short paragraphs separated by one blank line, broken where the subject "
+        "naturally changes (the reported facts first, the author's commentary, if any, last).\n"
         "- Plain text only: no links, markdown, headings, bullets, bold or italics.\n"
         "- Write in the brief's register: measured, precise, restrained.\n"
         "- Return only the condensed text.\n\n"
@@ -690,14 +704,16 @@ def _repair_prompt(draft: str, budget: int, missing: list[dict], fits36: bool,
         parts.append(f"- It is {len(draft)} characters but does not fit on the card; shorten it by "
                      f"about {max(30, len(draft) - int(budget * share))} characters.")
     if missing:
-        parts.append("- These facts from the original are missing and must be restored, exactly as "
-                     "written:\n" + _facts_block(missing))
+        parts.append("- These problems must be fixed: a figure, date or handle marked 'not in the "
+                     "original' was altered or invented (correct it to the listed fact or remove it); "
+                     "the author's commentary, if listed, was dropped and must come back:\n"
+                     + _facts_block(missing))
     listing = "\n".join(f"[{len(x)}] {x}" for para in _para_sentences(draft) for x in para)
     parts.append(f"\nYour sentences, with their lengths in characters:\n{listing}\n")
-    parts.append("Revise the draft: restore every missing fact, then shorten by merging sentences and "
-                 "cutting wording that carries no listed fact. Do not drop any listed fact to save "
-                 "space, keep the author's commentary, and add nothing that is not in the original. At most 2 "
-                 "paragraphs. Return "
+    parts.append("Revise the draft: fix every problem listed, then shorten by merging sentences and "
+                 "cutting wording that carries no listed fact. Do not alter any figure to save "
+                 "space, keep the author's commentary, and add nothing that is not in the original. Three or four "
+                 "short paragraphs. Return "
                  "only the revised text, without the bracketed lengths.")
     return "\n".join(parts)
 
@@ -715,7 +731,7 @@ def _drop_prompt(draft: str, capacity: int, facts: list[dict]) -> str:
             f"{_facts_block(facts)}\n\n"
             f"Your sentences, with their lengths in characters:\n{listing}\n\n"
             "Do not rewrite the sentences you keep beyond what joining them needs, keep the "
-            "author's commentary, and add nothing. At most 2 paragraphs. Return only the revised "
+            "author's commentary, and add nothing. Three or four short paragraphs. Return only the revised "
             "text, without the bracketed lengths.")
 
 
@@ -1018,7 +1034,7 @@ def plan_cards(fitter: _Fitter, themes: list[dict], date: str,
         last_resort = False
         if ov_body:
             text, how = ov_body, "owner's text"
-        elif len(text) > budget or not fitter.fits(card_html(t, date, text, px=BODY_PX)):
+        elif len(text) > budget * TARGET_SHARE or not fitter.fits(card_html(t, date, text, px=BODY_PX)):
             r = cond.condense(t, budget, lambda x, t=t: fitter.fits(card_html(t, date, x, px=BODY_PX)),
                               lambda x, t=t: _capacity(fitter, t, date, x, BODY_PX),
                               lambda x, t=t: _outcome(fitter, t, date, x))
