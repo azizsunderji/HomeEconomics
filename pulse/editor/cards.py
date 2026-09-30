@@ -1079,9 +1079,16 @@ def plan_cards(fitter: _Fitter, themes: list[dict], date: str,
     return plan, notes
 
 
-def render_cards(draft: dict, out_dir: Path, notes: list | None = None) -> list[Path]:
+X_COUNT = 4   # X allows four images per post (owner, 30 Sep 2026)
+
+
+def render_cards(draft: dict, out_dir: Path, notes: list | None = None,
+                 x_pick: list[int] | None = None) -> list[Path]:
     """Writes card1..cardK.png (themes, then the CTA card) and the carousel PDF; returns
-    the PNG paths then the PDF. `notes`, when given, receives the per-theme log lines."""
+    the PNG paths then the PDF. `notes`, when given, receives the per-theme log lines.
+    Also writes X/ with the X set: the first X_COUNT theme cards (or the themes in `x_pick`,
+    by position in the brief), renumbered 1.. on the cards, no CTA card (owner, 30 Sep 2026:
+    the link goes in the post text; the most interesting themes come first in the brief)."""
     from playwright.sync_api import sync_playwright
 
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -1110,13 +1117,27 @@ def render_cards(draft: dict, out_dir: Path, notes: list | None = None) -> list[
             out = out_dir / f"Housing at Noon {date} card{k}.png"
             page.screenshot(path=str(out), clip={"x": 0, "y": 0, "width": W, "height": H})
             outs.append(out)
+        # the X set: same texts and titles, only the numeral changes
+        picks = [n for n in (x_pick or []) if 1 <= n <= len(plan)] or list(range(1, min(X_COUNT, len(plan)) + 1))
+        xdir = out_dir / "X"
+        xdir.mkdir(exist_ok=True)
+        for f in xdir.glob(f"Housing at Noon {date} X*.png"):
+            f.unlink()
+        for k, n in enumerate(picks[:X_COUNT], start=1):
+            c = plan[n - 1]
+            h = card_html(dict(c["theme"], pos=k), date, c["text"], px=c["px"])
+            out = xdir / f"Housing at Noon {date} X{k}.png"
+            fitter.fits(h)  # renders h on the page
+            page.screenshot(path=str(out), clip={"x": 0, "y": 0, "width": W, "height": H})
+            outs.append(out)
+        logger.info(f"X set: themes {picks[:X_COUNT]} as X1..X{len(picks[:X_COUNT])}")
         browser.close()
-    _remove_stale(out_dir, date, len(outs))
+    _remove_stale(out_dir, date, len([o for o in outs if o.parent == out_dir]))
     # Carousel PDF: the PNGs as pages, each 1080x1350 px at 96 dpi (810x1012.5 pt), no
     # margins, embedded losslessly. PyMuPDF rather than Chromium's page.pdf, which rounds
     # the page height to 1013.04 pt.
     pdf_out = out_dir / f"Housing at Noon {date} carousel.pdf"
-    make_carousel_pdf(outs, pdf_out)
+    make_carousel_pdf([o for o in outs if o.parent == out_dir], pdf_out)
     _write_manifest(out_dir, date, plan, cta_desc)
     outs.append(pdf_out)
     return outs
@@ -1171,15 +1192,18 @@ def make_carousel_pdf(pngs: list[Path], out: Path) -> Path:
     return out
 
 
-def publish_cards(draft: dict) -> list[Path]:
-    outs = render_cards(draft, CARDS_DIR)
+def publish_cards(draft: dict, x_pick: list[int] | None = None) -> list[Path]:
+    outs = render_cards(draft, CARDS_DIR, x_pick=x_pick)
     logger.info(f"cards written: {len(outs)} in {CARDS_DIR}")
     if DROPBOX_DIR:
         try:
             dest = Path(DROPBOX_DIR) / "cards"
             dest.mkdir(parents=True, exist_ok=True)
+            (dest / "X").mkdir(exist_ok=True)
+            for f in (dest / "X").glob(f"Housing at Noon {draft.get('date') or ''} X*.png"):
+                f.unlink()
             for o in outs:
-                shutil.copyfile(o, dest / o.name)
+                shutil.copyfile(o, (dest / "X" / o.name) if o.parent.name == "X" else (dest / o.name))
             _remove_stale(dest, draft.get("date") or "", sum(1 for o in outs if o.suffix == ".png"))
             logger.info(f"cards mirrored to {dest}")
         except Exception as e:  # noqa: BLE001
@@ -1191,6 +1215,7 @@ def _main() -> int:
     ap = argparse.ArgumentParser(description="Render social cards for an edition")
     ap.add_argument("--date", default=None)
     ap.add_argument("--out", default=None, help="output dir (default: publish to NOON_CARDS_DIR + Dropbox)")
+    ap.add_argument("--x-pick", default=None, help="themes for the X set by position, e.g. 1,2,3,6 (default: the first four)")
     a = ap.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
     date = a.date or drafts.today_et()
@@ -1198,7 +1223,8 @@ def _main() -> int:
     if row is None:
         print(f"no draft for {date}")
         return 1
-    outs = render_cards(row["json"], Path(a.out)) if a.out else publish_cards(row["json"])
+    picks = [int(x) for x in a.x_pick.split(",")] if a.x_pick else None
+    outs = render_cards(row["json"], Path(a.out), x_pick=picks) if a.out else publish_cards(row["json"], x_pick=picks)
     for o in outs:
         print(o)
     return 0
