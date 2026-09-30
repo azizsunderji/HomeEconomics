@@ -1084,7 +1084,8 @@ X_COUNT = 4   # X allows four images per post (owner, 30 Sep 2026)
 
 def render_cards(draft: dict, out_dir: Path, notes: list | None = None,
                  x_pick: list[int] | None = None) -> list[Path]:
-    """Writes card1..cardK.png (themes, then the CTA card) and the carousel PDF; returns
+    """Writes card1..cardK.png (themes, then the CTA card) and the carousel PDF (first four
+    themes + CTA, owner 30 Sep 2026); returns
     the PNG paths then the PDF. `notes`, when given, receives the per-theme log lines.
     Also writes X/ with the X set: the first X_COUNT theme cards (or the themes in `x_pick`,
     by position in the brief), renumbered 1.. on the cards, no CTA card (owner, 30 Sep 2026:
@@ -1136,8 +1137,10 @@ def render_cards(draft: dict, out_dir: Path, notes: list | None = None,
     # Carousel PDF: the PNGs as pages, each 1080x1350 px at 96 dpi (810x1012.5 pt), no
     # margins, embedded losslessly. PyMuPDF rather than Chromium's page.pdf, which rounds
     # the page height to 1013.04 pt.
+    # LinkedIn carousel: the first X_COUNT theme cards and the CTA card (owner, 30 Sep 2026)
     pdf_out = out_dir / f"Housing at Noon {date} carousel.pdf"
-    make_carousel_pdf([o for o in outs if o.parent == out_dir], pdf_out)
+    main = [o for o in outs if o.parent == out_dir]
+    make_carousel_pdf(main[:X_COUNT] + main[-1:], pdf_out)
     _write_manifest(out_dir, date, plan, cta_desc)
     outs.append(pdf_out)
     return outs
