@@ -328,7 +328,7 @@ jobs:
           PULSE_WRITER_MODEL: claude-opus-5-5
         run: |
           case "$(date -u +%Y-%m-%d)" in
-            2026-09-30|2026-10-01|2026-10-02) ;;
+            never) ;;  # Aziz ended the Opus 5.5 shadow test on 30 Sep 2026: the 4.8 brief read better; to re-run, put UTC dates back here
             *) echo "Opus 5.5 shadow: $(date -u +%Y-%m-%d) is not a test date; skipping"; exit 0 ;;
           esac
           done_today=$(python -c "import os,sqlite3; print(sqlite3.connect(os.environ['PULSE_DB']).execute(\"SELECT COUNT(*) FROM briefings WHERE briefing_type='daily_v4b_shadow_opus55' AND date(created_at)=date('now')\").fetchone()[0])" || echo 0)
