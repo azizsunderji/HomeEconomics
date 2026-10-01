@@ -292,6 +292,29 @@ _GOOD_DOMAINS = [
 ]
 
 
+def _absolutize_relative_links(html_body: str, plain_body: str, sender: str) -> tuple[str, str]:
+    """Rewrite root-relative hrefs (href="/path") in the HTML, and the same paths where they
+    appear in the plain text, to https://www.<sender domain>/path. Mailchimp-style
+    newsletters (Atlanta Fed Policy Hub, 1 Oct 2026) link documents this way, and a relative
+    path otherwise gets resolved against the view-in-browser host (us.list-manage.com)."""
+    m = re.search(r"@([A-Za-z0-9.-]+\.[A-Za-z]{2,})", sender or "")
+    if not m or not html_body:
+        return html_body, plain_body
+    domain = m.group(1).lower()
+    # strip mail subdomains (e.g. email.atlantafed.org, mail.urban.org, news.x.com)
+    parts = domain.split(".")
+    if len(parts) > 2 and parts[0] in ("email", "mail", "news", "newsletter", "newsletters", "info", "e", "em", "go", "mkt", "marketing", "comms", "updates", "alerts"):
+        domain = ".".join(parts[1:])
+    base = f"https://www.{domain}" if not domain.startswith("www.") else f"https://{domain}"
+    rel = sorted(set(re.findall(r'href=["\'](/[^/"\'][^"\']*)["\']', html_body, re.IGNORECASE)), key=len, reverse=True)
+    if not rel:
+        return html_body, plain_body
+    html_body = re.sub(r'href=(["\'])(/[^/"\'][^"\']*)\1', lambda mm: f'href={mm.group(1)}{base}{mm.group(2)}{mm.group(1)}', html_body, flags=re.IGNORECASE)
+    for r_ in rel:
+        plain_body = plain_body.replace(r_, base + r_)
+    return html_body, plain_body
+
+
 def _extract_primary_url(html_body: str, plain_body: str) -> str:
     """Extract the most relevant article URL from an email body.
 
@@ -337,6 +360,8 @@ def _extract_primary_url(html_body: str, plain_body: str) -> str:
         # Substack redirect links are common in newsletter emails
         if "substack.com/redirect" in url:
             return 1
+        if "list-manage.com" in url:  # Mailchimp view-in-browser / tracking page, not the content
+            return -1
         return 0
 
     # Sort by score (descending), then by position (first = likely most prominent)
@@ -443,6 +468,7 @@ def collect(
 
                     # Extract the primary article URL from the email
                     html_body = _extract_html_body(payload)
+                    html_body, body = _absolutize_relative_links(html_body, body, sender)
                     article_url = _extract_primary_url(html_body, body)
                     gmail_url = _thread_id_to_gmail_url(msg.get("threadId", msg_ref["id"]))
 
