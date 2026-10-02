@@ -43,6 +43,9 @@ h2 { font-family: var(--serif); font-weight: normal; font-size: 22px; margin: 36
 /* a one-row textarea (not an input) so long headlines wrap on a phone; app.js sets its height */
 .entry .title { flex: 1; min-width: 0; display: block; border: 0; border-bottom: 1px solid transparent; background: transparent; font: inherit; font-size: 19px; font-weight: 600; padding: 4px 0; margin: 0; outline: none; width: 100%; resize: none; overflow: hidden; white-space: pre-wrap; overflow-wrap: anywhere; -webkit-appearance: none; appearance: none; border-radius: 0; }
 .entry .title:focus { border-bottom-color: var(--blue); }
+/* "Move to" slot dropdown at the right of each theme's header (owner, 2 Oct 2026): narrow when closed, the open list shows "N · title" */
+.entry .moveto { flex: 0 0 auto; width: 64px; margin-top: 5px; font: inherit; font-size: 13px; color: var(--muted); background: var(--paper); border: 1px solid var(--line); border-radius: 6px; padding: 4px 4px; cursor: pointer; text-overflow: ellipsis; }
+.entry .moveto:focus { color: var(--ink); border-color: var(--blue); outline: none; }
 .entry .meta { font-size: 13px; color: var(--muted); margin: 2px 0 8px 34px; }
 
 /* rich text */

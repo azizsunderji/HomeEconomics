@@ -377,6 +377,28 @@
   // Height follows the text; the stored value stays single-line (Enter is handled, newlines stripped).
   function fitTitle(t) { t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px'; }
   window.addEventListener('resize', () => $$('.entry .title, .linkbox .url, .field textarea').forEach(fitTitle));
+  // "Move to" dropdown in each theme's header (owner, 2 Oct 2026): lists every slot as
+  // "N · current title" with the theme's own slot selected; picking a slot removes the theme
+  // and inserts it there, so the others shift. Rebuilt on every render, so titles stay current.
+  function moveLabel(j, title) {
+    let t = String(title || '(untitled)').replace(/\s+/g, ' ').trim();
+    if (t.length > 60) t = t.slice(0, 59).trimEnd() + '…';
+    return (j + 1) + ' · ' + t;
+  }
+  function moveToHtml(i) {
+    return '<select class="moveto" title="Move to…" aria-label="Move to slot">' +
+      (state.json.entries || []).map((e, j) =>
+        '<option value="' + j + '"' + (j === i ? ' selected' : '') + '>' + esc(moveLabel(j, e.title)) + '</option>').join('') +
+      '</select>';
+  }
+  function moveEntry(from, to) {
+    const es = state.json.entries;
+    if (from === to || to < 0 || to >= es.length) return;
+    const [it] = es.splice(from, 1); es.splice(to, 0, it);
+    touch(); renderEntries();
+    const sec = $('#entries .entry[data-idx="' + to + '"]');
+    if (sec) sec.scrollIntoView({ block: 'center' });
+  }
   function renderEntries() {
     const host = $('#entries'); host.innerHTML = '';
     (state.json.entries || []).forEach((e, i) => {
@@ -385,7 +407,8 @@
       const pills = (e.news_outlets || []).slice(0, 6).join(' · ');
       sec.innerHTML =
         '<div class="head"><span class="num">' + (i + 1) + '</span>' +
-        '<textarea class="title" rows="1" placeholder="Title">' + esc(e.title || '') + '</textarea></div>' +
+        '<textarea class="title" rows="1" placeholder="Title">' + esc(e.title || '') + '</textarea>' +
+        moveToHtml(i) + '</div>' +
         '<div class="meta">' + esc(e.origin === 'cluster' ? 'From social' : 'From news') + (pills ? ' · ' + esc(pills) : '') + '</div>' +
         '<div class="rich" contenteditable="true" data-kind="summary" data-idx="' + i + '">' + mdToHtml(e.summary) + '</div>' +
         toolsHtml();
@@ -397,7 +420,9 @@
       title.addEventListener('input', () => {
         if (/[\r\n]/.test(title.value)) title.value = title.value.replace(/[\r\n]+/g, ' ');
         fitTitle(title); state.json.entries[i].title = title.value; touch();
+        $$('#entries .moveto').forEach(s => { if (s.options[i]) s.options[i].textContent = moveLabel(i, title.value); });
       });
+      $('.moveto', sec).addEventListener('change', ev => moveEntry(i, +ev.target.value));
       const seg = $('.seg', sec); seg.children[e.tier === 'premium' ? 1 : 0].classList.add('on', e.tier === 'premium' ? 'premium' : 'free');
       sec.addEventListener('click', ev => {
         const b = ev.target.closest('[data-act]'); if (!b) return;
