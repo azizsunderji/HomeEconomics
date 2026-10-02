@@ -1,10 +1,19 @@
 name: Refresh Metro Explorer Data
 
+# Regenerates the Metro Explorer data from Redfin and Zillow, commits it here,
+# and publishes it to Vercel Blob, where homeeconomics.us/metro-explorer reads
+# it. The page itself lives in the homeeconomics/portal repo.
+
 on:
   schedule:
-    # Run every Tuesday at 6am UTC (Redfin typically updates Monday evening)
+    # Run every Tuesday at 6am UTC
     - cron: '0 6 * * 2'
   workflow_dispatch:
+    inputs:
+      upload_all:
+        description: 'Upload every data file to Blob, not only the ones that changed'
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -21,10 +30,15 @@ jobs:
       with:
         python-version: '3.12'
 
+    - name: Set up Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
     - name: Install dependencies
       run: pip install duckdb numpy pandas
 
-    - name: Download fresh Redfin data and regenerate JSONs
+    - name: Download fresh Redfin and Zillow data and regenerate JSONs
       run: |
         cd metro-explorer
         python3 scripts/refresh_data.py
@@ -32,9 +46,9 @@ jobs:
     - name: Check for changes
       id: check
       run: |
-        cd metro-explorer
-        git diff --name-only data/ | head -5
-        CHANGED=$(git diff --name-only data/ | wc -l | tr -d ' ')
+        # Modified and brand-new files both count (a new metro is an untracked file).
+        git status --porcelain -- metro-explorer/data/ | awk '{print $2}' > "$RUNNER_TEMP/changed.txt"
+        CHANGED=$(wc -l < "$RUNNER_TEMP/changed.txt" | tr -d ' ')
         echo "changed=$CHANGED" >> $GITHUB_OUTPUT
         if [ "$CHANGED" -gt "0" ]; then
           echo "Data updated — $CHANGED files changed"
@@ -48,7 +62,19 @@ jobs:
         git config user.name "github-actions[bot]"
         git config user.email "github-actions[bot]@users.noreply.github.com"
         cd metro-explorer
-        LATEST=$(python3 -c "import json; d=json.load(open('data/index.json')); f=json.load(open('data/louisville_ky.json')); print(f['dates'][-1])")
+        LATEST=$(python3 -c "import json; f=json.load(open('data/louisville_ky.json')); print(f['dates'][-1])")
         git add data/
         git commit -m "Auto-refresh metro-explorer data through $LATEST"
         git push
+
+    - name: Publish data to Vercel Blob
+      if: steps.check.outputs.changed != '0' || inputs.upload_all
+      env:
+        BLOB_READ_WRITE_TOKEN: ${{ secrets.BLOB_READ_WRITE_TOKEN }}
+      run: |
+        npm install --no-save @vercel/blob
+        if [ "${{ inputs.upload_all }}" = "true" ]; then
+          node metro-explorer/scripts/upload_to_blob.mjs --all
+        else
+          node metro-explorer/scripts/upload_to_blob.mjs --from-file "$RUNNER_TEMP/changed.txt"
+        fi

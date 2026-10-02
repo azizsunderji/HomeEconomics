@@ -1,0 +1,63 @@
+name: Retire Metro Explorer on the old host
+
+# One-off, run by hand. The Metro Explorer moved to homeeconomics.us/metro-explorer
+# on 2 Oct 2026. This replaces the copy on the old WordPress host with a page that
+# forwards visitors to the new address, and deletes the credentials file and the
+# social-posting script that were publicly reachable there.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  retire:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Install lftp
+      run: sudo apt-get update && sudo apt-get install -y lftp
+
+    - name: Replace the old page and delete the credentials
+      env:
+        HOST: ${{ secrets.SFTP_HOST }}
+        USER: ${{ secrets.SFTP_USER }}
+        KEY: ${{ secrets.SFTP_KEY }}
+        REMOTE_BASE: ${{ secrets.REMOTE_BASE }}
+      run: |
+        mkdir -p ~/.ssh
+        echo "$KEY" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        ssh-keyscan -H $HOST >> ~/.ssh/known_hosts 2>/dev/null || true
+
+        cat > index.html <<'HTML'
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+        <meta charset="UTF-8">
+        <title>Metro Explorer has moved — Home Economics</title>
+        <link rel="canonical" href="https://homeeconomics.us/metro-explorer">
+        <meta http-equiv="refresh" content="0; url=https://homeeconomics.us/metro-explorer">
+        <script>window.location.replace("https://homeeconomics.us/metro-explorer");</script>
+        </head>
+        <body>
+        <p>The Metro Explorer has moved to <a href="https://homeeconomics.us/metro-explorer">homeeconomics.us/metro-explorer</a>.</p>
+        </body>
+        </html>
+        HTML
+        sed -i 's/^        //' index.html
+
+        DIR="${REMOTE_BASE}/live/metro-explorer"
+        lftp -e "
+          set sftp:auto-confirm yes;
+          set sftp:connect-program 'ssh -i ~/.ssh/id_rsa';
+          set net:max-retries 3;
+          set net:timeout 60;
+          set cmd:fail-exit no;
+          open -u $USER,dummy sftp://$HOST;
+          rm ${DIR}/api/config.json;
+          rm ${DIR}/api/post-social.php;
+          rm ${DIR}/api/config.php;
+          rm ${DIR}/api/config.example.php;
+          set cmd:fail-exit yes;
+          put -O ${DIR} index.html;
+          cls -l ${DIR}/api;
+          bye
+        "

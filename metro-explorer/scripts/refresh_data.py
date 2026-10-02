@@ -23,6 +23,10 @@ ZILLOW_SFR_CSV = DATA_LAKE / "Price" / "Zillow" / "Metro_zhvi_uc_sfr_sm_sa_month
 ZILLOW_CONDO_CSV = DATA_LAKE / "Price" / "Zillow" / "Metro_zhvi_uc_condo_sm_sa_month.csv"
 
 REDFIN_URL = "https://redfin-public-data.s3.us-west-2.amazonaws.com/redfin_market_tracker/redfin_metro_market_tracker.tsv000.gz"
+# Redfin froze the tracker file above on 2 Jun 2026 (last month: May 2026). Current
+# data is in the Data Center file below: seasonally adjusted for every metro, All
+# Residential only, no price-drops column, percentages instead of fractions.
+REDFIN_NEW_URL = "https://redfin-public-data.s3.us-west-2.amazonaws.com/redfin_data_center/housing_market/monthly/all_metros.csv"
 ZILLOW_URLS = {
     'all': "https://files.zillowstatic.com/research/public_csvs/zhvi/Metro_zhvi_uc_sfrcondo_tier_0.33_0.67_sm_sa_month.csv",
     'sfr': "https://files.zillowstatic.com/research/public_csvs/zhvi/Metro_zhvi_uc_sfr_sm_sa_month.csv",
@@ -80,7 +84,21 @@ def download_sources():
 
     redfin_path = str(REDFIN_PARQUET) if use_local_redfin else str(redfin_pq)
     latest = con.execute(f"SELECT MAX(period_end) FROM '{redfin_path}'").fetchone()[0]
-    print(f"  Redfin latest date: {latest}")
+    print(f"  Redfin (frozen tracker file) latest date: {latest}")
+
+    # -- Redfin Data Center (current) --
+    print("Downloading Redfin Data Center metro file...")
+    redfin_new_csv = TMP_DIR / "redfin_metro_new.csv"
+    redfin_new_pq = TMP_DIR / "redfin_metro_new.parquet"
+    with urllib.request.urlopen(REDFIN_NEW_URL) as resp, open(redfin_new_csv, 'wb') as f:
+        f.write(resp.read())
+    con.execute(f"""
+        COPY (SELECT * FROM read_csv('{redfin_new_csv}', header=true, nullstr='NA', sample_size=-1))
+        TO '{redfin_new_pq}' (FORMAT PARQUET)
+    """)
+    redfin_new_csv.unlink()
+    latest_new = con.execute(f"""SELECT MAX("PERIOD END") FROM '{redfin_new_pq}'""").fetchone()[0]
+    print(f"  Redfin Data Center latest date: {latest_new}")
 
     # -- Zillow (all three property types) --
     local_zillow = {
@@ -108,11 +126,11 @@ def download_sources():
             tmp_csv.unlink()
             zillow_paths[zkey] = str(tmp_pq)
 
-    return redfin_path, zillow_paths
+    return redfin_path, str(redfin_new_pq), zillow_paths
 
 
 # ── Step 2: Generate metro JSON files ──────────────────
-def generate_jsons(redfin_path, zillow_paths):
+def generate_jsons(redfin_path, redfin_new_path, zillow_paths):
     """Read Redfin parquet + Zillow ZHVI, generate all metro-explorer JSONs."""
     import duckdb
     con = duckdb.connect()
@@ -137,6 +155,48 @@ def generate_jsons(redfin_path, zillow_paths):
 
     # Normalize column names
     redfin.columns = [c.lower().strip('"') for c in redfin.columns]
+
+    # All Residential comes from the Data Center file for its whole history, so each
+    # series is on one method from start to finish. Values are converted to the old
+    # file's units (fractions, not percentages). Price drops are not in the new file,
+    # so that one series is carried over from the frozen file and ends May 2026.
+    # Single-family and condo rows stay on the frozen file and also end May 2026.
+    print("Loading Redfin Data Center file for All Residential...")
+    import pandas as pd
+    new_all = con.execute(f"""
+        SELECT n."REGION NAME"                              AS region,
+               'All Residential'                            AS property_type,
+               n."PERIOD END"                               AS period_end,
+               n."MEDIAN SALE PRICE NSA ($)"                AS median_sale_price,
+               n."INVENTORY"                                AS inventory,
+               n."NEW LISTINGS"                             AS new_listings,
+               n."HOMES SOLD"                               AS homes_sold,
+               n."PENDING SALES"                            AS pending_sales,
+               n."MONTHS OF SUPPLY"                         AS months_of_supply,
+               n."MEDIAN DAYS ON MARKET (DAYS)"             AS median_dom,
+               n."AVERAGE SALE TO LIST RATIO (%)" / 100.0   AS avg_sale_to_list,
+               o.price_drops                                AS price_drops,
+               n."PERCENT OFF MARKET IN TWO WEEKS (%)" / 100.0 AS off_market_in_two_weeks,
+               n."MEDIAN NEW LISTING PRICE ($)"             AS median_list_price,
+               n."MEDIAN SALE PRICE PER SQ.FT. ($)"         AS median_ppsf,
+               n."SHARE SOLD ABOVE ORIGINAL LIST (%)" / 100.0 AS sold_above_list
+        FROM '{redfin_new_path}' n
+        LEFT JOIN (
+            SELECT region, period_end, price_drops,
+                   ROW_NUMBER() OVER (PARTITION BY region, period_end
+                                      ORDER BY is_seasonally_adjusted DESC) AS rn
+            FROM '{redfin_path}'
+            WHERE region_type = 'metro' AND property_type = 'All Residential'
+        ) o ON o.region = n."REGION NAME" AND o.period_end = n."PERIOD END" AND o.rn = 1
+        WHERE n."REGION TYPE" = 'Metro'
+        ORDER BY 1, 3
+    """).df()
+    frozen_other = redfin[redfin['property_type'] != 'All Residential']
+    redfin = pd.concat([new_all, frozen_other[[c for c in new_all.columns if c in frozen_other.columns]]],
+                       ignore_index=True)
+    redfin['period_end'] = pd.to_datetime(redfin['period_end']).dt.date
+    print(f"  All Residential: {new_all['region'].nunique()} metros through {new_all['period_end'].max()}")
+    print(f"  Single-family and condo (frozen file): through {frozen_other['period_end'].max()}")
 
     # Normalize dates to end-of-month
     import calendar
@@ -513,8 +573,8 @@ def generate_jsons(redfin_path, zillow_paths):
 
 # ── Main ───────────────────────────────────────────────
 if __name__ == '__main__':
-    redfin_path, zillow_path = download_sources()
-    generate_jsons(redfin_path, zillow_path)
+    redfin_path, redfin_new_path, zillow_path = download_sources()
+    generate_jsons(redfin_path, redfin_new_path, zillow_path)
     # Clean up temp files
     if TMP_DIR.exists():
         import shutil
