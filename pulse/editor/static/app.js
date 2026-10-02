@@ -395,9 +395,10 @@
     const es = state.json.entries;
     if (from === to || to < 0 || to >= es.length) return;
     const [it] = es.splice(from, 1); es.splice(to, 0, it);
+    // the screen stays where it is (owner, 2 Oct 2026): no jump to the moved theme
+    const y = window.scrollY;
     touch(); renderEntries();
-    const sec = $('#entries .entry[data-idx="' + to + '"]');
-    if (sec) sec.scrollIntoView({ block: 'center' });
+    window.scrollTo(0, y);
   }
   function renderEntries() {
     const host = $('#entries'); host.innerHTML = '';
