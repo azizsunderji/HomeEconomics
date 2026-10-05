@@ -1089,3 +1089,21 @@ Commits d9f2c16, 55cb30f, f5367bf.
   'daily%'`) sees them; their paper is production's, so the exclusion list does not change.
   `dashboard/build_digest.py` lists all briefing types and will show them. (2) If the 30 Sep run
   fails before the V4b step (as on 29 Sep), no shadow runs that day.
+
+## Status 5 Oct 2026: brief lost to a Dropbox race; concurrency fix; draft-missing alert
+
+- **What happened.** The 11:00 UTC synthesis stored the day's brief (briefing id 369) and uploaded
+  pulse.db to Dropbox at 11:53. The 10:30 UTC collection run (`pulse-daily.yml`) fired late at 11:41
+  (GitHub cron drift), had pulled pulse.db at 11:42 (before the brief existed), and uploaded its
+  own copy at 11:56. That copy lacked the brief, so the server's synced pulse.db never had it and
+  `noon-ingest` logged "no v4b brief ... yet" every 10 minutes until the owner asked at 14:47.
+- **Recovery.** The synthesis run's revision of pulse.db was downloaded from Dropbox's version
+  history (`OVH/NewsAtNoon/scripts/246_dropbox_download_rev.py`, uses Maestral's token; run it
+  with Maestral's interpreter `~/.local/share/pipx/venvs/maestral/bin/python`) and ingested with
+  `PULSE_DB=<copy> python cli.py ingest`. Draft created 14:52 UTC. The corpus copy on Dropbox still
+  lacks briefings 368 and 369 for 5 Oct; the brief lives in noon_drafts.db.
+- **Fix.** Both workflows now share `concurrency: group: pulse-db` (never cancelled), so a
+  collection run queues behind a running synthesis and vice versa.
+- **Safety net.** `noon-draftcheck.timer` (13:00 and 14:30 UTC, Mon-Fri) runs
+  `~/work/noon/bin/noon_draftcheck.py`: if no draft exists for today it sends a Telegram alert
+  with the brief rows in the synced DB, the synthesis run status, and the recovery steps.
