@@ -13,6 +13,14 @@ on:
     - cron: "30  4 * * *"  # 12:30am ET
   workflow_dispatch:
 
+# One pulse.db writer at a time (5 Oct 2026). Both pulse-daily and pulse-synth pull pulse.db from
+# Dropbox, change it and push it back; a late-firing collection run (GitHub cron drift) overlapped
+# the synthesis on 5 Oct 2026 and its upload erased the day's brief. A run in this group waits for
+# the running one to finish; it is never cancelled.
+concurrency:
+  group: pulse-db
+  cancel-in-progress: false
+
 jobs:
   daily:
     runs-on: ubuntu-latest
