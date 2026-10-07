@@ -177,6 +177,22 @@ def public_paper_url(title: str, url: str) -> str:
 _DOUBLED_HANDLE_RE = re.compile(r"\[(@[A-Za-z0-9_]+)\]\([^)]*\)(\s+(?:[A-Za-z\'’\-]+\s+){0,4}\[[^\]]+\]\([^)]*\))")
 
 
+_NESTED_ANCHOR_RE = re.compile(r"\[([^\]\[]+?)\s*\[([^\]]+)\]\]\(([^)]*)\)")
+_REPORTING_VERBS = {"told", "said", "reported", "wrote", "noted", "argued", "flagged", "found", "showed", "added",
+                    "explained", "warned", "estimated", "calculated", "pointed", "observed", "covered", "published",
+                    "released", "announced", "posted", "cited", "highlighted", "projected", "forecast", "described",
+                    "called", "put", "made", "pushed", "laid", "took", "paired", "needled"}
+
+
+def repair_nested_anchors(md: str) -> tuple[str, int]:
+    """'[A [B]](url)' -> '[A](url) B' when A starts with a reporting verb, else 'A [B](url)'. The writer
+    occasionally nests the outlet inside the verb's anchor (7 Oct 2026), which renders as raw brackets."""
+    def fix(m):
+        a, b, u = m.group(1).strip(), m.group(2).strip(), m.group(3)
+        return f"[{a}]({u}) {b}" if a.split()[0].lower().strip(",") in _REPORTING_VERBS else f"{a} [{b}]({u})"
+    return _NESTED_ANCHOR_RE.subn(fix, md or "")
+
+
 def unlink_doubled_handles(md: str) -> tuple[str, int]:
     """'[@handle](u1) [verb](u2)' -> '@handle [verb](u2)'. House style: the link sits on the
     reporting verb, the name is never the link (owner, 7 Oct 2026, after an edition with 13
@@ -197,6 +213,9 @@ def clean_draft(draft: dict) -> dict:
         e["summary"], k = unlink_doubled_handles(e["summary"])
         if k:
             logger.info(f"links: {k} doubled handle link(s) removed in entry {e.get('rank')}")
+        e["summary"], k = repair_nested_anchors(e["summary"])
+        if k:
+            logger.info(f"links: {k} nested link anchor(s) repaired in entry {e.get('rank')}")
         e["news_outlets"] = outlets_for(e)
         e["_pills"] = list(e["news_outlets"])  # the renderer shows exactly these
     paper = draft.get("paper_of_the_day")
