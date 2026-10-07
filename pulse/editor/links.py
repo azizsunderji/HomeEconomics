@@ -174,6 +174,16 @@ def public_paper_url(title: str, url: str) -> str:
     return f"https://doi.org/{matches[0]['DOI']}"
 
 
+_DOUBLED_HANDLE_RE = re.compile(r"\[(@[A-Za-z0-9_]+)\]\([^)]*\)(\s+(?:[A-Za-z\'’\-]+\s+){0,4}\[[^\]]+\]\([^)]*\))")
+
+
+def unlink_doubled_handles(md: str) -> tuple[str, int]:
+    """'[@handle](u1) [verb](u2)' -> '@handle [verb](u2)'. House style: the link sits on the
+    reporting verb, the name is never the link (owner, 7 Oct 2026, after an edition with 13
+    doubled links)."""
+    return _DOUBLED_HANDLE_RE.subn(lambda m: m.group(1) + m.group(2), md or "")
+
+
 def clean_draft(draft: dict) -> dict:
     """Resolve redirects in every entry (and the paper), then rebuild each
     entry's news_outlets from the cited URLs. Mutates and returns the draft."""
@@ -184,6 +194,9 @@ def clean_draft(draft: dict) -> dict:
             continue
         e["summary"], n = resolve_summary(e.get("summary") or "", cache)
         changed += n
+        e["summary"], k = unlink_doubled_handles(e["summary"])
+        if k:
+            logger.info(f"links: {k} doubled handle link(s) removed in entry {e.get('rank')}")
         e["news_outlets"] = outlets_for(e)
         e["_pills"] = list(e["news_outlets"])  # the renderer shows exactly these
     paper = draft.get("paper_of_the_day")

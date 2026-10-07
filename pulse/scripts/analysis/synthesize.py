@@ -1771,6 +1771,8 @@ def _compute_cited_sources(briefing: dict, conn: sqlite3.Connection) -> dict:
 
 
 _HANDLE_RE = re.compile(r"(?<![A-Za-z0-9_])(@[A-Za-z0-9_]{2,20})\b")
+# up to four plain words (e.g. "also", "of Redfin") between the handle and its linked verb
+_LINK_FOLLOWS_RE = re.compile(r"(?:[\s,]+(?:[A-Za-z'’\-]+\s+){0,4})\[[^\]]+\]\([^)]+\)")
 _MD_LINK_SPAN_RE = re.compile(r"\[[^\]]+\]\([^)]+\)")
 
 # Weekday names that signal a time-stamped historical attribution. When a
@@ -1871,6 +1873,11 @@ def _autolink_bare_handles(
         bare: list[tuple[int, int, str]] = []
         for m in _HANDLE_RE.finditer(summary):
             if _is_inside_link(m.start(), link_ranges):
+                continue
+            # House style (owner, 7 Oct 2026): "On X, @handle [noted](url)" — the link sits on
+            # the reporting verb and the name is never the link. A handle whose next words are
+            # a markdown link is already cited; wrapping it too produced doubled links.
+            if _LINK_FOLLOWS_RE.match(summary, m.end()):
                 continue
             bare.append((m.start(), m.end(), m.group(1)))
         if not bare:
