@@ -136,6 +136,11 @@ def outlets_for(entry: dict) -> list[str]:
 _TITLE_KEY = re.compile(r"[^a-z0-9]")
 
 
+_PAYWALLED_PUBLISHERS = {"sciencedirect.com", "onlinelibrary.wiley.com", "link.springer.com", "tandfonline.com",
+                         "academic.oup.com", "journals.sagepub.com", "cambridge.org", "jstor.org", "nature.com",
+                         "journals.uchicago.edu", "pubs.aeaweb.org", "mitpressjournals.org", "direct.mit.edu"}
+
+
 def public_paper_url(title: str, url: str) -> str:
     """A link anyone can open, instead of a publisher link tied to one reader's access.
 
@@ -146,6 +151,10 @@ def public_paper_url(title: str, url: str) -> str:
     clean = _strip_tracking(url or "")
     t = (title or "").strip()
     if not t or "doi.org/" in clean:
+        return clean
+    # Owner, 7 Oct 2026: only publisher links that may hit a login wall are swapped for the DOI.
+    # An open landing page (nber.org/papers/..., SSRN, arXiv, a Fed site) is the better link and is kept.
+    if urlsplit(clean).netloc.replace("www.", "") not in _PAYWALLED_PUBLISHERS:
         return clean
     try:
         with httpx.Client(timeout=TIMEOUT, headers={"User-Agent": _UA}) as c:
