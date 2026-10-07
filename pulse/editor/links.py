@@ -177,19 +177,25 @@ def public_paper_url(title: str, url: str) -> str:
 _DOUBLED_HANDLE_RE = re.compile(r"\[(@[A-Za-z0-9_]+)\]\([^)]*\)(\s+(?:[A-Za-z\'’\-]+\s+){0,4}\[[^\]]+\]\([^)]*\))")
 
 
-_NESTED_ANCHOR_RE = re.compile(r"\[([^\]\[]+?)\s*\[([^\]]+)\]\]\(([^)]*)\)")
+# a link whose anchor contains inner brackets, e.g. '[[HousingWire] reported](url)' or '[told [HousingWire]](url)'
+_NESTED_ANCHOR_RE = re.compile(r"\[((?:[^\[\]]*\[[^\[\]]*\])+[^\[\]]*)\]\(([^)\s]*)\)")
 _REPORTING_VERBS = {"told", "said", "reported", "wrote", "noted", "argued", "flagged", "found", "showed", "added",
                     "explained", "warned", "estimated", "calculated", "pointed", "observed", "covered", "published",
                     "released", "announced", "posted", "cited", "highlighted", "projected", "forecast", "described",
-                    "called", "put", "made", "pushed", "laid", "took", "paired", "needled"}
+                    "called", "put", "made", "pushed", "laid", "took", "paired", "needled", "says", "reports",
+                    "notes", "argues", "writes", "finds", "shows", "tweeted", "summarized", "summarised"}
 
 
 def repair_nested_anchors(md: str) -> tuple[str, int]:
-    """'[A [B]](url)' -> '[A](url) B' when A starts with a reporting verb, else 'A [B](url)'. The writer
-    occasionally nests the outlet inside the verb's anchor (7 Oct 2026), which renders as raw brackets."""
+    """Drop inner brackets from a link anchor and put the link on the first reporting verb in it
+    ('[[HousingWire] reported](url)' -> 'HousingWire [reported](url)'); with no verb the whole cleaned
+    phrase stays the anchor. The writer occasionally nests brackets (7 Oct 2026), which renders raw."""
     def fix(m):
-        a, b, u = m.group(1).strip(), m.group(2).strip(), m.group(3)
-        return f"[{a}]({u}) {b}" if a.split()[0].lower().strip(",") in _REPORTING_VERBS else f"{a} [{b}]({u})"
+        words = re.sub(r"[\[\]]", "", m.group(1)).split(); u = m.group(2)
+        for i, w in enumerate(words):
+            if w.lower().strip(",.;:") in _REPORTING_VERBS:
+                return " ".join(words[:i] + [f"[{w}]({u})"] + words[i + 1:])
+        return f"[{' '.join(words)}]({u})"
     return _NESTED_ANCHOR_RE.subn(fix, md or "")
 
 
