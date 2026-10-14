@@ -63,6 +63,9 @@ def _google_url(url: str) -> str | None:
     return None
 
 
+_LOGIN_PAGE_RE = re.compile(r"(?:^|[./-])(?:signin|sign-in|login|log-in|sso|auth|oauth|saml|idfs\.gs\.com|accounts\.)(?:[./?#-]|$)", re.I)
+
+
 def resolve(url: str) -> str:
     """Final address for a redirecting link; the original if it does not
     redirect off its host or cannot be fetched."""
@@ -79,6 +82,12 @@ def resolve(url: str) -> str:
         logger.info(f"could not resolve {url[:60]}: {type(e).__name__}")
         return url
     if urlsplit(final).netloc.lower().replace("www.", "") == urlsplit(url).netloc.lower().replace("www.", ""):
+        return url
+    # A redirect to a sign-in page is not the article moving; it is the site asking the
+    # (anonymous) resolver to log in. Keep the original link, which works for a logged-in
+    # reader (Goldman: publishing.gs.com -> idfs.gs.com/signin, 14 Oct 2026).
+    if _LOGIN_PAGE_RE.search(final):
+        logger.info(f"kept {url[:60]}: redirect goes to a sign-in page")
         return url
     return _strip_tracking(final)
 
