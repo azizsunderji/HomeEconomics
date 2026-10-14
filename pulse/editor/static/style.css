@@ -66,6 +66,15 @@ h2 { font-family: var(--serif); font-weight: normal; font-size: 22px; margin: 36
 .rich figure.img .cap { flex: 1; min-width: 0; display: block; margin: 0; font: inherit; font-family: var(--sans); font-size: 14px; line-height: 1.4; padding: 6px 0; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; color: var(--ink); outline: none; -webkit-appearance: none; appearance: none; }
 .rich figure.img .cap:focus { border-bottom-color: var(--blue); }
 .rich figure.img .rm { flex: none; }
+/* a Context box (markdown "::: context" … ":::"): the email's shaded block, editable in place (14 Oct 2026) */
+.rich .ctx { margin: 16px 0; padding: 12px 18px 14px 18px; background: var(--soft); border-radius: 4px; }
+.rich .ctx:first-child { margin-top: 0; }
+.rich .ctxhead { display: flex; align-items: center; justify-content: space-between; margin: 0 0 6px 0; user-select: none; -webkit-user-select: none; }
+.rich .ctxlabel { font-family: var(--sans); font-size: 12px; line-height: 1.4; letter-spacing: 0.08em; text-transform: uppercase; color: #7F7570; }
+.rich .ctxrm { border: 0; background: transparent; color: #7F7570; font-size: 13px; line-height: 1; padding: 4px 2px 4px 8px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.rich .ctxrm:hover { color: var(--red); }
+.rich .ctx p { margin: 0 0 12px 0; }
+.rich .ctx p:last-child { margin-bottom: 0; }
 #imgFile { display: none; }
 
 /* toolbar */

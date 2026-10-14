@@ -201,7 +201,8 @@ def free_themes(draft: dict) -> list[dict]:
         num = e.get("rank") if isinstance(e.get("rank"), int) else i
         title = (e.get("title") or "").strip()
         title = title[:1].upper() + title[1:]
-        md = _no_images(e.get("summary") or "").strip()
+        # context boxes are background, not the theme: left out of the card text (14 Oct 2026)
+        md = el._strip_context(_no_images(e.get("summary") or "")).strip()
         body = el._body_links(el._fix_sentence_starts(md))
         paras = []
         for p in re.split(r"(?:<br\s*/?>\s*){2,}", body):
@@ -217,9 +218,9 @@ def free_themes(draft: dict) -> list[dict]:
         # (e.g. "Kevinerdmann" -> "Kevin Erdmann") also reaches cards of earlier drafts.
         if isinstance(e.get("_pills"), list):
             import links
-            pills = links.outlets_for(e)
+            pills = links.outlets_for(dict(e, summary=md))  # without the context box's sources
         else:
-            pills = el._entry_pills(e)
+            pills = el._entry_pills(dict(e, summary=md))
         out.append({"pos": i, "num": num, "title": title, "text": text, "md": md,
                     "pills": pills})
     return out

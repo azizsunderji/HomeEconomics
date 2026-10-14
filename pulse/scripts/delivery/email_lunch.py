@@ -340,6 +340,73 @@ def _has_images(text: str) -> bool:
     return _MD_IMAGE_RE.search(str(text or "")) is not None
 
 
+# ── Context boxes (owner, 14 Oct 2026) ─────────────────────────────────
+# Background for readers, not commentary on the news. In the markdown of an
+# entry (or the paper) summary it is a paragraph group fenced by lines of their
+# own:
+#     ::: context
+#     First paragraph, with [links](https://…) as anywhere else.
+#
+#     Second paragraph.
+#     :::
+# Rendered as a shaded box: LIGHT background, 4px radius, no border, a small
+# CONTEXT label above body text in the entry's own font and size. The inside is
+# split out BEFORE any link pass and then goes through the same passes as the
+# rest of the summary (sentence starts, anchor narrowing, platform naming,
+# _body_links), so the free-tier wall and the pills treat its links the same.
+_CONTEXT_RE = re.compile(r"^[ \t]*:::[ \t]*context[ \t]*$(.*?)^[ \t]*:::[ \t]*$", re.M | re.S | re.I)
+CONTEXT_LABEL_COLOR = "#7F7570"
+
+
+def _strip_context(text: str) -> str:
+    """The text without its context boxes (cards: background is not the theme)."""
+    return re.sub(r"\n{3,}", "\n\n", _CONTEXT_RE.sub("", str(text or ""))).strip()
+
+
+def _split_blocks(text: str) -> list[tuple]:
+    """_split_images, plus ("context", markdown) for each context box, in
+    document order. An empty box is dropped."""
+    text = str(text or "")
+    out: list[tuple] = []
+    pos = 0
+    for m in _CONTEXT_RE.finditer(text):
+        out += _split_images(text[pos:m.start()])
+        inner = m.group(1).strip()
+        if _strip_images(inner).strip() or _has_images(inner):
+            out.append(("context", inner))
+        pos = m.end()
+    out += _split_images(text[pos:])
+    return out
+
+
+def _context_block(md: str, body_text: str, margin: str) -> str:
+    """One shaded context box. A table cell carries the background so Gmail,
+    Apple Mail and Outlook all paint it; the label is typed in capitals rather
+    than relying on text-transform."""
+    blocks: list[tuple] = []
+    for s in _split_images(_fix_sentence_starts(md)):
+        if s[0] == "text":
+            html = _body_links(s[1])
+            blocks += [("p", p.strip()) for p in re.split(r"(?:<br\s*/?>\s*){2,}", html) if p.strip()]
+        else:
+            blocks.append(s)
+    inner = []
+    for i, b in enumerate(blocks):
+        gap = ENTRY_PARA_GAP if i < len(blocks) - 1 else 0
+        if b[0] == "p":
+            inner.append(f'<div style="{body_text} margin:0 0 {gap}px 0;">{b[1]}</div>')
+        else:
+            inner.append(_image_block(b[1], b[2], f"0 0 {gap}px 0"))
+    return (f'<div style="margin:{margin};">'
+            f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" '
+            f'style="border-collapse:separate;"><tr>'
+            f'<td bgcolor="{LIGHT}" style="background-color:{LIGHT}; border-radius:4px; padding:14px 18px;">'
+            f'<div style="font-family:{FONT}; font-size:12px; line-height:1.4; letter-spacing:0.08em; '
+            f'font-weight:normal; color:{CONTEXT_LABEL_COLOR}; margin:0 0 6px 0;">CONTEXT</div>'
+            f'{"".join(inner)}'
+            f'</td></tr></table></div>')
+
+
 def _tint(color: str, alpha: float) -> str:
     """`color` at `alpha` over the white page, as a flat hex (some mail clients
     ignore rgba). Derived from the existing constants; no new colour."""
@@ -926,6 +993,7 @@ def _name_platforms(text: str) -> str:
 
 ENTRY_TITLE_GAP = 14   # px between an entry's number+title row and its first paragraph
 ENTRY_PARA_GAP = 12    # px between paragraphs inside an entry (was a <br><br>, ~27px)
+CONTEXT_GAP = 16       # px above and below a context box inside an entry
 
 
 def _entry_paragraphs(html: str, body_text: str) -> str:
@@ -941,9 +1009,10 @@ def _entry_paragraphs(html: str, body_text: str) -> str:
 
 def _entry_body(summary: str, body_text: str) -> str:
     """An entry's paragraphs, with any image line rendered as a block between
-    them at the paragraph gap. Without images this is exactly the old path."""
-    segs = _split_images(summary)
-    if not any(s[0] == "image" for s in segs):
+    them at the paragraph gap, and any context box likewise (a shaded block,
+    see _context_block). Without images or boxes this is exactly the old path."""
+    segs = _split_blocks(summary)
+    if not any(s[0] in ("image", "context") for s in segs):
         return _entry_paragraphs(_body_links(summary), body_text)
     blocks: list[tuple] = []
     for s in segs:
@@ -957,6 +1026,10 @@ def _entry_body(summary: str, body_text: str) -> str:
         gap = ENTRY_PARA_GAP if i < len(blocks) - 1 else 0
         if b[0] == "p":
             out.append(f'<div style="{body_text} margin:0 0 {gap}px 0;">{b[1]}</div>')
+        elif b[0] == "context":
+            # a little more air around the box than between paragraphs
+            top = CONTEXT_GAP - ENTRY_PARA_GAP if i else 0
+            out.append(_context_block(b[1], body_text, f"{top}px 0 {CONTEXT_GAP if gap else 0}px 0"))
         else:
             out.append(_image_block(b[1], b[2], f"0 0 {gap}px 0"))
     return "".join(out)
@@ -980,15 +1053,17 @@ def _standfirst_html(intro: str, body_text: str) -> str:
 
 
 def _paper_body(summary: str, body_text: str) -> str:
-    """The paper summary block; an image line becomes a block inside it."""
-    segs = _split_images(summary)
-    if not any(s[0] == "image" for s in segs):
+    """The paper summary block; an image line or a context box becomes a block inside it."""
+    segs = _split_blocks(summary)
+    if not any(s[0] in ("image", "context") for s in segs):
         return f'<div style="{body_text} margin:0 0 16px 0;">{_body_links(summary)}</div>'
     inner = []
     for i, s in enumerate(segs):
         margin = f"{IMAGE_GAP}px 0 0 0" if i else "0"
         if s[0] == "text":
             inner.append(f'<div style="margin:{margin};">{_body_links(s[1])}</div>')
+        elif s[0] == "context":
+            inner.append(_context_block(s[1], body_text, margin))
         else:
             inner.append(_image_block(s[1], s[2], margin))
     return f'<div style="{body_text} margin:0 0 16px 0;">{"".join(inner)}</div>'

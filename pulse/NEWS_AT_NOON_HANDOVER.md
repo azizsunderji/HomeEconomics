@@ -1107,3 +1107,47 @@ Commits d9f2c16, 55cb30f, f5367bf.
 - **Safety net.** `noon-draftcheck.timer` (13:00 and 14:30 UTC, Mon-Fri) runs
   `~/work/noon/bin/noon_draftcheck.py`: if no draft exists for today it sends a Telegram alert
   with the brief rows in the synced DB, the synthesis run status, and the recovery steps.
+
+## Status 14 Oct 2026: Context box (owner's request)
+
+- **What it is.** A shaded box labelled CONTEXT that the owner can put anywhere inside a theme's
+  summary (or the Paper of the Day summary). It holds background for readers, not commentary on
+  the news. Owner's brief: minimal, clean, set apart from the rest with as little adornment as possible.
+- **Markdown syntax.** A paragraph group between a line `::: context` and a line `:::`, inside the
+  summary markdown, with blank lines around it:
+
+      First paragraph of the theme.
+
+      ::: context
+      Background paragraph with [links](https://…) written as anywhere else.
+
+      A second background paragraph.
+      :::
+
+      Next paragraph of the theme.
+
+  An empty box is dropped. Boxes do not nest. The standfirst has no Context button (it is trimmed
+  to three sentences, which would cut a box).
+- **Email render** (`email_lunch._context_block`, used by `_entry_body` and `_paper_body`; the
+  web `/latest` page and both PDFs go through the same renderer): a one-cell table, background
+  #F6F7F3 (`LIGHT`, set as `bgcolor` and inline style), 4px radius, no border, padding 14px 18px;
+  label `CONTEXT` typed in capitals, 12px, letter-spacing 0.08em, colour #7F7570, 6px above the
+  text; body text in the entry's own font, 17px, ink. 16px of space above and below the box in an
+  entry. The box's text goes through the same passes as the rest of the summary (sentence starts,
+  anchor narrowing, platform naming, `_body_links`), so free-tier walling and `data-free` work the
+  same. Links in a box do not add source pills on their own: pills come from `_pills` set at ingest,
+  as for any edit.
+- **Editor.** A Context button next to Link / Unlink / Image on every theme and on the paper. With
+  whole paragraphs selected it wraps them; otherwise it inserts an empty box at the cursor (above
+  the paragraph if the cursor is at its start, below at its end, splitting it in the middle). In the
+  editing view the box is a shaded block with the CONTEXT label and a small × (removes the box and
+  its text). Deleting all its text and pressing Backspace once more also removes it. Editor <->
+  markdown round trip is exact (`mdToHtml` / `htmlToMd` in `static/app.js`). `index.html` now loads
+  `app.js` and `style.css` with a `?v=` query so phones pick up the new script.
+- **Cards.** `cards.free_themes` strips context boxes before condensation; card text and card pills
+  ignore them.
+- **Verified.** Playwright on the 13 Oct draft (`OVH/NewsAtNoon/scripts/292_context_ui_test.py`):
+  insert, type, link, save, reload, round trip, Backspace removal, × removal, wrap selection; the
+  draft's JSON afterwards is identical to before. `noon_verify.py` gives the same result with and
+  without a box on 8 drafts (all pass on 5 and 8 Oct; the other dates fail older content checks with
+  or without a box). Screenshots: `OVH/NewsAtNoon/outputs/context_box_email.png`, `context_box_editor.png`.

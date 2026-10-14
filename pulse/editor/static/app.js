@@ -6,7 +6,9 @@
    anchor here (see the "Keep in free edition" box).
    An image is a markdown image on a line of its own, ![caption](url); in the
    editor it is a <figure class="img"> (thumbnail, caption field, remove button)
-   that is not editable text, so it never counts as a link. */
+   that is not editable text, so it never counts as a link.
+   A Context box is a paragraph group between a line "::: context" and a line ":::";
+   in the editor it is a shaded <div class="ctx"> with a CONTEXT label (14 Oct 2026). */
 (function () {
   'use strict';
   const $ = (s, el) => (el || document).querySelector(s);
@@ -43,14 +45,39 @@
       '<div class="caprow"><input class="cap" type="text" placeholder="Caption (optional)" value="' + escAttr(caption) + '">' +
       '<button type="button" class="btn icon rm" data-act="rmimg" title="Remove image">✕</button></div></figure>';
   }
+  // Context box (owner, 14 Oct 2026): background for readers, set apart as a shaded block.
+  // Markdown: a paragraph group between a line "::: context" and a line ":::".
+  // In the editor: <div class="ctx"> holding a non-editable label row (CONTEXT and a
+  // remove button) and editable paragraphs. An empty box is dropped by htmlToMd.
+  const CTX_RE = /^[ \t]*:::[ \t]*context[ \t]*$([\s\S]*?)^[ \t]*:::[ \t]*$/gim;
+  const CTX_HEAD = '<div class="ctxhead" contenteditable="false"><span class="ctxlabel">Context</span>' +
+    '<button type="button" class="ctxrm" data-act="rmctx" title="Remove context box">✕</button></div>';
+  function parasHtml(md) {
+    const paras = String(md || '').split(/\n{2,}/).map(p => p.trim()).filter(Boolean);
+    return paras.map(p => { const m = IMG_RE.exec(p); return m ? figureHtml(m[1].trim(), m[2]) : '<p>' + inlineToHtml(p).replace(/\n/g, '<br>') + '</p>'; });
+  }
+  function ctxHtml(innerMd) {
+    const inner = parasHtml(innerMd);
+    return '<div class="ctx">' + CTX_HEAD + (inner.length ? inner.join('') : '<p><br></p>') + '</div>';
+  }
   function mdToHtml(md) {
-    const paras = String(md || '').replace(/\r/g, '').split(/\n{2,}/).map(p => p.trim()).filter(Boolean);
-    if (!paras.length) return '<p><br></p>';
-    const out = paras.map(p => { const m = IMG_RE.exec(p); return m ? figureHtml(m[1].trim(), m[2]) : '<p>' + inlineToHtml(p).replace(/\n/g, '<br>') + '</p>'; });
-    // an image at either end gets an empty paragraph beside it so the caret has somewhere to go;
-    // empty paragraphs are dropped again by htmlToMd
-    if (IMG_RE.test(paras[0])) out.unshift('<p><br></p>');
-    if (IMG_RE.test(paras[paras.length - 1])) out.push('<p><br></p>');
+    md = String(md || '').replace(/\r/g, '');
+    const out = []; let i = 0, m;
+    CTX_RE.lastIndex = 0;
+    while ((m = CTX_RE.exec(md))) {
+      const before = parasHtml(md.slice(i, m.index));
+      out.push(...before);
+      out.push(ctxHtml(m[1]));
+      i = m.index + m[0].length;
+    }
+    const rest = parasHtml(md.slice(i));
+    out.push(...rest);
+    if (!out.length) return '<p><br></p>';
+    // an image or a context box at either end gets an empty paragraph beside it so the
+    // caret has somewhere to go; empty paragraphs are dropped again by htmlToMd
+    const blockish = s => s.startsWith('<figure') || s.startsWith('<div class="ctx">');
+    if (blockish(out[0])) out.unshift('<p><br></p>');
+    if (blockish(out[out.length - 1])) out.push('<p><br></p>');
     return out.join('');
   }
   // Clipboard HTML -> text plus <a href> only (data-free kept). Returns '' when there is
@@ -64,7 +91,7 @@
     (function walk(node) {
       for (const n of node.childNodes) {
         if (n.nodeType === 3) { cur += esc(n.nodeValue.replace(/\s+/g, ' ')); continue; }
-        if (n.nodeType !== 1 || /^(SCRIPT|STYLE|META|TITLE|BUTTON|INPUT)$/.test(n.tagName)) continue;
+        if (n.nodeType !== 1 || /^(SCRIPT|STYLE|META|TITLE|BUTTON|INPUT)$/.test(n.tagName) || n.classList.contains('ctxhead')) continue;
         if (n.tagName === 'BR') { cur += '<br>'; continue; }
         if (n.tagName === 'A' && /^https?:\/\//i.test(n.getAttribute('href') || '') && n.textContent.trim()) {
           links++;
@@ -91,6 +118,14 @@
         if (n.nodeType !== 1) continue;
         const tag = n.tagName;
         if (tag === 'BR') { cur += '\n'; continue; }
+        if (n.classList.contains('ctxhead')) continue;
+        if (tag === 'DIV' && n.classList.contains('ctx')) {
+          // a context box: its own paragraphs between the fence lines; an empty box is dropped
+          flush();
+          const inner = htmlToMd(n);
+          if (inner.trim()) paras.push('::: context\n' + inner + '\n:::');
+          continue;
+        }
         if (tag === 'FIGURE' && n.classList.contains('img')) {
           flush();
           const capEl = n.querySelector('input.cap');
@@ -270,6 +305,8 @@
       else if (act === 'unlink') removeLink(ed);
       else if (act === 'image') startImage(ed);
       else if (act === 'rmimg') { const f = b.closest('figure.img'); if (f) { f.remove(); onRichInput(ed); } }
+      else if (act === 'context') insertContext(ed);
+      else if (act === 'rmctx') { const c = b.closest('.ctx'); if (c) removeContext(ed, c); }
       else if (act === 'apply') applyLink(ed);
       else if (act === 'cancel') { pending = null; linkboxFor(ed).hidden = true; }
     });
@@ -285,6 +322,76 @@
       else document.execCommand('insertText', false, cd.getData('text/plain'));
     });
     ed.addEventListener('input', () => onRichInput(ed));
+    ed.addEventListener('keydown', ev => contextKeydown(ed, ev));
+  }
+  // ── context boxes ─────────────────────────────────────────────────
+  // Context button: with whole paragraphs selected, wraps them in a box; otherwise
+  // inserts an empty box at the caret (above the paragraph when the caret is at its
+  // start, below it at its end, splitting it in the middle). Boxes never nest.
+  function caretPlace(node, atEnd) {
+    const sel = document.getSelection(); const r = document.createRange();
+    r.selectNodeContents(node); r.collapse(!atEnd);
+    sel.removeAllRanges(); sel.addRange(r); savedRange = r.cloneRange();
+  }
+  function newContext() {
+    const tmp = document.createElement('div'); tmp.innerHTML = ctxHtml(''); return tmp.firstChild;
+  }
+  function insertContext(ed) {
+    const r = savedRange && activeEditor === ed && ed.contains(savedRange.startContainer) ? savedRange.cloneRange() : null;
+    const startEl = r ? (r.startContainer.nodeType === 1 ? r.startContainer : r.startContainer.parentElement) : null;
+    if (startEl && startEl.closest('.ctx')) { say('The cursor is already inside a Context box.', ''); return; }
+    let box;
+    const a = blockOf(r ? r.startContainer : ed, ed), z = r ? blockOf(r.endContainer, ed) : null;
+    if (r && !r.collapsed && a && z && a.tagName === 'P' && z.tagName === 'P' && r.toString().trim()) {
+      // wrap every paragraph the selection touches (a..z)
+      const blocks = []; for (let n = a; n; n = n.nextSibling) { blocks.push(n); if (n === z) break; }
+      if (blocks.some(n => n.nodeType === 1 && n.classList.contains('ctx'))) { say('That selection already includes a Context box.', ''); return; }
+      box = newContext(); box.lastChild.remove();  // drop the empty paragraph
+      a.before(box); blocks.forEach(n => box.appendChild(n));
+    } else {
+      box = newContext();
+      const blk = r ? blockOf(r.startContainer, ed) : null;
+      if (!blk) ed.appendChild(box);
+      else if (blk.tagName !== 'P') blk.after(box);
+      else {
+        const anc = anchorAt(r); if (anc) { r.setStartAfter(anc); r.collapse(true); }  // never split a link
+        const before = document.createRange(); before.selectNodeContents(blk); before.setEnd(r.startContainer, r.startOffset);
+        const rest = document.createRange(); rest.selectNodeContents(blk); rest.setStart(r.startContainer, r.startOffset);
+        if (!before.toString().trim() && blk.textContent.trim()) blk.before(box);
+        else if (!rest.toString().trim()) blk.after(box);
+        else { const p = document.createElement('p'); p.appendChild(rest.extractContents()); blk.after(box); box.after(p); }
+      }
+    }
+    // keep a paragraph on each side so the caret can always leave the box
+    if (!box.previousSibling) { const p = document.createElement('p'); p.innerHTML = '<br>'; box.before(p); }
+    if (!box.nextSibling) { const p = document.createElement('p'); p.innerHTML = '<br>'; box.after(p); }
+    activeEditor = ed; ed.focus();
+    caretPlace(box.lastChild, true);
+    onRichInput(ed);
+  }
+  function removeContext(ed, box) {
+    const next = box.nextSibling;
+    box.remove();
+    if (next && next.nodeType === 1) { ed.focus(); caretPlace(next, false); }
+    onRichInput(ed);
+  }
+  // Backspace in an empty box removes the box; Backspace at the very start of a box's
+  // first paragraph does nothing (it would otherwise pull the text out of the box).
+  function contextKeydown(ed, ev) {
+    if (ev.key !== 'Backspace' && ev.key !== 'Delete') return;
+    const sel = document.getSelection(); if (!sel || !sel.rangeCount) return;
+    const r = sel.getRangeAt(0);
+    const el = r.startContainer.nodeType === 1 ? r.startContainer : r.startContainer.parentElement;
+    const box = el && el.closest('.ctx'); if (!box || !ed.contains(box)) return;
+    const body = Array.from(box.childNodes).filter(n => !(n.nodeType === 1 && n.classList.contains('ctxhead')));
+    const text = body.map(n => n.textContent).join('').replace(/ /g, ' ').trim();
+    const hasFig = body.some(n => n.nodeType === 1 && n.querySelector && (n.matches('figure') || n.querySelector('figure')));
+    if (!text && !hasFig) { ev.preventDefault(); removeContext(ed, box); return; }
+    if (ev.key === 'Backspace' && r.collapsed && body.length) {
+      const first = body[0];
+      const pre = document.createRange(); pre.selectNodeContents(first); pre.setEnd(r.startContainer, r.startOffset);
+      if (first.contains(r.startContainer) && !pre.toString().length) ev.preventDefault();
+    }
   }
   // ── images ────────────────────────────────────────────────────────
   // Image button -> the hidden file input (camera roll / files on a phone) ->
@@ -362,6 +469,7 @@
       '<button class="btn" data-act="link">Link</button>' +
       '<button class="btn" data-act="unlink">Unlink</button>' +
       '<button class="btn" data-act="image">Image</button>' +
+      '<button class="btn" data-act="context" title="Add a shaded Context box at the cursor (or around the selected paragraphs)">Context</button>' +
       '<span class="spacer"></span>' +
       '<div class="seg"><button data-act="free">Free</button><button data-act="premium">Premium</button></div>' +
       '<span class="move">' +
@@ -470,6 +578,7 @@
       '<div class="sub">Summary</div><div class="rich" contenteditable="true" data-kind="paper">' + mdToHtml(p.summary) + '</div>' +
       '<div class="tools"><button class="btn" data-act="link">Link</button><button class="btn" data-act="unlink">Unlink</button>' +
       '<button class="btn" data-act="image">Image</button>' +
+      '<button class="btn" data-act="context" title="Add a shaded Context box at the cursor (or around the selected paragraphs)">Context</button>' +
       '<span class="spacer"></span><button class="btn danger" id="paperRemove">Remove paper</button></div>' +
       '<div class="linkbox" hidden><div class="sel"></div><textarea class="url" rows="1" placeholder="https://…" inputmode="url" autocapitalize="off" autocomplete="off"></textarea>' +
       '<button class="btn primary" data-act="apply">Apply</button><button class="btn" data-act="cancel">Cancel</button></div>';
