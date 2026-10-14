@@ -204,6 +204,9 @@ _REPORTING_VERBS = {"told", "said", "reported", "wrote", "noted", "argued", "fla
                     "notes", "argues", "writes", "finds", "shows", "tweeted", "summarized", "summarised"}
 
 
+_DOUBLE_OPEN_RE = re.compile(r"(?<!\!)\[\[([^\[\]]+)\]\(")
+
+
 def repair_nested_anchors(md: str) -> tuple[str, int]:
     """Drop inner brackets from a link anchor and put the link on the first reporting verb in it
     ('[[HousingWire] reported](url)' -> 'HousingWire [reported](url)'); with no verb the whole cleaned
@@ -214,7 +217,9 @@ def repair_nested_anchors(md: str) -> tuple[str, int]:
             if w.lower().strip(",.;:") in _REPORTING_VERBS:
                 return " ".join(words[:i] + [f"[{w}]({u})"] + words[i + 1:])
         return f"[{' '.join(words)}]({u})"
-    return _NESTED_ANCHOR_RE.subn(fix, md or "")
+    md, k = _DOUBLE_OPEN_RE.subn(r"[\1](", md or "")  # '[[Text verb](url)' -> '[Text verb](url)'
+    out, n = _NESTED_ANCHOR_RE.subn(fix, md)
+    return out, n + k
 
 
 def unlink_doubled_handles(md: str) -> tuple[str, int]:
