@@ -73,6 +73,9 @@ h2 { font-family: var(--serif); font-weight: normal; font-size: 22px; margin: 36
 .rich .ctxlabel { font-family: var(--sans); font-size: 12px; line-height: 1.4; letter-spacing: 0.08em; text-transform: uppercase; color: #7F7570; font-weight: 700; }
 .rich .ctxrm { border: 0; background: transparent; color: #7F7570; font-size: 13px; line-height: 1; padding: 4px 2px 4px 8px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .rich .ctxrm:hover { color: var(--red); }
+.rich .ctxbtns { display: inline-flex; align-items: center; }
+.rich .ctxmv { border: 0; background: transparent; color: #7F7570; font-size: 13px; line-height: 1; padding: 4px 6px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.rich .ctxmv:hover { color: var(--ink); }
 .rich .ctx p { margin: 0 0 12px 0; }
 .rich .ctx p:last-child { margin-bottom: 0; }
 #imgFile { display: none; }

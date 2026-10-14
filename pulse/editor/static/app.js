@@ -51,7 +51,10 @@
   // remove button) and editable paragraphs. An empty box is dropped by htmlToMd.
   const CTX_RE = /^[ \t]*:::[ \t]*context[ \t]*$([\s\S]*?)^[ \t]*:::[ \t]*$/gim;
   const CTX_HEAD = '<div class="ctxhead" contenteditable="false"><span class="ctxlabel">Context</span>' +
-    '<button type="button" class="ctxrm" data-act="rmctx" title="Remove context box">✕</button></div>';
+    '<span class="ctxbtns">' +
+    '<button type="button" class="ctxmv" data-act="ctxup" title="Move the box up one paragraph (Alt+↑)">↑</button>' +
+    '<button type="button" class="ctxmv" data-act="ctxdown" title="Move the box down one paragraph (Alt+↓)">↓</button>' +
+    '<button type="button" class="ctxrm" data-act="rmctx" title="Remove context box">✕</button></span></div>';
   function parasHtml(md) {
     const paras = String(md || '').split(/\n{2,}/).map(p => p.trim()).filter(Boolean);
     return paras.map(p => { const m = IMG_RE.exec(p); return m ? figureHtml(m[1].trim(), m[2]) : '<p>' + inlineToHtml(p).replace(/\n/g, '<br>') + '</p>'; });
@@ -307,6 +310,7 @@
       else if (act === 'rmimg') { const f = b.closest('figure.img'); if (f) { f.remove(); onRichInput(ed); } }
       else if (act === 'context') insertContext(ed);
       else if (act === 'rmctx') { const c = b.closest('.ctx'); if (c) removeContext(ed, c); }
+      else if (act === 'ctxup' || act === 'ctxdown') { const c = b.closest('.ctx'); if (c) moveContext(ed, c, act === 'ctxup' ? -1 : 1); }
       else if (act === 'apply') applyLink(ed);
       else if (act === 'cancel') { pending = null; linkboxFor(ed).hidden = true; }
     });
@@ -323,6 +327,8 @@
     });
     ed.addEventListener('input', () => onRichInput(ed));
     ed.addEventListener('keydown', ev => contextKeydown(ed, ev));
+    // the move arrows must not take the caret away from where it is
+    ed.addEventListener('mousedown', ev => { if (ev.target.closest('.ctxmv')) ev.preventDefault(); });
   }
   // ── context boxes ─────────────────────────────────────────────────
   // Context button: with whole paragraphs selected, wraps them in a box; otherwise
@@ -375,14 +381,51 @@
     if (next && next.nodeType === 1) { ed.focus(); caretPlace(next, false); }
     onRichInput(ed);
   }
+  // Move a box one block up (dir -1) or down (+1) among the editor's top-level blocks
+  // (paragraphs, images, other boxes; owner, 14 Oct 2026). Empty spacer paragraphs are
+  // stepped over because they do not exist in the markdown. At either end it does
+  // nothing. The caret stays where it was, and the page does not scroll.
+  function isSpacer(n) {
+    return n.nodeType === 3 ? !n.nodeValue.trim() :
+      n.nodeType === 1 && n.tagName === 'P' && !n.textContent.trim() && !n.querySelector('img,figure');
+  }
+  function emptyP() { const p = document.createElement('p'); p.innerHTML = '<br>'; return p; }
+  function moveContext(ed, box, dir) {
+    let t = dir < 0 ? box.previousSibling : box.nextSibling;
+    while (t && isSpacer(t)) t = dir < 0 ? t.previousSibling : t.nextSibling;
+    if (!t) return false;
+    const sx = window.scrollX, sy = window.scrollY;
+    const sel = document.getSelection();
+    const r = sel && sel.rangeCount && ed.contains(sel.getRangeAt(0).commonAncestorContainer) ? sel.getRangeAt(0) : null;
+    const keep = r ? [r.startContainer, r.startOffset, r.endContainer, r.endOffset] : null;
+    const oldPrev = box.previousSibling, oldNext = box.nextSibling;
+    if (dir < 0) t.before(box); else t.after(box);
+    // the gap the box left: two spacer paragraphs side by side become one
+    if (oldPrev && oldNext && oldPrev.parentNode === ed && oldPrev.nextSibling === oldNext && isSpacer(oldPrev) && isSpacer(oldNext)) oldNext.remove();
+    // keep a paragraph on each side so the caret can always leave the box
+    if (!box.previousSibling) box.before(emptyP());
+    if (!box.nextSibling) box.after(emptyP());
+    if (keep && ed.contains(keep[0]) && ed.contains(keep[2])) {
+      try {
+        const nr = document.createRange(); nr.setStart(keep[0], keep[1]); nr.setEnd(keep[2], keep[3]);
+        sel.removeAllRanges(); sel.addRange(nr); savedRange = nr.cloneRange(); activeEditor = ed;
+      } catch (e) { /* the range no longer fits; leave the selection to the browser */ }
+    }
+    window.scrollTo(sx, sy);
+    onRichInput(ed);
+    return true;
+  }
   // Backspace in an empty box removes the box; Backspace at the very start of a box's
   // first paragraph does nothing (it would otherwise pull the text out of the box).
+  // Alt+↑ / Alt+↓ with the caret inside a box move the box.
   function contextKeydown(ed, ev) {
-    if (ev.key !== 'Backspace' && ev.key !== 'Delete') return;
+    const isMove = ev.altKey && !ev.ctrlKey && !ev.metaKey && !ev.shiftKey && (ev.key === 'ArrowUp' || ev.key === 'ArrowDown');
+    if (!isMove && ev.key !== 'Backspace' && ev.key !== 'Delete') return;
     const sel = document.getSelection(); if (!sel || !sel.rangeCount) return;
     const r = sel.getRangeAt(0);
     const el = r.startContainer.nodeType === 1 ? r.startContainer : r.startContainer.parentElement;
     const box = el && el.closest('.ctx'); if (!box || !ed.contains(box)) return;
+    if (isMove) { ev.preventDefault(); moveContext(ed, box, ev.key === 'ArrowUp' ? -1 : 1); return; }
     const body = Array.from(box.childNodes).filter(n => !(n.nodeType === 1 && n.classList.contains('ctxhead')));
     const text = body.map(n => n.textContent).join('').replace(/ /g, ' ').trim();
     const hasFig = body.some(n => n.nodeType === 1 && n.querySelector && (n.matches('figure') || n.querySelector('figure')));
