@@ -772,6 +772,171 @@ def restore_paragraph_breaks(pre_summary: str, post_summary: str) -> tuple[str, 
 
 
 # ────────────────────────────────────────────────────────────────────────
+# Stage 8b — callbacks to the owner's prior work, and context boxes
+# (owner, 14 Oct 2026)
+# ────────────────────────────────────────────────────────────────────────
+# One writer call over the finished, ranked edition. It sees every entry's
+# paragraphs plus, where retrieval found one, the owner's best-matching
+# earlier piece (analysis/own_callbacks.py). It returns insertions only; the
+# code places them, so no sentence of the written entries is touched. The
+# rules below were derived from the owner's own edits to the 12 editions
+# sent 28 Sep - 14 Oct 2026 (NewsAtNoon/outputs/callback_context_study.md).
+
+MAX_CALLBACKS = 3
+MAX_CONTEXT_BOXES = 2
+CONTEXT_MIN_WORDS, CONTEXT_MAX_WORDS = 35, 90   # the prompt asks for 40-80
+
+V4B_CALLBACK_CONTEXT_PROMPT = """You are finishing today's edition of Housing at Noon, a daily US housing-economics briefing written by Aziz Sunderji, who also writes the Home Economics newsletter. The entries are already written and edited. You add two things, sparingly, and return them as insertions. You never rewrite an existing sentence.
+
+1. CALLBACKS TO AZIZ'S PRIOR WORK
+Some entries come with CANDIDATE PIECE: an earlier Home Economics article of his that a screening step picked, with its summary, the caption of one chart from it, and a one-line note on why it may fit (check that note yourself). Add a callback only when the piece's finding genuinely bears on the point the entry makes (the same mechanism, market, policy or data question), so that a reader learns something about today's news from it. A shared keyword is not enough. If in doubt, leave it out. At most three callbacks in the edition; most days there will be zero to two.
+
+How Aziz writes callbacks (from his own edits to the last twelve editions):
+  - First person, one sentence (two at most), stating what the piece found: a finding with its direction, not an opinion and not a summary of the news.
+  - The sentence introduces the chart, which follows on its own line, so it usually ends with a colon. The code adds the chart line; do not write it.
+  - The link sits on "here" in most of his callbacks, or on a short first-person phrase ("my work has found"). The link must carry the title "free": [here](URL "free"). The link is part of the sentence's grammar ("as I wrote [here]", "(my original analysis is [here])", "I wrote about this [here]"); never a bare "[here]" tacked on after a colon or a dash, and never two colons in one sentence.
+  - Keep it short: at most about 40 words. One finding, not a recap of the piece.
+  - It sits in the second half of the entry, after the news and the reactions: never as the entry's first paragraph.
+  His own sentences, verbatim:
+    "My chart here shows the surge in transactions during the pandemic has turned into a deficit, compared to the trend (my original analysis is [here](https://homeeconomics.substack.com/p/the-housing-hangover-has-cleared "free")):"
+    "Housing is not quite a luxury good in this sense, ... but [my work has found](https://homeeconomics.substack.com/p/sunderjis-paradox "free") that, within each income quintile, housing is "homothetic"—demand for it grows 1-for-1 with income."
+    "My map of the exodus-of-children-from-city dynamic, from my article [here](https://homeeconomics.substack.com/p/an-exodus-of-children-from-new-york "free"):"
+    "But, in most times and places, more building goes hand in hand with higher, not lower, home prices and rents, as I wrote [here](https://homeeconomics.substack.com/p/why-did-home-prices-and-rents-fall "free")."
+  Use only the candidate piece's URL, exactly as given. Do not invent findings: state only what the piece's summary or chart caption says. Refer to its timing only if the date makes it true ("My article last week ..." only for a piece from the last 7-10 days).
+
+2. CONTEXT BOXES
+A context box gives readers the background they need to interpret a news item: what a program, law, ballot measure, index, institution or term is, and why it matters for the news. Aziz's example (14 Oct, on a change to the Community Reinvestment Act), verbatim:
+    "The Community Reinvestment Act is a 1977 federal law, passed to counter redlining, that pushes banks to lend and invest in the communities where they take deposits, especially lower-income neighborhoods. It doesn't require any particular loan. Instead, regulators grade each bank on how well it serves those communities, and a bad grade can block the bank from merging, buying another bank or opening branches. To protect their grades, banks put money into activities that count toward the score, such as affordable housing."
+  Pattern: what it is (with when and why it was created, if that matters) -> what it does and how it works -> the link to today's news. Elsewhere he glosses terms in a few words ("KB Home, the 7th-largest single-family builder"; "Ed Glaeser, the godfather of YIMBYism"; "Section 9 (public housing, deeply underfunded)").
+  Rules: at most two boxes in the edition, at most one per entry; 40 to 80 words each; plain, factual background that a non-specialist needs and the entry does not already give; no opinion, no news from today, no first person, no links, no numbers you are not sure of (a wrong fact is worse than no box). Choose the items where most readers would not know the thing being discussed (a statute by name or acronym, a numbered ballot question, a little-known index or agency program); prefer higher-ranked entries. Never add one for something every reader knows (the Fed, mortgage rates, Zillow). Place it right after the paragraph that first mentions the thing.
+
+OUTPUT: a single JSON object, no preamble, no markdown fences:
+{
+  "callbacks": [{"rank": <entry rank>, "after_paragraph": <1-based paragraph number>, "mode": "append" | "new_paragraph", "text": "<the sentence with the [anchor](URL \\"free\\") link>", "why": "<one line: the point in the entry the piece bears on>"}],
+  "context_boxes": [{"rank": <entry rank>, "after_paragraph": <1-based paragraph number>, "text": "<40-80 words>"}]
+}
+"append" adds the callback to the end of that paragraph; "new_paragraph" puts it in a paragraph of its own after it. The chart line goes right after. Empty lists are fine and often right.
+"""
+
+
+def _summary_paragraphs(summary: str) -> list[str]:
+    return [p.strip() for p in re.split(r"\n{2,}", summary or "") if p.strip()]
+
+
+def _md_link_urls(text: str) -> list[str]:
+    return re.findall(r"\]\((https?://[^)\s]+)", text or "")
+
+
+def add_callbacks_and_context(entries: list[dict], as_of: str, oai, anthropic_client,
+                              tracker: Optional[RunCostTracker] = None) -> dict:
+    """Retrieval (analysis/own_callbacks) then one writer call; applies at most MAX_CALLBACKS
+    callbacks (each followed by the piece's chart as ![caption](url) on its own line) and at most
+    MAX_CONTEXT_BOXES context boxes (::: context ... :::) to the entries' summaries in place.
+    Non-fatal: any failure leaves the entries as they were. Returns a log for _v4b_meta."""
+    from analysis.own_callbacks import find_callbacks
+    log: dict = {"as_of": as_of, "retrieval": [], "applied_callbacks": [], "applied_context": [], "rejected": []}
+    matches, rlog = find_callbacks(entries, oai, as_of, anthropic_client)
+    log["retrieval"] = rlog
+    blocks = []
+    for i, e in enumerate(entries):
+        paras = _summary_paragraphs(e.get("summary"))
+        b = {"rank": e.get("rank", i + 1), "title": e.get("title"),
+             "paragraphs": {str(k + 1): p for k, p in enumerate(paras)}}
+        m = matches.get(i)
+        if m:
+            b["CANDIDATE PIECE"] = {"title": m["title"], "date": m["date"], "url": m["url"], "fit": m["reason"],
+                                    "summary": m["summary"], "chart_caption": m["chart"]["caption"]}
+        blocks.append(b)
+    user = (f"Today is {as_of}. The edition's entries, in rank order (paragraphs numbered):\n\n"
+            + json.dumps(blocks, indent=1, ensure_ascii=False)
+            + "\n\nReturn the JSON object with your callbacks and context boxes.")
+    text = _opus_stream_text(anthropic_client, V4B_CALLBACK_CONTEXT_PROMPT,
+                             [{"role": "user", "content": user}], tracker)
+    obj = _parse_json_object(text) or {}
+    by_rank = {e.get("rank", i + 1): (i, e) for i, e in enumerate(entries)}
+    inserts: dict[int, list[tuple[int, str, str]]] = {}   # entry idx -> [(after_para, mode, block)]
+
+    cbs = [c for c in (obj.get("callbacks") or []) if isinstance(c, dict)]
+    cbs.sort(key=lambda c: -(matches.get(by_rank.get(c.get("rank"), (-1, None))[0], {}).get("score") or 0))
+    seen_entries: set[int] = set()
+    for c in cbs:
+        idx, e = by_rank.get(c.get("rank"), (None, None))
+        m = matches.get(idx) if idx is not None else None
+        sent = str(c.get("text") or "").strip()
+        why = None
+        if m is None:
+            why = "no candidate piece for that entry"
+        elif idx in seen_entries:
+            why = "second callback in one entry"
+        elif len(log["applied_callbacks"]) >= MAX_CALLBACKS:
+            why = f"over the edition cap of {MAX_CALLBACKS}"
+        elif not re.search(r"\b(?:I|my|My|me)\b", sent):
+            why = "not in the first person"
+        elif re.search(r"[:\u2014-]\s*\[here\]", sent) or re.sub(r"\]\([^)]*\)", "]", sent).count(":") > 1:
+            why = "bare [here] after a colon or dash, or two colons"
+        else:
+            urls = _md_link_urls(sent)
+            if [u for u in urls if u.rstrip("/") != m["url"].rstrip("/")] or not urls:
+                why = f"links other than the candidate piece: {urls}"
+        if why:
+            log["rejected"].append({"kind": "callback", "rank": c.get("rank"), "text": sent, "reason": why})
+            continue
+        # every own-work link carries the "free" title (stays live in the free edition)
+        sent = re.sub(r"\]\(" + re.escape(m["url"]) + r"(?:\s+\"[^\"]*\")?\)", f'](' + m["url"] + ' "free")', sent)
+        paras = _summary_paragraphs(e.get("summary"))
+        after = min(max(int(c.get("after_paragraph") or len(paras)), 2 if len(paras) >= 2 else 1), len(paras))
+        img = f'![{m["chart"]["caption"].replace("[", "(").replace("]", ")")}]({m["chart"]["hosted_url"]})'
+        mode = "append" if c.get("mode") == "append" else "new_paragraph"
+        inserts.setdefault(idx, []).append((after, mode, sent + "\n\n" + img if mode == "new_paragraph" else sent + "\x00" + img))
+        seen_entries.add(idx)
+        log["applied_callbacks"].append({"rank": c.get("rank"), "title": e.get("title"), "piece": m["slug"],
+                                         "score": m["score"], "after_paragraph": after, "mode": mode,
+                                         "text": sent, "chart": m["chart"], "why": c.get("why")})
+
+    ctx_entries: set[int] = set()
+    for c in [c for c in (obj.get("context_boxes") or []) if isinstance(c, dict)]:
+        idx, e = by_rank.get(c.get("rank"), (None, None))
+        body = re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", str(c.get("text") or "")).strip()   # no links in boxes
+        body = re.sub(r"\s*\n+\s*", " ", body)
+        n_words = len(body.split())
+        why = None
+        if e is None:
+            why = "unknown rank"
+        elif idx in ctx_entries:
+            why = "second box in one entry"
+        elif len(log["applied_context"]) >= MAX_CONTEXT_BOXES:
+            why = f"over the edition cap of {MAX_CONTEXT_BOXES}"
+        elif not CONTEXT_MIN_WORDS <= n_words <= CONTEXT_MAX_WORDS:
+            why = f"{n_words} words (allowed {CONTEXT_MIN_WORDS}-{CONTEXT_MAX_WORDS})"
+        elif ":::" in body:
+            why = "box marker inside the text"
+        if why:
+            log["rejected"].append({"kind": "context", "rank": c.get("rank"), "text": body, "reason": why})
+            continue
+        paras = _summary_paragraphs(e.get("summary"))
+        after = min(max(int(c.get("after_paragraph") or 1), 1), len(paras))
+        inserts.setdefault(idx, []).append((after, "new_paragraph", f"::: context\n{body}\n:::"))
+        ctx_entries.add(idx)
+        log["applied_context"].append({"rank": c.get("rank"), "title": e.get("title"), "after_paragraph": after,
+                                       "words": n_words, "text": body})
+
+    for idx, ins in inserts.items():
+        e = entries[idx]
+        paras = _summary_paragraphs(e.get("summary"))
+        # insert from the bottom so earlier paragraph numbers stay valid; at one position the
+        # context box is placed first, so an appended callback's chart stays right under its sentence
+        for after, mode, block in sorted(ins, key=lambda t: (t[0], 1 if t[2].startswith("::: context") else 0), reverse=True):
+            if mode == "append":
+                sent, img = block.split("\x00")
+                paras[after - 1] = paras[after - 1].rstrip() + " " + sent
+                paras.insert(after, img)
+            else:
+                paras.insert(after, block)
+        e["summary"] = "\n\n".join(paras)
+    return log
+
+
+# ────────────────────────────────────────────────────────────────────────
 # Entries
 # ────────────────────────────────────────────────────────────────────────
 
@@ -1113,6 +1278,8 @@ def main() -> None:
     p.add_argument("--no-send", action="store_true")
     p.add_argument("--no-store", action="store_true")
     p.add_argument("--dump-json", default=None)
+    p.add_argument("--no-callbacks", action="store_true",
+                   help="skip stage 8b (callbacks to the owner's prior work and context boxes)")
     # Shadow-test options (owner, 29 Sep 2026: three-edition Opus 5.5 shadow test)
     p.add_argument("--model", default=None,
                    help="writer model for the rewrites and standalone entries (and the v1 "
@@ -1495,10 +1662,37 @@ def main() -> None:
         e["rank"] = i
     for t in themes_out:
         t["_v4_rank"] = next(e["rank"] for e in entries if e["cluster_id"] == t["_v4_cluster_id"])
+    mark("postprocess", t0)
+
+    # 8b. Callbacks to the owner's prior work + context boxes (owner, 14 Oct 2026).
+    # After post-processing, so the URL validator never sees the inserted text.
+    callback_log: dict = {"skipped": "--no-callbacks"}
+    if not args.no_callbacks:
+        t0 = time.time()
+        opus_before = _opus_cents(tracker)
+        try:
+            callback_log = add_callbacks_and_context(entries, end_dt.date().isoformat(), oai, anth, tracker)
+            for e in entries:
+                if e["cluster_id"] in themes_by_cid:
+                    themes_by_cid[e["cluster_id"]]["summary"] = e["summary"]
+        except Exception as ex:  # noqa: BLE001  (never lose the edition over this pass)
+            logger.warning(f"callbacks/context pass failed: {ex}")
+            callback_log = {"error": str(ex)[:300]}
+        callback_log["cents"] = round(_opus_cents(tracker) - opus_before, 2)
+        counts["callbacks"] = len(callback_log.get("applied_callbacks") or [])
+        counts["context_boxes"] = len(callback_log.get("applied_context") or [])
+        print(f"\ncallbacks: {counts['callbacks']}, context boxes: {counts['context_boxes']}, "
+              f"rejected: {len(callback_log.get('rejected') or [])}")
+        for c in callback_log.get("applied_callbacks") or []:
+            print(f"  CALLBACK #{c['rank']} -> {c['piece']} ({c['score']}): {c['text'][:140]}")
+        for c in callback_log.get("applied_context") or []:
+            print(f"  CONTEXT #{c['rank']} ({c['words']} words): {c['text'][:140]}")
+        for r in callback_log.get("rejected") or []:
+            print(f"  rejected {r['kind']} #{r['rank']}: {r['reason']}")
+        mark("callbacks_context", t0)
     counts["final_entries"] = len(entries)
     counts["final_theme_entries"] = sum(1 for e in entries if e["origin"] != "cluster")
     counts["final_standalone_entries"] = sum(1 for e in entries if e["origin"] == "cluster")
-    mark("postprocess", t0)
 
     timings["total"] = round(time.time() - t_start, 1)
     cost = tracker.summary()
@@ -1528,6 +1722,7 @@ def main() -> None:
         "coherence_gate_failures": gate_fail,
         "merge_log": merge_log,
         "postprocess": post_stats,
+        "callbacks_context": callback_log,
         "cost": cost,
     }
     v4b = build_v4_briefing(v1, entries, themes_out, conn, meta, post_stats)
