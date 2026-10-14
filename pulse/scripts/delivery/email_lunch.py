@@ -402,7 +402,7 @@ def _context_block(md: str, body_text: str, margin: str) -> str:
             f'style="border-collapse:separate;"><tr>'
             f'<td bgcolor="{LIGHT}" style="background-color:{LIGHT}; border-radius:4px; padding:14px 18px;">'
             f'<div style="font-family:{FONT}; font-size:12px; line-height:1.4; letter-spacing:0.08em; '
-            f'font-weight:normal; color:{CONTEXT_LABEL_COLOR}; margin:0 0 6px 0;">CONTEXT</div>'
+            f'font-weight:bold; color:{CONTEXT_LABEL_COLOR}; margin:0 0 6px 0;">CONTEXT</div>'
             f'{"".join(inner)}'
             f'</td></tr></table></div>')
 
