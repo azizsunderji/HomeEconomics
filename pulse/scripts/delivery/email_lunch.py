@@ -758,6 +758,9 @@ def _with_particle(words: list, i: int) -> int:
     return j
 
 
+_POINTER_ANCHORS = {"here", "this", "link", "post", "chart", "analysis", "piece", "thread", "map", "table", "note"}
+
+
 def _narrow_link_anchors(text: str) -> str:
     """House style: the link sits on the verb of the clause the source
     supports (or on the citable noun after a quoted title), never on a
@@ -789,6 +792,10 @@ def _narrow_link_anchors(text: str) -> str:
         at_sentence_start = not head.strip() or re.search(r"[.!?]\s*$", head) is not None
         # bare verb (with optional particle) -> already right
         if len(words) == 1 and _is_verb(words[0], allow_capital=at_sentence_start):
+            continue
+        # a deliberate pointer anchor, usually the owner's own wording ("my original
+        # analysis is [here]"): leave it (owner, 14 Oct 2026)
+        if len(words) == 1 and _bare(words[0]).lower() in _POINTER_ANCHORS:
             continue
         if len(words) == 2 and _is_verb(words[0], allow_capital=at_sentence_start) \
                 and _bare(words[1]).lower() in _PARTICLES:
