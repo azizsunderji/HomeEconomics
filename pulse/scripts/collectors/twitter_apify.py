@@ -27,6 +27,7 @@ from config import (
     TWITTER_AUTHOR_BLOCKLIST,
     SUPER_SMART_HANDLES,
     SUPER_SMART_ENABLED,
+    PRIORITY_HANDLES,
 )
 
 logger = logging.getLogger(__name__)
@@ -254,7 +255,8 @@ def _convert_raw_tweets(
         author_obj = tweet.get("author", {})
         author_handle = (author_obj.get("userName", "") if isinstance(author_obj, dict) else str(author_obj)).lower()
         is_super_smart_author = (
-            SUPER_SMART_ENABLED and author_handle in SUPER_SMART_HANDLES
+            (SUPER_SMART_ENABLED and author_handle in SUPER_SMART_HANDLES)
+            or author_handle in PRIORITY_HANDLES   # owner's priority accounts (14 Oct 2026)
         )
         # super_smart param: from the dedicated SuperSmart-list scrape
         # OR the author is on the handle set (regardless of source)
