@@ -826,6 +826,7 @@ def _with_particle(words: list, i: int) -> int:
 
 
 _POINTER_ANCHORS = {"here", "this", "link", "post", "chart", "analysis", "piece", "thread", "map", "table", "note"}
+_FIRST_PERSON_LEADS = {"my", "our"}
 
 
 def _narrow_link_anchors(text: str) -> str:
@@ -863,6 +864,10 @@ def _narrow_link_anchors(text: str) -> str:
         # a deliberate pointer anchor, usually the owner's own wording ("my original
         # analysis is [here]"): leave it (owner, 14 Oct 2026)
         if len(words) == 1 and _bare(words[0]).lower() in _POINTER_ANCHORS:
+            continue
+        # a first-person anchor pointing at the owner's own work ("[my work has found]",
+        # "[my original analysis]"): his wording, kept whole (owner, 14 Oct 2026: callbacks)
+        if len(words) <= 6 and _bare(words[0]).lower() in _FIRST_PERSON_LEADS:
             continue
         if len(words) == 2 and _is_verb(words[0], allow_capital=at_sentence_start) \
                 and _bare(words[1]).lower() in _PARTICLES:
