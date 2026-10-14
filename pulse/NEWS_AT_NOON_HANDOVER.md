@@ -1151,3 +1151,60 @@ Commits d9f2c16, 55cb30f, f5367bf.
   draft's JSON afterwards is identical to before. `noon_verify.py` gives the same result with and
   without a box on 8 drafts (all pass on 5 and 8 Oct; the other dates fail older content checks with
   or without a box). Screenshots: `OVH/NewsAtNoon/outputs/context_box_email.png`, `context_box_editor.png`.
+
+## Status 14 Oct 2026: automatic callbacks to the owner's prior work, and context boxes from the writer
+
+Owner's rules (14 Oct 2026): "When there's a piece of news that touches on something we've written
+before (and that's often the case), we should try to make a callback to that piece, along with the
+chart that I included in that piece. This should be integrated into the pipeline and happen
+automatically." And: "each edition might have one or two of those context boxes ... They should just
+bring people up to speed very quickly." Then: "study the last dozen editions to see how I've made
+those callbacks ... and where I've integrated context." Study:
+`OVH/NewsAtNoon/outputs/callback_context_study.md`.
+
+- **Corpus.** `pulse/editor/own_publications.py` builds `OVH/Data/OwnPublications/own_publications.parquet`
+  (slug, url, title, date, audience, source, text, summary, charts) and the committed
+  `pulse/data/own_publications.json` (force-added: `pulse/data/` is gitignored). 214 posts,
+  8 Oct 2021 to 8 Oct 2026 (Substack export in `OwnPublications/raw/substack_export_dec2025/`;
+  later posts from the Substack API through the server Chrome into `raw/api_posts/`, plus the
+  podcast project's archive, read in place). 450 charts, converted to PNG at most 1200 px wide and
+  hosted at `~/work/noon/images/own/<slug>/<n>.png` = `https://noon.homeeconomics.us/images/own/...`.
+  Haiku decides once per image whether it is a chart and writes its caption, and writes each post's
+  summary once (`OwnPublications/cache.json`). First build cost about $1. It does not record spend in
+  pulse.db (on this server `PULSE_DB` is the synced corpus). 31 posts have no chart and can never be
+  called back.
+- **Weekly refresh.** `noon-ownpubs.timer`, Sundays 09:00 UTC: lists the Substack archive and the
+  owner's feed items in pulse.db (read-only), fetches up to 40 missing posts (one fetch() every 4 s
+  in one tab), hosts new charts, rewrites both outputs, commits and pushes the JSON. Log
+  `~/work/noon/logs/ownpubs.log`.
+- **Retrieval** (`pulse/scripts/analysis/own_callbacks.py`). Embeddings shortlist the 10 closest
+  pieces published before the edition date (roundups such as "The Week in Review" excluded, pieces the
+  entry already cites skipped). A Sonnet 5 judge picks at most one and rates it 1-5. Strength 4 or
+  more counts as a match; the chart closest to the entry is attached. Calibration on the 190 entries
+  of the 12 editions sent 28 Sep - 14 Oct (7 of his callbacks): cosine alone has no usable threshold
+  (at 0.55 it keeps 1 of 7 and 100 others). Two stages with Sonnet 5: his exact piece for 4 of 7, 14
+  other picks in 12 editions, most of them defensible callbacks he did not make that day. Haiku as
+  judge picked 117 others. On today's production brief (385): home sales -> his hangover piece (as he
+  did); Goldman -> "How a $500K family in Manhattan actually lives" (he chose Sunderji's Paradox);
+  Question 7 missed (rated 2); nothing on the other 15 entries.
+- **Writer pass** (`v4b_runner.add_callbacks_and_context`, stage 8b, after post-processing so the URL
+  validator never sees it). One writer-model call over the ranked edition returns insertions only;
+  code places them. At most 3 callbacks: first person, the candidate's URL only, link titled "free",
+  "[here]" or a short first-person anchor inside the sentence (a bare "[here]" after a colon is
+  rejected), then `![caption](hosted chart)` on its own line, never in the first paragraph. At most 2
+  context boxes (`::: context` ... `:::`), 40-80 words asked, 35-90 accepted, links stripped, after the
+  paragraph that first mentions the thing. Log in `_v4b_meta.callbacks_context`; counts `callbacks`,
+  `context_boxes`. `--no-callbacks` turns it off; any failure leaves the edition unchanged. Cost: about
+  8 cents for the writer call plus about 10 cents for the judge.
+- **Renderer.** `_narrow_link_anchors` keeps an anchor of up to six words that starts with "my" or
+  "our" ("[my work has found]") whole. `[here]` was already kept.
+- **Verified.** Full local `v4b_runner.py --no-send --no-store` on today's window against a fresh
+  scratch copy of pulse.db (`/home/aziz/work/pulse_dev.db`): ran clean, 1 callback and 1 context box
+  (its clustering produced a different entry set from production). The pass re-run on production
+  brief 385 (`NewsAtNoon/scripts/324_pass_on_production_brief.py`): 3 callbacks, 2 context boxes (CRA,
+  Live Local Act), all charts return 200, the own-work links stay live in the free tier, noon_verify
+  ALL PASS. Screenshots: `NewsAtNoon/outputs/auto_callback.png`, `auto_context.png`.
+- **Watch.** The judge is not deterministic (the same entry got 3 in one run, 4 in another). The CRA
+  box on 14 Oct echoes the owner's example in the prompt, so that day is not a fair test of the boxes.
+  One callback slightly generalised its piece (the Goldman one); the writer is told to state only
+  what the summary or caption says.
