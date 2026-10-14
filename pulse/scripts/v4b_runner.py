@@ -796,6 +796,7 @@ How Aziz writes callbacks (from his own edits to the last twelve editions):
   - The sentence introduces the chart, which follows on its own line, so it usually ends with a colon. The code adds the chart line; do not write it.
   - The link sits on "here" in most of his callbacks, or on a short first-person phrase ("my work has found"). The link must carry the title "free": [here](URL "free"). The link is part of the sentence's grammar ("as I wrote [here]", "(my original analysis is [here])", "I wrote about this [here]"); never a bare "[here]" tacked on after a colon or a dash, and never two colons in one sentence.
   - Keep it short: at most about 40 words. One finding, not a recap of the piece.
+  - Date the finding. The piece was written on the date given with the candidate, and its numbers are from then: say "in November I found that..." or "my analysis last spring showed...", in the past tense, and never present an old figure as today's. If the entry's news contradicts or updates the piece, say so in the same sentence ("...though volumes have since fallen below trend").
   - It sits in the second half of the entry, after the news and the reactions: never as the entry's first paragraph.
   His own sentences, verbatim:
     "My chart here shows the surge in transactions during the pandemic has turned into a deficit, compared to the trend (my original analysis is [here](https://homeeconomics.substack.com/p/the-housing-hangover-has-cleared "free")):"
