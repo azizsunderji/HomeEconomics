@@ -312,7 +312,6 @@ SAME_PERSON = {
 SAME_PERSON_NOTE = "Bill McBride writes Calculated Risk and posts as @calculatedrisk.bsky.social on Bluesky and @BillMcBride4 on X: one voice, cite once."
 
 TWITTER_REAL_NAMES = {
-    "annemariegray": "Annemarie Gray",
     "arpitrage": "Arpit Gupta",
     "emollick": "Ethan Mollick",
     "jasonfurman": "Jason Furman",
@@ -406,14 +405,6 @@ TWITTER_VIP_ACCOUNTS = []  # Removed — all accounts earn placement on merit
 # behavior (the SUPER_SMART_HANDLES roster below is preserved so it can
 # be reinstated without rebuilding the list).
 SUPER_SMART_ENABLED = False
-
-# Priority accounts (owner, 14 Oct 2026). Independent of the SuperSmart switch: their tweets
-# always pass the likes floor at intake and get the 'super_smart' tag, so they take the
-# reserved seats in the synthesis input and are never crowded out by louder accounts.
-# Lower-case handles without the @.
-PRIORITY_HANDLES = {
-    "annemariegray",   # Annemarie Gray — Executive Director, Open New York (added 14 Oct 2026)
-}
 
 # "SuperSmart" handles — when SUPER_SMART_ENABLED is True, any tweet
 # from these accounts gets tagged platform_tags=['super_smart']
