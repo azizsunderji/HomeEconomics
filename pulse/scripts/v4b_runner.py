@@ -789,7 +789,7 @@ CONTEXT_MIN_WORDS, CONTEXT_MAX_WORDS = 35, 90   # the prompt asks for 40-80
 V4B_CALLBACK_CONTEXT_PROMPT = """You are finishing today's edition of Housing at Noon, a daily US housing-economics briefing written by Aziz Sunderji, who also writes the Home Economics newsletter. The entries are already written and edited. You add two things, sparingly, and return them as insertions. You never rewrite an existing sentence.
 
 1. CALLBACKS TO AZIZ'S PRIOR WORK
-Some entries come with CANDIDATE PIECE: an earlier Home Economics article of his that a screening step picked, with its summary, the caption of one chart from it, and a one-line note on why it may fit (check that note yourself). Add a callback only when the piece's finding genuinely bears on the point the entry makes (the same mechanism, market, policy or data question), so that a reader learns something about today's news from it. A shared keyword is not enough. If in doubt, leave it out. At most three callbacks in the edition; most days there will be zero to two.
+Some entries come with CANDIDATE PIECE: an earlier Home Economics article of his that a screening step picked, with its summary, the caption of one chart from it, and a one-line note on why it may fit (check that note yourself). Add a callback only when the piece's finding genuinely bears on the point the entry makes (the same mechanism, market, policy or data question), so that a reader learns something about today's news from it. A shared keyword is not enough, but a piece that gives the reader the framework, mechanism or history behind the news does qualify even when today's news runs the other way: then the sentence says how today's news fits or departs from what the piece found ("rents in Austin fell for the reasons I laid out [here]; San Francisco is now the mirror image"). At most three callbacks in the edition; one or two is typical.
 
 How Aziz writes callbacks (from his own edits to the last twelve editions):
   - First person, one sentence (two at most), stating what the piece found: a finding with its direction, not an opinion and not a summary of the news.
@@ -826,6 +826,25 @@ def _summary_paragraphs(summary: str) -> list[str]:
 
 def _md_link_urls(text: str) -> list[str]:
     return re.findall(r"\]\((https?://[^)\s]+)", text or "")
+
+
+_CALLBACK_PHRASE_RE = re.compile(
+    r"\b(I (?:found|showed|wrote|argued|laid out|documented|noted|looked at|made the case)|"
+    r"my (?:analysis|work|piece|article|chart|research)(?: has)?(?: found| showed| shows)?)\b")
+
+
+def _add_callback_link(sent: str, url: str) -> str:
+    """Put the piece's link on the first first-person phrase of a callback sentence that has none;
+    failing that, append '(my analysis is [here](url "free"))' before a trailing colon."""
+    m = _CALLBACK_PHRASE_RE.search(sent)
+    if m:
+        return sent[:m.start()] + f'[{m.group(0)}]({url} "free")' + sent[m.end():]
+    body = sent.rstrip()
+    tail = ""
+    if body.endswith(":"):
+        body, tail = body[:-1].rstrip(), ":"
+    body = body.rstrip(".")
+    return f'{body} (my analysis is [here]({url} "free")){tail or "."}'
 
 
 def add_callbacks_and_context(entries: list[dict], as_of: str, oai, anthropic_client,
@@ -877,7 +896,10 @@ def add_callbacks_and_context(entries: list[dict], as_of: str, oai, anthropic_cl
             why = "bare [here] after a colon or dash, or two colons"
         else:
             urls = _md_link_urls(sent)
-            if [u for u in urls if u.rstrip("/") != m["url"].rstrip("/")] or not urls:
+            if not urls:
+                sent = _add_callback_link(sent, m["url"])
+                urls = _md_link_urls(sent)
+            if [u for u in urls if u.rstrip("/") != m["url"].rstrip("/")]:
                 why = f"links other than the candidate piece: {urls}"
         if why:
             log["rejected"].append({"kind": "callback", "rank": c.get("rank"), "text": sent, "reason": why})

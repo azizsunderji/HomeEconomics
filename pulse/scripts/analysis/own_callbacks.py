@@ -30,7 +30,7 @@ logger = logging.getLogger("own_callbacks")
 
 OWN_PUBS_JSON = Path(__file__).resolve().parents[2] / "data" / "own_publications.json"
 EMBED_MODEL = "text-embedding-3-small"
-JUDGE_MIN_STRENGTH = 4          # judge rating needed for a match; calibrated, see module docstring
+JUDGE_MIN_STRENGTH = 3          # 4 -> 3 on 15 Oct 2026: background/framework pieces count (owner)
 JUDGE_MODEL = "claude-sonnet-5"  # Haiku rated 117 of 175 non-callback entries 4+; Sonnet 5 rated 14
 PUB_TEXT_CHARS = 1500
 
@@ -178,12 +178,15 @@ JUDGE_SYSTEM = (
     "trend; children leaving NYC schools -> his map of the exodus of children from the city; a debate over "
     "whether building lowers rents -> his piece showing building goes with higher, not lower, prices and rents; "
     "a Massachusetts ballot question on permitting -> his piece on which NYC districts build and why. "
-    "Same broad topic (mortgages, prices, zoning) is NOT enough; a finding that merely sounds relevant is NOT "
-    "enough. Answer with JSON only: "
+    "Same broad topic (mortgages, prices, zoning) is NOT enough on its own. But a piece that explains the "
+    "mechanism or history behind the news counts even when today's news moves the other way: an entry on "
+    "rents rising in San Francisco is served by his pieces on what drives rents and the rent cycle, because "
+    "the reader gets the framework for judging today's number. Answer with JSON only: "
     '{"pick": "<slug or null>", "strength": <1-5>, "reason": "<one sentence>"}. '
     "strength: 5 = the article's central finding is about exactly this phenomenon and its chart illustrates the "
-    "entry's point; 4 = closely on point, he would likely link it; 3 = related, adds some perspective; 2 = same "
-    "broad topic only; 1 = nothing relevant (pick null). Most entries are 1-3.")
+    "entry's point; 4 = closely on point, he would likely link it; 3 = the piece supplies the framework, "
+    "mechanism or history a reader needs for this news (he would plausibly link it as background); 2 = same "
+    "broad topic only, nothing to learn; 1 = nothing relevant (pick null).")
 
 
 def _model_kwargs(model: str) -> dict:
