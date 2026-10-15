@@ -222,6 +222,9 @@ def repair_nested_anchors(md: str) -> tuple[str, int]:
     return out, n + k
 
 
+_MAIL_LINK_RE = re.compile(r"\[([^\]]+)\]\(https?://mail\.google\.com/[^)]*\)")
+
+
 def unlink_doubled_handles(md: str) -> tuple[str, int]:
     """'[@handle](u1) [verb](u2)' -> '@handle [verb](u2)'. House style: the link sits on the
     reporting verb, the name is never the link (owner, 7 Oct 2026, after an edition with 13
@@ -239,6 +242,9 @@ def clean_draft(draft: dict) -> dict:
             continue
         e["summary"], n = resolve_summary(e.get("summary") or "", cache)
         changed += n
+        e["summary"], k0 = _MAIL_LINK_RE.subn(r"\1", e["summary"])  # a Gmail pointer is not a public link
+        if k0:
+            logger.info(f"links: {k0} mail.google.com link(s) unlinked in entry {e.get('rank')}")
         e["summary"], k = unlink_doubled_handles(e["summary"])
         if k:
             logger.info(f"links: {k} doubled handle link(s) removed in entry {e.get('rank')}")

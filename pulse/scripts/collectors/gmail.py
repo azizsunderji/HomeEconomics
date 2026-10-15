@@ -20,6 +20,7 @@ import httpx
 
 from collectors import PulseItem
 from config import (
+    NAMED_EMAIL_VOICES,
     GMAIL_SENDER_WHITELIST, GMAIL_LABELS, GMAIL_MAX_RESULTS,
     GMAIL_JUNK_SENDER_PATTERNS, GMAIL_JUNK_TITLE_PATTERNS,
     is_personal_correspondence,
@@ -506,17 +507,27 @@ def collect(
                         if match:
                             author_name = match.group(1).strip()
 
+                    # Named email voices (config.NAMED_EMAIL_VOICES): the email is the item, under the
+                    # person's name, so the writer can cite their own views (15 Oct 2026).
+                    voice_feed = ""
+                    m_addr = re.search(r"<([^>]+)>", sender or "")
+                    voice = NAMED_EMAIL_VOICES.get((m_addr.group(1) if m_addr else (sender or "")).strip().lower())
+                    if voice:
+                        author_name = voice["author"]; voice_feed = voice["feed_name"]
+                        if article_url:
+                            pass  # kept below in engagement_raw as primary_link
                     item = PulseItem(
                         source="substack" if is_substack else "gmail",
                         source_id=f"gmail_{acct_idx}_{msg_ref['id']}",
-                        url=article_url or gmail_url,
+                        url=gmail_url if voice else (article_url or gmail_url),
                         title=subject,
                         body=body,
                         author=author_name,
+                        feed_name=voice_feed,
                         published_at=published,
                         platform_tags=["newsletter_substack"] if is_substack else ["email", "newsletter"],
                         feed_priority="newsletter" if is_substack else "",
-                        engagement_raw={"gmail_url": gmail_url},
+                        engagement_raw={"gmail_url": gmail_url, **({"primary_link": article_url} if voice and article_url else {})},
                     )
                     items.append(item)
 

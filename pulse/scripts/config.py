@@ -646,6 +646,14 @@ SOURCE_WEIGHTS = {
 # RSS feeds whose items are institutional research with full text (built on the noon server) and
 # should compete for the newsletter/columnist slots like the same research arriving by email.
 # Owner, 29 Sep 2026: Goldman research was rarely appearing in the brief.
+# Named email voices (owner, 15 Oct 2026): people whose daily emails carry their own views. Items from
+# these senders get a clean author and feed name and keep the email itself as their URL (not the first
+# link in the body), so the writer sees them as the person's own commentary. Keyed by sender address.
+NAMED_EMAIL_VOICES = {
+    "ls@compass.com": {"author": "Leonard Steinberg", "feed_name": "Leonard Steinberg (Compass)",
+                       "role": "Compass's chief evangelist; his daily email rounds up housing news and adds his own views"},
+}
+
 INSTITUTIONAL_RESEARCH_FEEDS = {"Goldman Sachs Research"}
 
 MIN_COMMENTS_FOR_CONVERSATION = 10  # Below this, a post is a link share, not a conversation
