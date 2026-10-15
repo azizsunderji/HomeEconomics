@@ -54,6 +54,7 @@
       <outline xmlUrl="https://rss.app/feeds/tnGyM2ss2ZY7ZlcQ.xml" type="rss" htmlUrl="https://www.nytimes.com/column/calculator" title="Calculator" text="Calculator" />
       <outline htmlUrl="https://www.economist.com/china" xmlUrl="https://www.economist.com/china/rss.xml" title="Economist: China" type="rss" text="Economist: China" />
       <outline title="HousingWire" type="rss" htmlUrl="https://www.housingwire.com/" xmlUrl="https://www.housingwire.com/feed" text="HousingWire" />
+      <outline title="Real Estate News" type="rss" htmlUrl="https://www.realestatenews.com/" xmlUrl="https://www.realestatenews.com/rss" text="Real Estate News" />
       <outline htmlUrl="https://www.economist.com/middle-east-and-africa" type="rss" title="Economist: Middle East &amp; Africa" text="Economist: Middle East &amp; Africa" xmlUrl="https://www.economist.com/middle-east-and-africa/rss.xml" />
       <outline title="Manhattan Institute" xmlUrl="https://manhattan.institute/rss.xml" htmlUrl="https://manhattan.institute" type="rss" text="Manhattan Institute" />
       <outline xmlUrl="https://rss.app/feeds/4dmz615DEJwYIR67.xml" text="Real Estate Archives | amNewYork" title="Real Estate Archives | amNewYork" type="rss" htmlUrl="https://www.amny.com/real-estate/" />
