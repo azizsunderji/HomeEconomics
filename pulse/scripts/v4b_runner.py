@@ -798,6 +798,7 @@ How Aziz writes callbacks (from his own edits to the last twelve editions):
   - The link sits on "here" in most of his callbacks, or on a short first-person phrase ("my work has found"). The link must carry the title "free": [here](URL "free"). The link is part of the sentence's grammar ("as I wrote [here]", "(my original analysis is [here])", "I wrote about this [here]"); never a bare "[here]" tacked on after a colon or a dash, and never two colons in one sentence.
   - Keep it short: at most about 40 words. One finding, not a recap of the piece.
   - Date the finding. The piece was written on the date given with the candidate, and its numbers are from then: say "in November I found that..." or "my analysis last spring showed...", in the past tense, and never present an old figure as today's. If the entry's news contradicts or updates the piece, say so in the same sentence ("...though volumes have since fallen below trend").
+  - The chart shown after the sentence may be an updated version of the piece's chart, with data newer than the piece. So state the piece's finding with its date, never quote a number "the chart shows", and do not describe the chart's period.
   - It sits in the second half of the entry, after the news and the reactions: never as the entry's first paragraph.
   His own sentences, verbatim:
     "My chart here shows the surge in transactions during the pandemic has turned into a deficit, compared to the trend (my original analysis is [here](https://homeeconomics.substack.com/p/the-housing-hangover-has-cleared "free")):"
@@ -854,7 +855,7 @@ def add_callbacks_and_context(entries: list[dict], as_of: str, oai, anthropic_cl
     callbacks (each followed by the piece's chart as ![caption](url) on its own line) and at most
     MAX_CONTEXT_BOXES context boxes (::: context ... :::) to the entries' summaries in place.
     Non-fatal: any failure leaves the entries as they were. Returns a log for _v4b_meta."""
-    from analysis.own_callbacks import find_callbacks
+    from analysis.own_callbacks import find_callbacks, resolve_callback_chart
     log: dict = {"as_of": as_of, "retrieval": [], "applied_callbacks": [], "applied_context": [], "rejected": []}
     matches, rlog = find_callbacks(entries, oai, as_of, anthropic_client)
     log["retrieval"] = rlog
@@ -909,13 +910,26 @@ def add_callbacks_and_context(entries: list[dict], as_of: str, oai, anthropic_cl
         sent = re.sub(r"\]\(" + re.escape(m["url"]) + r"(?:\s+\"[^\"]*\")?\)", f'](' + m["url"] + ' "free")', sent)
         paras = _summary_paragraphs(e.get("summary"))
         after = min(max(int(c.get("after_paragraph") or len(paras)), 2 if len(paras) >= 2 else 1), len(paras))
-        img = f'![{m["chart"]["caption"].replace("[", "(").replace("]", ")")}]({m["chart"]["hosted_url"]})'
+        # owner, 16 Oct 2026: an out-of-date time-series chart is refreshed first (server updater); if no current
+        # chart can be had, the sentence goes in without one
+        chart, chart_why = resolve_callback_chart(m, as_of)
+        if chart is None:
+            if re.search(r"\b(?:my|this|the|that) (?:chart|map|graph)\b|\bchart (?:here|below)\b", sent, re.I):
+                log["rejected"].append({"kind": "callback", "rank": c.get("rank"), "text": sent,
+                                        "reason": f"points at a chart that cannot be shown ({chart_why})"})
+                continue
+            sent = re.sub(r":\s*$", ".", sent.rstrip())
+            img = ""
+        else:
+            img = f'![{chart["caption"].replace("[", "(").replace("]", ")")}]({chart["url"]})'
         mode = "append" if c.get("mode") == "append" else "new_paragraph"
-        inserts.setdefault(idx, []).append((after, mode, sent + "\n\n" + img if mode == "new_paragraph" else sent + "\x00" + img))
+        block = (sent + ("\n\n" + img if img else "")) if mode == "new_paragraph" else sent + "\x00" + img
+        inserts.setdefault(idx, []).append((after, mode, block))
         seen_entries.add(idx)
         log["applied_callbacks"].append({"rank": c.get("rank"), "title": e.get("title"), "piece": m["slug"],
                                          "score": m["score"], "after_paragraph": after, "mode": mode,
-                                         "text": sent, "chart": m["chart"], "why": c.get("why")})
+                                         "text": sent, "chart": m["chart"], "chart_shown": chart["url"] if chart else None,
+                                         "chart_why": chart_why, "why": c.get("why")})
 
     ctx_entries: set[int] = set()
     for c in [c for c in (obj.get("context_boxes") or []) if isinstance(c, dict)]:
@@ -953,7 +967,8 @@ def add_callbacks_and_context(entries: list[dict], as_of: str, oai, anthropic_cl
             if mode == "append":
                 sent, img = block.split("\x00")
                 paras[after - 1] = paras[after - 1].rstrip() + " " + sent
-                paras.insert(after, img)
+                if img:
+                    paras.insert(after, img)
             else:
                 paras.insert(after, block)
         e["summary"] = "\n\n".join(paras)

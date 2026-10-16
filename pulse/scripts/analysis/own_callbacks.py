@@ -153,7 +153,8 @@ def find_callbacks(entries: list[dict], openai_client, as_of: str, anthropic_cli
             continue
         out[i] = {"score": round(s, 3), "strength": v["strength"], "reason": v["reason"], "slug": p["slug"],
                   "url": p["url"], "title": p["title"], "date": p["date"], "summary": p.get("summary") or "",
-                  "chart": {"hosted_url": chart["hosted_url"], "caption": chart.get("caption") or ""}}
+                  "chart": {"hosted_url": chart["hosted_url"], "caption": chart.get("caption") or ""}
+                  | {k: chart.get(k) for k in CHART_FRESHNESS_FIELDS}}
     return out, log
 
 
@@ -219,3 +220,98 @@ def judge_entry(entry: dict, cands: list[dict], anthropic_client, model: str) ->
     slugs = {c["slug"] for c in cands}
     pick = d.get("pick") if d.get("pick") in slugs else None
     return {"pick": pick, "strength": int(d.get("strength") or 0) if pick else 0, "reason": str(d.get("reason") or "")[:300]}
+
+
+# ── chart staleness (owner, 16 Oct 2026) ───────────────────────────────
+# Owner: "You are putting in charts that are like years old and obviously need to be updated. In some
+# cases they don't really need to be updated ... It needs to be clever to figure out whether that chart
+# needs updating or not." Each chart carries chart_kind / last_period_date / update_frequency from
+# editor/own_chart_meta.py (Sonnet 5.5 reading the image). A time-series chart is out of date when its
+# last period is older than 3 months; 30 days for data published daily or weekly, 60 days for monthly data
+# (one release missing). The bond-yields chart of 16 Oct (daily/monthly yields through August 2026) is stale;
+# the 3-month rule alone kept it.
+# Static and unclear charts are shown as they are. Annual data: 14 months (next year's figure is rarely out
+# sooner). A chart is also current while its piece is younger than 30 days (daily/weekly data), 45 days (monthly)
+# or 3 months (other), since it carried the latest data when it was published. Used here (GitHub Actions) and by
+# the server's updater.
+CHART_MAX_AGE_DAYS = {"daily": 30, "weekly": 30, "monthly": 60, "annual": 425}
+CHART_DEFAULT_MAX_AGE_DAYS = 92
+CHART_MIN_PIECE_AGE_DAYS = {"daily": 30, "weekly": 30, "monthly": 45}
+
+
+def chart_max_age_days(freq: str | None) -> int:
+    return CHART_MAX_AGE_DAYS.get(freq or "", CHART_DEFAULT_MAX_AGE_DAYS)
+
+
+def chart_needs_refresh(chart: dict, as_of: str, pub_date: str | None = None) -> bool:
+    if chart.get("chart_kind") != "time-series":
+        return False
+    from datetime import date as _date
+    freq = chart.get("update_frequency")
+    try:
+        today = _date.fromisoformat(as_of[:10])
+        if pub_date and (today - _date.fromisoformat(pub_date[:10])).days <= CHART_MIN_PIECE_AGE_DAYS.get(freq or "", 92):
+            return False
+        lpd = chart.get("last_period_date")
+        if not lpd:
+            return True          # a time series whose end could not be read: check it
+        return (today - _date.fromisoformat(lpd[:10])).days > chart_max_age_days(freq)
+    except ValueError:
+        return True
+
+
+CHART_FRESHNESS_FIELDS = ("chart_kind", "last_period", "last_period_date", "update_frequency", "description",
+                          "current_url", "refreshed_at", "refresh_status")
+CHART_REUSE_DAYS = 7
+CHART_REFRESH_TIMEOUT = 90
+REFRESH_URL = "https://noon.homeeconomics.us/api/own-chart-refresh"
+
+
+def _refresh_token() -> str:
+    """Shared secret for the server's updater endpoint: HMAC of PULSE_UNSUB_SECRET (set in the V4b step and in
+    ~/.noon_env on the server), so no new secret or workflow change is needed and the raw secret is never sent."""
+    import hashlib
+    import hmac
+    import os
+    sec = os.environ.get("PULSE_UNSUB_SECRET", "")
+    return hmac.new(sec.encode(), b"own-chart-refresh", hashlib.sha256).hexdigest() if sec else ""
+
+
+def resolve_callback_chart(match: dict, as_of: str) -> tuple[dict | None, str]:
+    """Which image a callback shows (owner, 16 Oct 2026). Returns ({"url", "caption"} or None, reason).
+    Static/unclear charts and recent time series: the original. Stale time series: its current_url if refreshed
+    within CHART_REUSE_DAYS, else the server's updater (synchronous, CHART_REFRESH_TIMEOUT s). None when no
+    current chart can be had: the caller then inserts the sentence without a chart."""
+    import os
+    from datetime import datetime, timedelta, timezone
+    ch = match.get("chart") or {}
+    orig = {"url": ch.get("hosted_url"), "caption": ch.get("caption") or ""}
+    if not chart_needs_refresh(ch, as_of, match.get("date")):
+        return orig, f"{ch.get('chart_kind') or 'unclassified'}; last period {ch.get('last_period')}: used as is"
+    if ch.get("current_url") and ch.get("refreshed_at") and ch.get("refresh_status") in ("refreshed", "checked-current"):
+        try:
+            age = datetime.now(timezone.utc) - datetime.fromisoformat(ch["refreshed_at"])
+            if age < timedelta(days=CHART_REUSE_DAYS):
+                return {"url": ch["current_url"], "caption": ch.get("description") or orig["caption"]}, \
+                    f"refreshed {age.days} days ago"
+        except ValueError:
+            pass
+    m = re.search(r"/images/own/([a-z0-9-]+)/(\d+)\.png$", ch.get("hosted_url") or "")
+    if not m:
+        return None, "stale time series, chart URL not recognised"
+    tok = _refresh_token()
+    if not tok:
+        return None, "stale time series; PULSE_UNSUB_SECRET not set, updater not called"
+    import httpx
+    try:
+        r = httpx.post(os.environ.get("OWN_CHART_REFRESH_URL", REFRESH_URL),
+                       json={"slug": m.group(1), "n": int(m.group(2)), "as_of": as_of, "timeout": CHART_REFRESH_TIMEOUT},
+                       headers={"x-refresh-token": tok}, timeout=CHART_REFRESH_TIMEOUT + 15)
+        r.raise_for_status()
+        d = r.json()
+    except Exception as e:  # noqa: BLE001
+        return None, f"stale time series ({ch.get('last_period')}); updater call failed: {e}"[:300]
+    if d.get("status") in ("current", "refreshed", "checked-current") and d.get("current_url"):
+        cap = d.get("caption") or (ch.get("description") if d.get("status") == "refreshed" else None) or orig["caption"]
+        return {"url": d["current_url"], "caption": cap}, f"{d['status']}: {d.get('reason')}"[:300]
+    return None, f"stale time series ({ch.get('last_period')}); {d.get('status')}: {d.get('reason')}"[:300]
