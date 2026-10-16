@@ -28,9 +28,7 @@
       <outline type="rss" htmlUrl="https://www.economist.com/the-world-this-week" xmlUrl="https://www.economist.com/the-world-this-week/rss.xml" title="Economist: The world this week" text="Economist: The world this week" />
       <outline xmlUrl="https://homeeconomics.substack.com/feed" type="rss" title="Home Economics — Aziz Sunderji" text="Home Economics — Aziz Sunderji" htmlUrl="https://homeeconomics.substack.com/feed" />
       <outline title="Economist: Briefing" text="Economist: Briefing" htmlUrl="https://www.economist.com/briefing" type="rss" xmlUrl="https://www.economist.com/briefing/rss.xml" />
-      <outline text="Economist: The Economist explains" title="Economist: The Economist explains" type="rss" htmlUrl="https://www.economist.com/the-economist-explains" xmlUrl="https://www.economist.com/the-economist-explains/rss.xml" />
       <outline title="The Argument (Kelsey Piper + co-founders)" type="rss" text="The Argument (Kelsey Piper + co-founders)" htmlUrl="https://www.theargumentmag.com" xmlUrl="https://www.theargumentmag.com/feed" />
-      <outline title="atlantafed.org" xmlUrl="https://www.atlantafed.org/RSS/HomeOwnershipAffordabilityMonitor" text="atlantafed.org" htmlUrl="https://www.atlantafed.org" type="rss" />
       <outline text="Atlanta Fed Macroblog" title="Atlanta Fed Macroblog" type="rss" xmlUrl="https://www.atlantafed.org/rss/macroblog" htmlUrl="https://www.atlantafed.org/blogs/macroblog" />
       <outline xmlUrl="https://www.economist.com/science-and-technology/rss.xml" type="rss" text="Economist: Science &amp; technology" title="Economist: Science &amp; technology" htmlUrl="https://www.economist.com/science-and-technology" />
       <outline htmlUrl="https://www.thecity.nyc/" xmlUrl="https://www.thecity.nyc/feed/" title="THE CITY – NYC News" type="rss" text="THE CITY – NYC News" />
@@ -69,11 +67,9 @@
       <outline type="rss" text="Gothamist: New York City Local News, Food, Arts &amp; Events" htmlUrl="https://gothamist.com/staff/david-brand" xmlUrl="https://rss.app/feeds/8q4JaNc99LWhqdjx.xml" title="Gothamist: New York City Local News, Food, Arts &amp; Events" />
       <outline text="Eye On Housing" title="Eye On Housing" type="rss" xmlUrl="https://eyeonhousing.org/feed/" htmlUrl="https://eyeonhousing.org" />
       <outline text="Bloomberg Markets" title="Bloomberg Markets" type="rss" xmlUrl="https://feeds.bloomberg.com/markets/news.rss" htmlUrl="https://www.bloomberg.com/markets" />
-      <outline text="Bloomberg Wealth" title="Bloomberg Wealth" type="rss" xmlUrl="https://feeds.bloomberg.com/wealth/news.rss" htmlUrl="https://www.bloomberg.com/wealth" />
       <outline text="NYT The Upshot" title="NYT The Upshot" type="rss" xmlUrl="https://rss.nytimes.com/services/xml/rss/nyt/Upshot.xml" htmlUrl="https://www.nytimes.com/section/upshot" />
       <outline text="CNBC Real Estate" title="CNBC Real Estate" type="rss" xmlUrl="https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&amp;id=10000115" htmlUrl="https://www.cnbc.com/real-estate/" />
       <!-- Brookings Institution removed 2026-06-17: /feed/ now redirects to HTML homepage. Try https://www.brookings.edu/articles/feed/ as a replacement after verification. -->
-      <outline text="Census Economic Indicators" title="Census Economic Indicators" type="rss" xmlUrl="https://www.census.gov/economic-indicators/indicator.xml" htmlUrl="https://www.census.gov" />
       <outline text="Federal Reserve Press Releases" title="Federal Reserve Press Releases" type="rss" xmlUrl="https://www.federalreserve.gov/feeds/press_all.xml" htmlUrl="https://www.federalreserve.gov" />
       <outline text="Freddie Mac Blog" title="Freddie Mac Blog" type="rss" xmlUrl="https://www.freddiemac.com/blog/feed" htmlUrl="https://www.freddiemac.com/blog" />
       <outline text="FT Alphaville" title="FT Alphaville" type="rss" xmlUrl="https://www.ft.com/alphaville?format=rss" htmlUrl="https://www.ft.com/alphaville" />
@@ -111,8 +107,6 @@
       <outline text="LA Times World &amp; Nation" title="LA Times World &amp; Nation" type="rss" xmlUrl="https://www.latimes.com/world-nation/rss2.0.xml" htmlUrl="https://www.latimes.com/world-nation" />
       <outline text="LA Times Opinion" title="LA Times Opinion" type="rss" xmlUrl="https://www.latimes.com/opinion/rss2.0.xml" htmlUrl="https://www.latimes.com/opinion" />
       <outline text="John Burns Research and Consulting | LinkedIn" title="John Burns Research and Consulting | LinkedIn" type="rss" xmlUrl="https://rss.app/feeds/94he2j6jTPUNzUX7.xml" htmlUrl="https://rss.app" />
-      <outline text="Robert Dietz - NAHB Chief Economist | LinkedIn" title="Robert Dietz - NAHB Chief Economist | LinkedIn" type="rss" xmlUrl="https://rss.app/feeds/vbpSEAmnpHMKZpwP.xml" htmlUrl="https://www.linkedin.com/in/robertddietz/" />
-      <outline text="Jay Parsons - Rental Housing Economist | LinkedIn" title="Jay Parsons - Rental Housing Economist | LinkedIn" type="rss" xmlUrl="https://rss.app/feeds/gZze1LwvqeueEjY9.xml" htmlUrl="https://www.linkedin.com/in/jay-parsons-a7a6656/" />
     </outline>
     <outline title="Journals" text="Journals">
       <outline type="rss" xmlUrl="https://www.tandfonline.com/feed/rss/rjer20" htmlUrl="https://www.tandfonline.com/loi/rjer20?af=R" text="Journal of Real Estate Research" title="Journal of Real Estate Research" />
@@ -124,13 +118,12 @@
       <outline text="Housing Studies" type="rss" htmlUrl="https://www.tandfonline.com/loi/chos20?af=R" title="Housing Studies" xmlUrl="https://www.tandfonline.com/feed/rss/chos20" />
       <outline text="Housing Policy Debate" type="rss" htmlUrl="https://www.tandfonline.com/loi/rhpd20?af=R" title="Housing Policy Debate" xmlUrl="https://www.tandfonline.com/feed/rss/rhpd20" />
       <outline text="Journal of Urban Affairs" type="rss" htmlUrl="https://www.tandfonline.com/loi/ujua20?af=R" title="Journal of Urban Affairs" xmlUrl="https://www.tandfonline.com/feed/rss/ujua20" />
+      <outline text="Annals of Regional Science" title="Annals of Regional Science" type="rss" htmlUrl="https://link.springer.com/journal/168" xmlUrl="https://link.springer.com/search.rss?facet-content-type=Article&amp;facet-journal-id=168" />
       <outline text="Annals of the American Association of Geographers" type="rss" htmlUrl="https://www.tandfonline.com/loi/raag21?af=R" title="Annals of the American Association of Geographers" xmlUrl="https://www.tandfonline.com/feed/rss/raag21" />
       <outline text="ScienceDirect Publication: Journal of Urban Economics" title="ScienceDirect Publication: Journal of Urban Economics" type="rss" htmlUrl="https://www.sciencedirect.com/journal/journal-of-urban-economics" xmlUrl="https://rss.sciencedirect.com/publication/science/00941190" />
       <outline text="ScienceDirect Publication: Cities" htmlUrl="https://www.sciencedirect.com/journal/cities" xmlUrl="https://rss.sciencedirect.com/publication/science/02642751" type="rss" title="ScienceDirect Publication: Cities" />
       <outline text="Regional Science and Urban Economics" title="Regional Science and Urban Economics" type="rss" htmlUrl="https://www.sciencedirect.com/journal/regional-science-and-urban-economics" xmlUrl="https://rss.sciencedirect.com/publication/science/01660462" />
       <outline text="Journal of Regional Science" title="Journal of Regional Science" type="rss" htmlUrl="https://onlinelibrary.wiley.com/journal/14679787" xmlUrl="https://noon.homeeconomics.us/feeds/cr_journal-of-regional-science.xml" />
-      <outline text="Journal of Real Estate Finance and Economics" title="Journal of Real Estate Finance and Economics" type="rss" htmlUrl="https://link.springer.com/journal/11146" xmlUrl="https://link.springer.com/search.rss?facet-content-type=Article&amp;facet-journal-id=11146" />
-      <outline text="Annals of Regional Science" title="Annals of Regional Science" type="rss" htmlUrl="https://link.springer.com/journal/168" xmlUrl="https://link.springer.com/search.rss?facet-content-type=Article&amp;facet-journal-id=168" />
       <!-- NBER: www.nber.org/rss/new.xml was removed 2026-06-17 (403 from cloud IPs regardless of UA). Re-added 2026-08-26 pointing at the origin host back.nber.org, which serves the same feed (it is the feed's own atom:link self URL) and returned HTTP 200 with current papers when verified. www.nber.org/papers/feed.xml is a 404 — do not use. If collector errors show NBER 403s again, the origin host is IP-blocking GitHub runners too and the feed is unfixable without a proxy/browser fetch. -->
       <outline text="NBER New Working Papers" title="NBER New Working Papers" type="rss" xmlUrl="https://back.nber.org/rss/new.xml" htmlUrl="https://www.nber.org/papers" />
     </outline>

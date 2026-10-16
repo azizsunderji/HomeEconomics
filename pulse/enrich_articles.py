@@ -67,6 +67,21 @@ SKIP_DOMAINS = {
 # Minimum body length to consider "already enriched"
 MIN_BODY_LEN = 500
 
+# Pages that are a wall, not an article. Matched against the first 300 lowercased characters.
+_BLOCKED_PAGE_MARKERS = (
+    "are you a robot?", "we've detected unusual activity from your computer network",
+    "verify you are human", "verify you are a human", "just a moment...", "access denied",
+    "enable javascript and cookies to continue", "please enable js and disable any ad blocker",
+    "checking if the site connection is secure", "attention required! | cloudflare",
+    "request blocked", "your access to this site has been limited",
+)
+
+
+def _is_blocked_page(text: str) -> bool:
+    head = (text or "")[:300].lower()
+    return any(m in head for m in _BLOCKED_PAGE_MARKERS)
+
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s %(message)s",
@@ -85,6 +100,16 @@ def _get_db() -> sqlite3.Connection:
 
 
 def _get_items_to_enrich(conn: sqlite3.Connection, hours: int, limit: int) -> list[dict]:
+    # one-time and ongoing hygiene: a stored bot-check page is not a body (16 Oct 2026)
+    try:
+        n = conn.execute("UPDATE items SET body = '' WHERE body LIKE 'Bloomberg - Are you a robot?%' "
+                         "OR body LIKE 'Are you a robot?%' OR body LIKE 'Access Denied%' "
+                         "OR body LIKE 'Just a moment...%'").rowcount
+        conn.commit()
+        if n:
+            logger.info(f"blanked {n} stored bot-check page(s) so the items are re-enriched")
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"robot-body cleanup skipped: {e}")
     """Find recent items needing article-body enrichment.
 
     Was previously restricted to source='rss'. Extended 2026-06-05 to
@@ -514,6 +539,7 @@ async def _enrich_batch(items: list[dict], dry_run: bool = False
     entirely. Items where body succeeded but link extraction returned
     nothing get an empty links list. mode is "direct" or "archive"."""
     results: dict[str, dict] = {}
+    blocked_pages = 0
     auth_rows: list[dict] = []
 
     async with async_playwright() as p:
@@ -571,6 +597,13 @@ async def _enrich_batch(items: list[dict], dry_run: bool = False
                 html = await page.content()
 
                 text = _extract_article_text(html)
+                if _is_blocked_page(text):
+                    # a bot check or access-denied page is not an article (Bloomberg's
+                    # "Are you a robot?" page was stored as a 654-char body 143 times in the
+                    # week to 16 Oct 2026); treat as thin so the fallback runs
+                    logger.info(f"  BLOCKED ({len(text)}c) {domain}: {text[:60]!r}")
+                    blocked_pages += 1
+                    text = ""
                 # NEW 2026-06-08: also pull outbound hyperlinks from
                 # inside the article body. Used by the synth pipeline as
                 # secondary references the writer can cite.
@@ -618,6 +651,10 @@ async def _enrich_batch(items: list[dict], dry_run: bool = False
                     except Exception: pass
 
         await browser.close()
+
+    if blocked_pages:
+
+        logger.info(f"blocked pages (bot check / access denied), not stored: {blocked_pages}")
 
     return results, auth_rows
 

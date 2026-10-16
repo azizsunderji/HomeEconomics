@@ -1093,8 +1093,41 @@ def probe_article_enrichment(stage: Stage, conn: sqlite3.Connection) -> None:
             if tot >= 3 and arch / tot >= 0.8:
                 drifted.append(f"{dom} ({arch}/{tot})")
 
+    # Full-body rate per subscribed host (24h): the direct measure of whether the
+    # Browserbase login for that site still works. A teaser-only host means the
+    # writer sees 100-200 chars of each of its stories (WSJ 5 of 76 on 16 Oct 2026).
+    weak_hosts: list[str] = []
+    blocked = 0
+    try:
+        host_rows = conn.execute(
+            f"SELECT url, length(body) AS n, body LIKE 'Bloomberg - Are you a robot?%' AS robot "
+            f"FROM items WHERE source IN {src_in} AND collected_at >= ?", (_last_24h_iso(24),)).fetchall()
+    except sqlite3.OperationalError:
+        host_rows = []
+    if host_rows:
+        from urllib.parse import urlparse as _up2
+        per_host: dict[str, list[int]] = {}
+        for r in host_rows:
+            dom = (_up2(r["url"] or "").netloc or "").lower().removeprefix("www.")
+            cnt = per_host.setdefault(dom, [0, 0])
+            cnt[0] += 1
+            if (r["n"] or 0) >= 1500:
+                cnt[1] += 1
+            if r["robot"]:
+                blocked += 1
+        for dom in ("wsj.com", "nytimes.com", "ft.com", "bloomberg.com", "economist.com"):
+            tot, full = per_host.get(dom, [0, 0])
+            if tot:
+                stage.row(f"full bodies (≥1,500 chars) — {dom}", f"{full}/{tot} ({100 * full / tot:.0f}%)")
+            if tot >= 10 and full / tot < 0.25:
+                weak_hosts.append(f"{dom} ({full}/{tot})")
+        if blocked:
+            stage.row("bot-check pages stored as bodies (24h)", _fmt_int(blocked))
     if total == 0:
         stage.set(STATUS_WARN, "no items to enrich")
+    elif weak_hosts:
+        stage.set(STATUS_WARN, "subscribed sites returning teasers only (login or bot block at "
+                  "Browserbase): " + ", ".join(weak_hosts))
     elif high_rel_no_body > 30:
         stage.set(STATUS_WARN, f"{high_rel_no_body} high-relevance items missing body")
     elif drifted:

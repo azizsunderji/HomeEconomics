@@ -52,13 +52,31 @@ def _create_session() -> tuple[str, str] | None:
         return None
 
 
+def _get_with_retry(url: str, *, params=None, headers=None, timeout: int = 15, attempts: int = 3):
+    """GET with retries: the public AT-proto API resets connections now and then
+    (7 'Connection reset by peer' errors on 16 Oct 2026); back off 2s, 5s."""
+    last: Exception | None = None
+    for i in range(attempts):
+        try:
+            resp = httpx.get(url, params=params, headers=headers or {}, timeout=timeout)
+            if resp.status_code in (429, 500, 502, 503, 504) and i < attempts - 1:
+                time.sleep(2 if i == 0 else 5)
+                continue
+            resp.raise_for_status()
+            return resp
+        except (httpx.TransportError, httpx.HTTPStatusError) as e:
+            last = e
+            if i < attempts - 1:
+                time.sleep(2 if i == 0 else 5)
+    raise last  # type: ignore[misc]
+
+
 def _get_author_feed(actor: str, limit: int = 30) -> list[dict]:
     """Get recent posts from a Bluesky account (public, no auth needed)."""
     url = f"{BSKY_PUBLIC_API}/xrpc/app.bsky.feed.getAuthorFeed"
     params = {"actor": actor, "limit": min(limit, 100), "filter": "posts_and_author_threads"}
 
-    resp = httpx.get(url, params=params, timeout=15)
-    resp.raise_for_status()
+    resp = _get_with_retry(url, params=params, timeout=15)
     return resp.json().get("feed", [])
 
 
@@ -74,8 +92,7 @@ def _search_posts(query: str, limit: int = 25, auth_token: str = "") -> list[dic
     url = f"{base_url}/xrpc/app.bsky.feed.searchPosts"
     params = {"q": query, "limit": min(limit, 100), "sort": "top"}
 
-    resp = httpx.get(url, params=params, headers=headers, timeout=30)
-    resp.raise_for_status()
+    resp = _get_with_retry(url, params=params, headers=headers, timeout=30)
     return resp.json().get("posts", [])
 
 

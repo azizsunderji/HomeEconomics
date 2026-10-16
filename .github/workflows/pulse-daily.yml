@@ -30,7 +30,6 @@ jobs:
       RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
       APIFY_API_KEY: ${{ secrets.APIFY_API_KEY }}
       GMAIL_TOKEN: ${{ secrets.GMAIL_TOKEN }}
-      GMAIL_TOKENS: ${{ secrets.GMAIL_TOKENS }}
       GMAIL_IMAP_USER: ${{ secrets.GMAIL_IMAP_USER }}
       GMAIL_IMAP_PASSWORD: ${{ secrets.GMAIL_IMAP_PASSWORD }}
       FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
