@@ -1228,3 +1228,20 @@ those callbacks ... and where I've integrated context." Study:
 - Not changed: tweet-link enrichment reports 60 candidates all skipped as social/unresolvable; t.co
   resolves fine from the server, so the skips are mostly links to x.com media. Worth a breakdown in
   the log before deciding anything.
+
+## Status 16 Oct 2026 (later): WSJ/Bloomberg route, self-healing draft check
+
+- **No draft at noon, second time.** Maestral (the server's Dropbox client) had been paused since 20:51 on
+  15 Oct after an aborted sync; the brief sat on Dropbox. Recovered by downloading the newest revision and
+  ingesting; `systemctl --user restart maestral-daemon@maestral.service` fixed the pause (`maestral resume`
+  raised an API error). `~/work/noon/bin/noon_draftcheck.py` (13:00 and 14:30 UTC) now recovers on its own:
+  restarts Maestral if paused, downloads the newest Dropbox revision, ingests from it if it holds today's
+  brief, and reports on Telegram. `--force` dry-runs it.
+- **WSJ and Bloomberg bodies via the server Chrome.** `enrich_articles.py` sends READER_HOSTS
+  (default wsj.com,bloomberg.com) to the Reader service (`/home/aziz/reader`, queue.homeeconomics.us/read,
+  `format=json`), 3 s apart, stored with enrich_mode `server-chrome`. GitHub secret READER_TOKEN; env
+  READER_URL/READER_TOKEN in both workflows. WSJ verified (4,000-char bodies). Bloomberg shows its robot
+  check in the server Chrome on article pages until the owner ticks the box at browser.homeeconomics.us;
+  `login_status.py` now probes a Bloomberg article and reports `blocked`.
+- History (pulse.db): WSJ via Browserbase gave full bodies for 30-70% of items until 14 Oct, then 5/76 and
+  1/44; Bloomberg gave 0 full bodies on nearly every day since 11 Sep (robot pages stored as bodies).
