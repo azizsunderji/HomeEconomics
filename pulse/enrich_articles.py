@@ -71,9 +71,11 @@ MIN_BODY_LEN = 500
 # Hosts read through the server's Reader service (logged-in server Chrome) rather than
 # Browserbase: WSJ hard-blocks Browserbase's address, Bloomberg serves it a bot check
 # (owner, 16 Oct 2026). READER_URL like https://queue.homeeconomics.us/read, READER_TOKEN its key.
+# Default is wsj.com only (owner, 16 Oct 2026): Bloomberg shows its robot check in the server Chrome too;
+# its bodies now come from the owner's Mac Chrome (editor/bloomberg_bodies.py, private feed bloomberg_bodies.xml).
 READER_URL = os.environ.get("READER_URL", "").rstrip("/")
 READER_TOKEN = os.environ.get("READER_TOKEN", "")
-READER_HOSTS = tuple(h for h in os.environ.get("READER_HOSTS", "wsj.com,bloomberg.com").split(",") if h)
+READER_HOSTS = tuple(h for h in os.environ.get("READER_HOSTS", "wsj.com").split(",") if h)
 READER_GAP_SECONDS = 3.0
 
 
