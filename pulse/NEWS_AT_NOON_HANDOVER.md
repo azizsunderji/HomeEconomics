@@ -1208,3 +1208,23 @@ those callbacks ... and where I've integrated context." Study:
   box on 14 Oct echoes the owner's example in the prompt, so that day is not a fair test of the boxes.
   One callback slightly generalised its piece (the Goldman one); the writer is told to state only
   what the summary or caption says.
+
+## Status 16 Oct 2026: health triage fixes
+
+- **Bloomberg bodies were bot-check pages.** 143 of the week's Bloomberg items carried the 654-char
+  "Are you a robot?" page as their body, logged as OK. `enrich_articles.py` now recognises wall pages
+  (robot check, access denied, Cloudflare interstitial), never stores them, counts them as BLOCKED,
+  and blanks any already stored so the items are re-tried. Health stage 2.2 shows the full-body rate
+  per subscribed host (≥1,500 chars, 24h) and warns when a host with 10+ items is under 25%.
+- **WSJ and NYT fetches returned teasers** (WSJ 5 of 76, NYT 5 of 12 full bodies in 24h): the
+  Browserbase login lapsed. A live-view session on the pipeline context was opened and sent to the
+  owner on Telegram (`OVH/NewsAtNoon/scripts/345_browserbase_login_session.py` does this on demand).
+- Bluesky: 3 attempts with backoff on connection resets / 5xx / 429 (`_get_with_retry`).
+- `GMAIL_TOKENS` removed from both workflow envs (dead secret; work account = GMAIL_TOKEN, personal = IMAP).
+- Feeds removed as dead or unproductive: Atlanta Fed HOAM (2022), Economist explains (2025),
+  Bloomberg Wealth (empty), Springer JREFE (HTML, no RSS), rss.app LinkedIn feeds for Dietz and
+  Parsons (frozen 20 Aug), Census Economic Indicators (repeating links, deduped away; releases arrive
+  by email). Robert Dietz added to `linkedin_targets.json` (linkedin.com/in/robertddietz).
+- Not changed: tweet-link enrichment reports 60 candidates all skipped as social/unresolvable; t.co
+  resolves fine from the server, so the skips are mostly links to x.com media. Worth a breakdown in
+  the log before deciding anything.
