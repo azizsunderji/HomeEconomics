@@ -43,6 +43,8 @@
     return '<figure class="img" contenteditable="false" data-url="' + escAttr(url) + '">' +
       '<img src="' + escAttr(url) + '" alt="">' +
       '<div class="caprow"><input class="cap" type="text" placeholder="Caption (optional)" value="' + escAttr(caption) + '">' +
+      '<button type="button" class="ctxmv" data-act="imgup" title="Move the image up one paragraph (Alt+↑ in the caption)">↑</button>' +
+      '<button type="button" class="ctxmv" data-act="imgdown" title="Move the image down one paragraph (Alt+↓ in the caption)">↓</button>' +
       '<button type="button" class="btn icon rm" data-act="rmimg" title="Remove image">✕</button></div></figure>';
   }
   // Context box (owner, 14 Oct 2026): background for readers, set apart as a shaded block.
@@ -311,6 +313,7 @@
       else if (act === 'context') insertContext(ed);
       else if (act === 'rmctx') { const c = b.closest('.ctx'); if (c) removeContext(ed, c); }
       else if (act === 'ctxup' || act === 'ctxdown') { const c = b.closest('.ctx'); if (c) moveContext(ed, c, act === 'ctxup' ? -1 : 1); }
+      else if (act === 'imgup' || act === 'imgdown') { const f = b.closest('figure.img'); if (f) moveContext(ed, f, act === 'imgup' ? -1 : 1); }  // owner, 16 Oct 2026: images move like boxes
       else if (act === 'apply') applyLink(ed);
       else if (act === 'cancel') { pending = null; linkboxFor(ed).hidden = true; }
     });
@@ -381,7 +384,7 @@
     if (next && next.nodeType === 1) { ed.focus(); caretPlace(next, false); }
     onRichInput(ed);
   }
-  // Move a box one block up (dir -1) or down (+1) among the editor's top-level blocks
+  // Move a box (or, since 16 Oct 2026, an image figure) one block up (dir -1) or down (+1) among the editor's top-level blocks
   // (paragraphs, images, other boxes; owner, 14 Oct 2026). Empty spacer paragraphs are
   // stepped over because they do not exist in the markdown. At either end it does
   // nothing. The caret stays where it was, and the page does not scroll.
@@ -401,7 +404,7 @@
     const oldPrev = box.previousSibling, oldNext = box.nextSibling;
     if (dir < 0) t.before(box); else t.after(box);
     // the gap the box left: two spacer paragraphs side by side become one
-    if (oldPrev && oldNext && oldPrev.parentNode === ed && oldPrev.nextSibling === oldNext && isSpacer(oldPrev) && isSpacer(oldNext)) oldNext.remove();
+    if (oldPrev && oldNext && oldPrev.parentNode === box.parentNode && oldPrev.nextSibling === oldNext && isSpacer(oldPrev) && isSpacer(oldNext)) oldNext.remove();
     // keep a paragraph on each side so the caret can always leave the box
     if (!box.previousSibling) box.before(emptyP());
     if (!box.nextSibling) box.after(emptyP());
@@ -421,6 +424,9 @@
   function contextKeydown(ed, ev) {
     const isMove = ev.altKey && !ev.ctrlKey && !ev.metaKey && !ev.shiftKey && (ev.key === 'ArrowUp' || ev.key === 'ArrowDown');
     if (!isMove && ev.key !== 'Backspace' && ev.key !== 'Delete') return;
+    // Alt+arrows typed in an image's caption field move the image (owner, 16 Oct 2026)
+    const fig = ev.target && ev.target.closest ? ev.target.closest('figure.img') : null;
+    if (fig && ed.contains(fig)) { if (isMove) { ev.preventDefault(); moveContext(ed, fig, ev.key === 'ArrowUp' ? -1 : 1); } return; }
     const sel = document.getSelection(); if (!sel || !sel.rangeCount) return;
     const r = sel.getRangeAt(0);
     const el = r.startContainer.nodeType === 1 ? r.startContainer : r.startContainer.parentElement;

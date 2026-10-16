@@ -285,15 +285,15 @@ def resolve_callback_chart(match: dict, as_of: str) -> tuple[dict | None, str]:
     import os
     from datetime import datetime, timedelta, timezone
     ch = match.get("chart") or {}
-    orig = {"url": ch.get("hosted_url"), "caption": ch.get("caption") or ""}
+    orig = {"url": ch.get("hosted_url"), "caption": ch.get("caption") or "", "updated": False}
     if not chart_needs_refresh(ch, as_of, match.get("date")):
         return orig, f"{ch.get('chart_kind') or 'unclassified'}; last period {ch.get('last_period')}: used as is"
     if ch.get("current_url") and ch.get("refreshed_at") and ch.get("refresh_status") in ("refreshed", "checked-current"):
         try:
             age = datetime.now(timezone.utc) - datetime.fromisoformat(ch["refreshed_at"])
             if age < timedelta(days=CHART_REUSE_DAYS):
-                return {"url": ch["current_url"], "caption": ch.get("description") or orig["caption"]}, \
-                    f"refreshed {age.days} days ago"
+                return {"url": ch["current_url"], "caption": ch.get("description") or orig["caption"],
+                        "updated": ch["current_url"] != orig["url"]}, f"refreshed {age.days} days ago"
         except ValueError:
             pass
     m = re.search(r"/images/own/([a-z0-9-]+)/(\d+)\.png$", ch.get("hosted_url") or "")
@@ -313,5 +313,6 @@ def resolve_callback_chart(match: dict, as_of: str) -> tuple[dict | None, str]:
         return None, f"stale time series ({ch.get('last_period')}); updater call failed: {e}"[:300]
     if d.get("status") in ("current", "refreshed", "checked-current") and d.get("current_url"):
         cap = d.get("caption") or (ch.get("description") if d.get("status") == "refreshed" else None) or orig["caption"]
-        return {"url": d["current_url"], "caption": cap}, f"{d['status']}: {d.get('reason')}"[:300]
+        return {"url": d["current_url"], "caption": cap, "updated": d["current_url"] != orig["url"]}, \
+            f"{d['status']}: {d.get('reason')}"[:300]
     return None, f"stale time series ({ch.get('last_period')}); {d.get('status')}: {d.get('reason')}"[:300]

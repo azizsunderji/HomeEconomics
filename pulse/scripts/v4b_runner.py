@@ -795,6 +795,7 @@ Some entries come with CANDIDATE PIECE: an earlier Home Economics article of his
 How Aziz writes callbacks (from his own edits to the last twelve editions):
   - First person, one sentence (two at most), stating what the piece found: a finding with its direction, not an opinion and not a summary of the news.
   - The sentence introduces the chart, which follows on its own line, so it usually ends with a colon. The code adds the chart line; do not write it.
+  - When the piece's chart is out of date, the pipeline swaps in a refreshed version and rewords the sentence to end "(my original analysis is [here](URL "free") and my updated chart is below):", so put the link in that parenthetical form whenever a chart is involved.
   - The link sits on "here" in most of his callbacks, or on a short first-person phrase ("my work has found"). The link must carry the title "free": [here](URL "free"). The link is part of the sentence's grammar ("as I wrote [here]", "(my original analysis is [here])", "I wrote about this [here]"); never a bare "[here]" tacked on after a colon or a dash, and never two colons in one sentence.
   - Keep it short: at most about 40 words. One finding, not a recap of the piece.
   - Date the finding. The piece was written on the date given with the candidate, and its numbers are from then: say "in November I found that..." or "my analysis last spring showed...", in the past tense, and never present an old figure as today's. If the entry's news contradicts or updates the piece, say so in the same sentence ("...though volumes have since fallen below trend").
@@ -821,6 +822,23 @@ OUTPUT: a single JSON object, no preamble, no markdown fences:
 "append" adds the callback to the end of that paragraph; "new_paragraph" puts it in a paragraph of its own after it. The chart line goes right after. Empty lists are fine and often right.
 """
 
+
+
+def _word_updated_chart(sent: str, url: str) -> str:
+    """Owner, 16 Oct 2026: when the chart shown is a refreshed or rebuilt version rather than the one in the original
+    piece, the callback must say so. Target form: "... (my original analysis is [here](URL "free") and my updated chart
+    is below):". A writer's link placed elsewhere in the sentence stays (it already points at the original analysis)
+    and the sentence gets "; my updated chart is below:" appended."""
+    if "updated chart is below" in sent:
+        return sent
+    link = f'[here]({url} "free")'
+    url_re = re.escape(url) + r"(?:\s+\"[^\"]*\")?"
+    # "(my original analysis is [here](URL "free"))" or "([here](URL))" at the end of the sentence
+    pat = re.compile(r"\(\s*(?:my original analysis is\s+|see\s+)?\[[^\]]+\]\(" + url_re + r"\)\s*\)\s*[.:]*\s*$")
+    if pat.search(sent):
+        return pat.sub(lambda _m: f"(my original analysis is {link} and my updated chart is below):", sent.rstrip())
+    out = re.sub(r"[.:,;]*\s*$", "", sent.rstrip())
+    return f"{out}; my updated chart is below:"
 
 def _summary_paragraphs(summary: str) -> list[str]:
     return [p.strip() for p in re.split(r"\n{2,}", summary or "") if p.strip()]
@@ -922,6 +940,8 @@ def add_callbacks_and_context(entries: list[dict], as_of: str, oai, anthropic_cl
             img = ""
         else:
             img = f'![{chart["caption"].replace("[", "(").replace("]", ")")}]({chart["url"]})'
+            if chart.get("updated"):
+                sent = _word_updated_chart(sent, m["url"])
         mode = "append" if c.get("mode") == "append" else "new_paragraph"
         block = (sent + ("\n\n" + img if img else "")) if mode == "new_paragraph" else sent + "\x00" + img
         inserts.setdefault(idx, []).append((after, mode, block))
