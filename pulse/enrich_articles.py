@@ -379,6 +379,8 @@ def _create_browserbase_session():
             # 150-article batch. Bump to 30 min.
             "api_timeout": 1800,
             "keep_alive": True,
+            # residential proxy: WSJ/NYT block the datacenter IP outright (16 Oct 2026)
+            "proxies": os.environ.get("BROWSERBASE_PROXIES", "1") != "0",
         }
         if BROWSERBASE_CONTEXT_ID:
             # Persist cookies/storage across sessions — enables paywall auth

@@ -130,6 +130,7 @@ def _create_browserbase_session():
         from browserbase import Browserbase
         bb = Browserbase(api_key=BROWSERBASE_API_KEY)
         kwargs = {"project_id": BROWSERBASE_PROJECT_ID, "api_timeout": 1800, "keep_alive": True}
+        kwargs["proxies"] = os.environ.get("BROWSERBASE_PROXIES", "1") != "0"  # see enrich_articles.py
         if BROWSERBASE_CONTEXT_ID:
             kwargs["browser_settings"] = {"context": {"id": BROWSERBASE_CONTEXT_ID, "persist": True}}
         return bb.sessions.create(**kwargs)
