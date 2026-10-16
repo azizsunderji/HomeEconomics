@@ -449,6 +449,15 @@ def build(limit: int | None = None) -> list[dict]:
     return out
 
 
+# Chart fields from own_chart_meta.py / own_chart_refresh.py (owner, 16 Oct 2026: old charts get updated when a
+# callback shows them; static charts are shown as they are).
+CHART_FIELDS = ("chart_kind", "last_period", "last_period_date", "update_frequency", "sources", "description",
+                "builder_path", "current_url", "refreshed_at", "refresh_status")
+CHART_STRUCT = ("chart_kind VARCHAR, last_period VARCHAR, last_period_date VARCHAR, update_frequency VARCHAR, "
+                "sources VARCHAR[], description VARCHAR, builder_path VARCHAR, current_url VARCHAR, "
+                "refreshed_at VARCHAR, refresh_status VARCHAR")
+
+
 def write_outputs(pubs: list[dict]) -> None:
     import duckdb
     pubs = sorted(pubs, key=lambda p: p["date"], reverse=True)
@@ -457,14 +466,15 @@ def write_outputs(pubs: list[dict]) -> None:
         for p in pubs:
             f.write(json.dumps({k: p[k] for k in ("slug", "url", "title", "subtitle", "date", "audience", "source",
                                                    "text", "summary")}
-                               | {"charts": [{k: c[k] for k in ("n", "image_url", "caption", "alt", "figcaption",
-                                                                "context", "hosted_url")} for c in p["charts"]]}) + "\n")
+                               | {"charts": [{k: c.get(k) for k in ("n", "image_url", "caption", "alt", "figcaption",
+                                                                    "context", "hosted_url") + CHART_FIELDS}
+                                           for c in p["charts"]]}) + "\n")
     con = duckdb.connect()
     con.execute(f"""COPY (SELECT slug, url, title, subtitle, CAST(date AS DATE) AS date, audience, source, text, summary, charts
                           FROM read_json('{tmp}', format='newline_delimited', columns={{
                             slug:'VARCHAR', url:'VARCHAR', title:'VARCHAR', subtitle:'VARCHAR', date:'VARCHAR',
                             audience:'VARCHAR', source:'VARCHAR', text:'VARCHAR', summary:'VARCHAR',
-                            charts:'STRUCT(n INTEGER, image_url VARCHAR, caption VARCHAR, alt VARCHAR, figcaption VARCHAR, context VARCHAR, hosted_url VARCHAR)[]'}})
+                            charts:'STRUCT(n INTEGER, image_url VARCHAR, caption VARCHAR, alt VARCHAR, figcaption VARCHAR, context VARCHAR, hosted_url VARCHAR, {CHART_STRUCT})[]'}})
                           ORDER BY date DESC)
                     TO '{PARQUET}' (FORMAT parquet, COMPRESSION zstd, ROW_GROUP_SIZE 100000)""")
     tmp.unlink()
@@ -474,7 +484,9 @@ def write_outputs(pubs: list[dict]) -> None:
                "posts": [{"slug": p["slug"], "url": p["url"], "title": p["title"], "date": p["date"],
                           "audience": p["audience"], "summary": p["summary"], "text": p["text"][:JSON_TEXT_CHARS],
                           "charts": [{"hosted_url": c["hosted_url"], "caption": c["caption"],
-                                      "context": c["context"][:240]} for c in p["charts"]]}
+                                      "context": c["context"][:240]}
+                                     | {k: c.get(k) for k in CHART_FIELDS if k != "builder_path"}
+                                     for c in p["charts"]]}
                          for p in pubs]}
     REPO_JSON.parent.mkdir(parents=True, exist_ok=True)
     REPO_JSON.write_text(json.dumps(compact, indent=1, ensure_ascii=False) + "\n")
@@ -511,6 +523,17 @@ def main() -> None:
         got = discover_and_fetch(have, a.since, a.max_fetch)
         logger.info(f"fetched {len(got)} posts: {got}")
     pubs = build(a.limit)
+    # chart fields: classify new charts, match builders for new time-series charts (both cached), then the
+    # weekly line on refreshes (owner, 16 Oct 2026; refreshes happen at use time, not here)
+    try:
+        import own_chart_meta
+        import own_chart_refresh
+        own_chart_meta.classify_all(pubs)
+        own_chart_meta.match_builders(pubs)
+        own_chart_meta.annotate(pubs)
+        logger.info(own_chart_refresh.week_report())
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"chart fields not updated: {e}")
     write_outputs(pubs)
     if not a.no_commit:
         commit_json()
