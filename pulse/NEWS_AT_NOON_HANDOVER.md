@@ -1245,3 +1245,40 @@ those callbacks ... and where I've integrated context." Study:
   `login_status.py` now probes a Bloomberg article and reports `blocked`.
 - History (pulse.db): WSJ via Browserbase gave full bodies for 30-70% of items until 14 Oct, then 5/76 and
   1/44; Bloomberg gave 0 full bodies on nearly every day since 11 Sep (robot pages stored as bodies).
+
+## Status 16 Oct 2026 (later): chart updater for callbacks
+
+Owner's rule (16 Oct 2026): "You are putting in charts that are like years old and obviously need to be updated.
+In some cases they don't really need to be updated ... We need to integrate into the system an updater. It needs to
+be clever to figure out whether that chart needs updating or not." Commits 9d9f7d9, 03aefa4, 6a53771.
+
+- **Classification** (`editor/own_chart_meta.py`). Sonnet 5.5 reads each hosted chart once with its piece's title,
+  date and caption (cache `OwnPublications/chart_meta.json`, keyed by image sha1; first run $3.16 for 450 charts):
+  `chart_kind` (282 time-series, 160 static, 8 unclear), `title_lines`, `labels`, `sources` as printed,
+  `last_period` / `last_period_date`, `update_frequency`, `description`. Written into the parquet and the JSON
+  (`own_chart_meta.py apply`). Calibration: lock-in chart time-series (ends 2022 Q4, stale), carpenters/brickmasons
+  static, OECD bond yields time-series (ends Aug 2026, stale).
+- **Staleness** (`analysis/own_callbacks.chart_needs_refresh`, one copy for GitHub and the server): time series whose
+  last period is older than 3 months; 30 days for daily/weekly data, 60 days monthly, 14 months annual; never while
+  the piece is younger than that window. The plain 3-month rule would have kept the bond chart (6 weeks old).
+- **Builders.** Printed title or 2+ labels found in a script (server projects read directly; Mac by Spotlight
+  over ssh, cached per phrase), date-proximity scored. 50 of 282 time-series charts (9 server, 41 Mac); 2021-2024
+  pieces mostly have none (Excel/Illustrator era). Builders dated more than 45 days from the piece are never
+  re-run automatically. Hand recipes for charts whose builder cannot run as is: `OwnPublications/chart_recipes.json`.
+- **Updater** (`editor/own_chart_refresh.py`, `POST /api/own-chart-refresh`, auth header `x-refresh-token` = HMAC of
+  PULSE_UNSUB_SECRET, so no new secret or workflow change). Order: not needed -> reuse a refresh < 7 days old ->
+  newer rendering in the corpus or the builder's outputs/ -> recipe or builder re-run in a scratch copy
+  (`~/work/noon/chart_refresh_scratch/`), checked by Sonnet 5.5 (same title, later period) -> `stale-unrefreshable`.
+  Hosted at `images/own/<slug>/<n>_YYYYMMDD.png`; originals untouched. State `OwnPublications/chart_refresh_state.json`,
+  log `~/work/noon/logs/chart_refresh.jsonl`, weekly line in `ownpubs.log` (Sunday run).
+- **Callback stage.** Each applied callback resolves its chart (`resolve_callback_chart`): static/recent as is, else
+  current_url if refreshed within 7 days, else the server updater (90 s). No current chart -> sentence without chart
+  (trailing colon -> period); a sentence that points at "my chart" is dropped. The writer is told the chart may be
+  newer than the piece. Log: `applied_callbacks[].chart_shown` / `chart_why`.
+- **Today's draft** (version 2 -> 3): entry 1 and entry 15 images replaced by the refreshed lock-in (FHFA NMDB through
+  Q2 2026, rebuilt to the 2023 spec: original was Excel, its "Case-Shiller" source label was wrong) and bond-yields
+  chart (original builder chain re-run; source note dated September / US 14 Oct). Sentences untouched. Copies:
+  `OVH/2026_10_16_ChartRefresh/outputs/*_v1.png`.
+- **Watch.** The first `chart_refresh.jsonl` lines include two test failures (hangover chart under an older threshold;
+  miami piece, no builder). The bond recipe takes about 60 s of the 90 s cap. If the classifier ever reads the bond
+  chart as monthly rather than daily, it becomes stale only after 60 days.
