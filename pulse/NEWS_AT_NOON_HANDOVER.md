@@ -1314,3 +1314,33 @@ be clever to figure out whether that chart needs updating or not." Commits 9d9f7
   (about 10:50) and Maestral syncs, so the 10:30/10:35 runs cover stories collected up to 04:30 UTC (and anything
   earlier), and stories first collected at 10:30 are read at 11:00 at the earliest, which may miss the re-collect.
 - First runs (16 Oct, 14:40 and 14:50 UTC): 50 fetched, 0 failed, 1,247-10,857 chars after trimming.
+
+## Status 16 Oct 2026 (later): chart replicator for old charts with no builder
+
+Owner's request (16 Oct 2026): "A lot of the old charts are stale and they were not built by script but still you can
+recognize what they are and rebuild them. You can replicate them." Model: the lock-in rebuild from FHFA NMDB. Commit fa83091.
+
+- **Project** `OVH/2026_10_16_ChartReplicas` (Dropbox, not git). `scripts/he_replica.py` = house-style chart library
+  (Chart lines/bars/areas/scatter, HBarChart, SmallMultiples, Heatmap; 960x987, Oracle, nothing under 20px, plot inset
+  clear of the y labels, one-line subtitle, two-line source, raises if data falls outside the y axis). `scripts/he_data.py`
+  = data lake first, then FRED / Zillow research files / BLS / Census / any URL, cached as ZSTD parquet in `data/`,
+  polite (FRED 0.6 s, other hosts 3 s, no proxy).
+- **Pipeline.** `02_extract_specs.py`: one Sonnet 5.5 vision call per unscripted time-series chart (232) -> `data/specs/`
+  (type, series, transformation, printed vs best source, axes, landmarks, topic, confidence 1-5). `04_replicate.py`:
+  Sonnet 5.5 tool-use agent writes `scripts/<stem>.py`, runs drafts, looks at them; a second Sonnet 5.5 call compares
+  original and replica (type, series, 2-3 landmark values, shape, source, text, gap, layout); one repair round; final
+  render to `outputs/<stem>_v1.png` (never overwritten). Queue in `data/queue.json` (housing core topics and the last 24
+  months first); registry `data/replicas.json`; spend `data/spend.jsonl`. `05_register.py` exports
+  `OwnPublications/chart_replicas.json` and rewrites the corpus; `05_register.py approve SLUG/N` registers a needs-review
+  replica. `06_gallery.py` -> `outputs/review.html`. `09_rerender.py` / `10_postpass.py` re-render to the next version.
+- **Updater.** `own_chart_refresh.load_recipes()` turns replicated/approved entries into recipes; a needs-review entry
+  returns stale-unrefreshable "awaits the owner's approval". Tested: the-condo-crisis/1 refreshed in 6.8 s (Jan 2026 -> Sep 2026).
+- **First run.** 232 specs (confidence 1: 2, 2: 37, 3: 111, 4: 77, 5: 5). 78 charts attempted (plus 7 second copies of
+  the same chart in paid/free versions): 12 replicated, 38 needs-review, 16 unreplicable, 12 deferred (maps; no map helper).
+  $18.36 of model spend. 152 still queued (103 buildable, 17 maps/tables, 32 low-confidence).
+- **Watch.** NAR existing-home sales history is no longer public (FRED keeps 13 months); six charts fail on it. The BLS
+  key in CLAUDE.md is rejected as invalid; `he_data.bls` falls back to the keyless API (25 queries a day). Four Zillow lake
+  files had no refresh sidecar and stopped in April 2026; two were refreshed (`08_refresh_stale_zillow_lake.py`), the
+  daily refresher still does not cover them, `Metro_zhvi_sfr_tier_0.33_0.67` is 404 at Zillow and
+  `Metro_zhvi_sfr_time_series.parquet` holds an XML error page. Many needs-review entries are old Week in Review charts
+  whose titles state a claim the current data no longer supports.
