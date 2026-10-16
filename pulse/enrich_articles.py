@@ -54,6 +54,7 @@ _CHROME_PROFILES = ["Default"] + [f"Profile {i}" for i in range(1, 6)]
 
 # Sites known to block headless even with valid cookies — skip them
 SKIP_DOMAINS = {
+    "bloomberg.com",  # bodies come from the Mac Chrome job (bloomberg_bodies.py); Browserbase only gets robot pages (16 Oct 2026)
     "google.com", "google.news.com", "t.co", "twitter.com", "x.com",
     "linkedin.com", "facebook.com",
     # CoStar is a commercial-real-estate trade publication behind a hard

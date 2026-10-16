@@ -56,7 +56,7 @@ CHROME_SITES = [
     ("WSJ", "article bodies via the Reader (enrich_articles READER_HOSTS) and ad hoc reads", "https://www.wsj.com/", ["sign out", "my account"], ["sign out"], ["sign in"]),
     ("NYT", "ad hoc reads (live_tab_fetch.py, paywall_fetch.py)", "https://www.nytimes.com/", ["account", "log out"], [], ["log in", "subscribe for"]),
     ("FT", "ad hoc reads (live_tab_fetch.py)", "https://www.ft.com/", ["my account", "myft", "sign out"], [], ["sign in"]),
-    ("Bloomberg", "article bodies via the Reader (enrich_articles READER_HOSTS) and ad hoc reads",
+    ("Bloomberg", "ad hoc reads only; article bodies come from the Mac Chrome job (bloomberg_bodies.py)",
      "https://www.bloomberg.com/news/articles/2026-10-15/dubai-builds-up-financial-center-with-more-office-space",
      ["account", "sign out"], [], ["sign in"]),  # an article page: the homepage renders even when articles are bot-checked
     ("Economist", "ad hoc reads (live_tab_fetch.py)", "https://www.economist.com/", ["log out", "manage account"], [], ["log in"]),
@@ -68,8 +68,8 @@ CHROME_SITES = [
 BROWSERBASE_SITES = {"wsj.com": "WSJ", "nytimes.com": "NYT", "ft.com": "FT"}
 BROWSERBASE_USED_BY = "enrich_articles.py article bodies (GitHub Actions)"
 NOTES = [
-    "WSJ and Bloomberg article bodies are read through the server Chrome (Reader service) since 16 Oct 2026; "
-    "a Bloomberg bot check in that browser means no Bloomberg bodies until it is cleared.",
+    "WSJ article bodies are read through the server Chrome (Reader service) since 16 Oct 2026; Bloomberg bodies "
+    "come from Aziz's Mac Chrome (noon-bloomberg.timer), so a Bloomberg bot check here does not affect them.",
     "Bloomberg and Economist article bodies in the pipeline also go through the Browserbase context, "
     "but enrich_articles.py checks only NYT, FT and WSJ there, so their Browserbase login is not known.",
 ]
