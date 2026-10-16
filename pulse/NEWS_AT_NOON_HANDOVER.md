@@ -1282,3 +1282,35 @@ be clever to figure out whether that chart needs updating or not." Commits 9d9f7
 - **Watch.** The first `chart_refresh.jsonl` lines include two test failures (hangover chart under an older threshold;
   miami piece, no builder). The bond recipe takes about 60 s of the 90 s cap. If the classifier ever reads the bond
   chart as monthly rather than daily, it becomes stale only after 60 days.
+
+## Status 16 Oct 2026 (evening): Bloomberg bodies from the owner's Mac Chrome
+
+- **Why.** Bloomberg challenges every automated load from the server, the server Chrome and Browserbase. The owner is a
+  paying subscriber and his own Mac Chrome, reachable from the server over the Tailscale CDP relay
+  (`mac-ts-ip`, port 9222 on the Mac; not the server's decoy 9222), returns the full article. The Mac is kept awake
+  permanently (`caffeinate -dimsu`).
+- **Job.** `pulse/editor/bloomberg_bodies.py`, run by `noon-bloomberg.timer` every 30 minutes around the clock plus
+  10:35 UTC. If the Mac does not answer in 5 s it records that and exits. Otherwise it picks Bloomberg items from the
+  synced pulse.db (read-only) collected in the last 36 h whose body is under 500 chars or a wall page, highest relevance
+  then newest, at most 25 per run (15 for runs starting 10:20-10:50 UTC). Each article is read in one background tab
+  (created with background=True, never activated, closed afterwards), 6 s apart. Bloomberg's page controls and
+  related-story lists are trimmed (`clean_bloomberg`) so the opening the classifiers read is the article.
+  Files: feed `~/work/noon/feeds_private/bloomberg_bodies.xml` (60 newest, served only on the private path),
+  cache `~/work/noon/bloomberg_bodies_cache.json`, attempts `~/work/noon/bloomberg_bodies_state.json` (3 tries per URL),
+  status `~/work/noon/bloomberg_bodies_status.json` and a public copy at `/feeds/bloomberg_bodies_status.json`
+  (no article text). Log `~/work/noon/logs/bloomberg_bodies.log`.
+- **Collector.** `bloomberg_bodies.xml` is in `PRIVATE_FEEDS` and the OPML. Items from private feeds now upgrade the
+  stored body of rows with the same URL (`store._upgrade_body`) when the new body is at least 500 chars longer, set
+  enrich_mode (`mac-chrome`; Goldman `server-chrome`), clear `classified_at` and delete the
+  `trigger_classifier_cache` row so both classifiers re-score the item (they read the first 500 and 400 chars of the
+  body). `content_hash` is left as stored. `bloomberg_bodies.xml` never inserts new rows. Collector bodies are still
+  capped at 8,000 chars. Verified on a dev snapshot: 25 of 25 rows upgraded (166-654 chars to 1,247-8,000), a second
+  pass changed nothing; Bloomberg full bodies in health 2.2 went from 0/81 to 23/81 on that snapshot.
+- **Health 2.2** has a row "Bloomberg bodies via the owner's Mac Chrome": reachable at last run, bodies fetched and
+  failures in 24 h, with a note when the status file is over 2 h old.
+- `enrich_articles.py` READER_HOSTS default is now `wsj.com` only.
+- **Timing.** The 11:00 UTC synthesis re-collects the private feeds at about 11:05, so bodies written by then reach
+  that morning's brief. The server's copy of pulse.db only gains the 10:30 collection's items after that run uploads
+  (about 10:50) and Maestral syncs, so the 10:30/10:35 runs cover stories collected up to 04:30 UTC (and anything
+  earlier), and stories first collected at 10:30 are read at 11:00 at the earliest, which may miss the re-collect.
+- First runs (16 Oct, 14:40 and 14:50 UTC): 50 fetched, 0 failed, 1,247-10,857 chars after trimming.
