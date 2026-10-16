@@ -67,6 +67,31 @@ SKIP_DOMAINS = {
 # Minimum body length to consider "already enriched"
 MIN_BODY_LEN = 500
 
+# Hosts read through the server's Reader service (logged-in server Chrome) rather than
+# Browserbase: WSJ hard-blocks Browserbase's address, Bloomberg serves it a bot check
+# (owner, 16 Oct 2026). READER_URL like https://queue.homeeconomics.us/read, READER_TOKEN its key.
+READER_URL = os.environ.get("READER_URL", "").rstrip("/")
+READER_TOKEN = os.environ.get("READER_TOKEN", "")
+READER_HOSTS = tuple(h for h in os.environ.get("READER_HOSTS", "wsj.com,bloomberg.com").split(",") if h)
+READER_GAP_SECONDS = 3.0
+
+
+def _reader_fetch(url: str) -> tuple[str, str]:
+    """(text, title) from the Reader service, or ("", "") when unavailable or thin."""
+    if not (READER_URL and READER_TOKEN):
+        return "", ""
+    import urllib.request, urllib.parse, json as _json
+    q = f"{READER_URL}?k={urllib.parse.quote(READER_TOKEN)}&format=json&url={urllib.parse.quote(url, safe='')}"
+    try:
+        with urllib.request.urlopen(urllib.request.Request(q, headers={"User-Agent": "pulse-enrich"}), timeout=150) as r:
+            d = _json.loads(r.read().decode("utf-8", "replace"))
+        text = (d.get("text") or "").strip()
+        return (text, d.get("title") or "") if len(text) >= MIN_BODY_LEN and not _is_blocked_page(text) else ("", d.get("title") or "")
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"  READER error {url[:60]}: {type(e).__name__}: {e}"[:200])
+        return "", ""
+
+
 # Pages that are a wall, not an article. Matched against the first 300 lowercased characters.
 _BLOCKED_PAGE_MARKERS = (
     "are you a robot?", "we've detected unusual activity from your computer network",
@@ -562,6 +587,16 @@ async def _enrich_batch(items: list[dict], dry_run: bool = False
             domain = parsed.netloc.lower().lstrip("www.")
             if any(domain == skip or domain.endswith("." + skip) for skip in SKIP_DOMAINS):
                 logger.info(f"  SKIP {domain}: {title}")
+                continue
+
+            if READER_URL and READER_TOKEN and any(domain == h or domain.endswith("." + h) for h in READER_HOSTS):
+                text, _rt = _reader_fetch(url)
+                await asyncio.sleep(READER_GAP_SECONDS)
+                if text:
+                    results[item_id] = {"body": text[:8000], "links": [], "mode": "server-chrome"}
+                    logger.info(f"  OK-READER ({len(text)}c) {domain}: {title}")
+                else:
+                    logger.info(f"  THIN-READER {domain}: {title}")
                 continue
 
             page = None
