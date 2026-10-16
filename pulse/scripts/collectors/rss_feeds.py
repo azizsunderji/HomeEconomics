@@ -192,7 +192,14 @@ def collect(
     # so no secret is committed; the real copy is at FEED_PRIVATE_BASE/<file>, where
     # FEED_PRIVATE_BASE carries the NOON_PRIVATE_TOKEN path secret (GitHub Actions secret).
     _private_base = _os.environ.get("FEED_PRIVATE_BASE", "").rstrip("/")
-    PRIVATE_FEEDS = {"gs_research.xml"}
+    PRIVATE_FEEDS = {"gs_research.xml", "bloomberg_bodies.xml"}
+    # Private feeds carry full text. Their items UPGRADE the stored body of a row with the same URL
+    # (store.upsert_item) instead of being dropped as duplicates; the value is the enrich_mode written.
+    # bloomberg_bodies.xml (16 Oct 2026, owner: Bloomberg bodies read in his own Mac Chrome) only
+    # upgrades existing rows and never inserts new ones; its items are copies of corpus rows.
+    UPGRADE_MODE = {"gs_research.xml": "server-chrome", "bloomberg_bodies.xml": "mac-chrome"}
+    UPGRADE_ONLY = {"bloomberg_bodies.xml"}
+    PRIVATE_MAX_PER_FEED = 60   # bloomberg_bodies.xml holds up to 60 items
 
     def _private_url(url: str) -> Optional[str]:
         """Private URL for a noon.homeeconomics.us/feeds/<file> feed, else None."""
@@ -309,10 +316,14 @@ def collect(
                 continue
 
             count = 0
-            for entry in parsed.entries[:max_per_feed]:
+            feed_file = urlparse(feed_info["url"].strip()).path.rsplit("/", 1)[-1] if priv else ""
+            upgrade_mode = UPGRADE_MODE.get(feed_file) if feed_file in PRIVATE_FEEDS else None
+            for entry in parsed.entries[:max(max_per_feed, PRIVATE_MAX_PER_FEED) if upgrade_mode else max_per_feed]:
                 raw_url = entry.get("link", "")
                 url = _canonical_url(raw_url)
-                if not url or url in seen_urls:
+                # A full-text private item for a URL another feed already gave this run is kept: it
+                # upgrades that item's teaser body after both are stored.
+                if not url or (url in seen_urls and not upgrade_mode):
                     continue
 
                 published = _parse_date(entry)
@@ -349,6 +360,10 @@ def collect(
                     feed_priority=feed_info["priority"],
                     platform_tags=[feed_info["folder"]] if feed_info["folder"] else [],
                 )
+                if upgrade_mode:
+                    # Plain attributes, not dataclass fields: asdict() (the stored columns) ignores them.
+                    item.body_upgrade_mode = upgrade_mode
+                    item.body_upgrade_only = feed_file in UPGRADE_ONLY
                 items.append(item)
                 count += 1
 

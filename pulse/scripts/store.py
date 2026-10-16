@@ -192,10 +192,53 @@ def _safe_add_columns(conn: sqlite3.Connection) -> None:
 
 # ── Item CRUD ─────────────────────────────────────────────────────────────────
 
+# Body upgrades from private full-text feeds (16 Oct 2026, owner: Bloomberg bodies read in his own
+# Mac Chrome replace the stored teasers). A row is upgraded when the new body is at least
+# UPGRADE_MIN_GAIN chars longer. The upgraded row gets classified_at = NULL and loses its trigger
+# classifier cache entry, because both classifiers read the opening of the body (classify.py the
+# first 500 chars, trigger_classifier.py the first 400): the next classification pass re-scores it.
+# content_hash (title + first 200 body chars) is left as stored so cross-run dedup is unchanged.
+UPGRADE_MIN_GAIN = 500
+UPGRADE_WINDOW_DAYS = 10
+BODY_UPGRADES = 0  # upgraded rows in this process (bulk_upsert reports it)
+
+
+def _upgrade_body(conn: sqlite3.Connection, url: str, body: str, mode: str) -> list[int]:
+    """Replace shorter stored bodies of recent rows with this URL. Returns the upgraded row ids."""
+    global BODY_UPGRADES
+    if not url or not body:
+        return []
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=UPGRADE_WINDOW_DAYS)).isoformat()
+    rows = conn.execute(
+        "SELECT id FROM items WHERE collected_at >= ? AND url = ? "
+        "AND LENGTH(COALESCE(body, '')) + ? <= ?",
+        (cutoff, url, UPGRADE_MIN_GAIN, len(body)),
+    ).fetchall()
+    ids = [r["id"] for r in rows]
+    for item_id in ids:
+        try:
+            conn.execute("UPDATE items SET body = ?, enrich_mode = ?, classified_at = NULL WHERE id = ?",
+                         (body, mode, item_id))
+        except sqlite3.OperationalError:  # older DB without enrich_mode
+            conn.execute("UPDATE items SET body = ?, classified_at = NULL WHERE id = ?", (body, item_id))
+        try:
+            conn.execute("DELETE FROM trigger_classifier_cache WHERE item_id = ?", (item_id,))
+        except sqlite3.OperationalError:
+            pass
+    if ids:
+        conn.commit()
+        BODY_UPGRADES += len(ids)
+    return ids
+
+
 def upsert_item(conn: sqlite3.Connection, item: PulseItem) -> tuple[int, bool]:
-    """Insert item if new, skip if duplicate. Returns (row_id, is_new)."""
+    """Insert item if new, skip if duplicate. Returns (row_id, is_new).
+
+    Items from private full-text feeds (attribute body_upgrade_mode, set in rss_feeds.py) upgrade
+    the stored body of rows with the same URL instead of being dropped as duplicates."""
     d = item.to_dict()
     d["content_hash"] = item.content_hash
+    upgrade_mode = getattr(item, "body_upgrade_mode", None)
 
     # Check for exact source+source_id dupe
     existing = conn.execute(
@@ -204,7 +247,19 @@ def upsert_item(conn: sqlite3.Connection, item: PulseItem) -> tuple[int, bool]:
     ).fetchone()
 
     if existing:
+        if upgrade_mode:
+            _upgrade_body(conn, d["url"], d["body"], upgrade_mode)
         return existing["id"], False
+
+    if upgrade_mode:
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=UPGRADE_WINDOW_DAYS)).isoformat()
+        same_url = conn.execute("SELECT id FROM items WHERE collected_at >= ? AND url = ? ORDER BY id DESC LIMIT 1",
+                                (cutoff, d["url"])).fetchone()
+        if same_url:
+            _upgrade_body(conn, d["url"], d["body"], upgrade_mode)
+            return same_url["id"], False
+        if getattr(item, "body_upgrade_only", False):
+            return 0, False
 
     # Check for content hash dupe (cross-platform)
     hash_dupe = conn.execute(
@@ -238,12 +293,15 @@ def bulk_upsert(conn: sqlite3.Connection, items: list[PulseItem]) -> tuple[int, 
     """Upsert many items. Returns (new_count, dupe_count)."""
     new_count = 0
     dupe_count = 0
+    before = BODY_UPGRADES
     for item in items:
         _, is_new = upsert_item(conn, item)
         if is_new:
             new_count += 1
         else:
             dupe_count += 1
+    if BODY_UPGRADES > before:
+        print(f"bodies upgraded from private full-text feeds: {BODY_UPGRADES - before}", flush=True)
     return new_count, dupe_count
 
 
