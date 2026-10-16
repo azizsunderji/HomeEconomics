@@ -893,8 +893,8 @@ def add_callbacks_and_context(entries: list[dict], as_of: str, oai, anthropic_cl
             why = f"over the edition cap of {MAX_CALLBACKS}"
         elif not re.search(r"\b(?:I|my|My|me)\b", sent):
             why = "not in the first person"
-        elif re.search(r"[:\u2014-]\s*\[here\]", sent) or re.sub(r"\]\([^)]*\)", "]", sent).count(":") > 1:
-            why = "bare [here] after a colon or dash, or two colons"
+        elif re.search(r"[:\u2014-]\s*\[here\]", sent) or re.sub(r"\]\([^)]*\)", "]", sent).rstrip().rstrip(":").count(":") > 1:
+            why = "bare [here] after a colon or dash, or more than one internal colon"
         else:
             urls = _md_link_urls(sent)
             if not urls:
