@@ -209,6 +209,49 @@ def draft_pdf(request: Request, date: str, tier: str = "premium"):
                                  "Content-Disposition": f"inline; filename=\"Housing at Noon {date}.pdf\""})
 
 
+# ── own-chart updater (owner, 16 Oct 2026) ─────────────────────────────
+# "We need to integrate into the system an updater. It needs to be clever to figure out whether that chart needs
+# updating or not." The callback stage (GitHub Actions) asks here when a callback's chart is an out-of-date time
+# series; own_chart_refresh.py decides, re-renders and hosts. Auth: x-refresh-token (HMAC of PULSE_UNSUB_SECRET,
+# which both sides already hold) or the editor session.
+_REFRESH_LOCKS: dict[str, threading.Lock] = {}
+
+
+def _refresh_token() -> str:
+    import hmac
+    sec = os.environ.get("PULSE_UNSUB_SECRET", "")
+    return hmac.new(sec.encode(), b"own-chart-refresh", hashlib.sha256).hexdigest() if sec else ""
+
+
+@app.post("/api/own-chart-refresh")
+def own_chart_refresh_api(request: Request, body: dict[str, Any] = Body(...)):
+    import hmac
+    want = _refresh_token()
+    if not ((want and hmac.compare_digest(request.headers.get("x-refresh-token", ""), want)) or _authed(request)):
+        raise HTTPException(status_code=401, detail="not authorised")
+    slug = str(body.get("slug") or "")
+    try:
+        n = int(body.get("n") or 0)
+    except (TypeError, ValueError):
+        n = 0
+    as_of = str(body.get("as_of") or "")[:10] or None
+    if not re.fullmatch(r"[a-z0-9-]{1,200}", slug) or n < 1 or (as_of and not re.fullmatch(r"\d{4}-\d{2}-\d{2}", as_of)):
+        raise HTTPException(status_code=400, detail="slug, n, as_of")
+    timeout = max(20, min(int(body.get("timeout") or 90), 90))
+    import own_chart_refresh
+    lock = _REFRESH_LOCKS.setdefault(f"{slug}/{n}", threading.Lock())
+    if not lock.acquire(timeout=timeout):
+        return JSONResponse({"status": "stale-unrefreshable", "current_url": None, "reason": "another refresh of this chart is running"})
+    try:
+        res = own_chart_refresh.refresh_and_record(slug, n, as_of=as_of, timeout=timeout)
+    except Exception as e:  # noqa: BLE001
+        logger.exception("own-chart refresh failed")
+        res = {"status": "stale-unrefreshable", "current_url": None, "reason": f"{type(e).__name__}: {e}"[:300]}
+    finally:
+        lock.release()
+    return JSONResponse(res)
+
+
 @app.get("/health")
 def health():
     return {"ok": True, "send_mode": paths.SEND_MODE, "today": drafts.today_et()}
