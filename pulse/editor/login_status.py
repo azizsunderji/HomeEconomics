@@ -53,10 +53,12 @@ GS_SEARCH = ("https://publishing.gs.com/content/research/site/search.html?facets
 # when every out_text marker is present and no signed-in marker is. Markers seen on 2026-09-24.
 CHROME_SITES = [
     ("Goldman Sachs Research", "gs_feed.py (Goldman Sachs Research feed)", GS_SEARCH, [], ["search results:"], []),
-    ("WSJ", "ad hoc reads (live_tab_fetch.py)", "https://www.wsj.com/", ["sign out", "my account"], ["sign out"], ["sign in"]),
+    ("WSJ", "article bodies via the Reader (enrich_articles READER_HOSTS) and ad hoc reads", "https://www.wsj.com/", ["sign out", "my account"], ["sign out"], ["sign in"]),
     ("NYT", "ad hoc reads (live_tab_fetch.py, paywall_fetch.py)", "https://www.nytimes.com/", ["account", "log out"], [], ["log in", "subscribe for"]),
     ("FT", "ad hoc reads (live_tab_fetch.py)", "https://www.ft.com/", ["my account", "myft", "sign out"], [], ["sign in"]),
-    ("Bloomberg", "ad hoc reads (live_tab_fetch.py)", "https://www.bloomberg.com/", ["account", "sign out"], [], ["sign in"]),
+    ("Bloomberg", "article bodies via the Reader (enrich_articles READER_HOSTS) and ad hoc reads",
+     "https://www.bloomberg.com/news/articles/2026-10-15/dubai-builds-up-financial-center-with-more-office-space",
+     ["account", "sign out"], [], ["sign in"]),  # an article page: the homepage renders even when articles are bot-checked
     ("Economist", "ad hoc reads (live_tab_fetch.py)", "https://www.economist.com/", ["log out", "manage account"], [], ["log in"]),
     ("Substack", "ad hoc reads of paid posts (paywall_fetch.py, live_tab_fetch.py)",
      "https://homeeconomics.substack.com/p/manhattan-is-densifying-again", ["dashboard"], [],
@@ -66,6 +68,8 @@ CHROME_SITES = [
 BROWSERBASE_SITES = {"wsj.com": "WSJ", "nytimes.com": "NYT", "ft.com": "FT"}
 BROWSERBASE_USED_BY = "enrich_articles.py article bodies (GitHub Actions)"
 NOTES = [
+    "WSJ and Bloomberg article bodies are read through the server Chrome (Reader service) since 16 Oct 2026; "
+    "a Bloomberg bot check in that browser means no Bloomberg bodies until it is cleared.",
     "Bloomberg and Economist article bodies in the pipeline also go through the Browserbase context, "
     "but enrich_articles.py checks only NYT, FT and WSJ there, so their Browserbase login is not known.",
 ]
@@ -91,7 +95,7 @@ def judge(url: str, info: dict, links: list[str], has_pw: bool, in_links, in_tex
         return "unknown", f"page did not render ({len(text)} chars)"
     bot = [b for b in BOT if b in text[:4000]]
     if bot:
-        return "unknown", f"bot check shown ({bot[0]}); not retried"
+        return "blocked", f"bot check shown ({bot[0]}): open the page in browser.homeeconomics.us and tick the box"
     if urllib.parse.urlsplit(final).netloc != urllib.parse.urlsplit(url).netloc or LOGIN_URL.search(urllib.parse.urlsplit(final).path):
         if has_pw or LOGIN_URL.search(final):
             return "logged_out", f"redirected to a login page ({urllib.parse.urlsplit(final).netloc})"
@@ -158,7 +162,7 @@ def browserbase_rows() -> list[dict]:
     for key, name in BROWSERBASE_SITES.items():
         r = by_site.get(key)
         rows.append({"site": name, "mechanism": "browserbase", "used_by": BROWSERBASE_USED_BY,
-                     "status": (r["status"] if r and r["status"] in ("logged_in", "logged_out") else "unknown"),
+                     "status": (r["status"] if r and r["status"] in ("logged_in", "logged_out", "blocked") else "unknown"),
                      "detail": (f"enrich_articles.py check: {r['detail'][:150]}" if r else "no check recorded in pulse.db"),
                      "checked_at": (r["checked_at"] if r else None)})
     return rows
