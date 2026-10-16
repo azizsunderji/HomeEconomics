@@ -1000,6 +1000,39 @@ def probe_server_logins(stage: Stage, conn: sqlite3.Connection) -> None:
         stage.note(f"login_status.json is {age_h:.0f}h old — noon-loginstatus.timer may not be running")
 
 
+BLOOMBERG_STATUS_URL = "https://noon.homeeconomics.us/feeds/bloomberg_bodies_status.json"
+
+
+def _bloomberg_mac_row(stage: Stage) -> None:
+    """Row for pulse/editor/bloomberg_bodies.py (16 Oct 2026, owner): Bloomberg bodies read in the
+    owner's Mac Chrome over Tailscale, published as a private full-text feed that upgrades the
+    stored teasers. The per-host full-body row for bloomberg.com above shows the effect."""
+    label = "Bloomberg bodies via the owner's Mac Chrome"
+    try:
+        r = httpx.get(BLOOMBERG_STATUS_URL, timeout=HTTP_TIMEOUT, follow_redirects=True)
+        if r.status_code != 200:
+            stage.row(label, f"status unavailable (HTTP {r.status_code})")
+            return
+        st = r.json()
+    except Exception as e:  # noqa: BLE001
+        stage.row(label, f"status unavailable ({type(e).__name__})")
+        return
+    last = (st.get("last_run") or "")[:16].replace("T", " ")
+    if st.get("mac_reachable"):
+        reach = f"Mac reachable at last run ({last}Z)"
+    else:
+        seen = (st.get("last_reachable_at") or "never")[:16].replace("T", " ")
+        reach = f"Mac NOT reachable at last run ({last}Z; last reachable {seen}Z)"
+    stage.row(label, f"{reach} · {_fmt_int(st.get('fetched_24h', 0))} bodies fetched in 24h · "
+                     f"{_fmt_int(st.get('failed_24h', 0))} failures")
+    try:
+        age_h = (datetime.now(timezone.utc) - datetime.fromisoformat(st["last_run"])).total_seconds() / 3600
+        if age_h > 2:
+            stage.note(f"bloomberg_bodies_status.json is {age_h:.0f}h old — noon-bloomberg.timer may not be running")
+    except (KeyError, ValueError, TypeError):
+        pass
+
+
 def probe_article_enrichment(stage: Stage, conn: sqlite3.Connection) -> None:
     """Enrichment status across all sources `enrich_articles.py` targets.
 
@@ -1123,6 +1156,7 @@ def probe_article_enrichment(stage: Stage, conn: sqlite3.Connection) -> None:
                 weak_hosts.append(f"{dom} ({full}/{tot})")
         if blocked:
             stage.row("bot-check pages stored as bodies (24h)", _fmt_int(blocked))
+    _bloomberg_mac_row(stage)
     if total == 0:
         stage.set(STATUS_WARN, "no items to enrich")
     elif weak_hosts:
