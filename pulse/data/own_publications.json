@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-10-16T15:51:16+00:00",
+ "generated_at": "2026-10-16T16:35:35+00:00",
  "note": "Owner's own publications for callbacks (pulse/editor/own_publications.py). Charts are hosted on noon.homeeconomics.us.",
  "posts": [
   {
@@ -558,7 +558,7 @@
      "current_url": null,
      "refreshed_at": null,
      "refresh_status": "stale-unrefreshable",
-     "replica_status": "needs-review"
+     "replica_status": "approved"
     }
    ]
   },
@@ -586,7 +586,7 @@
      "current_url": null,
      "refreshed_at": null,
      "refresh_status": null,
-     "replica_status": "needs-review"
+     "replica_status": "approved"
     }
    ]
   },
@@ -961,7 +961,7 @@
      "current_url": null,
      "refreshed_at": null,
      "refresh_status": null,
-     "replica_status": "needs-review"
+     "replica_status": "approved"
     }
    ]
   },
@@ -1465,7 +1465,7 @@
      "current_url": null,
      "refreshed_at": null,
      "refresh_status": null,
-     "replica_status": "needs-review"
+     "replica_status": "approved"
     }
    ]
   },
@@ -1494,7 +1494,7 @@
      "current_url": null,
      "refreshed_at": null,
      "refresh_status": null,
-     "replica_status": "needs-review"
+     "replica_status": "approved"
     }
    ]
   },
@@ -2489,7 +2489,7 @@
      "current_url": null,
      "refreshed_at": null,
      "refresh_status": null,
-     "replica_status": "needs-review"
+     "replica_status": "approved"
     }
    ]
   },
@@ -2813,7 +2813,7 @@
      "current_url": null,
      "refreshed_at": null,
      "refresh_status": null,
-     "replica_status": "needs-review"
+     "replica_status": "approved"
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/our-national-5-year-home-price-forecast/4.png",
@@ -3395,7 +3395,7 @@
      "current_url": null,
      "refreshed_at": null,
      "refresh_status": null,
-     "replica_status": "needs-review"
+     "replica_status": "approved"
     }
    ]
   },
@@ -3504,7 +3504,7 @@
      "current_url": null,
      "refreshed_at": null,
      "refresh_status": null,
-     "replica_status": "needs-review"
+     "replica_status": "approved"
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/is-floridas-downturn-coming-for-the-rest-of-the-country/2.png",
@@ -3521,7 +3521,7 @@
      "current_url": null,
      "refreshed_at": null,
      "refresh_status": null,
-     "replica_status": "needs-review"
+     "replica_status": "approved"
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/is-floridas-downturn-coming-for-the-rest-of-the-country/3.png",
@@ -3538,7 +3538,7 @@
      "current_url": null,
      "refreshed_at": null,
      "refresh_status": null,
-     "replica_status": "needs-review"
+     "replica_status": "approved"
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/is-floridas-downturn-coming-for-the-rest-of-the-country/4.png",
@@ -3601,7 +3601,7 @@
      "current_url": null,
      "refreshed_at": null,
      "refresh_status": null,
-     "replica_status": "needs-review"
+     "replica_status": "approved"
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/is-floridas-downturn-coming-for-the/2.png",
@@ -3618,7 +3618,7 @@
      "current_url": null,
      "refreshed_at": null,
      "refresh_status": null,
-     "replica_status": "needs-review"
+     "replica_status": "approved"
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/is-floridas-downturn-coming-for-the/3.png",
@@ -3635,7 +3635,7 @@
      "current_url": null,
      "refreshed_at": null,
      "refresh_status": null,
-     "replica_status": "needs-review"
+     "replica_status": "approved"
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/is-floridas-downturn-coming-for-the/4.png",
@@ -4337,7 +4337,7 @@
      "current_url": null,
      "refreshed_at": null,
      "refresh_status": null,
-     "replica_status": "needs-review"
+     "replica_status": "approved"
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/why-does-the-anglosphere-suck-at/2.png",
@@ -4473,7 +4473,7 @@
      "current_url": null,
      "refreshed_at": null,
      "refresh_status": null,
-     "replica_status": "needs-review"
+     "replica_status": "approved"
     }
    ]
   },
@@ -4512,7 +4512,7 @@
      "current_url": null,
      "refreshed_at": null,
      "refresh_status": null,
-     "replica_status": "needs-review"
+     "replica_status": "approved"
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/what-determines-home-prices/2.png",
@@ -4530,7 +4530,7 @@
      "current_url": null,
      "refreshed_at": null,
      "refresh_status": null,
-     "replica_status": "needs-review"
+     "replica_status": "approved"
     }
    ]
   },
@@ -4559,7 +4559,7 @@
      "current_url": null,
      "refreshed_at": null,
      "refresh_status": null,
-     "replica_status": "needs-review"
+     "replica_status": "approved"
     }
    ]
   },
@@ -4769,7 +4769,7 @@
      "current_url": null,
      "refreshed_at": null,
      "refresh_status": null,
-     "replica_status": "needs-review"
+     "replica_status": "approved"
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/the-week-in-review-5ac/3.png",
@@ -4788,7 +4788,7 @@
      "current_url": null,
      "refreshed_at": null,
      "refresh_status": null,
-     "replica_status": "needs-review"
+     "replica_status": "approved"
     }
    ]
   },
@@ -4817,7 +4817,7 @@
      "current_url": null,
      "refreshed_at": null,
      "refresh_status": null,
-     "replica_status": "needs-review"
+     "replica_status": "approved"
     }
    ]
   },
@@ -4863,7 +4863,7 @@
      "current_url": null,
      "refreshed_at": null,
      "refresh_status": null,
-     "replica_status": "needs-review"
+     "replica_status": "approved"
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/runaway-rents-in-big-american-cities/3.png",
@@ -4881,7 +4881,7 @@
      "current_url": null,
      "refreshed_at": null,
      "refresh_status": null,
-     "replica_status": "needs-review"
+     "replica_status": "approved"
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/runaway-rents-in-big-american-cities/4.png",
@@ -4990,7 +4990,7 @@
      "current_url": null,
      "refreshed_at": null,
      "refresh_status": null,
-     "replica_status": "needs-review"
+     "replica_status": "approved"
     }
    ]
   },
@@ -5203,7 +5203,7 @@
      "current_url": null,
      "refreshed_at": null,
      "refresh_status": null,
-     "replica_status": "needs-review"
+     "replica_status": "approved"
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/the-week-in-review-9b8/4.png",
@@ -5383,7 +5383,7 @@
      "current_url": null,
      "refreshed_at": null,
      "refresh_status": null,
-     "replica_status": "needs-review"
+     "replica_status": "approved"
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/the-week-in-review-202/3.png",
@@ -5400,7 +5400,7 @@
      "current_url": null,
      "refreshed_at": null,
      "refresh_status": null,
-     "replica_status": "needs-review"
+     "replica_status": "approved"
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/the-week-in-review-202/4.png",
@@ -5417,7 +5417,7 @@
      "current_url": null,
      "refreshed_at": null,
      "refresh_status": null,
-     "replica_status": "needs-review"
+     "replica_status": "approved"
     }
    ]
   },
@@ -5508,7 +5508,7 @@
      "current_url": null,
      "refreshed_at": null,
      "refresh_status": null,
-     "replica_status": "needs-review"
+     "replica_status": "approved"
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/the-week-in-review-cac/3.png",
@@ -5525,7 +5525,7 @@
      "current_url": null,
      "refreshed_at": null,
      "refresh_status": null,
-     "replica_status": "needs-review"
+     "replica_status": "approved"
     }
    ]
   },
@@ -5766,7 +5766,7 @@
      "current_url": null,
      "refreshed_at": null,
      "refresh_status": null,
-     "replica_status": "needs-review"
+     "replica_status": "approved"
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/the-week-in-review-28a/2.png",
@@ -5800,7 +5800,7 @@
      "current_url": null,
      "refreshed_at": null,
      "refresh_status": null,
-     "replica_status": "needs-review"
+     "replica_status": "approved"
     }
    ]
   },
@@ -6121,7 +6121,7 @@
      "current_url": null,
      "refreshed_at": null,
      "refresh_status": null,
-     "replica_status": "needs-review"
+     "replica_status": "approved"
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/the-week-in-review-557/3.png",
@@ -6241,7 +6241,7 @@
      "current_url": null,
      "refreshed_at": null,
      "refresh_status": null,
-     "replica_status": "needs-review"
+     "replica_status": "approved"
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/the-week-in-review/2.png",
@@ -6284,7 +6284,7 @@
      "current_url": null,
      "refreshed_at": null,
      "refresh_status": null,
-     "replica_status": "needs-review"
+     "replica_status": "approved"
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/home-starts-more-like-home-stops/2.png",
@@ -6301,7 +6301,7 @@
      "current_url": null,
      "refreshed_at": null,
      "refresh_status": null,
-     "replica_status": "needs-review"
+     "replica_status": "approved"
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/home-starts-more-like-home-stops/3.png",
@@ -6431,7 +6431,7 @@
      "current_url": null,
      "refreshed_at": null,
      "refresh_status": null,
-     "replica_status": "needs-review"
+     "replica_status": "approved"
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/the-boomer-millennial-housing-battle/2.png",
@@ -6529,7 +6529,7 @@
      "current_url": null,
      "refreshed_at": null,
      "refresh_status": null,
-     "replica_status": "needs-review"
+     "replica_status": "approved"
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/housing-market-rolls-into-spring/2.png",
@@ -6547,7 +6547,7 @@
      "current_url": null,
      "refreshed_at": null,
      "refresh_status": null,
-     "replica_status": "needs-review"
+     "replica_status": "approved"
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/housing-market-rolls-into-spring/3.png",
@@ -6564,7 +6564,7 @@
      "current_url": null,
      "refreshed_at": null,
      "refresh_status": null,
-     "replica_status": "needs-review"
+     "replica_status": "approved"
     }
    ]
   },
@@ -6609,7 +6609,7 @@
      "current_url": null,
      "refreshed_at": null,
      "refresh_status": null,
-     "replica_status": "needs-review"
+     "replica_status": "approved"
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/home-sales-strength-behind-the-headlines/3.png",

@@ -1344,3 +1344,17 @@ recognize what they are and rebuild them. You can replicate them." Model: the lo
   daily refresher still does not cover them, `Metro_zhvi_sfr_tier_0.33_0.67` is 404 at Zillow and
   `Metro_zhvi_sfr_time_series.parquet` holds an XML error page. Many needs-review entries are old Week in Review charts
   whose titles state a claim the current data no longer supports.
+
+## Status 16 Oct 2026 (later): chart replicas, styling fidelity pass
+
+Owner's rule (16 Oct 2026): "Remake these charts in our current style ... but replicate the original's chart-specific
+styling" (step lines, the cities he labelled, thin black arc leaders, axis titles with units). All 38 needs-review replicas
+were approved (05_register.py), so 55 are live (50 builders plus 5 second copies). Each of the 50 builders was compared
+with its original and restyled; new images are `outputs/<stem>_vN.png` (older versions kept); per-chart change notes in
+`OVH/2026_10_16_ChartReplicas/data/fidelity/<stem>.json`, merged into replicas.json by `11_merge_fidelity.py`, shown
+in `outputs/review.html`. Library additions (he_replica.py): set_canvas (landscape = 960x540 logical, rendered 1600x900),
+arc_label, y_title/x_title, per-point bubble radius and outline, custom(fn) hook; titles Bold 700, -0.7px. All 50
+builders re-run fresh in under 26 s. Download caches moved out of Dropbox to `~/.cache/he_replicas/`.
+Watch: several titles and notes were rewritten from current data where the original claim no longer holds (lock-in,
+job growth, vacancy, construction notes); `our_national_5_year_home_price_3.py` fetches Fannie Mae's HPI through the
+server Chrome (fanniemae.com refuses plain downloads).
