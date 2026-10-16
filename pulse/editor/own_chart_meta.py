@@ -48,6 +48,10 @@ logger = logging.getLogger("own_chart_meta")
 DATA_DIR = Path(os.environ.get("OWN_PUBS_DIR", "/home/aziz/OVH/Data/OwnPublications"))
 META_PATH = DATA_DIR / "chart_meta.json"
 STATE_PATH = DATA_DIR / "chart_refresh_state.json"     # written by own_chart_refresh.py
+# Rebuilt builders for charts that had none (OVH/2026_10_16_ChartReplicas, 04_replicate.py / 05_register.py):
+# {"slug/n": {"status": replicated | needs-review | unreplicable | approved | deferred | failed, "builder": path, ...}}
+REPLICAS_PATH = DATA_DIR / "chart_replicas.json"
+REPLICA_LIVE = ("replicated", "approved")               # needs-review registers only after the owner approves
 IMAGES_ROOT = Path(os.environ.get("NOON_IMAGES_DIR", str(Path.home() / "work" / "noon" / "images")))
 OWN_IMAGES = IMAGES_ROOT / "own"
 MODEL = os.environ.get("OWN_CHART_META_MODEL", "claude-sonnet-5-5")
@@ -86,6 +90,13 @@ def save_meta(m: dict) -> None:
 def load_state() -> dict:
     try:
         return json.loads(STATE_PATH.read_text())
+    except (OSError, ValueError):
+        return {}
+
+
+def load_replicas() -> dict:
+    try:
+        return {k: v for k, v in json.loads(REPLICAS_PATH.read_text()).items() if not k.startswith("_")}
     except (OSError, ValueError):
         return {}
 
@@ -236,6 +247,12 @@ def chart_record(meta: dict, slug: str, n: int) -> dict:
     if b:
         rec["builder_path"] = b.get("path")
         rec["builder_host"] = b.get("host")
+    rp = load_replicas().get(f"{slug}/{n}") or {}
+    if rp:
+        rec["replica_status"] = rp.get("status")
+        if rp.get("status") in REPLICA_LIVE and rp.get("builder") and not rec.get("builder_path"):
+            rec["builder_path"] = rp["builder"]           # the rebuilt builder (run through load_recipes)
+            rec["builder_host"] = "server"
     return rec
 
 
@@ -427,7 +444,7 @@ def match_builders(pubs: list[dict], use_mac: bool = True, kinds=("time-series",
 
 # ── writing the fields into the corpus outputs ─────────────────────────
 FIELDS = ("chart_kind", "last_period", "last_period_date", "update_frequency", "sources", "description",
-          "builder_path", "current_url", "refreshed_at", "refresh_status")
+          "builder_path", "current_url", "refreshed_at", "refresh_status", "replica_status")
 
 
 def annotate(pubs: list[dict]) -> list[dict]:
@@ -447,6 +464,7 @@ def annotate(pubs: list[dict]) -> list[dict]:
         c["current_url"] = st.get("current_url")
         c["refreshed_at"] = st.get("refreshed_at")
         c["refresh_status"] = st.get("status")
+        c["replica_status"] = rec.get("replica_status")
     return pubs
 
 

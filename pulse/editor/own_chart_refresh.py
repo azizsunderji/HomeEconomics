@@ -76,10 +76,18 @@ def _log(rec: dict) -> None:
 
 
 def load_recipes() -> dict:
+    """Hand recipes (chart_recipes.json), plus a recipe for every rebuilt builder of a chart that had none
+    (chart_replicas.json, status replicated or approved; owner, 16 Oct 2026: "they were not built by script but still
+    you can recognize what they are and rebuild them"). A hand recipe wins over a replica."""
     try:
-        return json.loads(RECIPES_PATH.read_text())
+        out = json.loads(RECIPES_PATH.read_text())
     except (OSError, ValueError):
-        return {}
+        out = {}
+    for key, rp in meta_mod.load_replicas().items():
+        if key not in out and rp.get("status") in meta_mod.REPLICA_LIVE and rp.get("builder") and Path(rp["builder"]).exists():
+            out[key] = {"cmd": ["python3", rp["builder"], "--out", "{out}"], "timeout": 80, "fetches": True,
+                        "note": f"rebuilt builder {Path(rp['builder']).name} (chart replicator, {rp.get('status')})"}
+    return out
 
 
 def _pub(slug: str) -> dict:
@@ -347,6 +355,9 @@ def refresh(slug: str, n: int, as_of: str | None = None, timeout: int = DEFAULT_
                       last_period_date=v.get("last_period_date"), caption=v.get("description"))
 
     recipe = load_recipes().get(key)
+    if not recipe and (meta_mod.load_replicas().get(key) or {}).get("status") == "needs-review":
+        return finish("stale-unrefreshable", None, "a rebuilt builder exists but awaits the owner's approval "
+                      "(chart_replicas.json status needs-review)")
     if not recipe and not b.get("path"):
         return finish("stale-unrefreshable", None, f"no builder found for a time series ending {orig.get('last_period')}")
     if not recipe and abs(float(b.get("lag_days") or 0)) > 45:

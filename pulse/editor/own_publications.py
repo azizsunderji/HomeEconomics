@@ -452,10 +452,10 @@ def build(limit: int | None = None) -> list[dict]:
 # Chart fields from own_chart_meta.py / own_chart_refresh.py (owner, 16 Oct 2026: old charts get updated when a
 # callback shows them; static charts are shown as they are).
 CHART_FIELDS = ("chart_kind", "last_period", "last_period_date", "update_frequency", "sources", "description",
-                "builder_path", "current_url", "refreshed_at", "refresh_status")
+                "builder_path", "current_url", "refreshed_at", "refresh_status", "replica_status")
 CHART_STRUCT = ("chart_kind VARCHAR, last_period VARCHAR, last_period_date VARCHAR, update_frequency VARCHAR, "
                 "sources VARCHAR[], description VARCHAR, builder_path VARCHAR, current_url VARCHAR, "
-                "refreshed_at VARCHAR, refresh_status VARCHAR")
+                "refreshed_at VARCHAR, refresh_status VARCHAR, replica_status VARCHAR")
 
 
 def write_outputs(pubs: list[dict]) -> None:

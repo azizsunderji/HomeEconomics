@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-10-16T14:39:51+00:00",
+ "generated_at": "2026-10-16T15:51:16+00:00",
  "note": "Owner's own publications for callbacks (pulse/editor/own_publications.py). Charts are hosted on noon.homeeconomics.us.",
  "posts": [
   {
@@ -28,7 +28,8 @@
      "description": "Scatter of NYC neighborhoods plotting share of buildable floor area against 2024 median asking rent, sized by market-rate homes built per 1,000 existing, with fast-track districts marked.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -56,7 +57,8 @@
      "description": "Stacked area chart of the share of new single-family homes completed by floor-area band, 1978–2025, with median new-house size above.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -85,7 +87,8 @@
      "description": "Bubble chart of US metros: population-weighted density versus Democratic share of 2024 two-party presidential vote, with bubble size showing metro population.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/blue-cities-are-dense-cities/2.png",
@@ -103,7 +106,8 @@
      "description": "Scatter plot of US cities showing single-family permitting time rising with population density, with bubbles colored by Democratic vote share and sized by population.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -141,7 +145,8 @@
      "description": "Contour heatmap of change in population share by age and distance from nearest big-city city hall, 1970 to 2020, showing young adults concentrating in city centers.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -169,7 +174,8 @@
      "description": "Bubble chart of cities by home price-to-income ratio and average net monthly salary, highlighting Monocle's 2026 top quality-of-life cities as mostly unaffordable.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -197,7 +203,8 @@
      "description": "Heatmap of annual average 10-year government bond yields for 18 OECD countries since 1990, colored by level and by position versus each country's history.",
      "current_url": "https://noon.homeeconomics.us/images/own/3-reasons-higher-rates-arent-an-imminent/1_20261016.png",
      "refreshed_at": "2026-10-16T14:37:44+00:00",
-     "refresh_status": "refreshed"
+     "refresh_status": "refreshed",
+     "replica_status": null
     }
    ]
   },
@@ -228,7 +235,8 @@
      "description": "Heatmap of US metros ranking rent change since 2023 alongside factors: new construction, affordability, migration inflows, warm winters, remote work, tech jobs.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -256,7 +264,8 @@
      "description": "Rolling correlation between prior building permits and subsequent home price and market rent changes across counties, 1994 to 2026, turning strongly negative in downturns.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -284,7 +293,8 @@
      "description": "Heat map of rents for 2-3 bedroom listings across NYC and nearby areas, from about $3k to over $10k monthly, highest in Manhattan.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -311,7 +321,8 @@
      "description": "Bubble chart of major housing-affordability papers positioned from regulation-focused to inequality/other-factors-focused, colored by ideology and sized by citation counts.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -340,7 +351,8 @@
      "description": "Maps of Manhattan showing change in residents per square mile across four historical eras, with total population change per era and a small population trend line.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -397,7 +409,8 @@
      "description": "Small multiples showing each major metro's share of luxury home sales, adjusted for general price gains, from 2019 to the last twelve months.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -434,7 +447,8 @@
      "description": "Map of Bay Area showing counts of luxury home sales by location over the trailing 12 months, concentrated in San Francisco and Silicon Valley.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -459,7 +473,8 @@
      "description": "Tablet mockup of the ProMap interface showing a US map with black and blue density dots, likely a change measure, with a legend and toolbar.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -486,7 +501,8 @@
      "description": "Map of NYC-area counties showing percent change in under-18 population from 2020 to 2024, with the sharpest declines in the five boroughs.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -513,7 +529,8 @@
      "description": "Pie chart of shares of movers citing each reason (housing, jobs, family, disaster) for leaving New York City, pooled 1999-2025 Census ASEC data.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -540,7 +557,8 @@
      "description": "Annual taxable income flowing into and out of NYC by destination (Miami-Dade, Palm Beach, other counties), with net flow lines, 2012-2023.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": "stale-unrefreshable"
+     "refresh_status": "stale-unrefreshable",
+     "replica_status": "needs-review"
     }
    ]
   },
@@ -567,7 +585,8 @@
      "description": "Bar chart showing, for 12 Midwest states, the change in net domestic migration 2024 vs 2021, split into contributions from fewer leavers and changed arrivals.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "needs-review"
     }
    ]
   },
@@ -594,7 +613,8 @@
      "description": "Minutes of daily childcare by US fathers in couples with children under 18, by father's age, across four generations.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/dads-are-doing-more-childcareand/2.png",
@@ -610,7 +630,8 @@
      "description": "Waterfall chart showing change in fathers' daily minutes across work, child/home and personal activities, comparing 2022-24 with 1965-85.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/dads-are-doing-more-childcareand/3.png",
@@ -626,7 +647,8 @@
      "description": "Dumbbell chart of fathers' daily child care minutes in six countries, comparing first time-use survey measurement with the most recent one.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/dads-are-doing-more-childcareand/4.png",
@@ -642,7 +664,8 @@
      "description": "Stacked area chart showing the share of US households with children under 18 by employment type, 1968 to 2025, with father sole earner shrinking.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/dads-are-doing-more-childcareand/5.png",
@@ -658,7 +681,8 @@
      "description": "Minutes per day fathers spend on childcare by education level (less than HS, HS diploma, college+) across three periods: 1965-85, 2003-05, 2022-24.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/dads-are-doing-more-childcareand/6.png",
@@ -674,7 +698,8 @@
      "description": "Bubble plot of dads' reported happiness (0-6) during childcare, TV/leisure, housework and work, with bubble size showing time spent and average markers.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/dads-are-doing-more-childcareand/7.png",
@@ -690,7 +715,8 @@
      "description": "Average daily parenting minutes from the child's perspective, by dad solo, co-parented, and mom solo, from 2003 to 2024.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/dads-are-doing-more-childcareand/8.png",
@@ -706,7 +732,8 @@
      "description": "Bubble chart plotting the dad-to-mom ratio of daily parenting minutes against activity stress score, showing dads do less of the more stressful childcare activities.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/dads-are-doing-more-childcareand/9.png",
@@ -722,7 +749,8 @@
      "description": "Dot plot comparing dads' and moms' average agreement (1-5) with statements about parenting aggravation, such as exhaustion and feeling trapped.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/dads-are-doing-more-childcareand/10.png",
@@ -738,7 +766,8 @@
      "description": "Difference in minutes per hour across the day between fathers and non-fathers by activity: more childcare at 7am and 7pm, less sleep, leisure and work.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/dads-are-doing-more-childcareand/11.png",
@@ -754,7 +783,8 @@
      "description": "Indexed self-rated health and life satisfaction of fathers from ten years before to ten years after the birth of their first child, using PSID data.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -782,7 +812,8 @@
      "description": "Bubble charts by calendar month and metro area showing fresh listings and buyer leverage (seller concessions) indexes, indicating the best months for buyers versus sellers.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -811,7 +842,8 @@
      "description": "Four circular charts showing seasonal patterns by month in bidding competition, sale speed and sale-to-list ratio, averaged over 2015–2025 excluding 2020–22, peaking in late April.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -838,7 +870,8 @@
      "description": "County map of the seasonal range of new housing listings (max minus min of median weekly index), pooled 2017-19 and 2023-25, with selected counties labeled.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -865,7 +898,8 @@
      "description": "Three maps of US county payrolls for construction, retail trade and tech, showing tech's payroll is highly concentrated while the others are widespread.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -897,7 +931,8 @@
      "description": "Heatmap of annual happiness relative to average and immigration levels for 30 rich-to-poor countries, 2006-2025, with 20-year happiness change.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -925,7 +960,8 @@
      "description": "Scatter plot of country changes in housing price-to-income index versus changes in happiness, 2015 to 2023–25, showing almost no correlation (R²=0.06).",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "needs-review"
     }
    ]
   },
@@ -957,7 +993,8 @@
      "description": "Small-multiple bar charts of annual net migration per 1,000 population in nine countries from 2018 to 2025, showing a post-2021 surge and decline.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -985,7 +1022,8 @@
      "description": "Stacked bars by year (1976-2023) showing median ages at which people leave parents, marry, and first own a home, all rising.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -1017,7 +1055,8 @@
      "description": "Treemap breaking down a $500k-income Manhattan family's roughly $15k monthly spending by category, led by housing and childcare.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -1044,7 +1083,8 @@
      "description": "Weighted median age at first rent-to-own transition for household heads, 1974-2023, rising from about 27.7 to 35.5 with confidence band.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -1082,7 +1122,8 @@
      "description": "Austin home sale price index rebased to Feb 2016 = 100, compared with U.S. median, 2016 to Jan 2026, showing Austin falling to 115 vs 133.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/an-easy-way-to-look-at-housing-data/2.png",
@@ -1099,7 +1140,8 @@
      "description": "Line chart of Austin, TX housing inventory from about 2012 to Feb 2026, rising from roughly 4K to 11.8K homes, peaking near 16.6K in 2025.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/an-easy-way-to-look-at-housing-data/3.png",
@@ -1116,7 +1158,8 @@
      "description": "Line chart comparing Austin's days on market with the U.S. median from 2016 to February 2026, showing Austin rising to 110 days.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/an-easy-way-to-look-at-housing-data/4.png",
@@ -1133,7 +1176,8 @@
      "description": "Histogram of U.S. metros by homes sold as a percent of inventory, highlighting Austin at 17.2% (29th percentile) versus a 22.5% median.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/an-easy-way-to-look-at-housing-data/5.png",
@@ -1147,7 +1191,8 @@
      "description": "Map of the Austin metro area with neighborhoods or zip codes shaded in dark gray, light gray, blues and beige; no legend explains the colors.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -1185,7 +1230,8 @@
      "description": "Beeswarm of ZIP codes by retailer showing 3-year home price growth relative to the national average after a store opened, with medians per chain.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -1214,7 +1260,8 @@
      "description": "Waterfall chart showing NYC teacher's $25k salary advantage over Jackson, MS being eroded by housing, commute time, cost of living and taxes, leaving them $1k worse off.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -1243,7 +1290,8 @@
      "description": "Hexbin scatterplots comparing detrended home sales and mortgage rate levels (R²=0.25) against year-over-year changes in each (R²=0.50).",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "unreplicable"
     }
    ]
   },
@@ -1271,7 +1319,8 @@
      "description": "Map of US locations colored by 10-year home price change, with notable underperformers such as San Francisco, Manhattan, Baltimore and New Orleans labeled.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "deferred"
     }
    ]
   },
@@ -1299,7 +1348,8 @@
      "description": "Map of Chicago-area home price appreciation since January 2020 by ZIP area, showing declines in the core and strong gains in suburbs and exurbs.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "deferred"
     }
    ]
   },
@@ -1326,7 +1376,8 @@
      "description": "Slope chart showing the share of Americans reporting feeling very happy fell for every demographic group between the 2016-18 and 2022-24 averages.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -1354,7 +1405,8 @@
      "description": "Two US county maps compare where marriage fell most from 1980 to 2024 against the change in home price-to-income ratios and a minority share × low-education index.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -1382,7 +1434,8 @@
      "description": "Stacked area chart of the share of Americans ever married by ages 20 through 45 and 50, 1880 to 2025, showing delayed marriage.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -1411,7 +1464,8 @@
      "description": "Scatter plot of US metros showing cumulative rent growth since 2019 versus share of workers working from home, with a negative trendline (r²=0.30).",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "needs-review"
     }
    ]
   },
@@ -1439,7 +1493,8 @@
      "description": "Monthly gap between D.C. and national rent growth versus gap in job growth, 2016 to late 2025, showing D.C. rents lagging when jobs were weak.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "needs-review"
     }
    ]
   },
@@ -1466,7 +1521,8 @@
      "description": "Cumulative percentage-point change since 1990 in living arrangements of 30-year-olds: married heads fell 21pp, singles living with others rose 12pp, single heads rose 8pp.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -1503,7 +1559,8 @@
      "description": "Bubble chart of technical PhDs (CS, math, EE, physics) per 10,000 adults across US metros, with the Bay Area far ahead.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -1530,7 +1587,8 @@
      "description": "Waterfall chart showing how college-graduate workers' daily minutes differ between work-from-home and office days, by activity such as commuting, working, sleeping and TV.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -1560,7 +1618,8 @@
      "description": "Bubble chart of the share of wealth given to philanthropy by Gilded Age and living billionaires, with bubble size showing peak wealth.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -1587,7 +1646,8 @@
      "description": "Bubble chart of OpenAI and Anthropic models by release date, each bubble showing minutes of human work AI can complete, reaching 6.6 hours.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -1614,7 +1674,8 @@
      "description": "Pooled 2003-2023 ATUS weekday time-use differences by hour between employed parents of kids under 6 and non-parents, showing more childcare and less sleep and screen time.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -1639,9 +1700,10 @@
       "Zillow ZHVI"
      ],
      "description": "Zillow home value index for single-family homes versus condos, 2000 to early 2026, for the US and 11 metros, rebased to Jan 2020=100.",
-     "current_url": null,
-     "refreshed_at": null,
-     "refresh_status": null
+     "current_url": "https://noon.homeeconomics.us/images/own/the-condo-crisis/1_20261016.png",
+     "refreshed_at": "2026-10-16T15:51:16+00:00",
+     "refresh_status": "refreshed",
+     "replica_status": "replicated"
     }
    ]
   },
@@ -1668,7 +1730,8 @@
      "description": "Treemap of how adult Americans spend waking hours by activity, colored by self-reported meaningfulness; work (29%) and TV (23%) dominate.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -1696,7 +1759,8 @@
      "description": "Bump chart of annual GDP rankings (current USD) for countries plus California and Texas, 2002-2023, showing California rising from 8th to 4th.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -1724,7 +1788,8 @@
      "description": "Rent burden versus household income for income deciles D2-D10, 2005-2024, showing rent share depends on income rank rather than absolute income.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "unreplicable"
     }
    ]
   },
@@ -1751,7 +1816,8 @@
      "description": "3D map of US metros showing units in 20+ apartment buildings in 2010 and units added through 2024, with top ten metros ranked.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "deferred"
     }
    ]
   },
@@ -1778,7 +1844,8 @@
      "description": "Sankey diagram comparing Boomers and Millennials at ages 30, 35 and 40 on leaving home, marrying, and buying or renting a home.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -1806,7 +1873,8 @@
      "description": "Dot-density map of Atlanta housing units, pre-2010 versus built 2010 onward, showing housing thinning beyond a 45-minute drive from downtown.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -1833,7 +1901,8 @@
      "description": "Heatmap of annual home price changes by month for 30 US metros since 2020, ranked by cumulative percentage gain since January 2020.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "replicated"
     }
    ]
   },
@@ -1861,7 +1930,8 @@
      "description": "Map of Bay Area neighborhoods showing home price change Aug-Dec 2025, with hatching marking areas with many tech employees.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -1888,7 +1958,8 @@
      "description": "Four state maps showing percent population change from natural change, domestic migration, international migration, and total, for July 2024 to July 2025.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -1915,7 +1986,8 @@
      "description": "Sankey diagram comparing Boomers and Millennials at age 30 by household formation, marriage, and homeownership versus renting outcomes.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -1942,7 +2014,8 @@
      "description": "Ridgeline distributions of year-over-year home price changes across markets for each year 2001–2025, with standard deviation bars, showing prices cluster around 0%.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "replicated"
     }
    ]
   },
@@ -1970,7 +2043,8 @@
      "description": "Map of Bay Area price appreciation by area since January 2020, showing falling or flat prices in the core and strong gains in suburbs and exurbs.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "deferred"
     }
    ]
   },
@@ -1997,7 +2071,8 @@
      "description": "Flow map of where California emigrants move, by destination state and region, with arcs scaled by volume and thousands of movers labeled.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -2025,7 +2100,8 @@
      "description": "Map of US ZIP codes with dots colored by year-over-year home price gains (blue) or losses (gray), sized by population.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "deferred"
     }
    ]
   },
@@ -2052,7 +2128,8 @@
      "description": "Homeownership rate by age for Silent, Boomer, Gen X, Millennial and Gen Z cohorts, showing younger generations owning less at the same ages.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -2080,7 +2157,8 @@
      "description": "Map of New York metro area neighborhoods showing home price appreciation since January 2020, with core, suburb and exurb distance rings from the city center.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -2107,7 +2185,8 @@
      "description": "Sankey diagram of where people leaving NYC move, with average age and income of movers for each destination, pooled 2009-23.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/why-do-people-leave-nyc/2.png",
@@ -2123,7 +2202,8 @@
      "description": "Map of the New York metro area shading destinations by number of migrants leaving three NYC counties, highest in Westchester and Long Island.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/why-do-people-leave-nyc/3.png",
@@ -2139,7 +2219,8 @@
      "description": "Table comparing NYC stayers, local movers and interstate movers on age, income, children and education, using pooled 2009-23 ACS data.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/why-do-people-leave-nyc/4.png",
@@ -2155,7 +2236,8 @@
      "description": "Treemap of reasons people moving out of NYC gave for leaving, split into interstate and local-area migrants, pooled across 1999-2025 CPS data.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -2182,7 +2264,8 @@
      "description": "Stacked bars of NYC annual population change by international migration, domestic migration and natural change, with net line, 2014 to 2024.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/can-new-york-grow-again/2.png",
@@ -2198,7 +2281,8 @@
      "description": "Waterfall chart of NYC population change 2014-24: births, deaths, domestic and international migration, netting to a loss of about 395K.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/can-new-york-grow-again/3.png",
@@ -2214,7 +2298,8 @@
      "description": "Bar chart comparing age distribution of people who leave NYC versus those who stay, pooled 2009-24; leavers skew toward ages 25-34.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/can-new-york-grow-again/4.png",
@@ -2230,7 +2315,8 @@
      "description": "Bar chart comparing the share of NYC leavers and stayers aged 25-54 by number of children, showing leavers are more often childless.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/can-new-york-grow-again/5.png",
@@ -2246,7 +2332,8 @@
      "description": "Bar chart comparing the education distribution of people who left NYC versus those who stayed, pooled over 2009-24; leavers skew toward bachelor's degrees.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/can-new-york-grow-again/6.png",
@@ -2262,7 +2349,8 @@
      "description": "Bar chart of average income by age group for people who left versus stayed, pooled 2009-24; younger leavers earn more, older leavers less.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/can-new-york-grow-again/7.png",
@@ -2278,7 +2366,8 @@
      "description": "Bubble chart of destinations of people leaving NYC, plotted by migrants' average age and income, colored by state (CA, FL, TX, NY, others).",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -2305,7 +2394,8 @@
      "description": "Monthly US housing transaction volume versus its 2012–2019 linear trend, with cumulative deviation showing the 2020–22 surge and the shortfall since 2023.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -2333,7 +2423,8 @@
      "description": "Area chart comparing the share of renters and homeowners across party affiliation, from strong Democrat to strong Republican, showing renters lean Democratic and owners lean Republican.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/the-politics-of-housing-rent-freezes-and-the-50-year-mortgage/2.png",
@@ -2350,7 +2441,8 @@
      "description": "Stacked area charts showing the share of homeowners and renters by party identification, from strong Republican to strong Democrat, 1968-2020.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/the-politics-of-housing-rent-freezes-and-the-50-year-mortgage/3.png",
@@ -2367,7 +2459,8 @@
      "description": "Dumbbell chart of share identifying as strongly Republican across gender, education and homeownership groups, showing the owner/renter gap (14 points) is widest.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -2395,7 +2488,8 @@
      "description": "Annual home price change for 30 large US cities grouped into top, middle and bottom thirds by employment growth, 2003 to late 2025.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "needs-review"
     }
    ]
   },
@@ -2422,7 +2516,8 @@
      "description": "Map of US metros showing change in labor force growth rate between 2005-15 and 2015-25, with acceleration in Sun Belt and deceleration in NYC and Bay Area.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -2450,7 +2545,8 @@
      "description": "Scatter plot of US metro areas showing median home price against median homeowner income, with a fitted line and major cities labeled.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -2485,7 +2581,8 @@
      "description": "Small-multiple line charts of total employees in housing-related sectors from 1998 to 2025, marking pre-GFC peaks and post-2023 peaks, ranked by recent decline.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/how-would-a-recession-cascade-through-real-estate/2.png",
@@ -2502,7 +2599,8 @@
      "description": "Small-multiple line charts of employment in construction and real estate sectors, marking the pre-2008 peak (blue) and latest reading (yellow).",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -2537,7 +2635,8 @@
      "description": "Year-over-year change in residential and nonresidential construction, architectural services, and engineering services, 2004-2015, showing the Great Recession downturn and recovery.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/jobs-signals-for-architects-point-down/2.png",
@@ -2551,7 +2650,8 @@
      "description": "Stacked bars of year-over-year employment change in residential and nonresidential construction, architectural, and engineering services, 1998-2005, with the 2001 recession shaded.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/jobs-signals-for-architects-point-down/3.png",
@@ -2565,7 +2665,8 @@
      "description": "Monthly US employment in architectural services in thousands, 2006 to mid-2025, showing the post-2008 collapse, slow recovery, and recent plateau near 200 thousand.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "replicated"
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/jobs-signals-for-architects-point-down/4.png",
@@ -2579,7 +2680,8 @@
      "description": "Monthly US residential building construction employment in thousands, 2006 to 2025, showing the housing-bust collapse, the long recovery, the 2020 dip and recent plateau near 950k.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "replicated"
     }
    ]
   },
@@ -2604,7 +2706,8 @@
      "description": "Stacked bars of 3-month change in construction and manufacturing employment (thousands), 2021 to 2025, showing manufacturing gains fading and turning negative.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/jobswatch/2.png",
@@ -2618,7 +2721,8 @@
      "description": "Stacked bars of 3-month employment change in thousands for US construction subsectors (buildings, heavy/civil, specialty trades), Jan 2022 to Aug 2025.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/jobswatch/3.png",
@@ -2632,7 +2736,8 @@
      "description": "Year-over-year change in employment (thousands) across five specialty trade contractor categories, Jan 2022 to Aug 2025, showing residential declines turning negative.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -2670,7 +2775,8 @@
      "description": "Histogram of historical 5-year cumulative US home price returns (1980-2024) compared with Home Economics' much lower 5-year forecast.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/our-national-5-year-home-price-forecast/2.png",
@@ -2687,7 +2793,8 @@
      "description": "Histogram of Pulsenomics panelists' 5-year cumulative home price forecasts, with Home Economics' lower forecast highlighted among the distribution.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/our-national-5-year-home-price-forecast/3.png",
@@ -2705,7 +2812,8 @@
      "description": "Area chart of the US home price to income ratio index (1975 = 100), rising to about 400 by 2025 with a 2000s boom and bust.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "needs-review"
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/our-national-5-year-home-price-forecast/4.png",
@@ -2722,7 +2830,8 @@
      "description": "Months' supply of new homes plotted against inverted year-over-year home price growth, 1975 to 2025, showing that supply changes lead price changes.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/our-national-5-year-home-price-forecast/5.png",
@@ -2741,7 +2850,8 @@
      "description": "Waterfall chart showing the 26% historical 5-year home price gain reduced by valuation, supply and momentum headwinds to an 8.9% forecast.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/our-national-5-year-home-price-forecast/6.png",
@@ -2757,7 +2867,8 @@
      "description": "Annual Q4/Q4 US home price growth from the mid-1970s with a Fannie Mae-based forecast through 2029, highlighting the 1990-1995 period as an analog.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -2815,7 +2926,8 @@
      "description": "US homeownership rate from 1900 to 2025, annotated with major policies and eras such as the GI bill, FHA, the GFC and Covid.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -2853,7 +2965,8 @@
      "description": "Monthly 30-year mortgage rate against home sales, new listings and active inventory since 1982, with seven shaded prolonged rate-shift regimes.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "unreplicable"
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/if-mortgage-rates-fall-what-will-happen-to-inventory/2.png",
@@ -2870,7 +2983,8 @@
      "description": "Scatter of 30-year mortgage rates against housing inventory across episodes since 1981, colored by rising or falling unemployment, with R² per episode.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/if-mortgage-rates-fall-what-will-happen-to-inventory/3.png",
@@ -2887,7 +3001,8 @@
      "description": "Area chart of the gap between current mortgage rate and sales-weighted average rate on existing mortgages, 1970 to 2025, showing lock-in at highest since early 1980s.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "replicated"
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/if-mortgage-rates-fall-what-will-happen-to-inventory/4.png",
@@ -2905,7 +3020,8 @@
      "description": "Bar chart comparing average monthly housing payments of recent movers and existing owners against market rent for comparable homes across 13 US metro areas, in 2025 dollars.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -2932,7 +3048,8 @@
      "description": "Bar charts ranking major US cities by mean car commute time in 2023 and by the change in that time from 2013 to 2023.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/is-atlanta-really-a-commuters-nightmare/2.png",
@@ -2949,7 +3066,8 @@
      "description": "Stacked bar chart ranking 15 US metros by a custom Commute Misery Index, broken into commute time, stress, unhappiness, sadness, tiredness and pain components.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -2987,7 +3105,8 @@
      "description": "Map of US metro areas colored by whether home prices are already falling, likely to fall within a year, or resilient, based on inventory growth.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -3015,7 +3134,8 @@
      "description": "Heatmap of regression model R² by months of inventory and lag in months, showing when inventory best predicts future home price changes.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/when-should-we-worry-about-rising-inventory/2.png",
@@ -3032,7 +3152,8 @@
      "description": "Zillow home price index year-over-year change and NAR months of inventory 1999 to present, highlighting MOI above 5.8 preceding 2008 price declines.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "unreplicable"
     }
    ]
   },
@@ -3070,7 +3191,8 @@
      "description": "Histograms of monthly rents for Upper West Side one-bedroom listings with and without in-unit laundry, showing averages of $5,498 versus $4,995.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -3107,7 +3229,8 @@
      "description": "Indexed metro area population growth since 2010 for ten large US metros, with Houston and Dallas rising fastest, through 2024.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/p-whos-moving-to-houston/2.png",
@@ -3124,7 +3247,8 @@
      "description": "Stacked bars of international migration, domestic migration, births and deaths with total-change line for Houston, Chicago and Miami, 2011-2024.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/p-whos-moving-to-houston/3.png",
@@ -3141,7 +3265,8 @@
      "description": "Map showing each state's share of total migration to Houston from outside Texas, with California highest at 12%, then New York and Florida at 9%.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/p-whos-moving-to-houston/4.png",
@@ -3157,7 +3282,8 @@
      "description": "Bubble chart of cities sending migrants to Houston, plotted by average age and household income of arrivals, with bubble size showing share of migrants.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/p-whos-moving-to-houston/5.png",
@@ -3174,7 +3300,8 @@
      "description": "Choropleth map of Houston-area counties showing the migration component of population growth from 2011 to 2024, with outer counties gaining more than Harris.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "unreplicable"
     }
    ]
   },
@@ -3202,7 +3329,8 @@
      "description": "Bivariate choropleth map of US states showing births and deaths as a share of 2024 population, with Utah highest in births and lowest in deaths.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/p-fifty-shades-of-growth/2.png",
@@ -3219,7 +3347,8 @@
      "description": "Grid classifying US states into six demographic categories (e.g., Boom Belts, Silver Havens, Hollowing Heartlands) based on growth and age patterns.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -3247,7 +3376,8 @@
      "description": "Scatter plot of county median home price versus median income, bubbles sized by population, showing strong positive correlation with outlier counties labeled.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/p-what-determines-home-prices/2.png",
@@ -3264,7 +3394,8 @@
      "description": "Connected scatter of median home price versus median income for US counties from 2014 to 2024, bubbles sized by population, showing a strong positive correlation.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "needs-review"
     }
    ]
   },
@@ -3291,7 +3422,8 @@
      "description": "Bump chart ranking nationalities of foreign buyers of US homes by volume each year from 2007 to 2024, with Canada ranking first in 2024.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "unreplicable"
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/p-canadian-snowbirds-are-selling/2.png",
@@ -3307,7 +3439,8 @@
      "description": "Stacked bars showing intended use (vacation home, rental, primary residence) of foreign buyers of US homes from Canada, China, Mexico, India and Colombia in 2024.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/p-canadian-snowbirds-are-selling/3.png",
@@ -3324,7 +3457,8 @@
      "description": "Choropleth map of US PUMAs showing the intensity of a census-based proxy for Canadian snowbirds, concentrated in Arizona, southern California, and Florida.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/p-canadian-snowbirds-are-selling/4.png",
@@ -3341,7 +3475,8 @@
      "description": "Choropleth map of Florida PUMAs showing intensity of a proxy for Canadian snowbirds, highest along the south-west Gulf coast.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -3368,7 +3503,8 @@
      "description": "Heatmap of year-over-year home price changes for each US state from 2020 to 2025, ranked by appreciation, highlighting Florida's recent price decline.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "needs-review"
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/is-floridas-downturn-coming-for-the-rest-of-the-country/2.png",
@@ -3384,7 +3520,8 @@
      "description": "Density distributions of R-squared and beta from regressing state Y/Y home price changes on the national index, with Florida marked as the highest R-squared and an outlier in beta.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "needs-review"
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/is-floridas-downturn-coming-for-the-rest-of-the-country/3.png",
@@ -3400,7 +3537,8 @@
      "description": "Small multiples of annual building permits filed in each US state and DC, highlighting above-average years in orange, with Florida enlarged.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "needs-review"
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/is-floridas-downturn-coming-for-the-rest-of-the-country/4.png",
@@ -3417,7 +3555,8 @@
      "description": "Choropleth map of US PUMAs showing the intensity of a census-based proxy for Canadian snowbirds, concentrated in Arizona, southern California, and Florida.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/is-floridas-downturn-coming-for-the-rest-of-the-country/5.png",
@@ -3433,7 +3572,8 @@
      "description": "Histograms of the number of states hitting their home-price peak (2021-22) and trough (2023), showing Florida's turning points came later than most states.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -3460,7 +3600,8 @@
      "description": "Heatmap of year-over-year home price changes for each US state from 2020 to early 2025, showing Florida prices now falling.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "needs-review"
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/is-floridas-downturn-coming-for-the/2.png",
@@ -3476,7 +3617,8 @@
      "description": "Density plots of R-squared and Beta from regressions of state Y/Y home price changes on the national index, showing Florida as the highest R-squared and an outlier beta.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "needs-review"
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/is-floridas-downturn-coming-for-the/3.png",
@@ -3492,7 +3634,8 @@
      "description": "Small-multiple bar charts of annual building permits filed in each US state, highlighting years above the long-run average in orange, with Florida featured.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "needs-review"
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/is-floridas-downturn-coming-for-the/4.png",
@@ -3508,7 +3651,8 @@
      "description": "Map of US PUMAs showing the intensity of a census-based proxy for Canadian snowbirds, highest in Arizona, southern California, and Florida.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/is-floridas-downturn-coming-for-the/5.png",
@@ -3524,7 +3668,8 @@
      "description": "Histograms of the number of states reaching their home-price peak (2021-22) and trough (2023) by month, highlighting that Florida peaked and bottomed later than most states.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -3551,7 +3696,8 @@
      "description": "Bump chart ranking nationalities of foreign buyers of US homes by purchase volume each year from 2007 to 2024, with Canada recently first.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "unreplicable"
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/canadian-snowbirds-are-selling/2.png",
@@ -3567,7 +3713,8 @@
      "description": "Stacked bars showing intended use (vacation home, rental, primary residence) of US home purchases by buyers from Canada, China, Mexico, India and Colombia in 2024.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/canadian-snowbirds-are-selling/3.png",
@@ -3583,7 +3730,8 @@
      "description": "Map of US PUMAs showing the intensity of a census-based proxy for Canadian snowbirds, highest in Arizona, southern California, and Florida.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/canadian-snowbirds-are-selling/4.png",
@@ -3599,7 +3747,8 @@
      "description": "Ranked list of the top 10 US metro areas where Canadian snowbirds own or rent homes, based on a Census Bureau proxy.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/canadian-snowbirds-are-selling/5.png",
@@ -3615,7 +3764,8 @@
      "description": "Map of Florida PUMAs shaded by a proxy for Canadian snowbird concentration, highest along the south-west Gulf coast around Punta Gorda, Sarasota and Naples.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -3642,7 +3792,8 @@
      "description": "Indexed metro area population growth since 2010 for major US metros, with Houston and Dallas growing fastest and Chicago flat or declining.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/whos-moving-to-houston/2.png",
@@ -3658,7 +3809,8 @@
      "description": "Stacked bars of population change components (international and domestic migration, births, deaths) with total change line for Houston, Chicago and Miami, 2011-2024.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/whos-moving-to-houston/3.png",
@@ -3674,7 +3826,8 @@
      "description": "Choropleth map of US states showing each state's share of total migration to Houston from outside Texas, led by California, Florida and New York.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/whos-moving-to-houston/4.png",
@@ -3690,7 +3843,8 @@
      "description": "Bubble chart of origin cities of migrants to Houston, plotted by average age and household income, with bubble size showing share of migrants.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/whos-moving-to-houston/5.png",
@@ -3706,7 +3860,8 @@
      "description": "Choropleth map of Houston-area counties showing components of population growth (migration) from 2011 to 2024, with growth concentrated outside Harris County.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "unreplicable"
     }
    ]
   },
@@ -3743,7 +3898,8 @@
      "description": "Map and grid of US states colored by 2024 births and deaths as a share of population, highlighting Utah's high births and low deaths.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -3770,7 +3926,8 @@
      "description": "Waterfall-style panels for 12 large US metros showing natural change, domestic migration, international migration and total population change in the latest Census estimates.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/global-influx-local-exodus-the-new/2.png",
@@ -3786,7 +3943,8 @@
      "description": "Map of Texas counties showing percent population change from domestic migration in 2023-24, with insets showing core urban counties losing people while surrounding counties gain.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "deferred"
     }
    ]
   },
@@ -3814,7 +3972,8 @@
      "description": "Horizontal bar chart of construction occupations by total employment, showing each occupation's undocumented worker share; construction laborers highlighted with 446,000 undocumented workers.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/deporting-undocumented-workers-will/2.png",
@@ -3831,7 +3990,8 @@
      "description": "US state map shading states by combined size of construction workforce and number of undocumented workers, with California and Texas most exposed.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/deporting-undocumented-workers-will/3.png",
@@ -3847,7 +4007,8 @@
      "description": "Treemap showing the share of new home cost by component: materials, labor (direct, subcontractor, management), land, profit, regulatory, financing and marketing.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/deporting-undocumented-workers-will/4.png",
@@ -3863,7 +4024,8 @@
      "description": "Scatter plot of labor shortage versus immigrant share across construction trades, highlighting finished carpenters and brickmasons as the most short-staffed and immigrant-reliant.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -3890,7 +4052,8 @@
      "description": "Modeled cumulative cost of renting versus owning over 10 years for the author's situation, with owning becoming cheaper than renting by year 4.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/model-behavior-how-a-spreadsheet/2.png",
@@ -3906,7 +4069,8 @@
      "description": "Heatmap of profit or loss from buying versus renting by holding period (1-15 years), with breakeven marked, across price, mortgage rate and mortgage type scenarios.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -3941,7 +4105,8 @@
      "description": "Conceptual illustration of two supermarket checkout counters, one with a short queue of two people and one with a long queue of ten.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/the-forces-keeping-home-prices-high/2.png",
@@ -3955,7 +4120,8 @@
      "description": "Schematic of two checkout queues: six shoppers lined up at one register, with four more at a second line being redirected to the open register's line via arrows.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/the-forces-keeping-home-prices-high/3.png",
@@ -3971,7 +4137,8 @@
      "description": "Annual US renter rent-to-income ratios (total housing costs to income, and rent to after-tax income) from 1985 to about 2021, with a series break around 2013.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "unreplicable"
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/the-forces-keeping-home-prices-high/4.png",
@@ -3987,7 +4154,8 @@
      "description": "Median shelter cost-to-income ratios for renters in Toronto, Vancouver and Canada overall across census years 2006, 2011, 2016 and 2021, staying roughly flat.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/the-forces-keeping-home-prices-high/5.png",
@@ -4001,7 +4169,8 @@
      "description": "Schematic of the spatial equilibrium model showing how Jones and Lee value two house locations differently, with illustrative prices converging along an equilibrium line.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/the-forces-keeping-home-prices-high/6.png",
@@ -4015,7 +4184,8 @@
      "description": "Schematic showing low, medium and high density buildings with hypothetical values, illustrating how land density gravitates toward a value-maximizing equilibrium.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/the-forces-keeping-home-prices-high/7.png",
@@ -4029,7 +4199,8 @@
      "description": "Conceptual diagram contrasting housing density (25 vs 100 per Ha) and production rate (4 vs 8 dwellings per year) as separate dimensions of supply.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -4054,7 +4225,8 @@
      "description": "Bump chart of the top 10 programming languages on GitHub by distinct contributing users, 2014-2024, showing Python overtaking JavaScript for first place.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/why-housing-watchers-should-learn/2.png",
@@ -4070,7 +4242,8 @@
      "description": "Small-multiple line charts of 12-month rolling arrivals and departures of long-term migrants in New Zealand for the top nine citizenships, 2002 to 2024.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "unreplicable"
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/why-housing-watchers-should-learn/3.png",
@@ -4086,7 +4259,8 @@
      "description": "Choropleth map of US state homeownership rates in 2023, binned from 35-45% to 75%+, with state values labeled.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -4134,7 +4308,8 @@
      "description": "Monthly share of employed respondents worried about losing their job, 2011 to mid-2024, falling to about 10% by 2019, spiking in 2020, and about 22% recently.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -4161,7 +4336,8 @@
      "description": "Lines show the percent change in home price indices since 2000 for Anglosphere versus Continental European countries, with English-speaking countries rising more.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "needs-review"
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/why-does-the-anglosphere-suck-at/2.png",
@@ -4177,7 +4353,8 @@
      "description": "Dwellings per capita from 1960 to about 2022 for Anglosphere countries versus Continental European countries, showing Anglo countries flattening out.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "unreplicable"
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/why-does-the-anglosphere-suck-at/3.png",
@@ -4193,7 +4370,8 @@
      "description": "Population indexed to 1960=100 for Anglosphere countries versus continental European countries, showing Anglosphere populations growing faster through 2023.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/why-does-the-anglosphere-suck-at/4.png",
@@ -4209,7 +4387,8 @@
      "description": "Scatter plot of 20-year percent change in dwellings versus population across countries, showing New Zealand, Ireland, Australia and others relative to the parity line.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -4246,7 +4425,8 @@
      "description": "Line chart of net share of households reporting higher income than a year ago, 2010 to spring 2024, falling to near 3%.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/the-week-in-review-afc/2.png",
@@ -4262,7 +4442,8 @@
      "description": "Zillow Home Value Index for all single-family homes, condos and co-ops, smoothed and seasonally adjusted, from 2000 to 2024, showing prices rising to about $360k.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "replicated"
     }
    ]
   },
@@ -4291,7 +4472,8 @@
      "description": "Decade-by-decade timeline showing periods of falling real and nominal home prices alongside falling housing starts, from the 1970s through the 2020s.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "needs-review"
     }
    ]
   },
@@ -4329,7 +4511,8 @@
      "description": "Scatter plot of median home price versus median income for US counties, bubbles sized by population, with a trend line and labeled outlier counties.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "needs-review"
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/what-determines-home-prices/2.png",
@@ -4346,7 +4529,8 @@
      "description": "Connected scatter of median home price versus median income for large US counties from 2014 to 2022, showing prices rising with incomes.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "needs-review"
     }
    ]
   },
@@ -4374,7 +4558,8 @@
      "description": "Existing home sales (SAAR) plotted against inverted 10-year Treasury yields and mortgage rates, 2013 to mid-2024, showing sales tracking rates.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "needs-review"
     }
    ]
   },
@@ -4401,7 +4586,8 @@
      "description": "Bar chart of annual population change in the New York-New Jersey metro area, 2011-2023, showing growth turning to decline and a slowing exodus in 2023.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/why-is-new-york-city-shrinking/2.png",
@@ -4417,7 +4603,8 @@
      "description": "Annual births, deaths, net international and net domestic migration for New York, 2011–2023, showing domestic out-migration drives population decline.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "replicated"
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/why-is-new-york-city-shrinking/3.png",
@@ -4433,7 +4620,8 @@
      "description": "Bar chart of stated reasons for migration among people who left New York state in 2012-23, highlighting affordability-related reasons versus others.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/why-is-new-york-city-shrinking/4.png",
@@ -4449,7 +4637,8 @@
      "description": "Histogram comparing the age distribution of people who left New York in the last 10 years with the overall New York population; emigrants skew younger.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/why-is-new-york-city-shrinking/5.png",
@@ -4465,7 +4654,8 @@
      "description": "Median household income by age group (25 to 85) for people leaving New York versus the general population; emigrants aged 35-40 earn most.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/why-is-new-york-city-shrinking/6.png",
@@ -4481,7 +4671,8 @@
      "description": "Bar chart comparing average children under 18 per household by age group (25-85) for New York emigrants versus the general population.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/why-is-new-york-city-shrinking/7.png",
@@ -4497,7 +4688,8 @@
      "description": "Map of the US showing the cities that New York emigrants moved to over the last decade, with bubble size and line thickness showing volume.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/why-is-new-york-city-shrinking/8.png",
@@ -4513,7 +4705,8 @@
      "description": "Scatter plot of destination cities for emigrants, by average age and income of movers, with bubble size showing total emigrants over the last decade.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/why-is-new-york-city-shrinking/9.png",
@@ -4529,7 +4722,8 @@
      "description": "Line chart of monthly nonfarm payroll hires in Texas, Florida and New York from 2002 to mid-2024, showing Texas and Florida exceeding New York.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -4556,7 +4750,8 @@
      "description": "Dot plot of 2022 housing cost-to-income ratios across income, age, marital status, race and tenure groups, showing renters, low earners and young/old households most burdened.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/the-week-in-review-5ac/2.png",
@@ -4573,7 +4768,8 @@
      "description": "Weekly 30-year mortgage rates from Sep 2022 to mid-2024, with a dotted forecast line falling below 6% by December 2024.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "needs-review"
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/the-week-in-review-5ac/3.png",
@@ -4591,7 +4787,8 @@
      "description": "Decade-by-decade timeline showing periods of falling real and nominal home prices alongside falling housing starts, from the 1970s through the 2020s.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "needs-review"
     }
    ]
   },
@@ -4619,7 +4816,8 @@
      "description": "Scatter plot of metro-level 6-month change in rents versus 6-month change in home prices, highlighting New York City as an outlier with soaring rents.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "needs-review"
     }
    ]
   },
@@ -4647,7 +4845,8 @@
      "description": "Map of US metro areas showing year-over-year rent changes, with bubbles sized by population; rents rising in the Northeast and falling in the South.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "deferred"
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/runaway-rents-in-big-american-cities/2.png",
@@ -4663,7 +4862,8 @@
      "description": "Area chart of the US home price to annual rent ratio from 2015 to 2024, rising from about 12.2x to about 14.7x.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "needs-review"
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/runaway-rents-in-big-american-cities/3.png",
@@ -4680,7 +4880,8 @@
      "description": "Scatter plot of metro-level 6-month change in rents versus 6-month change in home prices, highlighting New York City as an outlier with soaring rents.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "needs-review"
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/runaway-rents-in-big-american-cities/4.png",
@@ -4697,7 +4898,8 @@
      "description": "Map of New York City neighborhoods showing the 6-month change in home prices minus the 6-month change in rents; Manhattan shows rents outpacing prices.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "deferred"
     }
    ]
   },
@@ -4734,7 +4936,8 @@
      "description": "Stacked bars of the 3-month change in US construction payrolls by subsector, with a total line, from 2021 to mid-2024.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/the-week-in-review-336/2.png",
@@ -4750,7 +4953,8 @@
      "description": "Map of US counties showing the 6-month percent change in median home price, with prices rising mostly in the East and falling in the West and parts of Texas and Florida.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "deferred"
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/the-week-in-review-336/3.png",
@@ -4767,7 +4971,8 @@
      "description": "Year-over-year change in national home prices per Zillow, 2016 to mid-2024, showing the 2021-22 surge and subsequent slowdown to low single digits.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "replicated"
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/the-week-in-review-336/4.png",
@@ -4784,7 +4989,8 @@
      "description": "Stacked bars showing monthly contributions of rents, core services ex-rents and core goods to core CPI, with a line for total core CPI, July 2023 to June 2024.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "needs-review"
     }
    ]
   },
@@ -4811,7 +5017,8 @@
      "description": "Bars show the 3-month change in US nonfarm payrolls from 2021 to mid-2024, declining from about 2000 to about 500 thousand workers.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/how-long-can-construction-employment/2.png",
@@ -4827,7 +5034,8 @@
      "description": "Small-multiple bar charts showing selected sectors' contributions to the 3-month change in US employment growth, Mar. 2021 to Jun. 2024.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/how-long-can-construction-employment/3.png",
@@ -4843,7 +5051,8 @@
      "description": "Stacked bars of the 3-month change in US construction payrolls by subsector, 2021 to mid-2024, with a line showing the total.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/how-long-can-construction-employment/4.png",
@@ -4859,7 +5068,8 @@
      "description": "Radar chart comparing May 2024 multifamily and single-family permits, starts, units under construction, and completions against their 2019 averages.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -4884,7 +5094,8 @@
      "description": "Heatmap of housing cost to income ratios for the largest US metro areas across household income levels from $20K to $150K, with a 30% affordability marker.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/the-week-in-review-312/2.png",
@@ -4900,7 +5111,8 @@
      "description": "Stacked bars of 3-month change in construction payrolls by subsector, with total outline, from 2021 to mid-2024.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -4927,7 +5139,8 @@
      "description": "Heatmap of housing cost to income ratio across household income levels for about 45 US metro areas ranked by population, with the income where housing becomes affordable marked.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -4955,7 +5168,8 @@
      "description": "Map of New York City boroughs marking top-10% schools in areas with home prices below or above $1 million, numbered to a linked table.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/the-week-in-review-9b8/2.png",
@@ -4971,7 +5185,8 @@
      "description": "Stacked area chart of US new home inventory (thousands) by construction stage, 1973 to 2024, comparing today's level with the pre-2008 crash peak.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "replicated"
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/the-week-in-review-9b8/3.png",
@@ -4987,7 +5202,8 @@
      "description": "Radar chart comparing multifamily and single-family permits, starts, units under construction, and completions in May 2024 relative to the 2019 average.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "needs-review"
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/the-week-in-review-9b8/4.png",
@@ -5003,7 +5219,8 @@
      "description": "Radar charts for four US regions showing percent changes across construction pipeline stages (likely permits, starts, under construction, completions), with the South showing the largest pipeline.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -5030,7 +5247,8 @@
      "description": "Stacked histogram showing the number of NYC students at schools of each performance level, split by borough, highlighting top-decile schools concentrated in Manhattan and Brooklyn.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/which-new-york-neighborhoods-have/2.png",
@@ -5046,7 +5264,8 @@
      "description": "Dot plots comparing NYC's five boroughs on number of schools, students, students per school, and students per class, showing larger classes in Queens and Staten Island.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/which-new-york-neighborhoods-have/3.png",
@@ -5063,7 +5282,8 @@
      "description": "Map of NYC showing how the PS 59 school zone overlaps Zillow neighborhoods, used to compute a weighted-average home price per school zone.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/which-new-york-neighborhoods-have/4.png",
@@ -5081,7 +5301,8 @@
      "description": "Scatter plot of NYC schools showing median home price against school performance by borough, with weak correlation (Rsq = 0.14); bubble size reflects school size.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/which-new-york-neighborhoods-have/5.png",
@@ -5098,7 +5319,8 @@
      "description": "Density curves of New York City neighborhood home prices grouped by school performance rating, showing top-rated schools sit in pricier neighborhoods.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/which-new-york-neighborhoods-have/6.png",
@@ -5115,7 +5337,8 @@
      "description": "Map of New York City boroughs marking top-10% schools in areas with home prices below or above $1 million, numbered to a linked table.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -5142,7 +5365,8 @@
      "description": "Map of median home price change by ZIP code from January 2020 to May 2024, with state callouts for largest and smallest gains.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "deferred"
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/the-week-in-review-202/2.png",
@@ -5158,7 +5382,8 @@
      "description": "Indexed median home prices (Jan 2020=100) for major US cities and the USA, 2020 to mid-2024, with Miami and Atlanta rising fastest.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "needs-review"
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/the-week-in-review-202/3.png",
@@ -5174,7 +5399,8 @@
      "description": "Zillow median home price indices (Jan 2020=100) for US and selected metros, 2020 to mid-2024, showing San Diego rising and San Francisco well below peak.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "needs-review"
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/the-week-in-review-202/4.png",
@@ -5190,7 +5416,8 @@
      "description": "Indexed median home prices (Jan 2020=100) for third-tier US cities versus the national average, 2020 to spring 2024.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "needs-review"
     }
    ]
   },
@@ -5217,7 +5444,8 @@
      "description": "Bar chart of monthly US nonfarm payroll changes with a 3-month moving average, May 2021 to May 2024, latest +272K.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/week-in-review/2.png",
@@ -5233,7 +5461,8 @@
      "description": "Share of consumers saying it is a good versus bad time to buy a home, from Fannie Mae's HPSI survey, 2010 to 2024.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "unreplicable"
     }
    ]
   },
@@ -5261,7 +5490,8 @@
      "description": "Map of US metro areas showing year-over-year rent changes, with bubbles sized by population; rents rising in the Northeast and falling in the South.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "deferred"
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/the-week-in-review-cac/2.png",
@@ -5277,7 +5507,8 @@
      "description": "Rental and owner housing vacancy rates indexed to January 2019 = 100, 2019 to early 2024, showing owner vacancy falling sharply while rental vacancy recovered.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "needs-review"
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/the-week-in-review-cac/3.png",
@@ -5293,7 +5524,8 @@
      "description": "Two line charts of the Case-Shiller home price index level (2012–2024) and its year-over-year percent change, showing prices rising again in early 2024.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "needs-review"
     }
    ]
   },
@@ -5322,7 +5554,8 @@
      "description": "30-year mortgage rate and existing home sales since 1971, with their running correlation, showing recent strong negative link between rising rates and falling sales.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "unreplicable"
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/the-week-in-review-461/2.png",
@@ -5338,7 +5571,8 @@
      "description": "Stacked area chart of US new home inventory (thousands) by construction stage, 1973 to 2024, comparing today's level with the pre-2008 crash peak.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "replicated"
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/the-week-in-review-461/3.png",
@@ -5354,7 +5588,8 @@
      "description": "Map of New York City with blue dots marking tennis court locations, highlighting the Fort Greene courts and showing sparse coverage.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -5382,7 +5617,8 @@
      "description": "Area chart of total US homeowning households from 1900 to 2022, with recession periods shaded, showing steady growth since WW2.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/tldr-the-future-of-homeownership/2.png",
@@ -5399,7 +5635,8 @@
      "description": "Annual US population growth since 1970, split into natural increase and net migration, with Census forecast to 2060 showing organic growth turning negative in 2038.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/tldr-the-future-of-homeownership/3.png",
@@ -5415,7 +5652,8 @@
      "description": "Age distribution of the US population in 1960, 1980, 2000, 2020 and a 2040 forecast, showing aging and slower growth.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/tldr-the-future-of-homeownership/4.png",
@@ -5431,7 +5669,8 @@
      "description": "Bar chart of homeownership and headship rates across age cohorts from 25-34 to 75-84, both rising with age.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/tldr-the-future-of-homeownership/5.png",
@@ -5447,7 +5686,8 @@
      "description": "Homeownership rates for age cohorts 35-44 through 65-74 from 1980 to 2021, with bubble size showing cohort population growth.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/tldr-the-future-of-homeownership/6.png",
@@ -5463,7 +5703,8 @@
      "description": "Bar chart of the change in homeowning households per five-year period from 1985 to 2060, with forecast showing slowing growth.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/tldr-the-future-of-homeownership/7.png",
@@ -5479,7 +5720,8 @@
      "description": "Five-year changes in US homeowning households from 1990 to 2060 with bullish, base and bear forecast scenarios, showing sharply slowing growth.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/tldr-the-future-of-homeownership/8.png",
@@ -5495,7 +5737,8 @@
      "description": "Successive Census Bureau US population projections (2008, 2012, 2017, 2023) through 2100, each revised downward, mainly due to lower fertility.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -5522,7 +5765,8 @@
      "description": "Monthly percent change in CPI rent of primary residence, U.S. city average, 2014 to April 2024, showing a 2022-23 spike and decline to a 31-month low.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "needs-review"
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/the-week-in-review-28a/2.png",
@@ -5538,7 +5782,8 @@
      "description": "Heatmap of percentage population change 2020 to 2023 for US cities by region, ranked by size, showing Southern big cities growing and Northeast shrinking.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/the-week-in-review-28a/3.png",
@@ -5554,7 +5799,8 @@
      "description": "Radar chart comparing multifamily and single-family permits, starts, units under construction and completions in March 2024 relative to the 2019 average.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "needs-review"
     }
    ]
   },
@@ -5582,7 +5828,8 @@
      "description": "Stacked bars of annual and cumulative population change 2020-23 for major US cities, with New York City's loss far exceeding others and Southern cities growing.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/booming-southern-cities-and-the-shrinking/2.png",
@@ -5598,7 +5845,8 @@
      "description": "New York City population from 1800 to 2023, highlighting the 1970s decline and the faster recent depopulation since 2020.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/booming-southern-cities-and-the-shrinking/3.png",
@@ -5614,7 +5862,8 @@
      "description": "Bar charts of 2020-23 population change by city-size quintile in each US region, showing big cities outgrowing small towns except in the West.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/booming-southern-cities-and-the-shrinking/4.png",
@@ -5630,7 +5879,8 @@
      "description": "Heatmap of percentage population change 2020 to 2023 for US cities by region, ranked by size, showing Southern big cities growing and Northeast shrinking.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -5657,7 +5907,8 @@
      "description": "Homeownership rates for age cohorts 35-44 through 65-74 from 1980 to 2021, with bubble size showing cohort population growth.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/the-week-in-review-16a/2.png",
@@ -5673,7 +5924,8 @@
      "description": "Goldman Sachs GDP tracker estimates for each quarter from mid-2022 to Q2 2024, showing the current quarter starting strong relative to prior quarters.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -5701,7 +5953,8 @@
      "description": "Area chart of total US homeowning households from 1900 to 2022, with recession periods shaded, showing steady growth since WW2.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/the-future-of-homeownership/2.png",
@@ -5718,7 +5971,8 @@
      "description": "Annual US population growth since 1970, split into natural increase and net migration, with Census forecast to 2060 showing organic growth turning negative in 2038.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/the-future-of-homeownership/3.png",
@@ -5734,7 +5988,8 @@
      "description": "Age distribution of the US population in 1960, 1980, 2000, 2020 and a 2040 forecast, showing aging and slower growth.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/the-future-of-homeownership/4.png",
@@ -5750,7 +6005,8 @@
      "description": "Bar chart of homeownership and headship rates across age cohorts from 25-34 to 75-84, both rising with age.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/the-future-of-homeownership/5.png",
@@ -5766,7 +6022,8 @@
      "description": "Homeownership rates for age cohorts 35-44 through 65-74 from 1980 to 2021, with bubble size showing cohort population growth.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/the-future-of-homeownership/6.png",
@@ -5782,7 +6039,8 @@
      "description": "Bar chart of the change in homeowning households per five-year period from 1985 to 2060, with forecast showing slowing growth.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/the-future-of-homeownership/7.png",
@@ -5798,7 +6056,8 @@
      "description": "Five-year changes in US homeowning households from 1990 to 2060 with bullish, base and bear forecast scenarios, showing sharply slowing growth.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/the-future-of-homeownership/8.png",
@@ -5814,7 +6073,8 @@
      "description": "Successive Census Bureau US population projections (2008, 2012, 2017, 2023) through 2100, each revised downward, mainly due to lower fertility.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -5842,7 +6102,8 @@
      "description": "Monthly US nonfarm payroll job gains from September 2022 through April 2024, with the consensus forecast for the latest month highlighted.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/the-week-in-review-557/2.png",
@@ -5859,7 +6120,8 @@
      "description": "Month-over-month change in Case-Shiller and Zillow home price indices plotted by release date, Jan 2021 to Apr 2024, showing Zillow leads Case-Shiller.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "needs-review"
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/the-week-in-review-557/3.png",
@@ -5875,7 +6137,8 @@
      "description": "Area chart of US active inventory of homes for sale in millions, April 2017 to April 2024, showing decline to 2022 and partial recovery.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "replicated"
     }
    ]
   },
@@ -5902,7 +6165,8 @@
      "description": "Stacked bars of quarterly contributions to US GDP growth by component (residential, inventory, services, etc.) from 2022 to early 2024, with GDP growth marked.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/the-week-in-review-549/2.png",
@@ -5919,7 +6183,8 @@
      "description": "Annual US population growth 1970 to 2060 split into net migration and natural increase, with Census projections showing natural growth turning negative in 2038.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -5947,7 +6212,8 @@
      "description": "Annual US population growth 1970 to 2060 split into net migration and natural increase, with Census projections showing natural growth turning negative in 2038.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -5974,7 +6240,8 @@
      "description": "Radar chart comparing multifamily and single-family permits, starts, units under construction and completions in March 2024 relative to the 2019 average.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "needs-review"
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/the-week-in-review/2.png",
@@ -5988,7 +6255,8 @@
      "description": "Percent change in home sales by months since peak, comparing the 2020-today downturn against the 1978-82, 1987-91 and 2005-10 housing slumps.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "unreplicable"
     }
    ]
   },
@@ -6015,7 +6283,8 @@
      "description": "Month-over-month percent change in permits, starts, units under construction, and completions for single-family and multifamily housing in March 2024.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "needs-review"
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/home-starts-more-like-home-stops/2.png",
@@ -6031,7 +6300,8 @@
      "description": "Radar chart comparing multifamily and single-family permits, starts, units under construction and completions in March 2024 relative to the 2019 average.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "needs-review"
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/home-starts-more-like-home-stops/3.png",
@@ -6047,7 +6317,8 @@
      "description": "Streamgraph comparing US housing unit permits and completions from 2019 to early 2024, showing completions swelling after the 2021-22 permit surge.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/home-starts-more-like-home-stops/4.png",
@@ -6065,7 +6336,8 @@
      "description": "Normalized monthly architect billings index versus multifamily housing starts, 2004 to early 2024, showing billings leading starts by about 10 months.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "unreplicable"
     }
    ]
   },
@@ -6094,7 +6366,8 @@
      "description": "Year-over-year percent change in FHFA, Case-Shiller, and Zillow home price indexes from 1990 to 2022, showing they move closely together.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "replicated"
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/one-home-price-index-to-rule-them/2.png",
@@ -6110,7 +6383,8 @@
      "description": "Map of US ZIP codes showing annualized month-over-month home price change in February 2024 from Zillow's index, with a New York City inset.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "deferred"
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/one-home-price-index-to-rule-them/3.png",
@@ -6128,7 +6402,8 @@
      "description": "Month-over-month changes in Zillow and Case-Shiller home price indexes from Jan 2022 to March 2024, with weekly views showing Zillow signaling turning points earlier.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "unreplicable"
     }
    ]
   },
@@ -6155,7 +6430,8 @@
      "description": "Mortgage rates and existing home sales from 2017 to early 2024, with the NAR 2023 and 2024 report survey periods shaded.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "needs-review"
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/the-boomer-millennial-housing-battle/2.png",
@@ -6171,7 +6447,8 @@
      "description": "Bump chart ranking generational cohorts (Millennials, Boomers, GenX, Silent, GenZ) by share of US homebuyers from 2016 to 2023.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/the-boomer-millennial-housing-battle/3.png",
@@ -6187,7 +6464,8 @@
      "description": "Line chart of the share of home buyers who are first-time buyers, 2015-2023, dropping to about 25% in 2022 and recovering to 32% in 2023.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "unreplicable"
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/the-boomer-millennial-housing-battle/4.png",
@@ -6204,7 +6482,8 @@
      "description": "Stacked bars showing the racial composition of US homebuyers each year from 2012 to 2023, compared with the White share of the population.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/the-boomer-millennial-housing-battle/5.png",
@@ -6220,7 +6499,8 @@
      "description": "Share of senior home buyers purchasing in senior-related housing, by generation (Silent, Older Boomers, Younger Boomers), 2010-2024, all rising.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -6248,7 +6528,8 @@
      "description": "Year-over-year change in FHFA and S&P Case-Shiller home price indices from 1992 to late 2023, showing the 2022 peak, dip, and recent rebound.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "needs-review"
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/housing-market-rolls-into-spring/2.png",
@@ -6265,7 +6546,8 @@
      "description": "Bar chart comparing the Oct-Jan home price change this year with the 30-year average for FHFA and Case-Shiller indexes, showing much weaker momentum than usual.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "needs-review"
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/housing-market-rolls-into-spring/3.png",
@@ -6281,7 +6563,8 @@
      "description": "Histogram of historical monthly changes in seasonally-adjusted FHFA house price index, highlighting the latest unusual month-over-month decline.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "needs-review"
     }
    ]
   },
@@ -6308,7 +6591,8 @@
      "description": "Year-over-year % change in existing home sales, seasonally adjusted vs not adjusted, monthly from Feb 2023 to Feb 2024, showing a large gap in the latest month.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "unreplicable"
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/home-sales-strength-behind-the-headlines/2.png",
@@ -6324,7 +6608,8 @@
      "description": "Lines for each year 2000-2024 showing the percent change in not-seasonally-adjusted existing home sales from August to the following February, with 2024 highlighted as a mild decline.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": "needs-review"
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/home-sales-strength-behind-the-headlines/3.png",
@@ -6340,7 +6625,8 @@
      "description": "Percent change in existing home sales pace since each sales peak, comparing the current 2020-today slump with the 1978-82, 1987-91 and 2005-10 downturns.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -6370,7 +6656,8 @@
      "description": "Treemap breaking the 5-point rise in 30-year mortgage rates from Jan 2021 to Oct 2023 into Treasury yield and mortgage-spread components.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/post-fomc-can-mortgage-rates-still/2.png",
@@ -6389,7 +6676,8 @@
      "description": "Waterfall chart decomposing the fall in the 30-year mortgage rate from 7.8% in Nov 2023 to 6.7% in Mar 2024 into term premium, inflation, spread and fee components.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/post-fomc-can-mortgage-rates-still/3.png",
@@ -6406,7 +6694,8 @@
      "description": "Actual versus modeled spread of 30-year mortgage rates over Treasury yields, 2008 to early 2024, with a fair-value estimate for end-2024.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -6433,7 +6722,8 @@
      "description": "Annual single-family housing starts and permits since 1960, plus a monthly last-12-months view, in thousands of seasonally adjusted annualized units.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/if-you-build-it-they-will-come/2.png",
@@ -6449,7 +6739,8 @@
      "description": "Waterfall chart of the February 2024 change in new home completions (SAAR) by census region, with the West driving a +284k total.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/if-you-build-it-they-will-come/3.png",
@@ -6467,7 +6758,8 @@
      "description": "Normalized monthly architect billings index versus multifamily housing starts, 2004 to early 2024, showing billings leading starts by about 10 months.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -6494,7 +6786,8 @@
      "description": "Area chart comparing the distribution of party affiliation, from strong Democrat to strong Republican, between renters and homeowners in 2021 survey data.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/the-politics-of-housing-ownerrenter/2.png",
@@ -6511,7 +6804,8 @@
      "description": "Dumbbell chart of the share identifying as strongly Republican across demographic pairs (gender, education, owner/renter), showing the owner/renter gap is largest at 14 points.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/the-politics-of-housing-ownerrenter/3.png",
@@ -6528,7 +6822,8 @@
      "description": "Stacked area charts showing the share of homeowners and renters by party affiliation and intensity, 1968 to 2020, with owners shifting Republican and renters Democratic.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -6555,7 +6850,8 @@
      "description": "Bubble chart showing shares of buyers aged 24 to 32 using each source of downpayment funds, with savings at 64% and gifts at 19%.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -6582,7 +6878,8 @@
      "description": "Choropleth map of annual property insurance cost by US state in 2022, with the top quintile of states labeled (above $1.5K).",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/as-texas-burns-property-insurance/2.png",
@@ -6600,7 +6897,8 @@
      "description": "Map of Texas showing annual property insurance cost by area in 2022, from $900 to over $2,300, with major cities and tornado-prone area marked.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -6637,7 +6935,8 @@
      "description": "Number of homeowning middle-income-quintile households by age of householder, comparing 2015 with 2022, showing gains among those under 45.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/america-has-10-million-new-homeowners/2.png",
@@ -6653,7 +6952,8 @@
      "description": "Homeowning households in the second-lowest income quintile by age of householder, comparing 2015 and 2022, showing gains among younger and older owners.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/america-has-10-million-new-homeowners/3.png",
@@ -6669,7 +6969,8 @@
      "description": "Number of low-income homeowning households by age of household head, 2015 vs 2022, showing growth concentrated among retirees.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/america-has-10-million-new-homeowners/4.png",
@@ -6685,7 +6986,8 @@
      "description": "Age distribution of homeowning households in the top income quintiles, comparing 2015 with 2022, highlighting growth among households under 45.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/america-has-10-million-new-homeowners/5.png",
@@ -6701,7 +7003,8 @@
      "description": "Heatmap of change in owner households 2015-22 by age and household income, highlighting growth among ages 30-45 with middle incomes and retirees 65+ below $100k.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/america-has-10-million-new-homeowners/6.png",
@@ -6717,7 +7020,8 @@
      "description": "Bar chart of the percentage-point change in homeownership rate by age of householder from 2015 to 2022, with the largest gains for ages 30-40.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/america-has-10-million-new-homeowners/7.png",
@@ -6733,7 +7037,8 @@
      "description": "Annual homeownership rate of household heads aged 27-35, 2000-2022, peaking at 51% in 2005, bottoming at 39% around 2014-16, rising to 44% in 2022.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -6760,7 +7065,8 @@
      "description": "Share of households owning versus renting within each income quartile at five points from 2002 to 2022, with the change in renting since 2017.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/are-high-earners-flocking-to-renting/2.png",
@@ -6776,7 +7082,8 @@
      "description": "Waffle charts showing the share of households that rent versus own in each income quartile, with renting falling from almost half in the bottom quartile to 12% in the top.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -6801,7 +7108,8 @@
      "description": "Cumulative total cost of buying versus renting a median American 2-bedroom home over 10 years, with buying becoming cheaper by year 4.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/our-5-boldest-views-of-2023/2.png",
@@ -6815,7 +7123,8 @@
      "description": "Bump chart ranking generations' share of homebuyers from 2016 to 2022, showing Millennials slipping below Boomers and GenX as prices and rates rose.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/our-5-boldest-views-of-2023/3.png",
@@ -6829,7 +7138,8 @@
      "description": "Bar chart of the US house price to income ratio, rising from about 3.7x in the early 1980s to a record near 5.7x in 2020.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/our-5-boldest-views-of-2023/4.png",
@@ -6843,7 +7153,8 @@
      "description": "Stacked area chart of outstanding US mortgage balances by interest rate band, 2013 to 2022, showing the growth of sub-3% loans from pandemic refinancing.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/our-5-boldest-views-of-2023/5.png",
@@ -6857,7 +7168,8 @@
      "description": "Treemap decomposing the roughly 5-point rise in 30-year mortgage rates since Jan 2021 into Fed policy rates, term premium, inflation, prepayment risk, OAS spread and lender fees.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -6884,7 +7196,8 @@
      "description": "Model of cumulative costs of buying versus renting a median US 2-bedroom home over 10 years, with buying becoming cheaper by year 4.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/buy-or-rent/2.png",
@@ -6901,7 +7214,8 @@
      "description": "Annual US home price appreciation since about 1970 as bars versus a dotted 3.15% hurdle needed for owning to beat renting over 10 years.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/buy-or-rent/3.png",
@@ -6917,7 +7231,8 @@
      "description": "Compares cumulative costs of buying versus renting over 10 years in the NYT calculator under two assumption sets and the author's own model.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -6945,7 +7260,8 @@
      "description": "Year-over-year change in Zillow home prices (line) versus Apartment List rents (bars), 2018 to late 2023, showing recent divergence.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/a-renters-paradisebut-for-how-long/2.png",
@@ -6961,7 +7277,8 @@
      "description": "Annualized US multifamily housing starts (line) versus completions (bars), 2015 to late 2023, showing a pandemic-era gap from construction bottlenecks.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/a-renters-paradisebut-for-how-long/3.png",
@@ -6978,7 +7295,8 @@
      "description": "Normalized architectural billings (shifted forward 10 months) versus multifamily housing starts, 2003 to 2024, showing billings leading starts and pointing to low starts into mid-2024.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -7005,7 +7323,8 @@
      "description": "Rebased 2-bedroom home prices vs rents since 2000, and median home price to median income ratio from 1984 to 2022.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/growing-pains-for-home-prices/2.png",
@@ -7021,7 +7340,8 @@
      "description": "Decade-by-decade timeline showing years when US home prices fell year over year in real and nominal terms, 1970s through 2020s.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/growing-pains-for-home-prices/3.png",
@@ -7038,7 +7358,8 @@
      "description": "Bubble scatter of county 2-bedroom home prices versus price-to-annual-rent ratios, with bubble size by population and a trend line; NYC highest.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -7065,7 +7386,8 @@
      "description": "Rise in unemployment rate from its low versus months until recession start in past episodes, with 2023's 0.5-point rise over 9 months compared to history.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/this-bird-is-cooked/2.png",
@@ -7081,7 +7403,8 @@
      "description": "Histogram of historical 6-month changes in the US unemployment rate, colored by recession proximity, highlighting the current +0.5% reading as recession-consistent.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/this-bird-is-cooked/3.png",
@@ -7099,7 +7422,8 @@
      "description": "Year-over-year change in US home prices since the mid-1960s, with recession periods highlighted, showing prices typically fall during recessions.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -7126,7 +7450,8 @@
      "description": "Conceptual frontier diagram showing the tradeoff between chart pizzazz (eye-catching appeal) and efficiency (ease of understanding), with two example charts plotted.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/how-to-make-great-charts/2.png",
@@ -7142,7 +7467,8 @@
      "description": "Bump chart ranking generations' share of US homebuyers from 2016 to 2022, showing Old Millennials falling to third place in 2022.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/how-to-make-great-charts/3.png",
@@ -7156,7 +7482,8 @@
      "description": "Wage growth by worker type (retail/leisure/hospitality, other nonsupervisory, supervisory) from 2007 to late 2023, showing monthly changes and moving averages.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/how-to-make-great-charts/4.png",
@@ -7172,7 +7499,8 @@
      "description": "Map of US states colored by year-over-year inflation rate in October 2023, with New England lowest (about 2.4%) and the Southeast highest (about 4%).",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/how-to-make-great-charts/5.png",
@@ -7188,7 +7516,8 @@
      "description": "Electoral map of the 2016 US presidential election by state, showing Clinton with 227 electoral votes and Trump with 304.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/how-to-make-great-charts/6.png",
@@ -7202,7 +7531,8 @@
      "description": "Hexagonal cartogram of the 2016 US presidential election showing each state's electoral votes shaded by Clinton's or Trump's win probability.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/how-to-make-great-charts/7.png",
@@ -7218,7 +7548,8 @@
      "description": "Triangles show the rise in unemployment rate versus months from its low to recession start for past recessions, compared with the 2023 rise.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/how-to-make-great-charts/8.png",
@@ -7234,7 +7565,8 @@
      "description": "Horizontal bar chart of median estimated annual US bird deaths by cause, with cats at 2.4 billion far exceeding wind turbines at 234 thousand.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -7272,7 +7604,8 @@
      "description": "Stacked area chart splitting the 30-year mortgage rate into the 10-year Treasury yield and the mortgage-Treasury spread, 2017 to late 2023.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/another-reason-mortgage-rates-will/2.png",
@@ -7291,7 +7624,8 @@
      "description": "Treemap decomposing the roughly 5-point rise in 30-year mortgage rates since January 2021 into Fed policy rates, term premium, inflation, prepayment risk, OAS spread and lender fees.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/another-reason-mortgage-rates-will/3.png",
@@ -7309,7 +7643,8 @@
      "description": "Line chart comparing the actual mortgage rate minus Treasury yield spread with a model-implied spread based on interest rate volatility, 2002 to late 2023, with a forecast.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -7337,7 +7672,8 @@
      "description": "Stacked bars decomposing the cumulative rise in 10-year Treasury yields since May 2023 into term premium, policy rate expectations and inflation expectations, June to November 2023.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/a-smaller-term-premium-means-lower/2.png",
@@ -7351,7 +7687,8 @@
      "description": "Schematic showing the term premium as the gap between a 10-year bond's yield and the average of successive hypothetical 1-year bond yields over ten years.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/a-smaller-term-premium-means-lower/3.png",
@@ -7367,7 +7704,8 @@
      "description": "Stacked bars of US federal revenue and spending by category with the deficit line, 2002 to CBO forecast through about 2033.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/a-smaller-term-premium-means-lower/4.png",
@@ -7385,7 +7723,8 @@
      "description": "Quarterly US Treasury holdings in trillions by foreign investors, large investors, the Federal Reserve and households, 2016 to mid-2023, showing household holdings doubling after Fed hikes.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -7413,7 +7752,8 @@
      "description": "Average 10-year Treasury yield change from 6 months before to 12 months after the final Fed rate hike, averaged across 11 historical cycles.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/mortgage-rates-are-set-to-fall/2.png",
@@ -7430,7 +7770,8 @@
      "description": "Monthly bars splitting core inflation into contributions from pandemic-disrupted sectors and other sectors, Dec 2020 to late 2023.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/mortgage-rates-are-set-to-fall/3.png",
@@ -7448,7 +7789,8 @@
      "description": "Annual CPI inflation 2019-2023 split into shelter and other items, with a line showing lower inflation if private rent indices were used.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/mortgage-rates-are-set-to-fall/4.png",
@@ -7464,7 +7806,8 @@
      "description": "Connected scatter of US job openings rate against unemployment rate from Dec 2007 to Aug 2023, showing openings falling while unemployment stays stable.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/mortgage-rates-are-set-to-fall/5.png",
@@ -7480,7 +7823,8 @@
      "description": "Net share of banks tightening commercial and industrial lending standards, 1990 to late 2023, with recessions shaded; tightening peaks coincide with recessions.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/mortgage-rates-are-set-to-fall/6.png",
@@ -7494,7 +7838,8 @@
      "description": "Screenshot of a Twitter poll on where 30-year mortgage rates will be in a year: 8.7% lower than 6%, 69.6% 6-7.5%, 21.7% higher.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -7531,7 +7876,8 @@
      "description": "Stacked bars showing the share of mortgages by downpayment size (0% to over 50%) for six buyer age groups.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -7568,7 +7914,8 @@
      "description": "Bump chart ranking generations (Millennials, Boomers, GenX, Silent, GenZ) by share of home buyers, 2016 to 2022, showing Old Millennials falling to third.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/millennials-and-boomers-are-competing/2.png",
@@ -7584,7 +7931,8 @@
      "description": "Bar chart ranking countries by growth in dwelling stock minus population growth, 1995-2020; the US is the only one negative.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/millennials-and-boomers-are-competing/3.png",
@@ -7600,7 +7948,8 @@
      "description": "Age-distribution histograms of the US population in 1960, 1980, 2000, 2020 and a 2040 forecast, highlighting Baby Boomers and the growing over-65 population.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/millennials-and-boomers-are-competing/4.png",
@@ -7616,7 +7965,8 @@
      "description": "Bar chart of homeownership rate by age from 30 to 80, rising from about 50% to over 80%, with baby boomers highlighted.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/millennials-and-boomers-are-competing/5.png",
@@ -7632,7 +7982,8 @@
      "description": "Dumbbell chart showing share of homeowners who stayed in the same home 10+ years, by age group, rising from 1960 to 2021.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/millennials-and-boomers-are-competing/6.png",
@@ -7648,7 +7999,8 @@
      "description": "Horizontal stacked bars showing the share of home transactions that are buying versus selling for each generation, from Gen Z to the Silent Generation.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/millennials-and-boomers-are-competing/7.png",
@@ -7664,7 +8016,8 @@
      "description": "Distribution of homes owned by size bracket for Gen Z, Millennials and Boomers, showing Gen Z skews smaller while Millennials and Boomers are similar.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/millennials-and-boomers-are-competing/8.png",
@@ -7680,7 +8033,8 @@
      "description": "Map of US metros showing where Millennial or Boomer homeowners are relatively over-represented, e.g. Millennials own 30% of Seattle homes versus 24% nationally.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/millennials-and-boomers-are-competing/9.png",
@@ -7696,7 +8050,8 @@
      "description": "Share of home buyers citing closeness to family or friends as a purchase motivation by age group, 2013 versus 2023, rising sharply among older buyers.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/millennials-and-boomers-are-competing/10.png",
@@ -7715,7 +8070,8 @@
      "description": "Annual US household formation, actual and estimated demand, 1970 to 2022 with forecast to 2050 showing a meaningful slowdown in the 2030s.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -7742,7 +8098,8 @@
      "description": "Monthly US existing home sales in 2023 through August versus the historical average and range since 1999, showing sales near historic lows.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/visualizing-home-sales/2.png",
@@ -7758,7 +8115,8 @@
      "description": "Bars of August existing home sales (not seasonally adjusted) from 1999 to 2023, with 2023 highlighted as 24% below the historical August average.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/visualizing-home-sales/3.png",
@@ -7774,7 +8132,8 @@
      "description": "Bars of August existing home sales (not seasonally adjusted) for each US region, 1999-2023, with 2023 highlighted and a dashed average line.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/visualizing-home-sales/4.png",
@@ -7790,7 +8149,8 @@
      "description": "Percent change in existing home sales from February to August in 2023 (blue) versus the same six-month window in prior years (yellow), 2003 through 2022.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/visualizing-home-sales/5.png",
@@ -7806,7 +8166,8 @@
      "description": "Area chart of monthly 2023 US home sales as percent deviation from historical average, January through August, with sales 24% below typical in August.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/visualizing-home-sales/6.png",
@@ -7822,7 +8183,8 @@
      "description": "Percent change in seasonally-adjusted annualized home sales pace by months since peak, comparing the current downturn with 1978-82, 1987-91 and 2005-10.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -7849,7 +8211,8 @@
      "description": "Percent decline in home sales by months since peak across housing downturns from 1973 to 2023, showing 2020-23 as the fastest drop.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/why-denmarks-housing-market-works/2.png",
@@ -7865,7 +8228,8 @@
      "description": "Stacked area chart of US outstanding mortgage balances by interest rate band, 2013 to 2022, showing growth of sub-3% mortgages during the pandemic.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/why-denmarks-housing-market-works/3.png",
@@ -7881,7 +8245,8 @@
      "description": "Quarterly average per-home unrealized gain (or loss) from holding below-market fixed-rate mortgages, 2018 to mid-2023, jumping to roughly $55-60k after 2022.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/why-denmarks-housing-market-works/4.png",
@@ -7897,7 +8262,8 @@
      "description": "Stylized schematic showing how home price and US versus Danish callable mortgage values respond to interest rate changes, illustrating lock-in effect and equity release potential.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/why-denmarks-housing-market-works/5.png",
@@ -7913,7 +8279,8 @@
      "description": "Average annual moving rates by years since mortgage origination, comparing borrowers with low versus high mortgage lock-in; low lock-in borrowers move more.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/why-denmarks-housing-market-works/6.png",
@@ -7930,7 +8297,8 @@
      "description": "Indexed (2019=100) homes listed for sale in Denmark versus the US, 2019 to mid-2023, showing US inventory falling far more than Denmark's.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -7958,7 +8326,8 @@
      "description": "Quarterly contribution of residential investment to US GDP growth from 2021 to 2023, with the latest Atlanta Fed nowcast showing a 0.3% boost.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -7985,7 +8354,8 @@
      "description": "Bubble distributions of average price volatility across large cities and smaller metro areas, comparing 2020-23 with 2003-09, with New York, Phoenix and Austin highlighted.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/home-price-whiplash/2.png",
@@ -8001,7 +8371,8 @@
      "description": "Bar chart comparing 3-month home price volatility across ten city-size groups, 2020-23 versus 2003-09, showing small towns as volatile as large cities recently.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -8029,7 +8400,8 @@
      "description": "Stacked area chart of the share of US homeowners who have lived in their home more or less than 10 years, 1960 to 2021.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/inventory-squeeze-to-get-even-squeezier/2.png",
@@ -8046,7 +8418,8 @@
      "description": "Share of homeowners who have lived in the same home 10+ years by age group, comparing 1960 and 2021; older owners stay longest.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/inventory-squeeze-to-get-even-squeezier/3.png",
@@ -8063,7 +8436,8 @@
      "description": "Mosaic chart splitting the increase in homeowner tenure since 1960 by age cohort into effects of rising tenure and growing population share, with 65+ dominant.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -8091,7 +8465,8 @@
      "description": "Stacked bars show change in monthly mortgage payment versus 10 years earlier, split into home price and interest rate effects, June 2014 to June 2023.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -8118,7 +8493,8 @@
      "description": "Waterfall chart showing how a rise in median after-tax household income from 1984 to 2021 was split between spending categories and savings, with housing the largest increase.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -8145,7 +8521,8 @@
      "description": "Radial charts of monthly US new home listings for 2020-2023 versus the 2017-19 average, showing pandemic and mortgage-rate effects, with 2023 below normal.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -8172,7 +8549,8 @@
      "description": "Peak-to-trough declines in existing home sales across US housing downturns, plotted by months of decline from peak, showing 2020-23 as the fastest fall.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -8201,7 +8579,8 @@
      "description": "Timeline by decade (1970s-2020s) showing periods of falling housing starts, real home prices and nominal home prices, including the financial crisis and pandemic.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -8228,7 +8607,8 @@
      "description": "Stacked bars of quarterly US mortgage originations by borrower credit score band, 2003-2023, showing pandemic-era borrowers had higher scores than in 2003-06.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -8255,7 +8635,8 @@
      "description": "Scatter of countries showing home price fall from peak versus rise in mortgage rates, highlighting Denmark and the USA with a trend line.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -8282,7 +8663,8 @@
      "description": "Monthly active home listings by year, comparing 2016-21, 2022 and 2023, showing 2023 listings far below prior years' seasonal peaks.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -8310,7 +8692,8 @@
      "description": "Stacked area chart of US outstanding mortgage balances in $ trillions by interest rate bracket, 2013 to late 2022, showing pandemic-era low-rate surge.",
      "current_url": "https://noon.homeeconomics.us/images/own/mortgage-lock-ins-move-it-and-lose/1_20261016.png",
      "refreshed_at": "2026-10-16T14:36:46+00:00",
-     "refresh_status": "refreshed"
+     "refresh_status": "refreshed",
+     "replica_status": null
     }
    ]
   },
@@ -8338,7 +8721,8 @@
      "description": "Scatter plot of metro home price change since July 2020 versus change since Aug 2022, highlighting least affordable metros with the largest recent declines.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -8365,7 +8749,8 @@
      "description": "Timeline by decade (1970s-2020s) showing years when US home prices fell in real versus nominal terms, with the 2020s decline only in inflation-adjusted terms.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -8393,7 +8778,8 @@
      "description": "Bubble chart of CPI components showing current annualized inflation rate relative to 2019, bubble size by CPI weight, color by monthly price direction.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/inflation-how-do-i-measure-thee/2.png",
@@ -8411,7 +8797,8 @@
      "description": "Year-over-year change in Zillow's observed rent index versus CPI rent and owner's equivalent rent, 2016 to 2023, showing Zillow leading CPI by about six months.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -8438,7 +8825,8 @@
      "description": "Quarterly net share of senior loan officers tightening lending standards since 1993, with recessions shaded, showing tightening typically precedes recessions.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/banks-grow-less-willing-to-lend-boosting/2.png",
@@ -8455,7 +8843,8 @@
      "description": "Annual change in nonfarm payrolls since 1991 compared with growth predicted from bank lending standards, showing the two tracking each other and diverging after 2020.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -8483,7 +8872,8 @@
      "description": "Connected scatter of the US job openings rate against the unemployment rate across expansions and contractions from 2003 to the latest reading, showing openings falling without unemployment rising.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/a-soft-landing-is-more-likely-after/2.png",
@@ -8499,7 +8889,8 @@
      "description": "Monthly US nonfarm payroll job growth in thousands from April 2022 to March 2023, with consensus estimates shown as dots.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/a-soft-landing-is-more-likely-after/3.png",
@@ -8516,7 +8907,8 @@
      "description": "Fed hiking cycles from the late 1970s to 2023 plotted against federal funds rate levels, with NBER recession bands and soft landings in 1984 and 1994 highlighted.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -8553,7 +8945,8 @@
      "description": "Annual FDIC losses in billions of dollars since the early 1980s, peaking during the Savings & Loan crisis and the credit crisis.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/deposits-should-be-safe-insure-them/2.png",
@@ -8569,7 +8962,8 @@
      "description": "Horizontal bar chart of the number of banks in selected countries, with the USA (about 4,500) far ahead of Russia, UK, France and others.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -8597,7 +8991,8 @@
      "description": "SVB's total assets grew from 2008 to 2022 and crossed regulatory thresholds for enhanced supervision and liquidity coverage ratio rules, which were later raised.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -8624,7 +9019,8 @@
      "description": "Stacked bar of SVB's $71bn liabilities in February 2020: $62bn deposits, $7bn shareholder equity, $3bn wholesale funding.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/what-happened-to-svb-in-pictures/2.png",
@@ -8640,7 +9036,8 @@
      "description": "Stacked bars comparing SVB's $71bn of liabilities with assets split into stocks/bonds, loans, cash and other, as of February 2020.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/what-happened-to-svb-in-pictures/3.png",
@@ -8656,7 +9053,8 @@
      "description": "Stacked bars of SVB's liabilities and assets at December 2022 ($212bn each), highlighting growth since February 2020 in deposits, securities, and loans.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/what-happened-to-svb-in-pictures/4.png",
@@ -8670,7 +9068,8 @@
      "description": "Stylized stacked bars contrasting SVB's tech-heavy, large-depositor base with competitors' smaller, more diversified deposits.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/what-happened-to-svb-in-pictures/5.png",
@@ -8686,7 +9085,8 @@
      "description": "Stacked bars of SVB's liabilities and assets in December 2022, highlighting the gap between balance-sheet and fair value of its securities holdings.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -8714,7 +9114,8 @@
      "description": "Year-over-year changes in wages, CPI inflation and inflation-adjusted wages in the US, 2016 to early 2023, showing real wages turning negative in 2021-22.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -8741,7 +9142,8 @@
      "description": "Bar chart ranking IMF forecast 2023 GDP growth for 16 major economies, with Japan highest and the UK the only negative.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/britain-faces-a-deep-freeze-in-living/2.png",
@@ -8757,7 +9159,8 @@
      "description": "Bubble chart of the year (2020-2025) in which major economies' GDP is projected to surpass 2019 levels, with bubble size showing 2019 economy size.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/britain-faces-a-deep-freeze-in-living/3.png",
@@ -8773,7 +9176,8 @@
      "description": "Annual inflation rates for the UK versus G7 economies, 2015-2024 with IMF forecasts, showing UK peaking near 11% in 2022 and staying higher.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/britain-faces-a-deep-freeze-in-living/4.png",
@@ -8790,7 +9194,8 @@
      "description": "Stacked bars showing share of mortgage lending by fixed-rate term (0-5y, 5-10y, 10y+) or variable rate in the UK, US, Germany, Spain and Sweden.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/britain-faces-a-deep-freeze-in-living/5.png",
@@ -8806,7 +9211,8 @@
      "description": "U.K. government debt interest spending as a share of revenue from 1955-56, with forecasts to 2027-28 showing a record peak.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/britain-faces-a-deep-freeze-in-living/6.png",
@@ -8822,7 +9228,8 @@
      "description": "Annual year-on-year change in UK real household disposable income per person from 1966-67 to forecasts through 2027-28, highlighting the record fall in 2022-24.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/britain-faces-a-deep-freeze-in-living/7.png",
@@ -8838,7 +9245,8 @@
      "description": "Map of UK local areas showing agreement that Britain was wrong to leave the EU, with only three counties still favoring Brexit.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/britain-faces-a-deep-freeze-in-living/8.png",
@@ -8855,7 +9263,8 @@
      "description": "Bump chart ranking the 10 largest advanced economies by output per worker from 1950 to 2019, showing the UK falling to last among peers.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -8880,7 +9289,8 @@
      "description": "Table of Federal Reserve realized gains/losses and change in unrealized gains/losses on SOMA securities, nine months ended Sept 30, 2022 versus 2021.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/does-it-matter-that-central-banks/2.png",
@@ -8897,7 +9307,8 @@
      "description": "Weekly Fed earnings remittances due to the Treasury, hovering near +$2bn until 2022, then plunging to about -$30bn in early 2023.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/does-it-matter-that-central-banks/3.png",
@@ -8911,7 +9322,8 @@
      "description": "Projected annual Fed remittances to Treasury and year-end deferred asset, 2016-2030, with baseline path and 70%/90% uncertainty intervals.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -8946,7 +9358,8 @@
      "description": "Stacked bars show income, interest rate and price contributions to year-over-year change in the HOAM housing affordability index, with a line for total affordability change, 2007-2023.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/the-uneasy-us-housing-stalemate/2.png",
@@ -8960,7 +9373,8 @@
      "description": "Area chart of US existing home sales from 1980 to November 2022, peaking near 7M around 2005 and falling to about 3.7M by late 2022.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/the-uneasy-us-housing-stalemate/3.png",
@@ -8976,7 +9390,8 @@
      "description": "Year-over-year percent change in the FHFA House Price Index from the early 1990s to late 2022, showing the pandemic surge and recent slowdown to about 10%.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -9003,7 +9418,8 @@
      "description": "Annual bar chart of the US federal funds rate from 1950 to 2020, peaking near 16% in 1980 and falling to near zero.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/why-are-we-always-unprepared-for/2.png",
@@ -9017,7 +9433,8 @@
      "description": "Schematic showing $1.00 of government spending leading to $1.64 of economic growth, a net effect of $0.64.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/why-are-we-always-unprepared-for/3.png",
@@ -9033,7 +9450,8 @@
      "description": "Schematic diagram showing most recessions were missed by economists, a small share correctly forecast, and some forecast recessions never happened.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/why-are-we-always-unprepared-for/4.png",
@@ -9049,7 +9467,8 @@
      "description": "Bar comparison of output shortfall versus fiscal stimulus in 2008 ($80bn vs $40bn) and 2021 ($20bn vs $150bn), per Summers.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/why-are-we-always-unprepared-for/5.png",
@@ -9065,7 +9484,8 @@
      "description": "Scatter plot of OECD countries showing automatic stabilizer effectiveness (% of income shock) against social benefits as % of GDP, with trend line.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/why-are-we-always-unprepared-for/6.png",
@@ -9081,7 +9501,8 @@
      "description": "Stacked bars showing Democrats' and Republicans' support or opposition to tying unemployment benefits to the public health emergency and unemployment rate.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -9108,7 +9529,8 @@
      "description": "Distribution of Americans' self-identified political ideology, from extremely liberal to extremely conservative, comparing 1973 with the latest General Social Survey; most are moderate in both.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -9135,7 +9557,8 @@
      "description": "Share of Democrats and Republicans giving liberal answers on ten ideological questions, 1973-2017, showing the partisan gap widening mainly in the 1990s and 2000s.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/why-is-america-so-politically-polarized/2.png",
@@ -9152,7 +9575,8 @@
      "description": "Share of Democrats and Republicans saying the US spends too little on environmental protection, 1973–2017, compared with Sweden and Italy and the 1973 median.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -9180,7 +9604,8 @@
      "description": "Years of working needed for the college earnings premium to cover four-year college cost, 1990-2020, staying roughly between 4.5 and 5.5 years.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -9207,7 +9632,8 @@
      "description": "Stacked area chart of the share of the US workforce in farming, manufacturing and services from 1840 to 2020, showing the shift toward services.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -9234,7 +9660,8 @@
      "description": "Bubble matrix showing share of people reporting happiness by how often they feel rushed and how often they have excess time.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -9259,7 +9686,8 @@
      "description": "Density chart of how much users value Facebook per week, showing that people who quit for a week valued it about 20% more afterward.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -9286,7 +9714,8 @@
      "description": "Weekly all-cause death rates per 100,000 for ages 10-59 in England, unvaccinated versus after second vaccine dose, March to September 2021.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/we-are-all-flawed-thinking-machines/2.png",
@@ -9302,7 +9731,8 @@
      "description": "Stacked bars compare the age distribution (12-40 vs 40-59) of vaccinated and unvaccinated UK populations, showing the vaccinated group skews older.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/we-are-all-flawed-thinking-machines/3.png",
@@ -9318,7 +9748,8 @@
      "description": "Bar chart of COVID-19 deaths per 1,000 population in the UK, comparing under-40s with 40-59 year olds; the older group has far higher mortality.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/we-are-all-flawed-thinking-machines/4.png",
@@ -9334,7 +9765,8 @@
      "description": "Bar chart comparing COVID death rates for vaccinated versus unvaccinated people across age groups 18-29 to 50-59 in the UK.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -9361,7 +9793,8 @@
      "description": "Lehman Brothers bond price (from $100) and stock price falling to zero between December 2006 and December 2008, with annotations.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -9388,7 +9821,8 @@
      "description": "Line chart of price indices (1980=100) for hospital services, college tuition, housing, food, cars, furniture, clothing and TVs versus overall inflation, 1980-2020.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/the-difference-between-hamilton-and/2.png",
@@ -9404,7 +9838,8 @@
      "description": "Scatter plot of the share of Republicans versus Democrats who consider each policy issue a top priority, showing health and education as shared priorities.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/the-difference-between-hamilton-and/3.png",
@@ -9421,7 +9856,8 @@
      "description": "Two panels: compensation growth since 2001 for college employees (66%) versus all employees (71%), and private versus public college tuition from 1980 to 2015.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/the-difference-between-hamilton-and/4.png",
@@ -9437,7 +9873,8 @@
      "description": "Scatter of health expenditure per capita versus GDP per capita for OECD countries, with US yearly path from 1950 to 2010 and a trend line.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/the-difference-between-hamilton-and/5.png",
@@ -9453,7 +9890,8 @@
      "description": "US manufacturing output (rising from $0.8trn to $2.3trn) versus manufacturing workers (falling from 17 million to 12 million), 1970 to about 2021.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/the-difference-between-hamilton-and/6.png",
@@ -9469,7 +9907,8 @@
      "description": "Bar chart of economists' survey responses (strongly agree, agree, uncertain, disagree) on whether Baumol's cost disease explains rising education and health care costs.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/the-difference-between-hamilton-and/7.png",
@@ -9483,7 +9922,8 @@
      "description": "Schematic of production possibility frontiers in 1950 vs today showing car productivity outpacing healthcare, raising healthcare's relative price while incomes grow.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/the-difference-between-hamilton-and/8.png",
@@ -9499,7 +9939,8 @@
      "description": "Waterfall chart of how after-tax income and spending categories (apparel, food, housing, healthcare, etc.) changed versus 1984 in today's dollars, implying savings.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   },
@@ -9524,7 +9965,8 @@
      "description": "Stylized area line titled '% of workers quitting' rising sharply at the end, overlaid on a photo of office buildings; no axes or dates.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/why-is-the-labor-market-so-broken/2.png",
@@ -9540,7 +9982,8 @@
      "description": "Connected scatterplot of job openings rate versus unemployment rate, showing pandemic-era path diverging from the historical inverse relationship (Beveridge curve).",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/why-is-the-labor-market-so-broken/3.png",
@@ -9556,7 +9999,8 @@
      "description": "Three panels showing the rising quits rate, record job openings, and unemployment at 5.2% versus 3.5% in February 2020, illustrating labor market puzzle.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/why-is-the-labor-market-so-broken/4.png",
@@ -9570,7 +10014,8 @@
      "description": "Two Venn diagrams contrasting the large overlap of company and worker needs before the pandemic with a small overlap now.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/why-is-the-labor-market-so-broken/5.png",
@@ -9586,7 +10031,8 @@
      "description": "Scatter plot of sector job openings rates now versus January 2020, showing sectors with high openings pre-pandemic still struggle most; hotels and food is the outlier.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/why-is-the-labor-market-so-broken/6.png",
@@ -9600,7 +10046,8 @@
      "description": "Scatter of industry quits rates now versus Jan 2020 against average hourly wage, showing low-wage sectors like hotels and food quitting most.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/why-is-the-labor-market-so-broken/7.png",
@@ -9616,7 +10063,8 @@
      "description": "Growth in share employed, May to August 2021, in states that withdrew pandemic unemployment benefits early versus states that maintained them, with uncertainty band.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/why-is-the-labor-market-so-broken/8.png",
@@ -9632,7 +10080,8 @@
      "description": "Bar chart of share of low-wage job seekers citing reasons for staying out of the job market: COVID fears top, UI payments lowest.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     },
     {
      "hosted_url": "https://noon.homeeconomics.us/images/own/why-is-the-labor-market-so-broken/9.png",
@@ -9646,7 +10095,8 @@
      "description": "Scatter of industry sectors showing pre-pandemic hourly wage versus percent change in average wage during the pandemic, highlighting personal care, hotels and food, and finance.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null
+     "refresh_status": null,
+     "replica_status": null
     }
    ]
   }
