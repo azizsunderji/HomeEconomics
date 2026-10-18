@@ -1,7 +1,40 @@
 {
- "generated_at": "2026-10-16T16:35:35+00:00",
+ "generated_at": "2026-10-18T09:00:56+00:00",
  "note": "Owner's own publications for callbacks (pulse/editor/own_publications.py). Charts are hosted on noon.homeeconomics.us.",
  "posts": [
+  {
+   "slug": "owning-beats-renting-only-about-half",
+   "url": "https://homeeconomics.substack.com/p/owning-beats-renting-only-about-half",
+   "title": "Owning Beats Renting Only About Half the Time",
+   "date": "2026-10-15",
+   "audience": "free",
+   "summary": "Does buying a home build more wealth than renting and investing the difference? Since 1975, buying beat renting only 54% of the time for median American homes. The timing of purchase mattered most—early-1980s buyers with 13–17% mortgage rates lost to renters in every scenario, while late-1990s buyers won 90% of the time. Holding periods of 15–20 years offered best odds, but even then outcomes were often close.",
+   "text": "Since 1975, buying the median American home left a household wealthier than renting and investing the difference in only 54% of cases. The chart below compares the two for every combination of purchase year (down the side) and sale year (across the top). Blue means the owner had more wealth after selling, net of taxes and transaction costs; orange means the renter did.\n\nWhen you bought mattered more than anything else.\n\nHouseholds that bought in 1980–84 finished behind the renter in every possible sale year, and those still holding today are 29% to 59% behind. That’s because early-1980s buyers locked in mortgage rates of 13–17%, then watched the S&P 500 return 18% a year from 1982 to 2000 while home prices rose 4% a year. Refinancing didn’t help enough to offset those factors. As Conor Sen observed, \"the generational time to buy was the late '90s rather than the early '80s.\"\n\nOn the other hand, those that bought in 1995–99 came out ahead nine times in ten (they only did worse than renting when they held for very short horizons).\n\nHow long you held mattered less than the usual advice implies. Owners who sold after one year came out ahead only 14% of the time, and after five years 47% of the time. The odds peaked at 15–20 years, when owners won about three times in four. Even then the contest was often close: in a third of all cases, the two households ended within 25% of each other.\n\nThis comparison is between two otherwise identical married couples in New York earning the med",
+   "charts": [
+    {
+     "hosted_url": "https://noon.homeeconomics.us/images/own/owning-beats-renting-only-about-half/1.png",
+     "caption": "Owning beats renting and investing in 54% of cases by wealth at sale",
+     "context": "Since 1975, buying the median American home left a household wealthier than renting and investing the difference in only 54% of cases. The chart below compares the two for every combination of purchase year (down the side) and sale year (ac",
+     "chart_kind": "time-series",
+     "last_period": "2026",
+     "last_period_date": "2026-12-31",
+     "update_frequency": "monthly",
+     "sources": [
+      "American Housing Survey",
+      "Case-Shiller",
+      "FHFA",
+      "BLS",
+      "BEA",
+      "Fed"
+     ],
+     "description": "Heatmap comparing owner's wealth at sale versus a renter who invested, for every purchase year and sale year from 1975 to 2026.",
+     "current_url": null,
+     "refreshed_at": null,
+     "refresh_status": null,
+     "replica_status": null
+    }
+   ]
+  },
   {
    "slug": "can-we-fast-track-new-york-city-out",
    "url": "https://homeeconomics.substack.com/p/can-we-fast-track-new-york-city-out",
@@ -1290,7 +1323,7 @@
      "description": "Hexbin scatterplots comparing detrended home sales and mortgage rate levels (R²=0.25) against year-over-year changes in each (R²=0.50).",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null,
+     "refresh_status": "stale-unrefreshable",
      "replica_status": "unreplicable"
     }
    ]
@@ -1930,7 +1963,7 @@
      "description": "Map of Bay Area neighborhoods showing home price change Aug-Dec 2025, with hatching marking areas with many tech employees.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null,
+     "refresh_status": "stale-unrefreshable",
      "replica_status": null
     }
    ]
