@@ -932,7 +932,11 @@ def add_callbacks_and_context(entries: list[dict], as_of: str, oai, anthropic_cl
         # chart can be had, the sentence goes in without one
         chart, chart_why = resolve_callback_chart(m, as_of)
         if chart is None:
-            if re.search(r"\b(?:my|this|the|that) (?:chart|map|graph)\b|\bchart (?:here|below)\b", sent, re.I):
+            # owner, 19 Oct 2026: the writer may pre-shape the sentence for a refreshed chart; with no chart to show,
+            # drop that clause rather than reject the whole callback or leave a promise the email cannot keep
+            sent = re.sub(r"\s+and my updated (?:chart|map|graph) is below(?=\s*\))", "", sent, flags=re.I)
+            sent = re.sub(r";\s*my updated (?:chart|map|graph) is below\s*:?\s*$", ".", sent, flags=re.I)
+            if re.search(r"\b(?:my|this|the|that) (?:\w+ )?(?:chart|map|graph)\b|\b(?:chart|map|graph) (?:here|below)\b", sent, re.I):
                 log["rejected"].append({"kind": "callback", "rank": c.get("rank"), "text": sent,
                                         "reason": f"points at a chart that cannot be shown ({chart_why})"})
                 continue
