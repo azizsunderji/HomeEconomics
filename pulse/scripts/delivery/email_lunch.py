@@ -374,7 +374,10 @@ def _strip_context(text: str) -> str:
 # is optional. Rendered as a two-cell table: a large blue opening quotation
 # mark (Georgia 64px) in a 40px left cell, the quote in upright Georgia 21px
 # in the right cell, the attribution under it in the sans FONT, 13px, MUTED,
-# after an em dash. No closing mark. Both tiers render it identically; any
+# after an em dash. No closing mark. The attribution carries one markdown
+# link, on the speaker's name, to the source the quote was taken from (owner,
+# 20 Oct 2026); it is not narrowed to a verb but otherwise styled and walled
+# like any body link. Both tiers render it identically; any
 # link inside goes through _body_links, so the free-tier wall treats it the
 # same as a link in a context box.
 _QUOTE_RE = re.compile(r"^[ \t]*:::[ \t]*quote[ \t]*$(.*?)^[ \t]*:::[ \t]*$", re.M | re.S | re.I)
@@ -411,6 +414,7 @@ def _quotes_as_text(text: str) -> str:
     own (cards keep a quote: it is part of the theme, not background)."""
     def _one(m: re.Match) -> str:
         q, who = _quote_parts(m.group(1))
+        who = re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", who)   # the attribution link is plain text on a card
         return f"\n\n{_quote_text(q, who)}\n\n" if q else "\n\n"
     return re.sub(r"\n{3,}", "\n\n", _QUOTE_RE.sub(_one, str(text or ""))).strip()
 
@@ -440,7 +444,7 @@ def _quote_block(text: str, who: str, margin: str) -> str:
     """One pull quote, style B (owner, 20 Oct 2026). Table-based so Gmail,
     Apple Mail and Outlook keep the mark in its own column."""
     who_html = (f'<div style="font-family:{FONT}; font-size:13px; line-height:1.4; color:{MUTED}; '
-                f'margin-top:8px;">&mdash; {_body_links(who)}</div>') if who else ""
+                f'margin-top:8px;">&mdash; {_body_links(who, narrow=False)}</div>') if who else ""
     return (f'<div style="margin:{margin};">'
             f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>'
             f'<td width="40" valign="top" style="width:40px; font-family:{QUOTE_SERIF}; font-size:64px; '
@@ -1189,17 +1193,18 @@ def _bare_url_anchor(m: re.Match) -> str:
     return f'<a href="{href}" target="_blank" style="{BODY_LINK_STYLE}">{raw}</a>{tail}'
 
 
-def _body_links(text: str) -> str:
+def _body_links(text: str, narrow: bool = True) -> str:
     """_md_links() with every anchor restyled for body copy: ink-coloured,
     underlined with a 2px rule, never blue and never visited-purple. Keeps
     href/target, drops the incoming style. Anchors are first narrowed to
-    the reporting verb (see _narrow_link_anchors)."""
+    the reporting verb (see _narrow_link_anchors), unless narrow=False (a pull
+    quote's attribution: the link sits on the speaker's name; owner, 20 Oct 2026)."""
     text = str(text)
     _url_re = _MD_URL_RE
     # the only URL narrowing may remove: an @handle's own profile link that
     # sits directly before another link (the account is never linked)
     allowed_loss = set(re.findall(rf"\[@[A-Za-z0-9_]+\]\((https?://[^)\s]+){_MD_TITLE}\)(?=\s*\[)", text))
-    narrowed = _name_platforms(_narrow_link_anchors(text))
+    narrowed = _name_platforms(_narrow_link_anchors(text)) if narrow else text
     lost = [u for u in _url_re.findall(text) if u not in narrowed and u not in allowed_loss]
     if lost:
         logger.warning(f"link narrowing would lose {len(lost)} URL(s); using original links: {lost[:2]}")

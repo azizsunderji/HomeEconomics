@@ -70,8 +70,9 @@
   // Pull quote (owner, 20 Oct 2026, style B): a named person's verbatim words.
   // Markdown: "::: quote", the quote text, an optional last line "-- Attribution", ":::".
   // In the editor: <div class="pq"> (not editable text, like an image figure) holding a
-  // label row (QUOTE, up/down, remove), a textarea for the quote and an input for the
-  // attribution. An empty quote is dropped by htmlToMd.
+  // label row (QUOTE, up/down, remove), a textarea for the quote and a one-line editable field
+  // for the attribution. The attribution's link (on the speaker's name, to the source; owner,
+  // 20 Oct 2026) round-trips like a paragraph's. An empty quote is dropped by htmlToMd.
   const FENCE_RE = /^[ \t]*:::[ \t]*(context|quote)[ \t]*$([\s\S]*?)^[ \t]*:::[ \t]*$/gim;
   const PQ_HEAD = '<div class="ctxhead pqhead"><span class="ctxlabel">Quote</span>' +
     '<span class="ctxbtns">' +
@@ -89,7 +90,7 @@
     return '<div class="pq" contenteditable="false">' + PQ_HEAD +
       '<div class="pqrow"><span class="pqmark" aria-hidden="true">“</span><div class="pqfields">' +
       '<textarea class="pqtext" rows="1" placeholder="The quote, word for word (no quotation marks)">' + esc(text || '') + '</textarea>' +
-      '<div class="pqwhorow"><span class="pqdash">—</span><input class="pqwho" type="text" placeholder="Name, organisation (optional)" value="' + escAttr(who || '') + '"></div>' +
+      '<div class="pqwhorow"><span class="pqdash">—</span><div class="pqwho" contenteditable="true" data-placeholder="Name (linked to the source), organisation">' + inlineToHtml(who || '') + '</div></div>' +
       '</div></div></div>';
   }
   function mdToHtml(md) {
@@ -162,9 +163,10 @@
         if (tag === 'DIV' && n.classList.contains('pq')) {
           // a pull quote: the text on one line, then "-- attribution" when there is one
           flush();
-          const tEl = n.querySelector('textarea.pqtext'), wEl = n.querySelector('input.pqwho');
+          const tEl = n.querySelector('textarea.pqtext'), wEl = n.querySelector('.pqwho');
           const text = (tEl ? tEl.value : '').replace(/\s+/g, ' ').trim();
-          const who = (wEl ? wEl.value : '').replace(/\s+/g, ' ').replace(/^(?:--|—)\s*/, '').trim();
+          // the attribution keeps its link (on the speaker's name) as markdown, like a paragraph (owner, 20 Oct 2026)
+          const who = (wEl ? htmlToMd(wEl) : '').replace(/\s+/g, ' ').replace(/^(?:--|—)\s*/, '').trim();
           if (text) paras.push('::: quote\n' + text + (who ? '\n-- ' + who : '') + '\n:::');
           continue;
         }
@@ -282,7 +284,10 @@
     return el ? el.closest('a') : null;
   }
   function restoreRange(range, ed) {
-    ed.focus(); const sel = document.getSelection(); sel.removeAllRanges(); sel.addRange(range);
+    // a range inside a quote's attribution focuses that field (its own editing host), else the editor
+    const el = range.startContainer.nodeType === 1 ? range.startContainer : range.startContainer.parentElement;
+    const host = (el && el.closest('.pqwho')) || ed;
+    host.focus(); const sel = document.getSelection(); sel.removeAllRanges(); sel.addRange(range);
   }
   function unwrap(a) { const p = a.parentNode; while (a.firstChild) p.insertBefore(a.firstChild, a); p.removeChild(a); }
   function toolbarFor(ed) { return ed.parentElement.querySelector('.tools[data-for], .tools'); }
@@ -361,14 +366,16 @@
     input.addEventListener('keydown', ev => { if (ev.key === 'Enter') { ev.preventDefault(); applyLink(ed); } });
     input.addEventListener('input', () => { if (/[\r\n]/.test(input.value)) input.value = input.value.replace(/[\r\n]+/g, ' '); fitTitle(input); });
     ed.addEventListener('paste', ev => {
-      // a quote's fields are plain form fields: the browser's own paste (plain text) is right there
-      if (ev.target && ev.target.closest && ev.target.closest('.pq')) return;
+      // the quote's text is a plain form field: the browser's own paste (plain text) is right there.
+      // The attribution takes a pasted link the way a paragraph does, kept on one line (20 Oct 2026).
+      const inPq = ev.target && ev.target.closest ? ev.target.closest('.pq') : null;
+      if (inPq && !ev.target.closest('.pqwho')) return;
       ev.preventDefault(); const cd = ev.clipboardData || window.clipboardData;
       // Cut and paste inside the brief must not lose links: when the clipboard HTML has
       // http(s) links, insert its text with those links and nothing else.
       const linked = pastedLinksHtml(cd.getData('text/html'));
-      if (linked) document.execCommand('insertHTML', false, linked);
-      else document.execCommand('insertText', false, cd.getData('text/plain'));
+      if (linked) document.execCommand('insertHTML', false, inPq ? linked.replace(/<\/?p>/g, ' ').replace(/<br>/g, ' ').trim() : linked);
+      else document.execCommand('insertText', false, inPq ? cd.getData('text/plain').replace(/\s+/g, ' ') : cd.getData('text/plain'));
     });
     ed.addEventListener('input', ev => {
       if (ev.target && ev.target.matches && ev.target.matches('textarea.pqtext')) {
@@ -523,14 +530,14 @@
       if (isMove) { ev.preventDefault(); moveContext(ed, pq, ev.key === 'ArrowUp' ? -1 : 1); return; }
       if (ev.key === 'Enter') {
         ev.preventDefault();
-        if (ev.target.matches('textarea.pqtext')) $('input.pqwho', pq).focus();
+        if (ev.target.matches('textarea.pqtext')) caretPlace($('.pqwho', pq), true);
         else { const nx = pq.nextSibling; if (nx && nx.nodeType === 1) { ed.focus(); caretPlace(nx, false); } }
         return;
       }
       if (ev.key === 'Backspace' || ev.key === 'Delete') {
-        const t = $('textarea.pqtext', pq).value.trim(), w = $('input.pqwho', pq).value.trim();
+        const t = $('textarea.pqtext', pq).value.trim(), w = $('.pqwho', pq).textContent.trim();
         if (!t && !w) { ev.preventDefault(); removeContext(ed, pq); return; }
-        if (ev.key === 'Backspace' && ev.target.matches('input.pqwho') && !ev.target.value) {
+        if (ev.key === 'Backspace' && ev.target.closest('.pqwho') && !$('.pqwho', pq).textContent.trim()) {
           ev.preventDefault(); const ta = $('textarea.pqtext', pq); ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length);
         }
       }

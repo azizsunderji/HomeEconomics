@@ -87,7 +87,9 @@ h2 { font-family: var(--serif); font-weight: normal; font-size: 22px; margin: 36
 .rich .pq .pqtext { display: block; width: 100%; margin: 0; padding: 0; border: 0; border-bottom: 1px dashed transparent; border-radius: 0; background: transparent; font-family: Georgia, "Times New Roman", Times, serif; font-size: 21px; line-height: 1.45; color: var(--ink); resize: none; overflow: hidden; outline: none; -webkit-appearance: none; appearance: none; }
 .rich .pq .pqtext:focus, .rich .pq .pqwho:focus { border-bottom-color: var(--blue); }
 .rich .pq .pqwhorow { display: flex; align-items: baseline; gap: 4px; margin-top: 8px; font-family: var(--sans); font-size: 13px; color: #888888; }
-.rich .pq .pqwho { flex: 1; min-width: 0; margin: 0; padding: 2px 0; border: 0; border-bottom: 1px dashed transparent; border-radius: 0; background: transparent; font: inherit; color: #888888; outline: none; -webkit-appearance: none; appearance: none; }
+.rich .pq .pqwho { flex: 1; min-width: 0; margin: 0; padding: 2px 0; border-bottom: 1px dashed transparent; font: inherit; color: #888888; outline: none; white-space: nowrap; overflow-x: auto; cursor: text; }
+.rich .pq .pqwho:empty::before { content: attr(data-placeholder); color: #b8b3ae; }
+.rich .pq .pqwho a { color: var(--ink); }
 #imgFile { display: none; }
 
 /* toolbar */

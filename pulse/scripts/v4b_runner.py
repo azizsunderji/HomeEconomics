@@ -815,7 +815,7 @@ A context box gives readers the background they need to interpret a news item: w
   Rules: at most two boxes in the edition, at most one per entry; 40 to 80 words each; plain, factual background that a non-specialist needs and the entry does not already give; no opinion, no news from today, no first person, no links, no numbers you are not sure of (a wrong fact is worse than no box). Choose the items where most readers would not know the thing being discussed (a statute by name or acronym, a numbered ballot question, a little-known index or agency program); prefer higher-ranked entries. Never add one for something every reader knows (the Fed, mortgage rates, Zillow). Place it right after the paragraph that first mentions the thing.
 
 3. PULL QUOTES
-Some entries come with SOURCE TEXTS: the text of items the entry is built on, each with an item number. A pull quote sets a named person's own words apart from the entry. Rules: only a sentence or two (15 to 60 words) copied verbatim, character for character, from one source text, from inside quotation marks there, spoken or written by a person the source names (not a headline, not the outlet's own paraphrase or summary, not an unnamed spokesperson). Choose words that are vivid or carry the argument, and that the entry introduces that person for. At most two pull quotes in the edition, at most one per entry; none is often right. Place it right after the paragraph that first introduces that person. Give the attribution as "Name, Organisation" (the organisation only if the source gives it). Copy the words exactly; do not add quotation marks, ellipses or brackets, and do not join pieces that are not next to each other in the source.
+Some entries come with SOURCE TEXTS: the text of items the entry is built on, each with an item number. A pull quote sets a named person's own words apart from the entry. Rules: only a sentence or two (15 to 60 words) copied verbatim, character for character, from one source text, from inside quotation marks there, spoken or written by a person the source names (not a headline, not the outlet's own paraphrase or summary, not an unnamed spokesperson). Choose words that are vivid or carry the argument, and that the entry introduces that person for. At most two pull quotes in the edition, at most one per entry; none is often right. Place it right after the paragraph that first introduces that person. Give the attribution as plain text, "Name, Organisation" (the organisation only if the source gives it); the code links the name to the source item. Copy the words exactly; do not add quotation marks, ellipses or brackets, and do not join pieces that are not next to each other in the source.
 
 OUTPUT: a single JSON object, no preamble, no markdown fences:
 {
@@ -867,7 +867,7 @@ def _quote_sources(entries: list[dict], item_text) -> dict[int, list[dict]]:
                 return out
             text = body[:QUOTE_SOURCE_CHARS]
             total += len(text)
-            out.setdefault(i, []).append({"item": iid, "author": it.get("author") or "", "text": text})
+            out.setdefault(i, []).append({"item": iid, "author": it.get("author") or "", "url": it.get("url") or "", "text": text})
     return out
 
 
@@ -1048,6 +1048,7 @@ def add_callbacks_and_context(entries: list[dict], as_of: str, oai, anthropic_cl
         if len(qt) > 1 and qt[0] in "\"“" and qt[-1] in "\"”":
             qt = qt[1:-1].strip()
         who = re.sub(r"\s+", " ", str(c.get("attribution") or "")).strip().lstrip("-— ").strip()
+        who = re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", who).replace("[", "").replace("]", "")   # plain; the code adds the one link
         n_words = len(qt.split())
         try:
             iid = int(c.get("item"))
@@ -1081,10 +1082,21 @@ def add_callbacks_and_context(entries: list[dict], as_of: str, oai, anthropic_cl
         qt = re.sub(r",\s*$", ".", qt)   # a quote cut before "she said" ends on a comma in the source
         paras = _summary_paragraphs(e.get("summary"))
         after = min(max(int(c.get("after_paragraph") or 1), 1), len(paras))
-        inserts.setdefault(idx, []).append((after, "new_paragraph", f"::: quote\n{qt}\n-- {who}\n:::"))
+        # owner, 20 Oct 2026: the speaker's name links to the source the quote was verified against. The
+        # writer's own "url", if any, is not trusted: the link is always the verified item's URL.
+        src_url = (full.get("url") or src.get("url") or "").strip()
+        who_md = who
+        if re.match(r"https?://\S+$", src_url) and ")" not in src_url:
+            rest = who[len(name):]
+            who_md = f"[{name}]({src_url}){rest}"
+        else:
+            log["rejected"].append({"kind": "quote_link", "rank": c.get("rank"), "attribution": who,
+                                    "reason": f"item {iid} has no usable URL ({src_url!r}); attribution left unlinked"})
+        inserts.setdefault(idx, []).append((after, "new_paragraph", f"::: quote\n{qt}\n-- {who_md}\n:::"))
         pq_entries.add(idx)
         log["applied_quotes"].append({"rank": c.get("rank"), "title": e.get("title"), "after_paragraph": after,
-                                      "item": iid, "words": n_words, "text": qt, "attribution": who})
+                                      "item": iid, "words": n_words, "text": qt, "attribution": who,
+                                      "url": src_url})
 
     def _order(t: tuple, ins: list) -> float:
         # at one position: a context box is placed first, so an appended callback's chart stays right
@@ -1849,8 +1861,8 @@ def main() -> None:
         try:
             def _item_text(iid: int) -> Optional[dict]:
                 # pull quotes (owner, 20 Oct 2026): the corpus item's own text, read from the open DB
-                r = conn.execute("SELECT author, title, body FROM items WHERE id = ?", (int(iid),)).fetchone()
-                return {"author": r[0], "title": r[1], "body": r[2]} if r else None
+                r = conn.execute("SELECT author, title, body, url FROM items WHERE id = ?", (int(iid),)).fetchone()
+                return {"author": r[0], "title": r[1], "body": r[2], "url": r[3]} if r else None
             callback_log = add_callbacks_and_context(entries, end_dt.date().isoformat(), oai, anth, tracker,
                                                      item_text=_item_text)
             for e in entries:
