@@ -1409,3 +1409,16 @@ server Chrome (fanniemae.com refuses plain downloads).
   `quote_link` entry. Cards: the attribution is plain text. Pills are still set at ingest from every URL in the summary,
   so a synthesis quote's source counts; a link added in the editor does not change pills (as for any edit).
   Screenshot: `NewsAtNoon/outputs/pullquote_rendered_v2.png`; checks `NewsAtNoon/scripts/441_pullquote_link_checks.py`.
+
+## 20 Oct 2026 (later): Substack sign-ups flow into Housing at Noon nightly
+- Decision (owner): Substack → Noon only. Noon subscribers are not pushed to Substack; they will find it through links.
+- Mechanism: Substack emails "New free/paid subscriber to Home Economics!" to aziz.sunderji@gmail.com with the address,
+  name and source. `OVH/2026_10_20_SubstackImport/scripts/12_enrol_from_substack_emails.py` reads them over IMAP
+  (app password in ~/.gmail_personal_imap.json), creates anyone not already in Clerk on the free tier with
+  `pulseNewsletter.source = "substack-notify"` and a `substackImport` record (`via: notification-email`), leaves
+  anyone previously unsubscribed alone, logs to `data/enrol_log.jsonl`, keeps its place in `data/enrol_state.json`,
+  and sends one Telegram line when it added someone.
+- Timer: `noon-substack-enrol.timer`, nightly 23:30 America/New_York; log `~/work/noon/logs/substack_enrol.log`.
+- Gap: Substack does not email on unsubscribes, so a Substack unsubscribe does not remove anyone from Noon. They
+  have the Noon unsubscribe link in every edition.
+- First run (20 Oct, by hand) added the 4 people who subscribed after the 13:26 UTC export.
