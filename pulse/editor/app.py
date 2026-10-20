@@ -223,6 +223,35 @@ def _refresh_token() -> str:
     return hmac.new(sec.encode(), b"own-chart-refresh", hashlib.sha256).hexdigest() if sec else ""
 
 
+# Welcome edition (owner, 20 Oct 2026): "when someone signs up, it emails them the most recent edition". The portal's
+# sign-up route posts {email} here with x-welcome-token = HMAC(PULSE_UNSUB_SECRET, "welcome:" + email); welcome.py
+# sends the latest free edition with a note on top. Sent in a thread so the portal's call returns at once.
+def _welcome_token(email: str) -> str:
+    import hmac
+    sec = os.environ.get("PULSE_UNSUB_SECRET", "")
+    return hmac.new(sec.encode(), f"welcome:{email.strip().lower()}".encode(), hashlib.sha256).hexdigest() if sec else ""
+
+
+@app.post("/api/welcome")
+def welcome_api(request: Request, body: dict[str, Any] = Body(...)):
+    import hmac
+    email = str(body.get("email") or "").strip().lower()
+    if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email):
+        raise HTTPException(status_code=400, detail="email")
+    want = _welcome_token(email)
+    if not ((want and hmac.compare_digest(request.headers.get("x-welcome-token", ""), want)) or _authed(request)):
+        raise HTTPException(status_code=401, detail="not authorised")
+    import welcome
+
+    def _go():
+        try:
+            welcome.send_welcome(email)
+        except Exception as e:  # noqa: BLE001
+            logging.getLogger("noon.welcome").warning(f"welcome edition to {email} failed: {e}")
+    threading.Thread(target=_go, daemon=True).start()
+    return JSONResponse({"ok": True, "email": email})
+
+
 @app.post("/api/own-chart-refresh")
 def own_chart_refresh_api(request: Request, body: dict[str, Any] = Body(...)):
     import hmac
