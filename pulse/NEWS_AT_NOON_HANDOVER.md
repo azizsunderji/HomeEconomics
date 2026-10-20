@@ -1358,3 +1358,7 @@ builders re-run fresh in under 26 s. Download caches moved out of Dropbox to `~/
 Watch: several titles and notes were rewritten from current data where the original claim no longer holds (lock-in,
 job growth, vacancy, construction notes); `our_national_5_year_home_price_3.py` fetches Fannie Mae's HPI through the
 server Chrome (fanniemae.com refuses plain downloads).
+
+## 20 Oct 2026: welcome edition and sign-up background notes
+- **Welcome edition.** A new free sign-up now receives the most recent sent edition (free tier) with a note on top ("Thanks for signing up. Here is today's edition ... The next edition lands in your inbox tomorrow / on Monday at noon Eastern"). Renderer: `pulse/editor/welcome.py` (`send_welcome(email)`, `next_edition_phrase()`). Endpoint: `POST /api/welcome` on the editor app, body `{email}`, header `x-welcome-token = HMAC-SHA256(PULSE_UNSUB_SECRET, "welcome:" + email)`; the portal's `/api/pulse/subscribe` route calls it through `after()` (`src/lib/welcomeEdition.ts`). Sends run in a thread; failures are logged under `noon.welcome`. Test send: `python welcome.py --to you@x.com`.
+- **Sign-up background notes.** After every free sign-up and every Stripe subscription, the portal posts a second Telegram message with two or three sentences on who the subscriber is and what their employer does (`src/lib/signupBackground.ts`: Claude Sonnet 5 with web search, note only, no addresses or records). Costs roughly 10 to 30 cents a lookup.
