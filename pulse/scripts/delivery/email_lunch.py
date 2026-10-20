@@ -101,6 +101,7 @@ FREE_ENTRY_COUNT = 5
 
 # Upgrade page. The path still says /pulse/ and will be renamed later;
 # keep every reference to it going through this constant.
+MANAGE_URL = "https://homeeconomics.us/noon"  # "Manage your subscription" button (Stripe customer portal) lives on the sign-up page
 UPGRADE_URL = "https://homeeconomics.us/noon/premium"  # the deliberate upgrade page; walled links go to /noon/upgrade (variants.py)
 
 # Sign-up page, used by the "social" tier (the public PDF posted on social
@@ -1373,16 +1374,17 @@ def render_lunch_html(briefing: dict, tier: str = "premium") -> tuple[str, str, 
                           f'<span style="color:{MUTED};">&nbsp;&nbsp;&middot;&nbsp;&nbsp;</span>'
                           f'{_link("Upgrade", UPGRADE_URL, weight="600")}')
         else:
-            banner_text = why
-            links_html = _link("Unsubscribe", "__UNSUB_URL__", weight="600")
-    banner_html = (
+            banner_text = ""        # premium: nothing at the top (owner, 20 Oct 2026); see the bottom box
+            links_html = ""
+    if banner_text:
+      banner_html = (
         f'<table width="100%" cellpadding="0" cellspacing="0"><tr>'
         f'<td bgcolor="{LIGHT}" style="background-color:{LIGHT}; padding:14px 16px; '
         f'border-radius:6px; font-family:{FONT}; font-size:14px; line-height:1.5; color:{INK};">'
         f'{banner_text}'
         + (f'<div style="margin-top:8px;">{links_html}</div>' if links_html else "")
         + f'</td></tr></table>\n'
-    )
+      )
 
     # ── Standfirst (the summary paragraph; no heading) ──
     if intro:
@@ -1599,10 +1601,22 @@ def render_lunch_html(briefing: dict, tier: str = "premium") -> tuple[str, str, 
 
     parts.append(_spacer(SUBSECTION_GAP).join(subsections))
 
-    # ── Free-edition banner, repeated at the bottom ──
+    # ── Bottom box: the free box again, or for premium the short options box (owner, 20 Oct 2026) ──
     if walled and banner_html:
         parts.append(_spacer(SECTION_GAP))
         parts.append(banner_html)
+    elif tier == "premium":
+        parts.append(_spacer(SECTION_GAP))
+        parts.append(
+            f'<table width="100%" cellpadding="0" cellspacing="0"><tr>'
+            f'<td bgcolor="{LIGHT}" style="background-color:{LIGHT}; padding:12px 16px; '
+            f'border-radius:6px; font-family:{FONT}; font-size:13px; line-height:1.5; color:{MUTED};">'
+            f'You&rsquo;re a premium subscriber to {_esc(TITLE)}. '
+            f'{_link("Manage or cancel your subscription", MANAGE_URL, weight="600")}'
+            f'<span style="color:{MUTED};">&nbsp;&nbsp;&middot;&nbsp;&nbsp;</span>'
+            f'{_link("Unsubscribe from these emails", "__UNSUB_URL__", weight="600")}'
+            f'</td></tr></table>\n'
+        )
 
     # ── Footer ──
     parts.append(_spacer(SECTION_GAP))
