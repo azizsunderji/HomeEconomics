@@ -1362,7 +1362,7 @@ def render_lunch_html(briefing: dict, tier: str = "premium") -> tuple[str, str, 
         links_html = ""
     else:
         why = (f'You&rsquo;re receiving this daily briefing because you signed up for {_esc(TITLE)} '
-               f'or you subscribe to Home Economics on Substack.')
+               f'or you subscribe to {_link("Home Economics", "https://homeeconomics.substack.com")} on Substack.')
         if walled:
             if n_withheld:
                 clause = (f" This is the free edition: links are disabled, and {n_withheld} of today&rsquo;s {total} "
