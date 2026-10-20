@@ -1398,3 +1398,14 @@ server Chrome (fanniemae.com refuses plain downloads).
 - **First use.** 20 Oct draft, theme "Only 3 of 100 Big Metros Hit 3x Price-to-Income": Hermann's words from the JCHS
   LinkedIn post (corpus item 480390), with the paraphrase paragraph shortened. Screenshots:
   `NewsAtNoon/outputs/pullquote_rendered_v1.png`, `pullquote_editor_v1.png`.
+- **Follow-up (20 Oct 2026, owner): every pull quote links to its source, on the speaker's name.** Attribution line
+  `-- [Alexander Hermann](source URL), Harvard Joint Center for Housing Studies`. Renderer: the attribution goes through
+  `_body_links(who, narrow=False)`: same anchor style as body links (ink, 2px blue underline) at the line's 13px, walled
+  in the free tier like any link, but not narrowed to a verb (an explicit exception to "links on the reporting verb
+  only"; `audit_links` will flag the name anchor, which is expected). Editor: the attribution is a one-line
+  contenteditable field (`div.pqwho`) that round-trips the markdown link and takes the Link button and pasted links
+  like a paragraph; cache-buster `?v=20261020quotelink`. Stage 8b: the inserted fence links the name to the verified
+  item's URL (the writer's own URL, if any, is ignored); an item with no usable URL leaves the name unlinked and logs a
+  `quote_link` entry. Cards: the attribution is plain text. Pills are still set at ingest from every URL in the summary,
+  so a synthesis quote's source counts; a link added in the editor does not change pills (as for any edit).
+  Screenshot: `NewsAtNoon/outputs/pullquote_rendered_v2.png`; checks `NewsAtNoon/scripts/441_pullquote_link_checks.py`.
