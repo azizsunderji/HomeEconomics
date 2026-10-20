@@ -1342,40 +1342,47 @@ def render_lunch_html(briefing: dict, tier: str = "premium") -> tuple[str, str, 
 <div style="font-family:{FONT}; font-size:15px; color:{MUTED}; margin:0;">{_esc(date_line)}</div>
 """)
 
-    # ── Free-edition banner ──
+    # ── Standing banner (owner, 20 Oct 2026): why you get this, the free-edition note, and two quiet links ──
+    # Shown in every email edition (free and premium) since the Substack list was folded into the free tier;
+    # the social/PDF variant keeps its sign-up wording. __UNSUB_URL__ is filled per recipient by render.with_footer.
     banner_html = ""
-    if walled:
-        n_withheld = len(withheld)
-        if tier == "social":
-            # Public PDF: the reader has never subscribed, so ask for the
-            # free sign-up rather than an upgrade.
-            if n_withheld:
-                clause = (f" Today&rsquo;s premium edition has {n_withheld} more "
-                          f"{'theme' if n_withheld == 1 else 'themes'} and every link goes to the source.")
-            else:
-                clause = ""
-            banner_text = (
-                f'This is the free edition of {_esc(TITLE)}, a daily brief on the U.S. housing '
-                f'market by Aziz Sunderji.{clause} Get the free edition by email at noon Eastern. '
-                f'{_link("Sign up →", SIGNUP_URL, weight="600")}'
-            )
+    n_withheld = len(withheld) if walled else 0
+    if tier == "social":
+        if n_withheld:
+            clause = (f" Today&rsquo;s premium edition has {n_withheld} more "
+                      f"{'theme' if n_withheld == 1 else 'themes'} and every link goes to the source.")
         else:
+            clause = ""
+        banner_text = (
+            f'This is the free edition of {_esc(TITLE)}, a daily brief on the U.S. housing '
+            f'market by Aziz Sunderji.{clause} Get the free edition by email at noon Eastern. '
+            f'{_link("Sign up →", SIGNUP_URL, weight="600")}'
+        )
+        links_html = ""
+    else:
+        why = (f'You&rsquo;re receiving this daily briefing because you signed up for {_esc(TITLE)} '
+               f'or you subscribe to Home Economics on Substack.')
+        if walled:
             if n_withheld:
-                clause = (f" Links are disabled, and {n_withheld} of today&rsquo;s {total} "
+                clause = (f" This is the free edition: links are disabled, and {n_withheld} of today&rsquo;s {total} "
                           f"themes are only in the premium edition.")
             else:
-                clause = " Links are disabled in this edition."
-            banner_text = (
-                f'You&rsquo;re reading the free edition of {_esc(TITLE)}.{clause} '
-                f'{_link("Upgrade →", UPGRADE_URL, weight="600")}'
-            )
-        banner_html = (
-            f'<table width="100%" cellpadding="0" cellspacing="0"><tr>'
-            f'<td bgcolor="{LIGHT}" style="background-color:{LIGHT}; padding:14px 16px; '
-            f'border-radius:6px; font-family:{FONT}; font-size:14px; line-height:1.5; color:{INK};">'
-            f'{banner_text}'
-            f'</td></tr></table>\n'
-        )
+                clause = " This is the free edition: links are disabled."
+            banner_text = why + clause
+            links_html = (f'{_link("Unsubscribe", "__UNSUB_URL__", weight="600")}'
+                          f'<span style="color:{MUTED};">&nbsp;&nbsp;&middot;&nbsp;&nbsp;</span>'
+                          f'{_link("Upgrade", UPGRADE_URL, weight="600")}')
+        else:
+            banner_text = why
+            links_html = _link("Unsubscribe", "__UNSUB_URL__", weight="600")
+    banner_html = (
+        f'<table width="100%" cellpadding="0" cellspacing="0"><tr>'
+        f'<td bgcolor="{LIGHT}" style="background-color:{LIGHT}; padding:14px 16px; '
+        f'border-radius:6px; font-family:{FONT}; font-size:14px; line-height:1.5; color:{INK};">'
+        f'{banner_text}'
+        + (f'<div style="margin-top:8px;">{links_html}</div>' if links_html else "")
+        + f'</td></tr></table>\n'
+    )
 
     # ── Standfirst (the summary paragraph; no heading) ──
     if intro:
@@ -1383,7 +1390,7 @@ def render_lunch_html(briefing: dict, tier: str = "premium") -> tuple[str, str, 
         # Standfirst: reads as summary through size and measure alone —
         # no heading, no bold, no colour, no italics (owner's rule).
         parts.append(_standfirst_html(intro, body_text))
-    if walled and banner_html:
+    if banner_html:
         parts.append(_spacer(32))
         parts.append(banner_html)
 

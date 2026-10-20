@@ -81,6 +81,8 @@ def render_social(draft: dict) -> str:
 
 
 def with_footer(html: str, unsub_url: str | None) -> str:
+    # the standing banner's Unsubscribe link (email_lunch, 20 Oct 2026) is per recipient
+    html = html.replace("__UNSUB_URL__", unsub_url or "https://homeeconomics.us/noon")
     parts = []
     if unsub_url:
         parts.append(f'<a href="{unsub_url}" style="color:#888888;">Unsubscribe</a>')
