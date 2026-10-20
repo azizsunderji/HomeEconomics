@@ -364,20 +364,92 @@ def _strip_context(text: str) -> str:
     return re.sub(r"\n{3,}", "\n\n", _CONTEXT_RE.sub("", str(text or ""))).strip()
 
 
+# ── Pull quotes (owner, 20 Oct 2026; style B of 434_pullquote_mockups.py) ──
+# A named person's verbatim words, set apart. Fenced like a context box:
+#     ::: quote
+#     The verbatim quote text, no surrounding quotation marks.
+#     -- Alexander Hermann, Harvard Joint Center for Housing Studies
+#     :::
+# The last line beginning with "-- " (or an em dash) is the attribution and
+# is optional. Rendered as a two-cell table: a large blue opening quotation
+# mark (Georgia 64px) in a 40px left cell, the quote in upright Georgia 21px
+# in the right cell, the attribution under it in the sans FONT, 13px, MUTED,
+# after an em dash. No closing mark. Both tiers render it identically; any
+# link inside goes through _body_links, so the free-tier wall treats it the
+# same as a link in a context box.
+_QUOTE_RE = re.compile(r"^[ \t]*:::[ \t]*quote[ \t]*$(.*?)^[ \t]*:::[ \t]*$", re.M | re.S | re.I)
+_BLOCK_RE = re.compile(r"^[ \t]*:::[ \t]*(context|quote)[ \t]*$(.*?)^[ \t]*:::[ \t]*$", re.M | re.S | re.I)
+_QUOTE_WHO_RE = re.compile(r"^\s*(?:--|—|&mdash;)\s*(.+?)\s*$")
+QUOTE_SERIF = "Georgia, 'Times New Roman', Times, serif"
+
+
+def _quote_parts(inner: str) -> tuple[str, str]:
+    """(quote text, attribution) from the inside of a quote fence. The text's
+    lines are joined with spaces; a pair of quotation marks wrapped around
+    the whole text is dropped (the big mark does that job)."""
+    lines = [ln.strip() for ln in str(inner or "").strip().splitlines() if ln.strip()]
+    who = ""
+    if lines:
+        m = _QUOTE_WHO_RE.match(lines[-1])
+        if m:
+            who = m.group(1).strip()
+            lines = lines[:-1]
+    text = " ".join(lines).strip()
+    if len(text) > 1 and text[0] in "\"“" and text[-1] in "\"”":
+        text = text[1:-1].strip()
+    return text, who
+
+
+def _quote_text(text: str, who: str) -> str:
+    """The plain-text form of a quote for cards: the text in curly quotes,
+    then an em dash and the attribution."""
+    return f"“{text}” — {who}" if who else f"“{text}”"
+
+
+def _quotes_as_text(text: str) -> str:
+    """Each quote fence replaced by its plain-text form as a paragraph of its
+    own (cards keep a quote: it is part of the theme, not background)."""
+    def _one(m: re.Match) -> str:
+        q, who = _quote_parts(m.group(1))
+        return f"\n\n{_quote_text(q, who)}\n\n" if q else "\n\n"
+    return re.sub(r"\n{3,}", "\n\n", _QUOTE_RE.sub(_one, str(text or ""))).strip()
+
+
 def _split_blocks(text: str) -> list[tuple]:
-    """_split_images, plus ("context", markdown) for each context box, in
-    document order. An empty box is dropped."""
+    """_split_images, plus ("context", markdown) for each context box and
+    ("quote", text, attribution) for each pull quote, in document order. An
+    empty box or quote is dropped."""
     text = str(text or "")
     out: list[tuple] = []
     pos = 0
-    for m in _CONTEXT_RE.finditer(text):
+    for m in _BLOCK_RE.finditer(text):
         out += _split_images(text[pos:m.start()])
-        inner = m.group(1).strip()
-        if _strip_images(inner).strip() or _has_images(inner):
+        inner = m.group(2).strip()
+        if m.group(1).lower() == "quote":
+            q, who = _quote_parts(inner)
+            if q:
+                out.append(("quote", q, who))
+        elif _strip_images(inner).strip() or _has_images(inner):
             out.append(("context", inner))
         pos = m.end()
     out += _split_images(text[pos:])
     return out
+
+
+def _quote_block(text: str, who: str, margin: str) -> str:
+    """One pull quote, style B (owner, 20 Oct 2026). Table-based so Gmail,
+    Apple Mail and Outlook keep the mark in its own column."""
+    who_html = (f'<div style="font-family:{FONT}; font-size:13px; line-height:1.4; color:{MUTED}; '
+                f'margin-top:8px;">&mdash; {_body_links(who)}</div>') if who else ""
+    return (f'<div style="margin:{margin};">'
+            f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>'
+            f'<td width="40" valign="top" style="width:40px; font-family:{QUOTE_SERIF}; font-size:64px; '
+            f'line-height:0.8; color:{BLUE}; padding-top:6px; vertical-align:top;">&ldquo;</td>'
+            f'<td valign="top" style="padding-left:6px; vertical-align:top;">'
+            f'<div style="font-family:{QUOTE_SERIF}; font-size:21px; line-height:1.45; color:{INK};">'
+            f'{_body_links(text)}</div>'
+            f'{who_html}'
+            f'</td></tr></table></div>')
 
 
 def _context_block(md: str, body_text: str, margin: str) -> str:
@@ -1018,7 +1090,7 @@ def _entry_body(summary: str, body_text: str) -> str:
     them at the paragraph gap, and any context box likewise (a shaded block,
     see _context_block). Without images or boxes this is exactly the old path."""
     segs = _split_blocks(summary)
-    if not any(s[0] in ("image", "context") for s in segs):
+    if not any(s[0] in ("image", "context", "quote") for s in segs):
         return _entry_paragraphs(_body_links(summary), body_text)
     blocks: list[tuple] = []
     for s in segs:
@@ -1036,6 +1108,10 @@ def _entry_body(summary: str, body_text: str) -> str:
             # a little more air around the box than between paragraphs
             top = CONTEXT_GAP - ENTRY_PARA_GAP if i else 0
             out.append(_context_block(b[1], body_text, f"{top}px 0 {CONTEXT_GAP if gap else 0}px 0"))
+        elif b[0] == "quote":
+            # same air around a pull quote as around a context box (owner, 20 Oct 2026)
+            top = CONTEXT_GAP - ENTRY_PARA_GAP if i else 0
+            out.append(_quote_block(b[1], b[2], f"{top}px 0 {CONTEXT_GAP if gap else 0}px 0"))
         else:
             out.append(_image_block(b[1], b[2], f"0 0 {gap}px 0"))
     return "".join(out)
@@ -1061,7 +1137,7 @@ def _standfirst_html(intro: str, body_text: str) -> str:
 def _paper_body(summary: str, body_text: str) -> str:
     """The paper summary block; an image line or a context box becomes a block inside it."""
     segs = _split_blocks(summary)
-    if not any(s[0] in ("image", "context") for s in segs):
+    if not any(s[0] in ("image", "context", "quote") for s in segs):
         return f'<div style="{body_text} margin:0 0 16px 0;">{_body_links(summary)}</div>'
     inner = []
     for i, s in enumerate(segs):
@@ -1070,6 +1146,8 @@ def _paper_body(summary: str, body_text: str) -> str:
             inner.append(f'<div style="margin:{margin};">{_body_links(s[1])}</div>')
         elif s[0] == "context":
             inner.append(_context_block(s[1], body_text, margin))
+        elif s[0] == "quote":
+            inner.append(_quote_block(s[1], s[2], margin))
         else:
             inner.append(_image_block(s[1], s[2], margin))
     return f'<div style="{body_text} margin:0 0 16px 0;">{"".join(inner)}</div>'

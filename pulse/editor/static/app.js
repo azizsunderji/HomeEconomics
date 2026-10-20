@@ -8,7 +8,9 @@
    editor it is a <figure class="img"> (thumbnail, caption field, remove button)
    that is not editable text, so it never counts as a link.
    A Context box is a paragraph group between a line "::: context" and a line ":::";
-   in the editor it is a shaded <div class="ctx"> with a CONTEXT label (14 Oct 2026). */
+   in the editor it is a shaded <div class="ctx"> with a CONTEXT label (14 Oct 2026).
+   A pull quote is "::: quote", the quote text, an optional "-- Attribution" line and ":::";
+   in the editor it is a <div class="pq"> with a quote field and an attribution field (20 Oct 2026). */
 (function () {
   'use strict';
   const $ = (s, el) => (el || document).querySelector(s);
@@ -65,22 +67,48 @@
     const inner = parasHtml(innerMd);
     return '<div class="ctx">' + CTX_HEAD + (inner.length ? inner.join('') : '<p><br></p>') + '</div>';
   }
+  // Pull quote (owner, 20 Oct 2026, style B): a named person's verbatim words.
+  // Markdown: "::: quote", the quote text, an optional last line "-- Attribution", ":::".
+  // In the editor: <div class="pq"> (not editable text, like an image figure) holding a
+  // label row (QUOTE, up/down, remove), a textarea for the quote and an input for the
+  // attribution. An empty quote is dropped by htmlToMd.
+  const FENCE_RE = /^[ \t]*:::[ \t]*(context|quote)[ \t]*$([\s\S]*?)^[ \t]*:::[ \t]*$/gim;
+  const PQ_HEAD = '<div class="ctxhead pqhead"><span class="ctxlabel">Quote</span>' +
+    '<span class="ctxbtns">' +
+    '<button type="button" class="ctxmv" data-act="pqup" title="Move the quote up one paragraph (Alt+↑)">↑</button>' +
+    '<button type="button" class="ctxmv" data-act="pqdown" title="Move the quote down one paragraph (Alt+↓)">↓</button>' +
+    '<button type="button" class="ctxrm" data-act="rmpq" title="Remove quote">✕</button></span></div>';
+  function quoteParts(inner) {
+    const lines = String(inner || '').split('\n').map(l => l.trim()).filter(Boolean);
+    let who = '';
+    const m = lines.length ? /^(?:--|—)\s*(.+)$/.exec(lines[lines.length - 1]) : null;
+    if (m) { who = m[1].trim(); lines.pop(); }
+    return { text: lines.join(' '), who };
+  }
+  function pqHtml(text, who) {
+    return '<div class="pq" contenteditable="false">' + PQ_HEAD +
+      '<div class="pqrow"><span class="pqmark" aria-hidden="true">“</span><div class="pqfields">' +
+      '<textarea class="pqtext" rows="1" placeholder="The quote, word for word (no quotation marks)">' + esc(text || '') + '</textarea>' +
+      '<div class="pqwhorow"><span class="pqdash">—</span><input class="pqwho" type="text" placeholder="Name, organisation (optional)" value="' + escAttr(who || '') + '"></div>' +
+      '</div></div></div>';
+  }
   function mdToHtml(md) {
     md = String(md || '').replace(/\r/g, '');
     const out = []; let i = 0, m;
-    CTX_RE.lastIndex = 0;
-    while ((m = CTX_RE.exec(md))) {
+    FENCE_RE.lastIndex = 0;
+    while ((m = FENCE_RE.exec(md))) {
       const before = parasHtml(md.slice(i, m.index));
       out.push(...before);
-      out.push(ctxHtml(m[1]));
+      if (m[1].toLowerCase() === 'quote') { const q = quoteParts(m[2]); out.push(pqHtml(q.text, q.who)); }
+      else out.push(ctxHtml(m[2]));
       i = m.index + m[0].length;
     }
     const rest = parasHtml(md.slice(i));
     out.push(...rest);
     if (!out.length) return '<p><br></p>';
-    // an image or a context box at either end gets an empty paragraph beside it so the
-    // caret has somewhere to go; empty paragraphs are dropped again by htmlToMd
-    const blockish = s => s.startsWith('<figure') || s.startsWith('<div class="ctx">');
+    // an image, a context box or a quote at either end gets an empty paragraph beside it so
+    // the caret has somewhere to go; empty paragraphs are dropped again by htmlToMd
+    const blockish = s => s.startsWith('<figure') || s.startsWith('<div class="ctx">') || s.startsWith('<div class="pq"');
     if (blockish(out[0])) out.unshift('<p><br></p>');
     if (blockish(out[out.length - 1])) out.push('<p><br></p>');
     return out.join('');
@@ -96,7 +124,7 @@
     (function walk(node) {
       for (const n of node.childNodes) {
         if (n.nodeType === 3) { cur += esc(n.nodeValue.replace(/\s+/g, ' ')); continue; }
-        if (n.nodeType !== 1 || /^(SCRIPT|STYLE|META|TITLE|BUTTON|INPUT)$/.test(n.tagName) || n.classList.contains('ctxhead')) continue;
+        if (n.nodeType !== 1 || /^(SCRIPT|STYLE|META|TITLE|BUTTON|INPUT|TEXTAREA)$/.test(n.tagName) || n.classList.contains('ctxhead')) continue;
         if (n.tagName === 'BR') { cur += '<br>'; continue; }
         if (n.tagName === 'A' && /^https?:\/\//i.test(n.getAttribute('href') || '') && n.textContent.trim()) {
           links++;
@@ -129,6 +157,15 @@
           flush();
           const inner = htmlToMd(n);
           if (inner.trim()) paras.push('::: context\n' + inner + '\n:::');
+          continue;
+        }
+        if (tag === 'DIV' && n.classList.contains('pq')) {
+          // a pull quote: the text on one line, then "-- attribution" when there is one
+          flush();
+          const tEl = n.querySelector('textarea.pqtext'), wEl = n.querySelector('input.pqwho');
+          const text = (tEl ? tEl.value : '').replace(/\s+/g, ' ').trim();
+          const who = (wEl ? wEl.value : '').replace(/\s+/g, ' ').replace(/^(?:--|—)\s*/, '').trim();
+          if (text) paras.push('::: quote\n' + text + (who ? '\n-- ' + who : '') + '\n:::');
           continue;
         }
         if (tag === 'FIGURE' && n.classList.contains('img')) {
@@ -311,6 +348,9 @@
       else if (act === 'image') startImage(ed);
       else if (act === 'rmimg') { const f = b.closest('figure.img'); if (f) { f.remove(); onRichInput(ed); } }
       else if (act === 'context') insertContext(ed);
+      else if (act === 'quote') insertQuote(ed);
+      else if (act === 'rmpq') { const q = b.closest('.pq'); if (q) removeContext(ed, q); }
+      else if (act === 'pqup' || act === 'pqdown') { const q = b.closest('.pq'); if (q) moveContext(ed, q, act === 'pqup' ? -1 : 1); }
       else if (act === 'rmctx') { const c = b.closest('.ctx'); if (c) removeContext(ed, c); }
       else if (act === 'ctxup' || act === 'ctxdown') { const c = b.closest('.ctx'); if (c) moveContext(ed, c, act === 'ctxup' ? -1 : 1); }
       else if (act === 'imgup' || act === 'imgdown') { const f = b.closest('figure.img'); if (f) moveContext(ed, f, act === 'imgup' ? -1 : 1); }  // owner, 16 Oct 2026: images move like boxes
@@ -321,6 +361,8 @@
     input.addEventListener('keydown', ev => { if (ev.key === 'Enter') { ev.preventDefault(); applyLink(ed); } });
     input.addEventListener('input', () => { if (/[\r\n]/.test(input.value)) input.value = input.value.replace(/[\r\n]+/g, ' '); fitTitle(input); });
     ed.addEventListener('paste', ev => {
+      // a quote's fields are plain form fields: the browser's own paste (plain text) is right there
+      if (ev.target && ev.target.closest && ev.target.closest('.pq')) return;
       ev.preventDefault(); const cd = ev.clipboardData || window.clipboardData;
       // Cut and paste inside the brief must not lose links: when the clipboard HTML has
       // http(s) links, insert its text with those links and nothing else.
@@ -328,7 +370,15 @@
       if (linked) document.execCommand('insertHTML', false, linked);
       else document.execCommand('insertText', false, cd.getData('text/plain'));
     });
-    ed.addEventListener('input', () => onRichInput(ed));
+    ed.addEventListener('input', ev => {
+      if (ev.target && ev.target.matches && ev.target.matches('textarea.pqtext')) {
+        // the quote stays one paragraph; the field grows with its text
+        if (/[\r\n]/.test(ev.target.value)) ev.target.value = ev.target.value.replace(/[\r\n]+/g, ' ');
+        fitTitle(ev.target);
+      }
+      onRichInput(ed);
+    });
+    $$('textarea.pqtext', ed).forEach(fitTitle);
     ed.addEventListener('keydown', ev => contextKeydown(ed, ev));
     // the move arrows must not take the caret away from where it is
     ed.addEventListener('mousedown', ev => { if (ev.target.closest('.ctxmv')) ev.preventDefault(); });
@@ -378,6 +428,48 @@
     caretPlace(box.lastChild, true);
     onRichInput(ed);
   }
+  // Quote button (owner, 20 Oct 2026): with whole paragraphs selected, turns them into a
+  // pull quote (their text becomes the quote; quotation marks around it are dropped);
+  // otherwise inserts an empty quote at the caret, placed as a Context box would be.
+  // Never inside a Context box (the email would not render it there).
+  function newQuote(text) {
+    const tmp = document.createElement('div'); tmp.innerHTML = pqHtml(text || '', ''); return tmp.firstChild;
+  }
+  function insertQuote(ed) {
+    const r = savedRange && activeEditor === ed && ed.contains(savedRange.startContainer) ? savedRange.cloneRange() : null;
+    const startEl = r ? (r.startContainer.nodeType === 1 ? r.startContainer : r.startContainer.parentElement) : null;
+    if (startEl && startEl.closest('.ctx')) { say('A quote cannot go inside a Context box. Put the cursor in a paragraph outside it.', ''); return; }
+    let q;
+    const a = blockOf(r ? r.startContainer : ed, ed), z = r ? blockOf(r.endContainer, ed) : null;
+    if (r && !r.collapsed && a && z && a.tagName === 'P' && z.tagName === 'P' && r.toString().trim()) {
+      const blocks = []; for (let n = a; n; n = n.nextSibling) { blocks.push(n); if (n === z) break; }
+      if (blocks.some(n => n.nodeType === 1 && !(n.tagName === 'P'))) { say('Select whole paragraphs of text only (no image, box or quote) to turn them into a quote.', ''); return; }
+      const holder = document.createElement('div'); blocks.forEach(n => holder.appendChild(n.cloneNode(true)));
+      let text = htmlToMd(holder).replace(/\s+/g, ' ').trim();
+      if (text.length > 1 && /^["“]/.test(text) && /["”]$/.test(text)) text = text.slice(1, -1).trim();
+      q = newQuote(text);
+      a.before(q); blocks.forEach(n => n.remove());
+    } else {
+      q = newQuote('');
+      const blk = r ? blockOf(r.startContainer, ed) : null;
+      if (!blk) ed.appendChild(q);
+      else if (blk.tagName !== 'P') blk.after(q);
+      else {
+        const anc = anchorAt(r); if (anc) { r.setStartAfter(anc); r.collapse(true); }  // never split a link
+        const before = document.createRange(); before.selectNodeContents(blk); before.setEnd(r.startContainer, r.startOffset);
+        const rest = document.createRange(); rest.selectNodeContents(blk); rest.setStart(r.startContainer, r.startOffset);
+        if (!before.toString().trim() && blk.textContent.trim()) blk.before(q);
+        else if (!rest.toString().trim()) blk.after(q);
+        else { const p = document.createElement('p'); p.appendChild(rest.extractContents()); blk.after(q); q.after(p); }
+      }
+    }
+    // keep a paragraph on each side so the caret can always leave the quote
+    if (!q.previousSibling) q.before(emptyP());
+    if (!q.nextSibling) q.after(emptyP());
+    activeEditor = ed;
+    const ta = $('textarea.pqtext', q); fitTitle(ta); ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length);
+    onRichInput(ed);
+  }
   function removeContext(ed, box) {
     const next = box.nextSibling;
     box.remove();
@@ -423,6 +515,27 @@
   // Alt+↑ / Alt+↓ with the caret inside a box move the box.
   function contextKeydown(ed, ev) {
     const isMove = ev.altKey && !ev.ctrlKey && !ev.metaKey && !ev.shiftKey && (ev.key === 'ArrowUp' || ev.key === 'ArrowDown');
+    // In a quote's fields (owner, 20 Oct 2026): Alt+↑/↓ moves the quote, Enter in the quote
+    // moves to the attribution (and leaves the attribution), Backspace with both fields
+    // empty removes the quote. Everything else is ordinary typing in a form field.
+    const pq = ev.target && ev.target.closest ? ev.target.closest('.pq') : null;
+    if (pq && ed.contains(pq)) {
+      if (isMove) { ev.preventDefault(); moveContext(ed, pq, ev.key === 'ArrowUp' ? -1 : 1); return; }
+      if (ev.key === 'Enter') {
+        ev.preventDefault();
+        if (ev.target.matches('textarea.pqtext')) $('input.pqwho', pq).focus();
+        else { const nx = pq.nextSibling; if (nx && nx.nodeType === 1) { ed.focus(); caretPlace(nx, false); } }
+        return;
+      }
+      if (ev.key === 'Backspace' || ev.key === 'Delete') {
+        const t = $('textarea.pqtext', pq).value.trim(), w = $('input.pqwho', pq).value.trim();
+        if (!t && !w) { ev.preventDefault(); removeContext(ed, pq); return; }
+        if (ev.key === 'Backspace' && ev.target.matches('input.pqwho') && !ev.target.value) {
+          ev.preventDefault(); const ta = $('textarea.pqtext', pq); ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length);
+        }
+      }
+      return;
+    }
     if (!isMove && ev.key !== 'Backspace' && ev.key !== 'Delete') return;
     // Alt+arrows typed in an image's caption field move the image (owner, 16 Oct 2026)
     const fig = ev.target && ev.target.closest ? ev.target.closest('figure.img') : null;
@@ -519,6 +632,7 @@
       '<button class="btn" data-act="unlink">Unlink</button>' +
       '<button class="btn" data-act="image">Image</button>' +
       '<button class="btn" data-act="context" title="Add a shaded Context box at the cursor (or around the selected paragraphs)">Context</button>' +
+      '<button class="btn" data-act="quote" title="Add a pull quote at the cursor (or turn the selected paragraph into one)">Quote</button>' +
       '<span class="spacer"></span>' +
       '<div class="seg"><button data-act="free">Free</button><button data-act="premium">Premium</button></div>' +
       '<span class="move">' +
@@ -533,7 +647,7 @@
   // Titles, link-box URLs and paper fields are one-row textareas so long text wraps on a phone.
   // Height follows the text; the stored value stays single-line (Enter is handled, newlines stripped).
   function fitTitle(t) { t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px'; }
-  window.addEventListener('resize', () => $$('.entry .title, .linkbox .url, .field textarea').forEach(fitTitle));
+  window.addEventListener('resize', () => $$('.entry .title, .linkbox .url, .field textarea, .rich .pqtext').forEach(fitTitle));
   // "Move to" dropdown in each theme's header (owner, 2 Oct 2026): lists every slot as
   // "N · current title" with the theme's own slot selected; picking a slot removes the theme
   // and inserts it there, so the others shift. Rebuilt on every render, so titles stay current.
@@ -628,6 +742,7 @@
       '<div class="tools"><button class="btn" data-act="link">Link</button><button class="btn" data-act="unlink">Unlink</button>' +
       '<button class="btn" data-act="image">Image</button>' +
       '<button class="btn" data-act="context" title="Add a shaded Context box at the cursor (or around the selected paragraphs)">Context</button>' +
+      '<button class="btn" data-act="quote" title="Add a pull quote at the cursor (or turn the selected paragraph into one)">Quote</button>' +
       '<span class="spacer"></span><button class="btn danger" id="paperRemove">Remove paper</button></div>' +
       '<div class="linkbox" hidden><div class="sel"></div><textarea class="url" rows="1" placeholder="https://…" inputmode="url" autocapitalize="off" autocomplete="off"></textarea>' +
       '<button class="btn primary" data-act="apply">Apply</button><button class="btn" data-act="cancel">Cancel</button></div>';

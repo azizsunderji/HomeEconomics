@@ -201,8 +201,10 @@ def free_themes(draft: dict) -> list[dict]:
         num = e.get("rank") if isinstance(e.get("rank"), int) else i
         title = (e.get("title") or "").strip()
         title = title[:1].upper() + title[1:]
-        # context boxes are background, not the theme: left out of the card text (14 Oct 2026)
-        md = el._strip_context(_no_images(e.get("summary") or "")).strip()
+        # context boxes are background, not the theme: left out of the card text (14 Oct 2026).
+        # pull quotes are part of the theme: kept as a sentence in quotation marks followed by
+        # the attribution (owner, 20 Oct 2026)
+        md = el._quotes_as_text(el._strip_context(_no_images(e.get("summary") or ""))).strip()
         body = el._body_links(el._fix_sentence_starts(md))
         paras = []
         for p in re.split(r"(?:<br\s*/?>\s*){2,}", body):

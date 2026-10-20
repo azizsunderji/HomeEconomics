@@ -49,7 +49,7 @@ def load_own_publications(path: Path | str = OWN_PUBS_JSON) -> list[dict]:
 
 def _plain(md: str) -> str:
     md = _IMG_RE.sub("", md or "")
-    md = md.replace("::: context", "").replace(":::", "")
+    md = md.replace("::: context", "").replace("::: quote", "").replace(":::", "")
     return _LINK_RE.sub(r"\1", md).strip()
 
 

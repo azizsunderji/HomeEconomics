@@ -78,6 +78,16 @@ h2 { font-family: var(--serif); font-weight: normal; font-size: 22px; margin: 36
 .rich .ctxmv:hover { color: var(--ink); }
 .rich .ctx p { margin: 0 0 12px 0; }
 .rich .ctx p:last-child { margin-bottom: 0; }
+/* a pull quote (markdown "::: quote" … "-- who" … ":::"), style B as in the email (owner, 20 Oct 2026) */
+.rich .pq { margin: 16px 0; padding: 4px 0; }
+.rich .pq:first-child { margin-top: 0; }
+.rich .pq .pqrow { display: flex; align-items: flex-start; }
+.rich .pq .pqmark { flex: none; width: 40px; font-family: Georgia, "Times New Roman", Times, serif; font-size: 64px; line-height: 0.8; color: var(--blue); padding-top: 6px; user-select: none; -webkit-user-select: none; }
+.rich .pq .pqfields { flex: 1; min-width: 0; padding-left: 6px; }
+.rich .pq .pqtext { display: block; width: 100%; margin: 0; padding: 0; border: 0; border-bottom: 1px dashed transparent; border-radius: 0; background: transparent; font-family: Georgia, "Times New Roman", Times, serif; font-size: 21px; line-height: 1.45; color: var(--ink); resize: none; overflow: hidden; outline: none; -webkit-appearance: none; appearance: none; }
+.rich .pq .pqtext:focus, .rich .pq .pqwho:focus { border-bottom-color: var(--blue); }
+.rich .pq .pqwhorow { display: flex; align-items: baseline; gap: 4px; margin-top: 8px; font-family: var(--sans); font-size: 13px; color: #888888; }
+.rich .pq .pqwho { flex: 1; min-width: 0; margin: 0; padding: 2px 0; border: 0; border-bottom: 1px dashed transparent; border-radius: 0; background: transparent; font: inherit; color: #888888; outline: none; -webkit-appearance: none; appearance: none; }
 #imgFile { display: none; }
 
 /* toolbar */

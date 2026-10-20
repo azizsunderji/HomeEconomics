@@ -787,7 +787,7 @@ MAX_CALLBACKS = 3
 MAX_CONTEXT_BOXES = 2
 CONTEXT_MIN_WORDS, CONTEXT_MAX_WORDS = 35, 90   # the prompt asks for 40-80
 
-V4B_CALLBACK_CONTEXT_PROMPT = """You are finishing today's edition of Housing at Noon, a daily US housing-economics briefing written by Aziz Sunderji, who also writes the Home Economics newsletter. The entries are already written and edited. You add two things, sparingly, and return them as insertions. You never rewrite an existing sentence.
+V4B_CALLBACK_CONTEXT_PROMPT = """You are finishing today's edition of Housing at Noon, a daily US housing-economics briefing written by Aziz Sunderji, who also writes the Home Economics newsletter. The entries are already written and edited. You add three kinds of thing, sparingly, and return them as insertions. You never rewrite an existing sentence.
 
 1. CALLBACKS TO AZIZ'S PRIOR WORK
 Some entries come with CANDIDATE PIECE: an earlier Home Economics article of his that a screening step picked, with its summary, the caption of one chart from it, and a one-line note on why it may fit (check that note yourself). Add a callback only when the piece's finding genuinely bears on the point the entry makes (the same mechanism, market, policy or data question), so that a reader learns something about today's news from it. A shared keyword is not enough, but a piece that gives the reader the framework, mechanism or history behind the news does qualify even when today's news runs the other way: then the sentence says how today's news fits or departs from what the piece found ("rents in Austin fell for the reasons I laid out [here]; San Francisco is now the mirror image"). At most three callbacks in the edition; one or two is typical.
@@ -814,13 +814,61 @@ A context box gives readers the background they need to interpret a news item: w
   Pattern: what it is (with when and why it was created, if that matters) -> what it does and how it works -> the link to today's news. Elsewhere he glosses terms in a few words ("KB Home, the 7th-largest single-family builder"; "Ed Glaeser, the godfather of YIMBYism"; "Section 9 (public housing, deeply underfunded)").
   Rules: at most two boxes in the edition, at most one per entry; 40 to 80 words each; plain, factual background that a non-specialist needs and the entry does not already give; no opinion, no news from today, no first person, no links, no numbers you are not sure of (a wrong fact is worse than no box). Choose the items where most readers would not know the thing being discussed (a statute by name or acronym, a numbered ballot question, a little-known index or agency program); prefer higher-ranked entries. Never add one for something every reader knows (the Fed, mortgage rates, Zillow). Place it right after the paragraph that first mentions the thing.
 
+3. PULL QUOTES
+Some entries come with SOURCE TEXTS: the text of items the entry is built on, each with an item number. A pull quote sets a named person's own words apart from the entry. Rules: only a sentence or two (15 to 60 words) copied verbatim, character for character, from one source text, from inside quotation marks there, spoken or written by a person the source names (not a headline, not the outlet's own paraphrase or summary, not an unnamed spokesperson). Choose words that are vivid or carry the argument, and that the entry introduces that person for. At most two pull quotes in the edition, at most one per entry; none is often right. Place it right after the paragraph that first introduces that person. Give the attribution as "Name, Organisation" (the organisation only if the source gives it). Copy the words exactly; do not add quotation marks, ellipses or brackets, and do not join pieces that are not next to each other in the source.
+
 OUTPUT: a single JSON object, no preamble, no markdown fences:
 {
   "callbacks": [{"rank": <entry rank>, "after_paragraph": <1-based paragraph number>, "mode": "append" | "new_paragraph", "text": "<the sentence with the [anchor](URL \\"free\\") link>", "why": "<one line: the point in the entry the piece bears on>"}],
-  "context_boxes": [{"rank": <entry rank>, "after_paragraph": <1-based paragraph number>, "text": "<40-80 words>"}]
+  "context_boxes": [{"rank": <entry rank>, "after_paragraph": <1-based paragraph number>, "text": "<40-80 words>"}],
+  "pull_quotes": [{"rank": <entry rank>, "after_paragraph": <1-based paragraph number>, "item": <source item number>, "text": "<the verbatim words>", "attribution": "<Name, Organisation>"}]
 }
 "append" adds the callback to the end of that paragraph; "new_paragraph" puts it in a paragraph of its own after it. The chart line goes right after. Empty lists are fine and often right.
 """
+
+# Pull quotes (owner, 20 Oct 2026): a third kind of insertion. At most MAX_PULL_QUOTES per edition, one
+# per entry, 15-60 words, verbatim from a source item's text (checked in code after whitespace and
+# straight/curly-quote normalisation; dropped and logged otherwise), rendered as a "::: quote" fence.
+MAX_PULL_QUOTES = 2
+QUOTE_MIN_WORDS, QUOTE_MAX_WORDS = 15, 60
+QUOTE_SOURCE_CHARS = 3000          # per source text shown to the writer
+QUOTE_SOURCE_TOTAL_CHARS = 60000   # all source texts in one call
+_QUOTED_SPAN_RE = re.compile(r"[“\"][^“”\"]{40,}[”\"]")
+
+
+def _norm_quote(s: str) -> str:
+    """Whitespace collapsed, curly quotes and apostrophes made straight, case folded."""
+    s = (s or "").translate(str.maketrans({"“": '"', "”": '"', "„": '"', "″": '"',
+                                           "‘": "'", "’": "'", "‚": "'", "′": "'", " ": " "}))
+    return " ".join(s.split()).casefold()
+
+
+def _quote_is_verbatim(quote: str, source: str) -> bool:
+    """The quote, without wrapping quotation marks or its final punctuation, is a substring of the source."""
+    q = _norm_quote(quote).strip(" \"'")
+    q = re.sub(r"[.,;:!?]+$", "", q).strip()
+    return bool(q) and q in _norm_quote(source)
+
+
+def _quote_sources(entries: list[dict], item_text) -> dict[int, list[dict]]:
+    """entry idx -> the source texts shown to the writer for pull quotes: items of the entry whose body
+    holds at least one quoted passage of 40+ characters, rank order, capped in total."""
+    out: dict[int, list[dict]] = {}
+    if item_text is None:
+        return out
+    total = 0
+    for i, e in enumerate(entries):
+        for iid in (e.get("item_ids") or [])[:6]:
+            it = item_text(iid)
+            body = (it or {}).get("body") or ""
+            if not _QUOTED_SPAN_RE.search(body):
+                continue
+            if total >= QUOTE_SOURCE_TOTAL_CHARS:
+                return out
+            text = body[:QUOTE_SOURCE_CHARS]
+            total += len(text)
+            out.setdefault(i, []).append({"item": iid, "author": it.get("author") or "", "text": text})
+    return out
 
 
 
@@ -868,15 +916,23 @@ def _add_callback_link(sent: str, url: str) -> str:
 
 
 def add_callbacks_and_context(entries: list[dict], as_of: str, oai, anthropic_client,
-                              tracker: Optional[RunCostTracker] = None) -> dict:
+                              tracker: Optional[RunCostTracker] = None, item_text=None) -> dict:
     """Retrieval (analysis/own_callbacks) then one writer call; applies at most MAX_CALLBACKS
-    callbacks (each followed by the piece's chart as ![caption](url) on its own line) and at most
-    MAX_CONTEXT_BOXES context boxes (::: context ... :::) to the entries' summaries in place.
+    callbacks (each followed by the piece's chart as ![caption](url) on its own line), at most
+    MAX_CONTEXT_BOXES context boxes (::: context ... :::) and at most MAX_PULL_QUOTES pull quotes
+    (::: quote ... -- attribution ... :::) to the entries' summaries in place. `item_text(id)` returns
+    {"author", "title", "body"} for a corpus item; without it no pull quotes are offered.
     Non-fatal: any failure leaves the entries as they were. Returns a log for _v4b_meta."""
     from analysis.own_callbacks import find_callbacks, resolve_callback_chart
-    log: dict = {"as_of": as_of, "retrieval": [], "applied_callbacks": [], "applied_context": [], "rejected": []}
+    log: dict = {"as_of": as_of, "retrieval": [], "applied_callbacks": [], "applied_context": [],
+                 "applied_quotes": [], "rejected": []}
     matches, rlog = find_callbacks(entries, oai, as_of, anthropic_client)
     log["retrieval"] = rlog
+    try:
+        qsources = _quote_sources(entries, item_text)
+    except Exception as ex:  # noqa: BLE001  (pull quotes are optional; never lose the pass over them)
+        logger.warning(f"pull-quote sources not loaded: {ex}")
+        qsources = {}
     blocks = []
     for i, e in enumerate(entries):
         paras = _summary_paragraphs(e.get("summary"))
@@ -886,10 +942,12 @@ def add_callbacks_and_context(entries: list[dict], as_of: str, oai, anthropic_cl
         if m:
             b["CANDIDATE PIECE"] = {"title": m["title"], "date": m["date"], "url": m["url"], "fit": m["reason"],
                                     "summary": m["summary"], "chart_caption": m["chart"]["caption"]}
+        if qsources.get(i):
+            b["SOURCE TEXTS"] = qsources[i]
         blocks.append(b)
     user = (f"Today is {as_of}. The edition's entries, in rank order (paragraphs numbered):\n\n"
             + json.dumps(blocks, indent=1, ensure_ascii=False)
-            + "\n\nReturn the JSON object with your callbacks and context boxes.")
+            + "\n\nReturn the JSON object with your callbacks, context boxes and pull quotes.")
     text = _opus_stream_text(anthropic_client, V4B_CALLBACK_CONTEXT_PROMPT,
                              [{"role": "user", "content": user}], tracker)
     obj = _parse_json_object(text) or {}
@@ -982,12 +1040,67 @@ def add_callbacks_and_context(entries: list[dict], as_of: str, oai, anthropic_cl
         log["applied_context"].append({"rank": c.get("rank"), "title": e.get("title"), "after_paragraph": after,
                                        "words": n_words, "text": body})
 
+    # pull quotes (owner, 20 Oct 2026): verbatim from the named source item, else dropped and logged
+    pq_entries: set[int] = set()
+    for c in [c for c in (obj.get("pull_quotes") or []) if isinstance(c, dict)]:
+        idx, e = by_rank.get(c.get("rank"), (None, None))
+        qt = re.sub(r"\s+", " ", str(c.get("text") or "")).strip()
+        if len(qt) > 1 and qt[0] in "\"“" and qt[-1] in "\"”":
+            qt = qt[1:-1].strip()
+        who = re.sub(r"\s+", " ", str(c.get("attribution") or "")).strip().lstrip("-— ").strip()
+        n_words = len(qt.split())
+        try:
+            iid = int(c.get("item"))
+        except (TypeError, ValueError):
+            iid = None
+        src = next((s for s in qsources.get(idx, []) if s["item"] == iid), None) if idx is not None else None
+        full = (item_text(iid) or {}) if (src and item_text) else {}
+        source_text = (full.get("body") or src["text"]) if src else ""
+        name = who.split(",")[0].strip()
+        why = None
+        if e is None:
+            why = "unknown rank"
+        elif idx in pq_entries:
+            why = "second quote in one entry"
+        elif len(log["applied_quotes"]) >= MAX_PULL_QUOTES:
+            why = f"over the edition cap of {MAX_PULL_QUOTES}"
+        elif not QUOTE_MIN_WORDS <= n_words <= QUOTE_MAX_WORDS:
+            why = f"{n_words} words (allowed {QUOTE_MIN_WORDS}-{QUOTE_MAX_WORDS})"
+        elif src is None:
+            why = f"item {c.get('item')} is not one of that entry's source texts"
+        elif not _quote_is_verbatim(qt, source_text):
+            why = f"not verbatim in item {iid}"
+        elif len(name.split()) < 2 or _norm_quote(name.split()[-1]) not in _norm_quote(source_text):
+            why = f"attribution {who!r} does not name a person found in item {iid}"
+        elif ":::" in qt or ":::" in who or "\n" in who:
+            why = "fence marker inside the text"
+        if why:
+            log["rejected"].append({"kind": "quote", "rank": c.get("rank"), "text": qt, "attribution": who, "reason": why})
+            logger.info(f"pull quote for #{c.get('rank')} dropped: {why}")
+            continue
+        qt = re.sub(r",\s*$", ".", qt)   # a quote cut before "she said" ends on a comma in the source
+        paras = _summary_paragraphs(e.get("summary"))
+        after = min(max(int(c.get("after_paragraph") or 1), 1), len(paras))
+        inserts.setdefault(idx, []).append((after, "new_paragraph", f"::: quote\n{qt}\n-- {who}\n:::"))
+        pq_entries.add(idx)
+        log["applied_quotes"].append({"rank": c.get("rank"), "title": e.get("title"), "after_paragraph": after,
+                                      "item": iid, "words": n_words, "text": qt, "attribution": who})
+
+    def _order(t: tuple, ins: list) -> float:
+        # at one position: a context box is placed first, so an appended callback's chart stays right
+        # under its sentence; a pull quote goes last, so it lands right under the paragraph that
+        # introduces the speaker (or under the chart of a callback appended to that paragraph)
+        if t[2].startswith("::: context"):
+            return 1
+        if t[2].startswith("::: quote"):
+            return 0.5 if any(o[0] == t[0] and o[1] == "append" and o[2].split("\x00")[-1] for o in ins) else -1
+        return 0
+
     for idx, ins in inserts.items():
         e = entries[idx]
         paras = _summary_paragraphs(e.get("summary"))
-        # insert from the bottom so earlier paragraph numbers stay valid; at one position the
-        # context box is placed first, so an appended callback's chart stays right under its sentence
-        for after, mode, block in sorted(ins, key=lambda t: (t[0], 1 if t[2].startswith("::: context") else 0), reverse=True):
+        # insert from the bottom so earlier paragraph numbers stay valid
+        for after, mode, block in sorted(ins, key=lambda t: (t[0], _order(t, ins)), reverse=True):
             if mode == "append":
                 sent, img = block.split("\x00")
                 paras[after - 1] = paras[after - 1].rstrip() + " " + sent
@@ -1734,7 +1847,12 @@ def main() -> None:
         t0 = time.time()
         opus_before = _opus_cents(tracker)
         try:
-            callback_log = add_callbacks_and_context(entries, end_dt.date().isoformat(), oai, anth, tracker)
+            def _item_text(iid: int) -> Optional[dict]:
+                # pull quotes (owner, 20 Oct 2026): the corpus item's own text, read from the open DB
+                r = conn.execute("SELECT author, title, body FROM items WHERE id = ?", (int(iid),)).fetchone()
+                return {"author": r[0], "title": r[1], "body": r[2]} if r else None
+            callback_log = add_callbacks_and_context(entries, end_dt.date().isoformat(), oai, anth, tracker,
+                                                     item_text=_item_text)
             for e in entries:
                 if e["cluster_id"] in themes_by_cid:
                     themes_by_cid[e["cluster_id"]]["summary"] = e["summary"]
@@ -1744,8 +1862,11 @@ def main() -> None:
         callback_log["cents"] = round(_opus_cents(tracker) - opus_before, 2)
         counts["callbacks"] = len(callback_log.get("applied_callbacks") or [])
         counts["context_boxes"] = len(callback_log.get("applied_context") or [])
+        counts["pull_quotes"] = len(callback_log.get("applied_quotes") or [])
         print(f"\ncallbacks: {counts['callbacks']}, context boxes: {counts['context_boxes']}, "
-              f"rejected: {len(callback_log.get('rejected') or [])}")
+              f"pull quotes: {counts['pull_quotes']}, rejected: {len(callback_log.get('rejected') or [])}")
+        for c in callback_log.get("applied_quotes") or []:
+            print(f"  QUOTE #{c['rank']} (item {c['item']}, {c['words']} words, {c['attribution']}): {c['text'][:140]}")
         for c in callback_log.get("applied_callbacks") or []:
             print(f"  CALLBACK #{c['rank']} -> {c['piece']} ({c['score']}): {c['text'][:140]}")
         for c in callback_log.get("applied_context") or []:
