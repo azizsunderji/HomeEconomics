@@ -1076,6 +1076,7 @@ def _name_platforms(text: str) -> str:
 ENTRY_TITLE_GAP = 14   # px between an entry's number+title row and its first paragraph
 ENTRY_PARA_GAP = 12    # px between paragraphs inside an entry (was a <br><br>, ~27px)
 CONTEXT_GAP = 16       # px above and below a context box inside an entry
+QUOTE_GAP = 24         # px above and below a pull quote (owner, 20 Oct 2026: slightly more air than a context box)
 
 
 def _entry_paragraphs(html: str, body_text: str) -> str:
@@ -1113,9 +1114,9 @@ def _entry_body(summary: str, body_text: str) -> str:
             top = CONTEXT_GAP - ENTRY_PARA_GAP if i else 0
             out.append(_context_block(b[1], body_text, f"{top}px 0 {CONTEXT_GAP if gap else 0}px 0"))
         elif b[0] == "quote":
-            # same air around a pull quote as around a context box (owner, 20 Oct 2026)
-            top = CONTEXT_GAP - ENTRY_PARA_GAP if i else 0
-            out.append(_quote_block(b[1], b[2], f"{top}px 0 {CONTEXT_GAP if gap else 0}px 0"))
+            # a little more air around a pull quote than around a context box (owner, 20 Oct 2026)
+            top = QUOTE_GAP - ENTRY_PARA_GAP if i else 0
+            out.append(_quote_block(b[1], b[2], f"{top}px 0 {QUOTE_GAP if gap else 0}px 0"))
         else:
             out.append(_image_block(b[1], b[2], f"0 0 {gap}px 0"))
     return "".join(out)
