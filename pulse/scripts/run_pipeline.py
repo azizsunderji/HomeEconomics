@@ -1037,6 +1037,13 @@ def cmd_synthesize(args):
             except Exception as e:
                 logger.warning(f"Haiku abstract condensation failed: {e}")
 
+        # Strip a leading "Abstract" word (Wiley/Elsevier RSS bodies start with it; owner, 20 Oct 2026)
+        import re as _re_absword
+        _ABSTRACT_WORD_RE = _re_absword.compile(r"^\s*abstract\b[\s:.\-\u2014]*", _re_absword.IGNORECASE)
+        for j in journal_items:
+            if j.get("abstract"):
+                j["abstract"] = _ABSTRACT_WORD_RE.sub("", j["abstract"].strip(), count=1).strip()
+
         # Finalize abstract-coverage stats: anything still without a
         # usable abstract counts as a miss.
         abs_stats["misses"] = sum(
