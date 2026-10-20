@@ -1362,3 +1362,39 @@ server Chrome (fanniemae.com refuses plain downloads).
 ## 20 Oct 2026: welcome edition and sign-up background notes
 - **Welcome edition.** A new free sign-up now receives the most recent sent edition (free tier) with a note on top ("Thanks for signing up. Here is today's edition ... The next edition lands in your inbox tomorrow / on Monday at noon Eastern"). Renderer: `pulse/editor/welcome.py` (`send_welcome(email)`, `next_edition_phrase()`). Endpoint: `POST /api/welcome` on the editor app, body `{email}`, header `x-welcome-token = HMAC-SHA256(PULSE_UNSUB_SECRET, "welcome:" + email)`; the portal's `/api/pulse/subscribe` route calls it through `after()` (`src/lib/welcomeEdition.ts`). Sends run in a thread; failures are logged under `noon.welcome`. Test send: `python welcome.py --to you@x.com`.
 - **Sign-up background notes.** After every free sign-up and every Stripe subscription, the portal posts a second Telegram message with two or three sentences on who the subscriber is and what their employer does (`src/lib/signupBackground.ts`: Claude Sonnet 5 with web search, note only, no addresses or records). Costs roughly 10 to 30 cents a lookup.
+
+## Status 20 Oct 2026: pull quote element (owner's request, style B)
+- **What it is.** A named person's verbatim words set apart inside a theme (or the paper summary). Owner chose style B
+  from `OVH/NewsAtNoon/scripts/434_pullquote_mockups.py`: a large blue opening quotation mark (Georgia 64px, line-height
+  0.8, #0BB4FF, padding-top 6px) in a 40px left cell; the quote in upright Georgia 21px/1.45, ink, in the right cell
+  (padding-left 6px); the attribution under it in the sans FONT, 13px, #888888, margin-top 8px, after an em dash. No
+  closing mark. Table-based, so Gmail, Apple Mail and Outlook keep the mark in its own column. Both tiers identical.
+- **Markdown.** Fenced like a context box; the last line starting "-- " (or an em dash) is the optional attribution:
+
+      ::: quote
+      The verbatim quote text, no surrounding quotation marks.
+      -- Alexander Hermann, Harvard Joint Center for Housing Studies
+      :::
+
+- **Renderer** (`email_lunch._split_blocks` now yields `("quote", text, who)`; `_quote_block`; used by `_entry_body`
+  and `_paper_body`, 16px above and below like a context box). Quote text and attribution go through `_body_links`, so
+  any link is walled in the free tier like a link in a context box. An empty quote is dropped.
+- **Editor.** A Quote button after Context on every theme and the paper. With whole paragraphs selected it turns them
+  into a quote (their text becomes the quote; wrapping quotation marks dropped); otherwise it inserts an empty quote at
+  the caret, placed as a Context box would be. The block is a non-editable `<div class="pq">` with a QUOTE label row
+  (up, down, remove), a textarea for the quote (Georgia 21px) and an input for the attribution. Enter in the quote jumps
+  to the attribution; Alt+Up/Down moves the block; Backspace with both fields empty removes it. Cache-buster
+  `?v=20261020quote`. Tested headless with saves captured and aborted (`NewsAtNoon/scripts/439_pullquote_editor_test.py`).
+- **Cards.** `cards.free_themes` keeps a quote as its own paragraph: the text in curly quotes, an em dash, the
+  attribution (`email_lunch._quotes_as_text`). `own_callbacks._plain` strips the "::: quote" marker.
+- **Synthesis (stage 8b).** Third kind of insertion, `pull_quotes`, in the same writer call. The writer now also sees
+  SOURCE TEXTS for each entry: up to 6 of its items whose body has a quoted passage of 40+ characters, 3,000 chars each,
+  60,000 chars in total, read from the corpus DB by item id. At most 2 per edition, one per entry, 15-60 words. Code
+  keeps a quote only if it is a substring of the named item's full text after whitespace, straight/curly quote and case
+  normalisation (final punctuation ignored), and the attribution's surname appears in that item; otherwise it is logged
+  in `_v4b_meta.callbacks_context.rejected` (kind "quote"). Applied ones in `applied_quotes`; count `pull_quotes`.
+  Placed right after the paragraph the writer names (above a callback or box at the same position, below the chart of a
+  callback appended to that paragraph). The extra source text adds input tokens to the 8b call (not yet measured).
+- **First use.** 20 Oct draft, theme "Only 3 of 100 Big Metros Hit 3x Price-to-Income": Hermann's words from the JCHS
+  LinkedIn post (corpus item 480390), with the paraphrase paragraph shortened. Screenshots:
+  `NewsAtNoon/outputs/pullquote_rendered_v1.png`, `pullquote_editor_v1.png`.
