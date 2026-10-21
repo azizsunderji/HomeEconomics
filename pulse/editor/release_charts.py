@@ -349,9 +349,31 @@ def draw_panel(o: list, p: Panel, x0: float, x1: float, top: float, bot: float) 
     """Label baseline LABEL_GAP above `top`; y numbers start at x0; gridlines and data run from after them to x1."""
     import pandas as pd
     allv = [v for ln in p.lines for v in ln.s.values] + ([p.ref] if p.ref is not None else [])
-    ticks = nice_ticks(min(allv), max(allv), 5, zero=p.zero)
+    # y domain = data range + 7% padding (as in the pending-sales reference, whose axis runs 55..135 with gridlines
+    # 60..120), not stretched to the next whole tick: a tick band with no data in it (e.g. -10% under a line that
+    # bottoms at -0.3%) is dropped. Gridlines are the nice ticks inside the domain (at least 4 where possible).
+    dlo, dhi = min(allv), max(allv)
+    if p.zero:
+        dlo, dhi = min(dlo, 0.0), max(dhi, 0.0)
+    dspan = (dhi - dlo) or abs(dhi) or 1.0
+    lo = dlo if (p.zero and dlo == 0) else dlo - dspan * 0.07
+    hi = dhi if (p.zero and dhi == 0) else dhi + dspan * 0.07
+    cands = []
+    for n_t in (5, 6, 7):
+        full = nice_ticks(min(allv), max(allv), n_t, zero=p.zero)
+        cands.append((full, [v for v in full if lo - 1e-9 <= v <= hi + 1e-9]))
+
+    def _round_step(tk):          # 1, 2 or 5 x 10^k: no "12.5"-style labels from a 2.5 step
+        st = tk[1] - tk[0]
+        return abs(st / 10 ** math.floor(math.log10(st)) - 2.5) > 1e-6
+    pick = (next((c for c in cands if len(c[1]) >= 4 and _round_step(c[1])), None)
+            or next((c for c in cands if len(c[1]) >= 3), None))
+    if pick:
+        ticks = pick[1]
+    else:
+        ticks = cands[0][0]
+        lo, hi = ticks[0], ticks[-1]
     step = ticks[1] - ticks[0]
-    lo, hi = ticks[0], ticks[-1]
     labels = [p.yprefix + fmt_num(v, step) + (p.ysuffix if i == len(ticks) - 1 else "") for i, v in enumerate(ticks)]
     px0 = x0 + max(_tw(lb, 20) for lb in labels) + 16
     idx = sorted({t for ln in p.lines for t in ln.s.index})
@@ -479,11 +501,18 @@ def hbar_panel(o: list, items: list, x0, x1, top, heading, sub, vfmt, highlight=
     neg, pos = min(0.0, min(vals)), max(0.0, max(vals))
     name_w = max(_tw(nm, 20, 500 if nm in highlight else 400) for nm, _ in items)
     val_w = max(_tw(vfmt(v), 20, 700) for v in vals) + 10
-    names_x = x1 - name_w
-    b0 = x0 + (val_w if neg < 0 else 0)
-    b1 = names_x - 12 - (val_w if pos > 0 else 0)
-    scale = (b1 - b0) / ((pos - neg) or 1)
-    ax = b0 + (-neg) * scale
+    if neg < 0:
+        names_x = x1 - name_w
+        b0 = x0 + val_w
+        b1 = names_x - 12 - (val_w if pos > 0 else 0)
+        scale = (b1 - b0) / ((pos - neg) or 1)
+        ax = b0 + (-neg) * scale
+    else:
+        # all values >= 0: the mirror of the pending-sales panel -- names in a column at the left margin, the axis
+        # line right of them, bars extending right with the value at each bar's end (no gap between value and name)
+        names_x = x0
+        ax = x0 + name_w + 12
+        scale = (x1 - val_w - ax) / (pos or 1)
     if height:
         bh = min(80.0, height / n * 0.86)
         stepy = (height - bh) / max(n - 1, 1)
@@ -500,10 +529,22 @@ def hbar_panel(o: list, items: list, x0, x1, top, heading, sub, vfmt, highlight=
             o.append(_T(ax - w - 10, ty, vfmt(v), 20, 700, INK, "end"))
         else:
             o.append(_T(ax + w + 10, ty, vfmt(v), 20, 700, INK))
-        o.append(_T(names_x if pos > 0 else max(names_x, ax + 12), ty, name, 20, 500 if name in highlight else 400, INK))
+        nx = x0 if neg >= 0 else (names_x if pos > 0 else max(names_x, ax + 12))
+        o.append(_T(nx, ty, name, 20, 500 if name in highlight else 400, INK))
     yb = top + (n - 1) * stepy + bh
     o.append(f'<line x1="{ax:.1f}" y1="{top:.1f}" x2="{ax:.1f}" y2="{yb:.1f}" stroke="{INK}" stroke-width="1.2"/>')
     return yb
+
+
+@dataclass
+class HBars:
+    """A horizontal-bar panel placed in a Row beside a line panel (the pending-sales layout): same width as its
+    neighbour, bars running from the panel top down to the neighbour's x-label baseline."""
+    items: list                   # (name, value), drawn in the order given
+    heading: str = ""
+    sub: str = ""
+    vfmt: Callable = None
+    highlight: tuple = ()
 
 
 @dataclass
@@ -530,7 +571,11 @@ def compose(title: str, rows: list, source_lines: list, extra: Callable | None =
         x = GL
         for p, f in zip(r.panels, fr):
             w = avail * f
-            draw_panel(o, p, x, x + w, top, bot)
+            if isinstance(p, HBars):
+                hbar_panel(o, p.items, x, x + w, top, p.heading, p.sub, p.vfmt or _signed, p.highlight,
+                           height=bot + XLAB - top)
+            else:
+                draw_panel(o, p, x, x + w, top, bot)
             x += w + COLGAP
         y += r.height + ROWGAP
     y -= ROWGAP if rows else 0
@@ -539,9 +584,7 @@ def compose(title: str, rows: list, source_lines: list, extra: Callable | None =
     # footer (owner, 21 Oct 2026: "the source lines should not be below the logo. They should be at the same
     # horizontal level, making sure not to let the two overlap"): source bottom-left, logo bottom-right on one band,
     # bottom edges aligned; the source is wrapped to the width left of the logo.
-    lw = 130
-    lh = lw * 0.3195
-    src_w = (GR - lw - 30) - GL
+    src_w = (GR - LOGO_W - 30) - GL
     words, lines, curl = " ".join(source_lines).split(), [], ""
     for wd in words:
         if curl and _tw(f"{curl} {wd}", 20) > src_w:
@@ -553,8 +596,7 @@ def compose(title: str, rows: list, source_lines: list, extra: Callable | None =
         lines.append(curl)
     first_base = y + SRC_GAP
     last_base = first_base + 24 * (len(lines) - 1)
-    o.append(f'<image xlink:href="{_logo_uri()}" x="{GR - lw}" y="{last_base + 5 - lh:.1f}" width="{lw}" '
-             f'height="{lh:.1f}" opacity="0.6"/>')
+    o.append(_logo_tag(last_base))
     spans = "".join(f'<tspan x="{GL}" dy="{0 if i == 0 else 24}">{_esc(t)}</tspan>' for i, t in enumerate(lines))
     o.append(f'<text x="{GL}" y="{first_base:.1f}" font-family="{FAM}" font-size="20" font-weight="400" fill="{GREY}">'
              f'{spans}</text>')
@@ -565,6 +607,15 @@ def compose(title: str, rows: list, source_lines: list, extra: Callable | None =
 
 
 _LOGO_URI = None
+LOGO_W = 130                      # logo width on the 960 canvas; height from the PNG's aspect ratio
+LOGO_H = LOGO_W * 0.3195
+
+
+def _logo_tag(source_base: float) -> str:
+    """The Home Economics logo at the right margin, its bottom edge level with the bottom of the source line whose
+    (last) baseline is `source_base` (owner, 21 Oct 2026: logo on every chart, on the source band, never overlapping)."""
+    return (f'<image xlink:href="{_logo_uri()}" x="{GR - LOGO_W}" y="{source_base + 5 - LOGO_H:.1f}" width="{LOGO_W}" '
+            f'height="{LOGO_H:.1f}" opacity="0.6"/>')
 
 
 def _logo_uri() -> str:
@@ -629,36 +680,38 @@ def _verb(v, up="rose", down="fell", flat="was unchanged") -> str:
     return up if v > 0.05 else down if v < -0.05 else flat
 
 
-def _std_lines(s, start, n=3, avg_key="3-month average", latest_fmt=None):
-    sw = since(s, start)
-    return [Line(sw, BLUE, 2.5, key="Monthly", latest=True), Line(since(ma(s, n), start), INK, 2.5, key=avg_key)]
+def _one(s, start):
+    """One series, a dot on the latest point and nothing else on the line (owner, 21 Oct 2026: "We don't need the
+    3-month average since it's so similar to the index. Get rid of all the ... annotations")."""
+    return [Line(since(s, start), BLUE, 2.5, latest="dot")]
+
+
+def _bars(s, start):
+    """Monthly (or quarterly) changes as blue bars: no average line, no value callout."""
+    return [Line(since(s, start), BLUE, kind="bar")]
 
 
 # ═══════════════════════════════════════════════════════════════════════
 # builders: each returns dict(svg, H, latest (Timestamp), title, caption, source)
+# Wave 1 restyled to the pending-sales reference (owner, 21 Oct 2026: "let's fix the Wave 1 release charts so they're
+# uncluttered and beautiful"): one series per panel, a dot on the latest point, no moving averages, legends or value
+# callouts, at most two panels per row, short source lines ("Source: X"; the logo carries the brand).
 # ═══════════════════════════════════════════════════════════════════════
 def b_housing_starts():
     h, sf, mf, pm = fred("HOUST"), fred("HOUST1F"), fred("HOUST5F"), fred("PERMIT")
     t = h.index[-1]
     ch = cur(pchg(h), h)
-    k = lambda v: f"{v:,.0f}k"
     rows = [
-        Row([Panel(_std_lines(h, "2016-01"), "Total starts", "thousands, annual rate", vfmt=k)], 380),
-        Row([Panel([Line(since(sf, "2019-01"), BLUE, 2, latest=True), Line(since(ma(sf, 3), "2019-01"), INK, 2.5)],
-                   "Single-family", vfmt=k, show_key=False),
-             Panel([Line(since(mf, "2019-01"), BLUE, 2, latest=True), Line(since(ma(mf, 3), "2019-01"), INK, 2.5)],
-                   "5+ units", vfmt=k, show_key=False),
-             Panel([Line(since(pm, "2019-01"), BLUE, 2, latest=True), Line(since(ma(pm, 3), "2019-01"), INK, 2.5)],
-                   "Permits", vfmt=k, show_key=False)], 300),
-        # owner, 21 Oct 2026: "what's really hard to read is the regional charts. Just take out their regional
-        # charts" -- no regional row (and no cramped small multiples in any builder)
+        Row([Panel(_one(h, "2016-01"), "Total starts", "thousands, annual rate", show_key=False)], 380),
+        # owner, 21 Oct 2026: "Just take out their regional charts" -- no regional row; two panels, not three
+        Row([Panel(_one(sf, "2016-01"), "Single-family", show_key=False),
+             Panel(_one(mf, "2016-01"), "Buildings with 5+ units", show_key=False)], 320),
     ]
     yy = cur(yoy(h), h)
     title = f"Housing starts {_verb(ch)} {abs(ch):.1f}% in {MONTHS[t.month - 1]}"
     cap = (f"Starts {_verb(ch)} {abs(ch):.1f}% to a {h.iloc[-1]:,.0f}k annual rate in {month_year(t)} ({_signed(yy)} "
            f"from a year earlier); single-family {sf.iloc[-1]:,.0f}k, 5+ units {mf.iloc[-1]:,.0f}k, permits {pm.iloc[-1]:,.0f}k.")
-    src = (f"Source: Census Bureau and HUD, New Residential Construction, via FRED. Seasonally adjusted annual rates. "
-           f"Latest data: {month_year(t)}.")
+    src = "Source: Census Bureau and HUD, via FRED. Seasonally adjusted annual rates."
     return rows, None, 0, t, title, cap, src
 
 
@@ -667,21 +720,15 @@ def b_new_home_sales():
     t = s.index[-1]
     ch = cur(pchg(s), s)
     rows = [
-        Row([Panel(_std_lines(s, "2016-01"), "New homes sold", "single-family, thousands, annual rate",
-                   vfmt=lambda v: f"{v:,.0f}k")], 400),
-        Row([Panel([Line(since(sup, "2019-01"), BLUE, 2, latest=True), Line(since(ma(sup, 3), "2019-01"), INK, 2.5)],
-                   "Months' supply", vfmt=lambda v: f"{v:.1f}", show_key=False),
-             Panel([Line(since(px / 1000, "2019-01"), BLUE, 2, latest=True),
-                    Line(since(ma(px / 1000, 3), "2019-01"), INK, 2.5)],
-                   "Median price", "$ thousands", yprefix="$", ysuffix="k", vfmt=lambda v: f"${v:,.0f}k",
-                   show_key=False)], 320),
+        Row([Panel(_one(s, "2016-01"), "New single-family homes sold", "thousands, annual rate", show_key=False)], 380),
+        Row([Panel(_one(sup, "2016-01"), "Months’ supply", show_key=False),
+             Panel(_one(px / 1000, "2016-01"), "Median price", yprefix="$", ysuffix="k", show_key=False)], 320),
     ]
     title = f"New home sales {_verb(ch)} {abs(ch):.1f}% in {MONTHS[t.month - 1]}"
     cap = (f"New single-family home sales were {s.iloc[-1]:,.0f}k at an annual rate in {month_year(t)} "
            f"({_signed(cur(yoy(s), s))} from a year earlier), with {sup.iloc[-1]:.1f} months' supply and a median "
            f"price of ${px.iloc[-1]:,.0f}.")
-    src = (f"Source: Census Bureau and HUD, New Residential Sales, via FRED. Sales and supply seasonally adjusted; "
-           f"median price not seasonally adjusted. Latest data: {month_year(t)}.")
+    src = "Source: Census Bureau and HUD, via FRED. Price not seasonally adjusted."
     return rows, None, 0, t, title, cap, src
 
 
@@ -695,22 +742,21 @@ def b_case_shiller():
     nat, c20 = fred("CSUSHPINSA"), fred("SPCS20RNSA")
     t = nat.index[-1]
     yn, y20 = yoy(nat), yoy(c20)
-    rows = [Row([Panel([Line(since(yn, "2016-01"), INK, 2.5, end_label=f"National {_signed(cur(yn, nat))}"),
-                        Line(since(y20, "2016-01"), BLUE, 2.5, end_label=f"20-city {_signed(cur(y20, c20))}")],
-                       "Change from a year earlier", ysuffix="%", zero=True, end_room=150)], 400)]
+    rows = [Row([Panel(_one(yn, "2016-01"), "National index, change from a year earlier", ysuffix="%", zero=True,
+                       show_key=False)], 380)]
     items = []
     for name, sid in CS_METROS:
         y = yoy(fred(sid))
         if y.index[-1] == t:
             items.append((name, y.iloc[-1]))
-    items.append(("20-city composite", cur(y20, c20)))
+    items.append(("National", cur(yn, nat)))
     items.sort(key=lambda kv: -kv[1])
     month = month_year(t)
 
     def extra(o, y):
         top = y + 56
         return hbar_panel(o, items, GL, GR, top, f"Selected metros, {month}", "change from a year earlier",
-                          lambda v: _signed(v), highlight=("20-city composite",)) + 10
+                          lambda v: _signed(v), highlight=("National",)) + 10
     title = f"National home prices {_verb(cur(yn, nat), 'rose', 'fell', 'were flat')} {abs(cur(yn, nat)):.1f}% over the year to {MONTHS[t.month - 1]}"
     if _verb(cur(yn, nat)) == "was unchanged":
         title = f"National home prices were flat over the year to {MONTHS[t.month - 1]}"
@@ -718,8 +764,7 @@ def b_case_shiller():
     cap = (f"The S&P Cotality Case-Shiller national index was {_signed(cur(yn, nat))} from a year earlier in {month} and the "
            f"20-city composite {_signed(cur(y20, c20))}; among the metros shown, {best[0]} was strongest ({_signed(best[1])}) "
            f"and {worst[0]} weakest ({_signed(worst[1])}).")
-    src = (f"Source: S&P Cotality Case-Shiller home price indices (not seasonally adjusted; each is a three-month "
-           f"moving average), via FRED. Latest data: {month}.")
+    src = "Source: S&P Cotality Case-Shiller indices, not seasonally adjusted, via FRED."
     return rows, extra, 64 + len(items) * 34, t, title, cap, src
 
 
@@ -727,16 +772,13 @@ def b_fhfa_hpi():
     s = fred("HPIPONM226S")
     t = s.index[-1]
     y, m = yoy(s), pchg(s)
-    rows = [Row([Panel([Line(since(y, "2016-01"), BLUE, 2.5, latest=True)], "Change from a year earlier", ysuffix="%",
-                       zero=True, vfmt=lambda v: _signed(v), show_key=False)], 380),
-            Row([Panel([Line(since(m, "2023-01"), BLUE, kind="bar", key="Monthly change", latest=True),
-                        Line(since(ma(m, 3), "2023-01"), INK, 2.5, key="3-month average")],
-                       "Change from the previous month", ysuffix="%", zero=True, vfmt=lambda v: _signed(v, 2))], 340)]
+    rows = [Row([Panel(_one(y, "2016-01"), "Change from a year earlier", ysuffix="%", zero=True, show_key=False)], 380),
+            Row([Panel(_bars(m, "2023-01"), "Change from the previous month", ysuffix="%", zero=True,
+                       show_key=False)], 320)]
     title = f"FHFA house prices {_verb(cur(y, s))} {abs(cur(y, s)):.1f}% over the year to {MONTHS[t.month - 1]}"
     cap = (f"The FHFA purchase-only index was {_signed(cur(y, s))} from a year earlier in {month_year(t)} and "
            f"{_signed(cur(m, s), 2)} from the month before (seasonally adjusted).")
-    src = (f"Source: Federal Housing Finance Agency purchase-only house price index (seasonally adjusted), via FRED. "
-           f"Latest data: {month_year(t)}.")
+    src = "Source: FHFA purchase-only house price index, seasonally adjusted, via FRED."
     return rows, None, 0, t, title, cap, src
 
 
@@ -745,42 +787,33 @@ def b_payrolls():
     t = p.index[-1]
     d = diff(p)
     dc = diff(c)
-    rows = [Row([Panel([Line(since(d, "2023-01"), BLUE, kind="bar", key="Monthly change", latest=True),
-                        Line(since(ma(d, 3), "2023-01"), INK, 2.5, key="3-month average")],
-                       "Nonfarm payrolls", "change, thousands", zero=True,
-                       vfmt=lambda v: ("+" if v > 0 else "−" if v < 0 else "") + f"{abs(v):,.0f}k")], 400),
-            Row([Panel([Line(since(u, "2016-01"), BLUE, 2.5, latest=True)], "Unemployment rate", ysuffix="%",
-                       vfmt=lambda v: f"{v:.1f}%", show_key=False),
-                 Panel([Line(since(c / 1000, "2016-01"), BLUE, 2.5, latest=True)], "Construction jobs", "millions",
-                       vfmt=lambda v: f"{v:.2f}m", show_key=False)], 320)]
+    rows = [Row([Panel(_bars(d, "2023-01"), "Nonfarm payrolls", "change from the previous month, thousands", zero=True,
+                       show_key=False)], 380),
+            Row([Panel(_one(u, "2016-01"), "Unemployment rate", ysuffix="%", show_key=False),
+                 Panel(_one(c / 1000, "2016-01"), "Construction jobs", "millions", show_key=False)], 320)]
     v = cur(d, p)
     title = (f"Employers added {v * 1000:,.0f} jobs in {MONTHS[t.month - 1]}" if v >= 0 else
              f"Payrolls fell by {abs(v) * 1000:,.0f} jobs in {MONTHS[t.month - 1]}")
     cap = (f"Nonfarm payrolls changed by {v:+,.0f}k in {month_year(t)} (three-month average {ma(d, 3).iloc[-1]:+,.0f}k); "
            f"unemployment {u.iloc[-1]:.1f}%; construction employment {cur(dc, c):+,.0f}k on the month.")
-    src = (f"Source: Bureau of Labor Statistics, Employment Situation, via FRED. Seasonally adjusted. Latest data: "
-           f"{month_year(t)}.")
+    src = "Source: Bureau of Labor Statistics, via FRED. Seasonally adjusted."
     return rows, None, 0, t, title, cap, src
 
 
 def b_cpi_shelter():
+    """One row of two panels (the pending-sales layout): rent's change from a year earlier, and its change from the
+    previous month. All items and owners' equivalent rent are in the caption, not on the chart."""
     hd, rent, oer = fred("CPIAUCSL"), fred("CUSR0000SEHA"), fred("CUSR0000SEHC")
     t = hd.index[-1]
     yh, yr, yo = yoy(hd), yoy(rent), yoy(oer)
-    rows = [Row([Panel([Line(since(yh, "2016-01"), INK, 2.5, end_label=f"All items {_signed(cur(yh, hd))}"),
-                        Line(since(yr, "2016-01"), BLUE, 2.5, end_label=f"Rent {_signed(cur(yr, rent))}"),
-                        Line(since(yo, "2016-01"), YELLOW, 2.5, end_label=f"Owners' equiv. {_signed(cur(yo, oer))}")],
-                       "Change from a year earlier", ysuffix="%", zero=True, end_room=210)], 400),
-            Row([Panel([Line(since(pchg(s), "2023-01"), BLUE, kind="bar", latest=True),
-                        Line(since(ma(pchg(s), 3), "2023-01"), INK, 2.5)],
-                       name, ysuffix="%", zero=True, vfmt=lambda v: _signed(v, 2), show_key=False)
-                 for name, s in [("Rent, monthly", rent), ("OER, monthly", oer), ("All items, monthly", hd)]], 300)]
+    rows = [Row([Panel(_one(yr, "2016-01"), "Rent, change from a year earlier", ysuffix="%", zero=True, show_key=False),
+                 Panel(_bars(pchg(rent), "2023-01"), "Rent, change from the previous month", ysuffix="%", zero=True,
+                       show_key=False)], 426)]
     title = f"CPI rent {_verb(cur(yr, rent))} {abs(cur(yr, rent)):.1f}% over the year to {MONTHS[t.month - 1]}"
     cap = (f"In {month_year(t)} rent of primary residence was {_signed(cur(yr, rent))} from a year earlier "
            f"({_signed(cur(pchg(rent), rent), 2)} on the month), owners' equivalent rent {_signed(cur(yo, oer))} and "
            f"all items {_signed(cur(yh, hd))}.")
-    src = (f"Source: Bureau of Labor Statistics, Consumer Price Index (seasonally adjusted), via FRED. Bars are monthly "
-           f"changes; black lines their 3-month average. Latest data: {month_year(t)}.")
+    src = "Source: Bureau of Labor Statistics, via FRED. Seasonally adjusted."
     return rows, None, 0, t, title, cap, src
 
 
@@ -789,19 +822,14 @@ def b_mortgage_rates():
     t = r.index[-1]
     gw = g.resample("W-THU").mean().reindex(r.index).dropna()
     spread = (r.reindex(gw.index) - gw).dropna()
-    rows = [Row([Panel([Line(since(r, "2022-01"), BLUE, 2.5, key="Weekly", latest=True),
-                        Line(since(ma(r, 13), "2022-01"), INK, 2.5, key="13-week average")],
-                       "30-year fixed mortgage rate", ysuffix="%", vfmt=lambda v: f"{v:.2f}%")], 400),
-            Row([Panel([Line(since(spread, "2022-01"), BLUE, 2.5, latest=True),
-                        Line(since(ma(spread, 13), "2022-01"), INK, 2.5)],
-                       "Spread over the 10-year Treasury", "percentage points", vfmt=lambda v: f"{v:.2f}",
+    rows = [Row([Panel(_one(r, "2022-01"), "30-year fixed mortgage rate", ysuffix="%", show_key=False)], 380),
+            Row([Panel(_one(spread, "2022-01"), "Spread over the 10-year Treasury", "percentage points",
                        show_key=False)], 320)]
     title = f"The 30-year mortgage rate was {r.iloc[-1]:.2f}% on {MONTHS[t.month - 1]} {t.day}"
     wk = r.iloc[-1] - r.iloc[-2]
     cap = (f"Freddie Mac's 30-year fixed rate averaged {r.iloc[-1]:.2f}% in the week to {MONTHS[t.month - 1]} {t.day}, "
            f"{'unchanged' if round(wk, 2) == 0 else _signed(wk, 2, ' points')} on the week; the spread over the 10-year Treasury was {spread.iloc[-1]:.2f} points.")
-    src = (f"Source: Freddie Mac Primary Mortgage Market Survey and Federal Reserve 10-year Treasury yield (weekly "
-           f"average to Thursday), via FRED. Latest data: week of {MONTHS[t.month - 1]} {t.day}, {t.year}.")
+    src = "Source: Freddie Mac and Federal Reserve, via FRED. Weekly."
     return rows, None, 0, t, title, cap, src
 
 
@@ -809,64 +837,51 @@ def b_construction_spending():
     s = fred("TLRESCONS") / 1000
     t = s.index[-1]
     ch, y = cur(pchg(s), s), yoy(s)
-    rows = [Row([Panel(_std_lines(s, "2016-01"), "Residential construction", "$bn, annual rate",
-                       yprefix="$", vfmt=lambda v: f"${v:,.0f}bn")], 420),
-            Row([Panel([Line(since(y, "2016-01"), BLUE, 2.5, latest=True)], "Change from a year earlier", ysuffix="%",
-                       zero=True, vfmt=lambda v: _signed(v), show_key=False)], 300)]
+    rows = [Row([Panel(_one(s, "2016-01"), "Residential construction spending", "$bn, annual rate", yprefix="$",
+                       show_key=False)], 380),
+            Row([Panel(_one(y, "2016-01"), "Change from a year earlier", ysuffix="%", zero=True, show_key=False)], 320)]
     title = f"Residential construction spending {_verb(ch)} {abs(ch):.1f}% in {MONTHS[t.month - 1]}"
     cap = (f"Residential construction spending was ${s.iloc[-1]:,.0f} billion at an annual rate in {month_year(t)}, "
            f"{_signed(ch)} on the month and {_signed(cur(y, s))} on the year (not adjusted for inflation).")
-    src = (f"Source: Census Bureau, Construction Spending (seasonally adjusted annual rate, current dollars), via FRED. "
-           f"Latest data: {month_year(t)}.")
+    src = "Source: Census Bureau, via FRED. Seasonally adjusted, current dollars."
     return rows, None, 0, t, title, cap, src
 
 
 def b_jolts():
     jo, q = fred("JTSJOL") / 1000, fred("JTSQUR")
     t = jo.index[-1]
-    rows = [Row([Panel(_std_lines(jo, "2016-01"), "Job openings", "millions", vfmt=lambda v: f"{v:.2f}m")], 400),
-            Row([Panel([Line(since(q, "2016-01"), BLUE, 2.5, latest=True), Line(since(ma(q, 3), "2016-01"), INK, 2.5)],
-                       "Quits rate", "% of employment", ysuffix="%", vfmt=lambda v: f"{v:.1f}%", show_key=False)], 320)]
+    rows = [Row([Panel(_one(jo, "2016-01"), "Job openings", "millions", show_key=False)], 380),
+            Row([Panel(_one(q, "2016-01"), "Quits rate", "% of employment", ysuffix="%", show_key=False)], 320)]
     ch = cur(diff(jo), jo)
     title = f"Job openings {_verb(ch, 'rose', 'fell', 'held')} to {jo.iloc[-1]:.1f} million in {MONTHS[t.month - 1]}"
     cap = (f"Job openings were {jo.iloc[-1]:.2f} million in {month_year(t)} ({ch * 1000:+,.0f}k on the month); the "
            f"quits rate was {q.iloc[-1]:.1f}%.")
-    src = (f"Source: Bureau of Labor Statistics, Job Openings and Labor Turnover Survey (seasonally adjusted), via FRED. "
-           f"Latest data: {month_year(t)}.")
+    src = "Source: Bureau of Labor Statistics, JOLTS, via FRED. Seasonally adjusted."
     return rows, None, 0, t, title, cap, src
 
 
 def b_jobless_claims():
     s = fred("ICSA") / 1000
     t = s.index[-1]
-    rows = [Row([Panel([Line(since(s, "2023-01"), BLUE, 2, key="Weekly", latest=True),
-                        Line(since(ma(s, 4), "2023-01"), INK, 2.5, key="4-week average")],
-                       "Initial jobless claims", "thousands", vfmt=lambda v: f"{v:,.0f}k")], 520)]
+    rows = [Row([Panel(_one(s, "2023-01"), "Initial jobless claims", "thousands, weekly", show_key=False)], 460)]
     title = f"Initial jobless claims were {s.iloc[-1] * 1000:,.0f} in the week to {MONTHS[t.month - 1]} {t.day}"
     cap = (f"Initial claims for unemployment insurance were {s.iloc[-1]:,.0f}k in the week to {MONTHS[t.month - 1]} "
            f"{t.day} (4-week average {ma(s, 4).iloc[-1]:,.0f}k).")
-    src = (f"Source: Department of Labor, weekly unemployment insurance claims (seasonally adjusted), via FRED. "
-           f"Latest data: week to {MONTHS[t.month - 1]} {t.day}, {t.year}.")
+    src = "Source: Department of Labor, via FRED. Seasonally adjusted."
     return rows, None, 0, t, title, cap, src
 
 
 def b_hvs():
     ho, rv, hv = fred("RHORUSQ156N"), fred("RRVRUSQ156N"), fred("RHVRUSQ156N")
     t = ho.index[-1]
-    pct = lambda v: f"{v:.1f}%"
-    rows = [Row([Panel([Line(since(ho, "2010-01"), BLUE, 2, key="Quarterly", latest=True),
-                        Line(since(ma(ho, 4), "2010-01"), INK, 2.5, key="4-quarter average")],
-                       "Homeownership rate", ysuffix="%", vfmt=pct)], 380),
-            Row([Panel([Line(since(rv, "2010-01"), BLUE, 2, latest=True), Line(since(ma(rv, 4), "2010-01"), INK, 2.5)],
-                       "Rental vacancy rate", ysuffix="%", vfmt=pct, show_key=False),
-                 Panel([Line(since(hv, "2010-01"), BLUE, 2, latest=True), Line(since(ma(hv, 4), "2010-01"), INK, 2.5)],
-                       "Homeowner vacancy rate", ysuffix="%", vfmt=pct, show_key=False)], 320)]
+    rows = [Row([Panel(_one(ho, "2010-01"), "Homeownership rate", ysuffix="%", show_key=False)], 380),
+            Row([Panel(_one(rv, "2010-01"), "Rental vacancy rate", ysuffix="%", show_key=False),
+                 Panel(_one(hv, "2010-01"), "Homeowner vacancy rate", ysuffix="%", show_key=False)], 320)]
     q = QNAMES[(t.month - 1) // 3]
     title = f"The homeownership rate was {ho.iloc[-1]:.1f}% in the {q} quarter"
     cap = (f"In the {q} quarter of {t.year} the homeownership rate was {ho.iloc[-1]:.1f}%, the rental vacancy rate "
            f"{rv.iloc[-1]:.1f}% and the homeowner vacancy rate {hv.iloc[-1]:.1f}%.")
-    src = (f"Source: Census Bureau, Housing Vacancies and Homeownership (not seasonally adjusted), via FRED. "
-           f"Latest data: Q{(t.month - 1) // 3 + 1} {t.year}.")
+    src = "Source: Census Bureau, via FRED. Not seasonally adjusted."
     return rows, None, 0, t, title, cap, src
 
 
@@ -1150,8 +1165,8 @@ def b_pending_home_sales():
     cap = (f"NAR's Pending Home Sales Index {_verb(ch)} {abs(ch):.1f}% to {v:.1f} in {month_year(t)}{rec_txt} "
            f"({_signed(yy)} from a year earlier); by region, " +
            ", ".join(f"{r} {_signed(c)}" for r, c in regions) + f" from {pmon}.")
-    src = (f"Source: NAR; values before {MON3[first_nar.month - 1]} {first_nar.year} via Mortgage News Daily "
-           f"· Home Economics")
+    # the logo carries the brand, so the source line no longer ends "· Home Economics"
+    src = f"Source: NAR; values before {MON3[first_nar.month - 1]} {first_nar.year} via Mortgage News Daily"
     # ---- layout: the owner's grid reference (scripts/90_phsi_chart_grid.py, pending_home_sales_v10.png)
     Wc, Hc = W, 600
     PW = (GR - GL - COLGAP) / 2                       # two panels of identical width
@@ -1171,7 +1186,8 @@ def b_pending_home_sales():
     rlabel = f"{mon} by region, change from {pmon}"
     if _tw(rlabel, 20) > PW:
         rlabel = f"{MON3[t.month - 1]} by region, change from {MON3[_ts(prev_m).month - 1]}"
-    o = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{Wc}" height="{Hc}" viewBox="0 0 {Wc} {Hc}">',
+    o = [f'<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="{Wc}" '
+         f'height="{Hc}" viewBox="0 0 {Wc} {Hc}">',
          f'<rect width="{Wc}" height="{Hc}" fill="{BG}"/>',
          _T(GL, 54, title, 34, 700, INK, extra=' letter-spacing="-0.7"'),
          _T(LX0, TOP - LABEL_GAP, "NAR pending home sales, seasonally adjusted", 20, 400, GREY)]
@@ -1188,6 +1204,7 @@ def b_pending_home_sales():
     # region bars: run from the panel top down to the baseline of the left panel's year labels
     hbar_panel(o, regions, RX0, RX1, TOP, rlabel, "", _signed, height=BOT + XLAB - TOP)
     o.append(_T(GL, Hc - 30, src, 20, 400, GREY))
+    o.append(_logo_tag(Hc - 30))
     o.append("</svg>")
     return Prebuilt("".join(o), Hc), None, 0, t, title, cap, src
 
@@ -1296,7 +1313,7 @@ def b_existing_home_sales():
     cap = (f"Existing home sales were {s.iloc[-1]:.2f} million at an annual rate in {month_year(t)} ({_signed(ch)} on "
            f"the month, {_signed(yy)} on the year); inventory {inv.iloc[-1]:.2f} million, median price "
            f"${px.iloc[-1] * 1000:,.0f}.")
-    src = "Source: NAR, via FRED and NAR releases. Sales seasonally adjusted; inventory and price not."
+    src = "Source: NAR. Inventory and median price not seasonally adjusted."
     return rows, None, 0, t, title, cap, src
 
 
@@ -1528,12 +1545,13 @@ def b_nahb_hmi():
     ps, n6, tr = _hmi("present_sales"), _hmi("next_6_months"), _hmi("traffic")
     t = h.index[-1]
     d = cur(diff(h), h)
-    rows = [Row([Panel([Line(since(h, "2000-01"), BLUE, 2.5, latest="dot")], "Housing Market Index",
-                       "seasonally adjusted", ref=50, show_key=False)], 380),
-            Row([Panel([Line(since(ps, "2019-01"), BLUE, 2.5, key="Current sales", latest="dot"),
-                        Line(since(n6, "2019-01"), INK, 2.5, key="Next six months", latest="dot"),
-                        Line(since(tr, "2019-01"), YELLOW, 2.5, key="Buyer traffic", latest="dot")],
-                       "Components", ref=50)], 340)]
+    # wave-1 restyle (owner, 21 Oct 2026): the three overlapping component lines and their legend gave way to the
+    # pending-sales layout -- the index on the left, this month's components as bars (name + one value) on the right
+    comps = sorted([(nm, float(s.iloc[-1])) for nm, s in (("Current sales", ps), ("Next six months", n6),
+                                                          ("Buyer traffic", tr)) if s.index[-1] == t],
+                   key=lambda kv: -kv[1])
+    rows = [Row([Panel(_one(h, "2000-01"), "Housing Market Index", "seasonally adjusted", ref=50, show_key=False),
+                 HBars(comps, f"Components in {MONTHS[t.month - 1]}", vfmt=lambda v: f"{v:.0f}")], 426)]
     v = h.iloc[-1]
     verb = "rose" if d > 0 else "fell" if d < 0 else "held"
     title = f"Builder confidence {verb} {'at' if verb == 'held' else 'to'} {v:.0f} in {MONTHS[t.month - 1]}"
@@ -1655,7 +1673,7 @@ def b_gdp():
     cap = (f"Real GDP {'grew' if v >= 0 else 'shrank'} at a {abs(v):.1f}% annual rate in the {q} quarter of {t.year}; "
            f"real residential investment {_verb(rgv)} at a {abs(rgv):.1f}% rate, contributing "
            f"{_signed(float(rc.iloc[-1]), 2, ' percentage points')} to growth.")
-    src = "Source: Bureau of Economic Analysis, via FRED. Inflation-adjusted, seasonally adjusted annual rates."
+    src = "Source: Bureau of Economic Analysis, via FRED. Inflation-adjusted, seasonally adjusted."
     return rows, None, 0, t, title, cap, src
 
 
