@@ -276,6 +276,13 @@ def draw_metro_map(o: list, x0: float, top: float, width: float, points: list, e
     # the map frame; among clear positions pick the one covering the fewest other bubbles
     boxes = []
     rings = []
+    yb_map = y + mh
+    if size_legend and any(p.pop for p in points):
+        # keep labels off the population key drawn later at the bottom left
+        refs0 = ([v for v in (20e6, 5e6) if v <= pmax * 1.05] or [pmax])[0]
+        r0 = R(refs0)
+        boxes.append((x0, yb_map - 6 - 2 * r0 - 34, x0 + max(_tw("Population", 20, 500),
+                                                            6 + 2 * r0 + 14 + _tw("20m", 20, 300)) + 4, yb_map))
     cands = [(cx, cy, r, p) for cx, cy, r, p in placed if p.label]
     cands.sort(key=lambda c: c[3].label)
     frame = (x0, y - 4, x0 + width, y + mh + 30)
@@ -478,30 +485,37 @@ def _zillow_build(kind: str):
     lvl_s = f"${lvl:,.0f}"
     n = len(pts)
 
-    def extra(o, y):
-        yb = draw_metro_map(o, GL, y, GR - GL, pts, edges, cols, labs, heading="Change from a year earlier",
-                            sub=f"{n} largest metros, sized by population")
-        top = yb + getattr(rc, "ROWGAP", 40) + 56
-        bot = top + 200
-        stat_block(o, GL, top, "United States", lvl_s, what, _signed(v), "from a year earlier", _chg_col(v))
-        px0 = GL + 340
-        draw_panel(o, Panel([Line(since(y_us, "2016-01"), BLUE, 2.5)], "US, change from a year earlier",
-                            ysuffix="%", zero=True, vfmt=lambda z: _signed(z), show_key=False), px0, GR, top, bot)
-        return bot + 40                        # x labels sit 30 below `bot`; the stage adds the source gap
+    # owner, 21 Oct 2026 ("All of these need to be small, square-sized. They can't be super long."): the map sits on
+    # the left at reduced width with the US level and the US change (columns) beside it, instead of the stat block
+    # and line panel stacked under a full-width map (1217 px tall before, about 630 now). The change is in the title,
+    # so the stat block keeps only the level.
+    map_w = 560
 
-    extra_h = 900
+    def extra(o, y):
+        yb = draw_metro_map(o, GL, y, map_w, pts, edges, cols, labs, heading="Change from a year earlier",
+                            sub=f"{n} largest metros, sized by population", rmax=24)
+        rx0 = GL + map_w + 28
+        hy = y + 116
+        o.append(_T(rx0, hy, "United States", 20, 400, GREY))
+        o.append(_T(rx0, hy + 46, lvl_s, 44, 700, INK, extra=' letter-spacing="-0.7"'))
+        o.append(_T(rx0, hy + 76, what, 20, 400, GREY))
+        top = hy + 76 + 46 + getattr(rc, "LABEL_GAP", 36)
+        bot = yb - 30
+        draw_panel(o, Panel([Line(since(y_us, "2019-01"), BLUE, kind="bar")], "US, change from a year earlier",
+                            ysuffix="%", zero=True, show_key=False), rx0, GR, top, bot)
+        return yb + 10                         # x labels sit 30 below `bot` = level with the map's bottom edge
+
+    extra_h = 0
     if kind == "zhvi":
         cap = (f"Zillow's typical US home value was {lvl_s} in {my}, {_signed(v)} from a year earlier. Among the {n} "
                f"largest metros, {falling} were lower than a year before; {worst.name} fell most ({_signed(worst.value)}) "
                f"and {best.name} rose most ({_signed(best.value)}).")
-        src = (f"Source: Zillow Home Value Index (seasonally adjusted); Census 2024 population. Contiguous US only. "
-               f"Latest data: {my}.")
+        src = "Source: Zillow Home Value Index; Census population. Contiguous US only."
     else:
         cap = (f"Zillow's typical US asking rent was {lvl_s} in {my}, {_signed(v)} from a year earlier. Among the {n} "
                f"largest metros, {falling} were lower than a year before; {worst.name} fell most ({_signed(worst.value)}) "
                f"and {best.name} rose most ({_signed(best.value)}).")
-        src = (f"Source: Zillow Observed Rent Index (all rental homes); Census 2024 population. Contiguous US only. "
-               f"Latest data: {my}.")
+        src = "Source: Zillow Observed Rent Index; Census population. Contiguous US only."
     return [], extra, extra_h, t, title, cap, src
 
 
@@ -796,6 +810,23 @@ def cotality_latest_period() -> str:
     return str(rel.iloc[-1]["data_month"])
 
 
+def cotality_cbsa(names: list[str]) -> dict:
+    """Cotality metro names ("Youngstown, OH") -> CBSA codes: the map's Zillow-style name keys first, then a CBSA
+    whose title has the same first city and lists the state among its states (Cotality's "Wheeling, OH" is the
+    CBSA "Wheeling, WV-OH"). Unmatched names are left out (the strip drops and reports them)."""
+    hit, miss = match_metros([(n, "") for n in names])
+    out = {n: c["cbsa"] for n, c in hit.items()}
+    for n in miss:
+        city, _, st = n.rpartition(", ")
+        for c in geo()["cbsa"]:
+            cp, _, sp = c["name"].rpartition(", ")
+            if re.split(r"[-/]", cp)[0].strip() == city.strip() and st.strip() in sp.split("-"):
+                out[n] = c["cbsa"]
+                logger.info(f"cotality: {n} matched to CBSA {c['name']} by city and state")
+                break
+    return out
+
+
 def b_cotality_hpi():
     import pandas as pd
     rel, met = _cot_frames(update=True)
@@ -811,9 +842,8 @@ def b_cotality_hpi():
              f"Cotality: US home prices {_verb(v)} {abs(v):.1f}% over the year to {mon}")
     rows = []
     if len(s) >= 3:
-        rows.append(Row([Panel([Line(s, BLUE, 2.5)], "US, change from a year earlier",
-                               "as first published", ysuffix="%", zero=True, vfmt=lambda z: _signed(z),
-                               show_key=False)], 360))
+        rows.append(Row([Panel([Line(s, BLUE, kind="bar")], "US, change from a year earlier",
+                               "as first published", ysuffix="%", zero=True, show_key=False)], rc.STRIP_H))
     mm = met[met.release_month == last["release_month"]] if met is not None else None
     top = mm[mm["group"] == "top"].sort_values("rank") if mm is not None else None
     bot = mm[mm["group"] == "bottom"].sort_values("rank") if mm is not None else None
@@ -822,22 +852,20 @@ def b_cotality_hpi():
     fc = last.get("fc_yoy")
     fc_s = (f" Cotality forecasts {_signed(float(fc))} over the next 12 months." if fc == fc and fc is not None else "")
 
-    # one bar panel (the stage's hbar_panel: one scale, axis at zero, one value per bar): Cotality's ten
-    # fastest-rising metros, then its ten fastest-falling, as published in the latest edition
-    items = [(str(n), float(x)) for n, x in zip(top.name, top.yoy)] + \
-            [(str(n), float(x)) for n, x in zip(bot.name, bot.yoy)][::-1]
-    items.sort(key=lambda kv: -kv[1])
-
-    def lists(o, y):
-        return rc.hbar_panel(o, items, GL, GR, y + 56, f"Fastest-rising and fastest-falling metros, {my}",
-                             "change from a year earlier", lambda z: _signed(z)) + 10
-
-    extra_h = 56 + 33 * len(items) + 10
+    # Cotality's ten fastest-rising and ten fastest-falling metros (latest edition) as a bubble strip (owner, 21 Oct
+    # 2026: metro comparisons as bubbles on a left-to-right axis, size = population, colour = region), replacing the
+    # 20-row bar list that made this chart 1309 px tall
+    names = [str(n) for n in top.name] + [str(n) for n in bot.name]
+    yoys = [float(x) for x in top.yoy] + [float(x) for x in bot.yoy]
+    codes = cotality_cbsa(names)
+    vals = [(n.split(",")[0], x, codes.get(n)) for n, x in zip(names, yoys)]
+    rows.append(Row([rc.Strip(rc._strip_items("cotality_hpi", vals), "Top and bottom 10 metros", "sized by population",
+                              bench=(f"US {_signed(v)}", v), rmax=22)], rc.STRIP_H))
+    lists, extra_h = None, 0
     cap = (f"Cotality's US home price index was {_signed(v)} from a year earlier in {my} "
            f"({_signed(float(mom))} on the month).{fc_s} Strongest metro: {top.iloc[0]['name']} "
            f"({_signed(float(top.iloc[0]['yoy']))}); weakest: {bot.iloc[0]['name']} ({_signed(float(bot.iloc[0]['yoy']))}).")
-    src = (f"Source: Cotality Home Price Insights, monthly editions (national line: each month as first "
-           f"published). Latest data: {my}.")
+    src = "Source: Cotality Home Price Insights, as first published; Census population."
     return rows, lists, extra_h, dm, title, cap, src
 
 

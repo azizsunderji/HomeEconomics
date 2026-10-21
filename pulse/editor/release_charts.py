@@ -306,6 +306,7 @@ class Line:
     key: str | None = None        # name in the panel key (right end of the label line)
     end_label: str | None = None  # text at the line's end (multi-line panels)
     latest: bool | str = False    # True: dot + "Mon YYYY / value" on the last point; "dot": the dot only
+    shade: bool = False           # light fill between the line and the plot bottom (level lines)
 
 
 @dataclass
@@ -461,6 +462,10 @@ def draw_panel(o: list, p: Panel, x0: float, x1: float, top: float, bot: float) 
                          f'fill="{ln.color}"/>')
         else:
             d = " ".join(("M" if i == 0 else "L") + f"{X(_xdec(t)):.1f},{Y(v):.1f}" for i, (t, v) in enumerate(s.items()))
+            if ln.shade:
+                xa, xb = X(_xdec(s.index[0])), X(_xdec(s.index[-1]))
+                o.append(f'<path d="{d} L{xb:.1f},{bot:.1f} L{xa:.1f},{bot:.1f} Z" fill="{ln.color}" '
+                         f'fill-opacity="{SHADE_OPACITY}" stroke="none"/>')
             o.append(f'<path d="{d}" fill="none" stroke="{ln.color}" stroke-width="{ln.width * LINE_SCALE:.2f}" '
                      f'stroke-linejoin="round" stroke-linecap="round" style="mix-blend-mode:multiply"/>')
     # end labels (de-overlapped)
@@ -547,6 +552,226 @@ class HBars:
     highlight: tuple = ()
 
 
+# ── bubble strip (owner, 21 Oct 2026, on the Case-Shiller metro bars: "why don't you make them bubbles on a
+# left-to-right axis where the bubble size is population? You can even color them regionally, like Northeast, South,
+# etc."). One row of circles on a horizontal value axis; area proportional to 2024 metro population; fill = Census
+# region; dodged vertically so bubbles do not sit on top of one another; labels on the notable bubbles only (largest,
+# extremes) and a vertical ink line for the national benchmark. Leader lines are black circular arcs ending on the
+# bubble edge (house style).
+GEO_JSON = Path(__file__).resolve().parent / "geo" / "us_metro_map_geo.json"
+CENSUS_REGION = {**{s: "Northeast" for s in "CT ME MA NH RI VT NJ NY PA".split()},
+                 **{s: "Midwest" for s in "IL IN MI OH WI IA KS MN MO NE ND SD".split()},
+                 **{s: "South" for s in "DE FL GA MD NC SC VA DC WV AL KY MS TN AR LA OK TX".split()},
+                 **{s: "West" for s in "AZ CO ID MT NV NM UT WY AK CA HI OR WA".split()}}
+# four strong palette colours; red (the loudest) goes to the region with the fewest large metros
+REGION_COL = {"Northeast": BLUE, "Midwest": RED, "South": GREEN, "West": YELLOW}
+STRIP_DROPPED: list = []          # (chart, metro, reason) for metros left off a strip (no population): reported
+SHADE_OPACITY = 0.13
+_CBSA: dict | None = None
+
+
+def cbsa_info(code: str) -> dict | None:
+    """{name, pop, state, region} for a CBSA code from the geometry JSON (2024 population summed over 2023
+    delineation counties); None when the code is missing or has no population."""
+    global _CBSA
+    if _CBSA is None:
+        _CBSA = {c["cbsa"]: c for c in json.loads(GEO_JSON.read_text())["cbsa"]}
+    c = _CBSA.get(str(code).zfill(5))
+    if not c or not c.get("pop"):
+        return None
+    st = c["name"].rpartition(", ")[2].split("-")[0][:2]
+    return {"name": c["name"], "pop": float(c["pop"]), "state": st, "region": CENSUS_REGION.get(st)}
+
+
+@dataclass
+class Strip:
+    """A bubble-strip panel (full row width). items: (name, value, population, region)."""
+    items: list
+    heading: str = ""
+    sub: str = ""
+    bench: tuple | None = None    # (label, value): vertical ink line + label, e.g. ("National +1.9%", 1.9)
+    suffix: str = "%"             # unit on the right-most axis label only
+    n_big: int = 3                # label the largest n ...
+    n_ext: int = 1                # ... and the n highest and n lowest values
+    max_labels: int = 10
+    rmax: float = 30.0
+
+
+def _arc_geom(px, py, cx, cy, r, sweep_deg=40.0):
+    """End point on the circle edge, arc radius, SVG sweep flag and 13 points along the arc from (px, py)."""
+    d = math.hypot(px - cx, py - cy) or 1.0
+    ex, ey = cx + r * (px - cx) / d, cy + r * (py - cy) / d
+    chord = math.hypot(ex - px, ey - py) or 1.0
+    rad = chord / (2 * math.sin(math.radians(sweep_deg) / 2))
+    sweep = 1 if ex > px else 0
+    ux, uy = (ex - px) / chord, (ey - py) / chord
+    nx, ny = (-uy, ux) if sweep else (uy, -ux)          # towards the arc's centre (screen coordinates, y down)
+    h = math.sqrt(max(rad * rad - chord * chord / 4, 0))
+    ox, oy = (px + ex) / 2 + nx * h, (py + ey) / 2 + ny * h
+    a0, a1 = math.atan2(py - oy, px - ox), math.atan2(ey - oy, ex - ox)
+    da = (a1 - a0 + math.pi) % (2 * math.pi) - math.pi
+    pts = [(ox + rad * math.cos(a0 + da * k / 12), oy + rad * math.sin(a0 + da * k / 12)) for k in range(13)]
+    return ex, ey, rad, sweep, pts
+
+
+def _arc(px, py, cx, cy, r, sweep_deg=40.0) -> str:
+    """A circular-arc leader from (px, py) to the edge of the circle (cx, cy, r), black, thin (house style)."""
+    ex, ey, rad, sweep, _ = _arc_geom(px, py, cx, cy, r, sweep_deg)
+    return (f'<path d="M{px:.1f},{py:.1f} A{rad:.1f},{rad:.1f} 0 0 {sweep} {ex:.1f},{ey:.1f}" fill="none" '
+            f'stroke="{INK}" stroke-width="1"/>')
+
+
+def bubble_strip(o: list, st: Strip, x0: float, x1: float, ytop: float, ybot: float) -> float:
+    """Draw the strip in the band ytop..ybot (the row's full height, like a Row of panels): label line (baseline
+    ytop+20) with the region legend right-aligned on it, a label lane, the swarm, a lower label lane, axis numbers
+    (baseline ybot-10). Returns ybot."""
+    label = st.heading + (f", {st.sub}" if st.heading and st.sub else st.sub)
+    regs = [r for r in REGION_COL if any(it[3] == r for it in st.items)]
+    leg_w = sum(16 + 8 + _tw(r, 20) for r in regs) + 18 * max(len(regs) - 1, 0)
+    lab_y = ytop + 20
+    two_lines = label and _tw(label, 20) + 28 + leg_w > x1 - x0
+    if label:
+        o.append(_T(x0, lab_y, label, 20, 400, GREY))
+    lx = (x0 if two_lines else x1 - leg_w)
+    ly = lab_y + (30 if two_lines else 0)
+    for r in regs:
+        o.append(f'<circle cx="{lx + 8:.1f}" cy="{ly - 7:.1f}" r="8" fill="{REGION_COL[r]}" fill-opacity="0.85"/>')
+        o.append(_T(lx + 24, ly, r, 20, 400, INK))
+        lx += 24 + _tw(r, 20) + 18
+    lane_t = ly + 36                                  # benchmark label baseline
+    zt = lane_t + 8                                   # swarm zone: from under the benchmark label ...
+    zb = ybot - 36                                    # ... to just above the axis numbers
+    yc = (zt + zb) / 2
+    half = (zb - zt) / 2
+    vals = [it[1] for it in st.items] + ([st.bench[1]] if st.bench else [])
+    lo, hi = min(vals), max(vals)
+    ticks = nice_ticks(lo, hi, 6, zero=lo < 0 < hi)
+    ticks = [t for t in ticks if lo - (hi - lo) * 0.12 <= t <= hi + (hi - lo) * 0.12] or ticks
+    dlo, dhi = min(ticks[0], lo), max(ticks[-1], hi)
+    pmax = max(it[2] for it in st.items)
+    R = lambda p: max(5.0, st.rmax * math.sqrt(p / pmax))
+    pad = st.rmax + 2
+    px0, px1 = x0 + pad, x1 - pad
+    X = lambda v: px0 + (v - dlo) / ((dhi - dlo) or 1) * (px1 - px0)
+    # grid + axis numbers (unit on the right-most number only)
+    step = ticks[1] - ticks[0] if len(ticks) > 1 else 1
+    for i, tv in enumerate(ticks):
+        xv = X(tv)
+        o.append(f'<line x1="{xv:.1f}" y1="{zt - 4:.1f}" x2="{xv:.1f}" y2="{zb + 4:.1f}" stroke="{GRID}" stroke-width="1"/>')
+        lb = fmt_num(tv, step) + (st.suffix if i == len(ticks) - 1 else "")
+        _xlabel(o, xv, lb, x0, x1, ybot - 10)
+    if lo < 0 < hi:
+        o.append(f'<line x1="{X(0):.1f}" y1="{zt - 4:.1f}" x2="{X(0):.1f}" y2="{zb + 4:.1f}" stroke="{GREY}" '
+                 f'stroke-width="1"/>')
+    # dodge: largest first at the centre line, then each bubble at the smallest vertical offset clear of the others
+    placed = []                                       # [cx, cy, r, item]
+    for it in sorted(st.items, key=lambda it: -it[2]):
+        cx, r = X(it[1]), R(it[2])
+        lim = max(half - r, 0)
+        best = None
+        for k in range(0, int(lim) + 1):
+            for dy in ((k, -k) if k else (0,)):
+                cy = yc + dy
+                ov = max([0.0] + [(r + q[2] + 1.5) - math.hypot(cx - q[0], cy - q[1]) for q in placed])
+                if best is None or ov < best[0] - 1e-6:
+                    best = (ov, cy)
+                if ov <= 0:
+                    break
+            if best[0] <= 0:
+                break
+        placed.append([cx, best[1], r, it])
+    for cx, cy, r, it in placed:
+        o.append(f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="{r:.1f}" fill="{REGION_COL.get(it[3], GREY)}" '
+                 f'fill-opacity="0.78"/>')
+    boxes = []
+    frame = (x0, ly + 6, x1, ybot - 32)
+    if st.bench:
+        bx = X(st.bench[1])
+        o.append(f'<line x1="{bx:.1f}" y1="{lane_t - 18:.1f}" x2="{bx:.1f}" y2="{zb + 6:.1f}" stroke="{INK}" '
+                 f'stroke-width="1.6"/>')
+        w = _tw(st.bench[0], 20, 500)
+        ax, anchor = (bx + 6, "start") if bx + 6 + w <= x1 else (bx - 6, "end")
+        bx0 = ax if anchor == "start" else ax - w
+        o.append(_halo(ax, lane_t, st.bench[0], 20, 500, INK, anchor))
+        boxes.append((bx0 - 2, lane_t - 17, bx0 + w + 2, lane_t + 5))
+    # label candidates in priority order
+    by_pop = sorted(placed, key=lambda q: -q[3][2])
+    by_val = sorted(placed, key=lambda q: -q[3][1])
+    order, seen = [], set()
+    for q in by_pop[:st.n_big] + by_val[:st.n_ext] + by_val[::-1][:st.n_ext] + by_pop[st.n_big:]:
+        if id(q) not in seen:
+            seen.add(id(q))
+            order.append(q)
+
+    def clear(b):
+        if b[0] < frame[0] or b[2] > frame[2] or b[1] < frame[1] or b[3] > frame[3]:
+            return False
+        if any(not (b[2] + 3 <= q[0] or q[2] + 3 <= b[0] or b[3] + 2 <= q[1] or q[3] + 2 <= b[1]) for q in boxes):
+            return False
+        for qx, qy, qr, _ in placed:
+            nx, ny = min(max(qx, b[0]), b[2]), min(max(qy, b[1]), b[3])
+            if (nx - qx) ** 2 + (ny - qy) ** 2 < (qr + 1) ** 2:
+                return False
+        return True
+    def arc_hits(pts, skip):
+        """Does the arc (sampled points) pass through a bubble other than `skip`, or through a placed label?"""
+        for ax_, ay_ in pts[1:-1]:
+            for qx, qy, qr, qi in placed:
+                if qi is not skip and math.hypot(ax_ - qx, ay_ - qy) < qr + 1:
+                    return True
+            for b in boxes:
+                if b[0] <= ax_ <= b[2] and b[1] <= ay_ <= b[3]:
+                    return True
+        return False
+
+    n_lab = 0
+    for cx, cy, r, it in order:
+        if n_lab >= st.max_labels:
+            break
+        txt = it[0]
+        w = _tw(txt, 20, 500)
+        d = r * 0.72
+        # (anchor, x, baseline, leader?) -- beside the bubble first (no leader), then a little further out with a
+        # short arc leader; the leader may not cross another bubble or label
+        opts = [("middle", cx, cy - r - 7, False), ("middle", cx, cy + r + 21, False),
+                ("start", cx + r + 6, cy + 7, False), ("end", cx - r - 6, cy + 7, False),
+                ("start", cx + d + 4, cy - d - 4, False), ("end", cx - d - 4, cy - d - 4, False),
+                ("start", cx + d + 4, cy + d + 18, False), ("end", cx - d - 4, cy + d + 18, False)]
+        for dist in (26, 44, 62, 85, 110):
+            for dx, dy in ((0, -1), (0, 1), (0.7, -0.7), (-0.7, -0.7), (0.7, 0.7), (-0.7, 0.7), (1, 0), (-1, 0)):
+                lx_, ly_ = cx + dx * (r + dist), cy + dy * (r + dist)
+                anchor = "middle" if dx == 0 else ("start" if dx > 0 else "end")
+                opts.append((anchor, lx_, ly_ + (7 if dy == 0 else -2 if dy < 0 else 16), True))
+        # last resort: the strip's top row (beside the benchmark label) or bottom row, shifted sideways
+        for dx in range(0, 210, 15):
+            for row in ((lane_t, ybot - 37) if cy <= yc else (ybot - 37, lane_t)):
+                for sx in ((dx, -dx) if dx else (0,)):
+                    opts.append(("middle", cx + sx, row, True))
+        done = False
+        for anchor, tx, ty, lead in opts:
+            bx0 = tx if anchor == "start" else tx - w if anchor == "end" else tx - w / 2
+            b = (bx0, ty - 17, bx0 + w, ty + 5)
+            if not clear(b):
+                continue
+            if lead:
+                # from the point of the label box nearest the bubble to the bubble edge
+                pxl, pyl = min(max(cx, b[0] + 3), b[2] - 3), min(max(cy, b[1] - 2), b[3] + 2)
+                gap = math.hypot(pxl - cx, pyl - cy) - r
+                if gap < 8 or gap > 120:
+                    continue
+                if arc_hits(_arc_geom(pxl, pyl, cx, cy, r)[4], it):
+                    continue
+                o.append(_arc(pxl, pyl, cx, cy, r))
+            boxes.append(b)
+            o.append(_halo(tx, ty, txt, 20, 500, INK, anchor))
+            n_lab += 1
+            done = True
+            break
+        if not done:
+            logger.info(f"strip label skipped (no room): {txt}")
+    return ybot
+
+
 @dataclass
 class Row:
     panels: list                  # Panel objects, laid out side by side at identical width and height
@@ -574,13 +799,15 @@ def compose(title: str, rows: list, source_lines: list, extra: Callable | None =
             if isinstance(p, HBars):
                 hbar_panel(o, p.items, x, x + w, top, p.heading, p.sub, p.vfmt or _signed, p.highlight,
                            height=bot + XLAB - top)
+            elif isinstance(p, Strip):
+                bubble_strip(o, p, x, x + w, y, y + r.height)
             else:
                 draw_panel(o, p, x, x + w, top, bot)
             x += w + COLGAP
         y += r.height + ROWGAP
     y -= ROWGAP if rows else 0
     if extra:
-        y = extra(o, y + ROWGAP)
+        y = extra(o, y + ROWGAP if rows else y)
     # footer (owner, 21 Oct 2026: "the source lines should not be below the logo. They should be at the same
     # horizontal level, making sure not to let the two overlap"): source bottom-left, logo bottom-right on one band,
     # bottom edges aligned; the source is wrapped to the width left of the logo.
@@ -691,6 +918,35 @@ def _bars(s, start):
     return [Line(since(s, start), BLUE, kind="bar")]
 
 
+def _level(s, start):
+    """A level series (starts, sales, rates, index levels): one line with light shading beneath it and a dot on the
+    latest point (owner, 21 Oct 2026: "maybe we should have some shading beneath it")."""
+    return [Line(since(s, start), BLUE, 2.5, latest="dot", shade=True)]
+
+
+# Size rule (owner, 21 Oct 2026: "All of these need to be small, square-sized. They can't be super long. You made so
+# many of these charts very, very tall."): 960 wide, 600-720 tall, at most two rows, side-by-side panels preferred.
+ROW_ONE = 436                     # one row of panels -> 600 px canvas (the pending-sales reference)
+ROW_TOP, ROW_BOT = 260, 240       # two rows (main panel over two small ones) -> 704 px
+STRIP_H = 250                     # a bubble-strip row under a 250 px panel row -> 704 px
+
+
+def _strip_items(chart: str, rows: list) -> list:
+    """(name, value, CBSA code) -> Strip items (name, value, population, region); metros without a population or
+    region in the geometry JSON are dropped and recorded in STRIP_DROPPED (never estimated)."""
+    out = []
+    for name, v, code in rows:
+        if v != v:
+            continue
+        info = cbsa_info(code) if code else None
+        if not info or not info["region"]:
+            STRIP_DROPPED.append((chart, name, f"no 2024 population/region for CBSA {code}"))
+            logger.warning(f"{chart}: {name} (CBSA {code}) has no population in {GEO_JSON.name}; left off the strip")
+            continue
+        out.append((name, float(v), info["pop"], info["region"]))
+    return out
+
+
 # ═══════════════════════════════════════════════════════════════════════
 # builders: each returns dict(svg, H, latest (Timestamp), title, caption, source)
 # Wave 1 restyled to the pending-sales reference (owner, 21 Oct 2026: "let's fix the Wave 1 release charts so they're
@@ -702,10 +958,10 @@ def b_housing_starts():
     t = h.index[-1]
     ch = cur(pchg(h), h)
     rows = [
-        Row([Panel(_one(h, "2016-01"), "Total starts", "thousands, annual rate", show_key=False)], 380),
+        Row([Panel(_level(h, "2016-01"), "Total starts", "thousands, annual rate", show_key=False)], ROW_TOP),
         # owner, 21 Oct 2026: "Just take out their regional charts" -- no regional row; two panels, not three
-        Row([Panel(_one(sf, "2016-01"), "Single-family", show_key=False),
-             Panel(_one(mf, "2016-01"), "Buildings with 5+ units", show_key=False)], 320),
+        Row([Panel(_level(sf, "2016-01"), "Single-family", show_key=False),
+             Panel(_level(mf, "2016-01"), "Buildings with 5+ units", show_key=False)], ROW_BOT),
     ]
     yy = cur(yoy(h), h)
     title = f"Housing starts {_verb(ch)} {abs(ch):.1f}% in {MONTHS[t.month - 1]}"
@@ -720,9 +976,10 @@ def b_new_home_sales():
     t = s.index[-1]
     ch = cur(pchg(s), s)
     rows = [
-        Row([Panel(_one(s, "2016-01"), "New single-family homes sold", "thousands, annual rate", show_key=False)], 380),
-        Row([Panel(_one(sup, "2016-01"), "Months’ supply", show_key=False),
-             Panel(_one(px / 1000, "2016-01"), "Median price", yprefix="$", ysuffix="k", show_key=False)], 320),
+        Row([Panel(_level(s, "2016-01"), "New single-family homes sold", "thousands, annual rate", show_key=False)],
+            ROW_TOP),
+        Row([Panel(_level(sup, "2016-01"), "Months’ supply", show_key=False),
+             Panel(_level(px / 1000, "2016-01"), "Median price", yprefix="$", ysuffix="k", show_key=False)], ROW_BOT),
     ]
     title = f"New home sales {_verb(ch)} {abs(ch):.1f}% in {MONTHS[t.month - 1]}"
     cap = (f"New single-family home sales were {s.iloc[-1]:,.0f}k at an annual rate in {month_year(t)} "
@@ -732,31 +989,35 @@ def b_new_home_sales():
     return rows, None, 0, t, title, cap, src
 
 
-CS_METROS = [("New York", "NYXRNSA"), ("Los Angeles", "LXXRNSA"), ("Chicago", "CHXRNSA"), ("Dallas", "DAXRNSA"),
-             ("Miami", "MIXRNSA"), ("Atlanta", "ATXRNSA"), ("Washington", "WDXRNSA"), ("Boston", "BOXRNSA"),
-             ("Phoenix", "PHXRNSA"), ("Seattle", "SEXRNSA"), ("San Francisco", "SFXRNSA"), ("Denver", "DNXRNSA"),
-             ("Tampa", "TPXRNSA")]
+# (name, FRED series, CBSA code for the bubble size and region; the Case-Shiller metro areas are close to, not
+# identical with, the CBSA of the same name)
+CS_METROS = [("New York", "NYXRNSA", "35620"), ("Los Angeles", "LXXRNSA", "31080"), ("Chicago", "CHXRNSA", "16980"),
+             ("Dallas", "DAXRNSA", "19100"), ("Miami", "MIXRNSA", "33100"), ("Atlanta", "ATXRNSA", "12060"),
+             ("Washington", "WDXRNSA", "47900"), ("Boston", "BOXRNSA", "14460"), ("Phoenix", "PHXRNSA", "38060"),
+             ("Seattle", "SEXRNSA", "42660"), ("San Francisco", "SFXRNSA", "41860"), ("Denver", "DNXRNSA", "19740"),
+             ("Tampa", "TPXRNSA", "45300")]
 
 
 def b_case_shiller():
+    """Owner, 21 Oct 2026: "it takes up way too much space ... make them bubbles on a left-to-right axis where the
+    bubble size is population ... color them regionally ... I think a column chart would look a lot nicer there."
+    Top: the national change from a year earlier as columns; below: the metros as a bubble strip."""
     nat, c20 = fred("CSUSHPINSA"), fred("SPCS20RNSA")
     t = nat.index[-1]
     yn, y20 = yoy(nat), yoy(c20)
-    rows = [Row([Panel(_one(yn, "2016-01"), "National index, change from a year earlier", ysuffix="%", zero=True,
-                       show_key=False)], 380)]
-    items = []
-    for name, sid in CS_METROS:
+    vals = []
+    for name, sid, cb in CS_METROS:
         y = yoy(fred(sid))
         if y.index[-1] == t:
-            items.append((name, y.iloc[-1]))
-    items.append(("National", cur(yn, nat)))
-    items.sort(key=lambda kv: -kv[1])
+            vals.append((name, float(y.iloc[-1]), cb))
+    vn = cur(yn, nat)
     month = month_year(t)
-
-    def extra(o, y):
-        top = y + 56
-        return hbar_panel(o, items, GL, GR, top, f"Selected metros, {month}", "change from a year earlier",
-                          lambda v: _signed(v), highlight=("National",)) + 10
+    rows = [Row([Panel(_bars(yn, "2016-01"), "National index, change from a year earlier", ysuffix="%", zero=True,
+                       show_key=False)], STRIP_H),
+            Row([Strip(_strip_items("case_shiller", vals), f"{month} by metro", "sized by population",
+                       bench=(f"National {_signed(vn)}", vn))], STRIP_H)]
+    items = sorted([(n, v) for n, v, _ in vals], key=lambda kv: -kv[1])
+    extra = None
     title = f"National home prices {_verb(cur(yn, nat), 'rose', 'fell', 'were flat')} {abs(cur(yn, nat)):.1f}% over the year to {MONTHS[t.month - 1]}"
     if _verb(cur(yn, nat)) == "was unchanged":
         title = f"National home prices were flat over the year to {MONTHS[t.month - 1]}"
@@ -764,17 +1025,17 @@ def b_case_shiller():
     cap = (f"The S&P Cotality Case-Shiller national index was {_signed(cur(yn, nat))} from a year earlier in {month} and the "
            f"20-city composite {_signed(cur(y20, c20))}; among the metros shown, {best[0]} was strongest ({_signed(best[1])}) "
            f"and {worst[0]} weakest ({_signed(worst[1])}).")
-    src = "Source: S&P Cotality Case-Shiller indices, not seasonally adjusted, via FRED."
-    return rows, extra, 64 + len(items) * 34, t, title, cap, src
+    src = "Source: S&P Cotality Case-Shiller indices via FRED; Census population."
+    return rows, extra, 0, t, title, cap, src
 
 
 def b_fhfa_hpi():
     s = fred("HPIPONM226S")
     t = s.index[-1]
     y, m = yoy(s), pchg(s)
-    rows = [Row([Panel(_one(y, "2016-01"), "Change from a year earlier", ysuffix="%", zero=True, show_key=False)], 380),
-            Row([Panel(_bars(m, "2023-01"), "Change from the previous month", ysuffix="%", zero=True,
-                       show_key=False)], 320)]
+    rows = [Row([Panel(_bars(y, "2016-01"), "Change from a year earlier", ysuffix="%", zero=True, show_key=False),
+                 Panel(_bars(m, "2023-01"), "Change from the previous month", ysuffix="%", zero=True,
+                       show_key=False)], ROW_ONE)]
     title = f"FHFA house prices {_verb(cur(y, s))} {abs(cur(y, s)):.1f}% over the year to {MONTHS[t.month - 1]}"
     cap = (f"The FHFA purchase-only index was {_signed(cur(y, s))} from a year earlier in {month_year(t)} and "
            f"{_signed(cur(m, s), 2)} from the month before (seasonally adjusted).")
@@ -788,9 +1049,9 @@ def b_payrolls():
     d = diff(p)
     dc = diff(c)
     rows = [Row([Panel(_bars(d, "2023-01"), "Nonfarm payrolls", "change from the previous month, thousands", zero=True,
-                       show_key=False)], 380),
-            Row([Panel(_one(u, "2016-01"), "Unemployment rate", ysuffix="%", show_key=False),
-                 Panel(_one(c / 1000, "2016-01"), "Construction jobs", "millions", show_key=False)], 320)]
+                       show_key=False)], ROW_TOP),
+            Row([Panel(_level(u, "2016-01"), "Unemployment rate", ysuffix="%", show_key=False),
+                 Panel(_level(c / 1000, "2016-01"), "Construction jobs", "millions", show_key=False)], ROW_BOT)]
     v = cur(d, p)
     title = (f"Employers added {v * 1000:,.0f} jobs in {MONTHS[t.month - 1]}" if v >= 0 else
              f"Payrolls fell by {abs(v) * 1000:,.0f} jobs in {MONTHS[t.month - 1]}")
@@ -806,9 +1067,9 @@ def b_cpi_shelter():
     hd, rent, oer = fred("CPIAUCSL"), fred("CUSR0000SEHA"), fred("CUSR0000SEHC")
     t = hd.index[-1]
     yh, yr, yo = yoy(hd), yoy(rent), yoy(oer)
-    rows = [Row([Panel(_one(yr, "2016-01"), "Rent, change from a year earlier", ysuffix="%", zero=True, show_key=False),
+    rows = [Row([Panel(_bars(yr, "2016-01"), "Rent, change from a year earlier", ysuffix="%", zero=True, show_key=False),
                  Panel(_bars(pchg(rent), "2023-01"), "Rent, change from the previous month", ysuffix="%", zero=True,
-                       show_key=False)], 426)]
+                       show_key=False)], ROW_ONE)]
     title = f"CPI rent {_verb(cur(yr, rent))} {abs(cur(yr, rent)):.1f}% over the year to {MONTHS[t.month - 1]}"
     cap = (f"In {month_year(t)} rent of primary residence was {_signed(cur(yr, rent))} from a year earlier "
            f"({_signed(cur(pchg(rent), rent), 2)} on the month), owners' equivalent rent {_signed(cur(yo, oer))} and "
@@ -822,9 +1083,9 @@ def b_mortgage_rates():
     t = r.index[-1]
     gw = g.resample("W-THU").mean().reindex(r.index).dropna()
     spread = (r.reindex(gw.index) - gw).dropna()
-    rows = [Row([Panel(_one(r, "2022-01"), "30-year fixed mortgage rate", ysuffix="%", show_key=False)], 380),
-            Row([Panel(_one(spread, "2022-01"), "Spread over the 10-year Treasury", "percentage points",
-                       show_key=False)], 320)]
+    rows = [Row([Panel(_level(r, "2022-01"), "30-year fixed mortgage rate", ysuffix="%", show_key=False),
+                 Panel(_level(spread, "2022-01"), "Spread over the 10-year Treasury", "points",
+                       show_key=False)], ROW_ONE)]
     title = f"The 30-year mortgage rate was {r.iloc[-1]:.2f}% on {MONTHS[t.month - 1]} {t.day}"
     wk = r.iloc[-1] - r.iloc[-2]
     cap = (f"Freddie Mac's 30-year fixed rate averaged {r.iloc[-1]:.2f}% in the week to {MONTHS[t.month - 1]} {t.day}, "
@@ -837,9 +1098,10 @@ def b_construction_spending():
     s = fred("TLRESCONS") / 1000
     t = s.index[-1]
     ch, y = cur(pchg(s), s), yoy(s)
-    rows = [Row([Panel(_one(s, "2016-01"), "Residential construction spending", "$bn, annual rate", yprefix="$",
-                       show_key=False)], 380),
-            Row([Panel(_one(y, "2016-01"), "Change from a year earlier", ysuffix="%", zero=True, show_key=False)], 320)]
+    rows = [Row([Panel(_level(s, "2016-01"), "Residential spending", "$bn, annual rate", yprefix="$",
+                       show_key=False),
+                 Panel(_bars(y, "2016-01"), "Change from a year earlier", ysuffix="%", zero=True, show_key=False)],
+                ROW_ONE)]
     title = f"Residential construction spending {_verb(ch)} {abs(ch):.1f}% in {MONTHS[t.month - 1]}"
     cap = (f"Residential construction spending was ${s.iloc[-1]:,.0f} billion at an annual rate in {month_year(t)}, "
            f"{_signed(ch)} on the month and {_signed(cur(y, s))} on the year (not adjusted for inflation).")
@@ -850,8 +1112,8 @@ def b_construction_spending():
 def b_jolts():
     jo, q = fred("JTSJOL") / 1000, fred("JTSQUR")
     t = jo.index[-1]
-    rows = [Row([Panel(_one(jo, "2016-01"), "Job openings", "millions", show_key=False)], 380),
-            Row([Panel(_one(q, "2016-01"), "Quits rate", "% of employment", ysuffix="%", show_key=False)], 320)]
+    rows = [Row([Panel(_level(jo, "2016-01"), "Job openings", "millions", show_key=False),
+                 Panel(_level(q, "2016-01"), "Quits rate", "% of employment", ysuffix="%", show_key=False)], ROW_ONE)]
     ch = cur(diff(jo), jo)
     title = f"Job openings {_verb(ch, 'rose', 'fell', 'held')} to {jo.iloc[-1]:.1f} million in {MONTHS[t.month - 1]}"
     cap = (f"Job openings were {jo.iloc[-1]:.2f} million in {month_year(t)} ({ch * 1000:+,.0f}k on the month); the "
@@ -863,7 +1125,7 @@ def b_jolts():
 def b_jobless_claims():
     s = fred("ICSA") / 1000
     t = s.index[-1]
-    rows = [Row([Panel(_one(s, "2023-01"), "Initial jobless claims", "thousands, weekly", show_key=False)], 460)]
+    rows = [Row([Panel(_level(s, "2023-01"), "Initial jobless claims", "thousands, weekly", show_key=False)], ROW_ONE)]
     title = f"Initial jobless claims were {s.iloc[-1] * 1000:,.0f} in the week to {MONTHS[t.month - 1]} {t.day}"
     cap = (f"Initial claims for unemployment insurance were {s.iloc[-1]:,.0f}k in the week to {MONTHS[t.month - 1]} "
            f"{t.day} (4-week average {ma(s, 4).iloc[-1]:,.0f}k).")
@@ -874,9 +1136,9 @@ def b_jobless_claims():
 def b_hvs():
     ho, rv, hv = fred("RHORUSQ156N"), fred("RRVRUSQ156N"), fred("RHVRUSQ156N")
     t = ho.index[-1]
-    rows = [Row([Panel(_one(ho, "2010-01"), "Homeownership rate", ysuffix="%", show_key=False)], 380),
-            Row([Panel(_one(rv, "2010-01"), "Rental vacancy rate", ysuffix="%", show_key=False),
-                 Panel(_one(hv, "2010-01"), "Homeowner vacancy rate", ysuffix="%", show_key=False)], 320)]
+    rows = [Row([Panel(_level(ho, "2010-01"), "Homeownership rate", ysuffix="%", show_key=False)], ROW_TOP),
+            Row([Panel(_level(rv, "2010-01"), "Rental vacancy rate", ysuffix="%", show_key=False),
+                 Panel(_level(hv, "2010-01"), "Homeowner vacancy rate", ysuffix="%", show_key=False)], ROW_BOT)]
     q = QNAMES[(t.month - 1) // 3]
     title = f"The homeownership rate was {ho.iloc[-1]:.1f}% in the {q} quarter"
     cap = (f"In the {q} quarter of {t.year} the homeownership rate was {ho.iloc[-1]:.1f}%, the rental vacancy rate "
@@ -1199,6 +1461,9 @@ def b_pending_home_sales():
         if (yr - first_yr) % 4 == 0:
             _xlabel(o, X(yr * 12 + 1), str(yr), px0, px1, BOT + XLAB)
     d = " L".join(f"{X(k):.1f},{Y(val):.1f}" for k, val in zip(ords, series.values))
+    # light shading beneath the level line, as on every release chart's level lines (owner, 21 Oct 2026)
+    o.append(f'<path d="M{d} L{X(o1):.1f},{BOT:.1f} L{X(o0):.1f},{BOT:.1f} Z" fill="{BLUE}" '
+             f'fill-opacity="{SHADE_OPACITY}" stroke="none"/>')
     o.append(f'<path d="M{d}" fill="none" stroke="{BLUE}" stroke-width="3.4" stroke-linejoin="round"/>')
     o.append(f'<circle cx="{X(o1):.1f}" cy="{Y(v):.1f}" r="5" fill="{BLUE}"/>')
     # region bars: run from the panel top down to the baseline of the left panel's year labels
@@ -1303,11 +1568,11 @@ def b_existing_home_sales():
     yy = cur(yoy(s), s) if len(s) > 12 else float("nan")
     xm = (s.index[-1] - s.index[0]).days < 800
     rows = [
-        Row([Panel([Line(s, BLUE, 2.5, latest="dot")], "Existing homes sold", "millions, annual rate", xmonths=xm,
-                   show_key=False)], 380),
-        Row([Panel([Line(inv, BLUE, 2.5, latest="dot")], "Inventory", "millions", show_key=False, xmonths=xm),
-             Panel([Line(px, BLUE, 2.5, latest="dot")], "Median price", yprefix="$", ysuffix="k", show_key=False,
-                   xmonths=xm)], 320),
+        Row([Panel(_level(s, "1900-01"), "Existing homes sold", "millions, annual rate", xmonths=xm,
+                   show_key=False)], ROW_TOP),
+        Row([Panel(_level(inv, "1900-01"), "Inventory", "millions", show_key=False, xmonths=xm),
+             Panel(_level(px, "1900-01"), "Median price", yprefix="$", ysuffix="k", show_key=False,
+                   xmonths=xm)], ROW_BOT),
     ]
     title = f"Existing home sales {_verb(ch)} {abs(ch):.1f}% in {MONTHS[t.month - 1]}"
     cap = (f"Existing home sales were {s.iloc[-1]:.2f} million at an annual rate in {month_year(t)} ({_signed(ch)} on "
@@ -1410,26 +1675,24 @@ def b_apartment_list():
     big = _lake_df(f["rent_estimates"], f"""
         WITH top AS (SELECT location_fips_code, any_value(location_name) AS name, max(population) AS pop FROM src
                      WHERE location_type = 'Metro' AND bed_size = 'overall' GROUP BY 1 ORDER BY pop DESC LIMIT 12)
-        SELECT top.name, top.pop, a.value AS now, b.value AS ago FROM top
+        SELECT top.name, top.location_fips_code AS code, top.pop, a.value AS now, b.value AS ago FROM top
         JOIN src a ON a.location_fips_code = top.location_fips_code AND a.location_type = 'Metro'
              AND a.bed_size = 'overall' AND a.month = DATE '{t.strftime('%Y-%m-%d')}'
         JOIN src b ON b.location_fips_code = top.location_fips_code AND b.location_type = 'Metro'
              AND b.bed_size = 'overall' AND b.month = DATE '{m12}'""")
-    items = [(_short_metro(r["name"]), 100 * (r["now"] / r["ago"] - 1)) for _, r in big.iterrows()]
-    items.append(("National", cur(y, rent)))
-    items.sort(key=lambda kv: -kv[1])
-    rows = [Row([Panel([Line(since(rent, "2017-01"), BLUE, 2.5, latest="dot")], "Median rent", "all units, $ per month",
-                       yprefix="$", show_key=False)], 360),
-            Row([Panel([Line(since(y, "2018-01"), BLUE, 2.5, latest="dot")], "Change from a year earlier", ysuffix="%",
-                       zero=True, show_key=False),
-                 Panel([Line(since(vac, "2017-01"), BLUE, 2.5, latest="dot")], "Vacancy index", ysuffix="%",
-                       show_key=False)], 320)]
+    vals = [(_short_metro(r["name"]), 100 * (r["now"] / r["ago"] - 1), str(r["code"]).zfill(5))
+            for _, r in big.iterrows()]
+    items = sorted([(n, v) for n, v, _ in vals], key=lambda kv: -kv[1])
     month = month_year(t)
-
-    def extra(o, yy):
-        return hbar_panel(o, items, GL, GR, yy + 56, f"Largest metros, {month}", "rent change from a year earlier",
-                          lambda v: _signed(v), highlight=("National",)) + 10
     yv = cur(y, rent)
+    # owner, 21 Oct 2026 (size rule + bubble strip): the median-rent level line is dropped (its change is the title
+    # and the left panel; the level is in the caption); the twelve-metro bar list became a bubble strip
+    rows = [Row([Panel(_bars(y, "2018-01"), "Rent, change from a year earlier", ysuffix="%", zero=True,
+                       show_key=False),
+                 Panel(_level(vac, "2017-01"), "Vacancy index", ysuffix="%", show_key=False)], STRIP_H),
+            Row([Strip(_strip_items("apartment_list", vals), "12 largest metros", "sized by population",
+                       bench=(f"National {_signed(yv)}", yv))], STRIP_H)]
+    extra = None
     title = f"Apartment List rents {_verb(yv)} {abs(yv):.1f}% over the year to {MONTHS[t.month - 1]}"
     if _verb(yv) == "was unchanged":
         title = f"Apartment List rents were flat over the year to {MONTHS[t.month - 1]}"
@@ -1437,7 +1700,7 @@ def b_apartment_list():
     cap = (f"Apartment List's national median rent was ${rent.iloc[-1]:,.0f} in {month} ({_signed(yv)} from a year "
            f"earlier, {_signed(cur(pchg(rent), rent))} on the month); the vacancy index was {vac.iloc[-1]:.1f}%. Among the "
            f"12 largest metros, {best[0]} was strongest ({_signed(best[1])}) and {worst[0]} weakest ({_signed(worst[1])}).")
-    src = "Source: Apartment List rent estimates and vacancy index."
+    src = "Source: Apartment List; Census population estimates."
     return rows, extra, 0, t, title, cap, src
 
 
@@ -1550,8 +1813,8 @@ def b_nahb_hmi():
     comps = sorted([(nm, float(s.iloc[-1])) for nm, s in (("Current sales", ps), ("Next six months", n6),
                                                           ("Buyer traffic", tr)) if s.index[-1] == t],
                    key=lambda kv: -kv[1])
-    rows = [Row([Panel(_one(h, "2000-01"), "Housing Market Index", "seasonally adjusted", ref=50, show_key=False),
-                 HBars(comps, f"Components in {MONTHS[t.month - 1]}", vfmt=lambda v: f"{v:.0f}")], 426)]
+    rows = [Row([Panel(_level(h, "2000-01"), "Housing Market Index", "seasonally adjusted", ref=50, show_key=False),
+                 HBars(comps, f"Components in {MONTHS[t.month - 1]}", vfmt=lambda v: f"{v:.0f}")], ROW_ONE)]
     v = h.iloc[-1]
     verb = "rose" if d > 0 else "fell" if d < 0 else "held"
     title = f"Builder confidence {verb} {'at' if verb == 'held' else 'to'} {v:.0f} in {MONTHS[t.month - 1]}"
@@ -1621,32 +1884,29 @@ def b_freddie_mac_hpi():
     us = _fm("US")
     t = us.index[-1]
     y = yoy(us)
-    items = []
+    vals = []
     for name, code in FM_METROS:
         s = _fm("CBSA", code)
         if len(s) and s.index[-1] == t:
-            items.append((name, cur(yoy(s), s)))
-    items.append(("United States", cur(y, us)))
-    items.sort(key=lambda kv: -kv[1])
+            vals.append((name, cur(yoy(s), s), code))
     t0 = (t - pd.DateOffset(years=1)).strftime("%Y-%m-%d")
     cnt = _lake_df(update_fmhpi(), f"""SELECT count(*) FILTER (WHERE a.index_sa < b.index_sa) AS down, count(*) AS n FROM src a
         JOIN src b ON a.geo_code = b.geo_code AND b.geo_type = 'CBSA' AND b.month = DATE '{t0}'
         WHERE a.geo_type = 'CBSA' AND a.month = DATE '{t.strftime('%Y-%m-%d')}'""").iloc[0]
-    rows = [Row([Panel([Line(since(y, "2016-01"), BLUE, 2.5, latest="dot")], "Change from a year earlier",
-                       "seasonally adjusted", ysuffix="%", zero=True, show_key=False)], 380)]
     month = month_year(t)
-
-    def extra(o, yy):
-        return hbar_panel(o, items, GL, GR, yy + 56, f"Largest metros, {month}", "change from a year earlier",
-                          lambda v: _signed(v), highlight=("United States",)) + 10
     yv = cur(y, us)
+    rows = [Row([Panel(_bars(y, "2016-01"), "US, change from a year earlier", "seasonally adjusted", ysuffix="%",
+                       zero=True, show_key=False)], STRIP_H),
+            Row([Strip(_strip_items("freddie_mac_hpi", vals), "12 largest metros", "sized by population",
+                       bench=(f"United States {_signed(yv)}", yv))], STRIP_H)]
+    extra = None
     title = f"Freddie Mac house prices {_verb(yv)} {abs(yv):.1f}% over the year to {MONTHS[t.month - 1]}"
     if _verb(yv) == "was unchanged":
         title = f"Freddie Mac house prices were flat over the year to {MONTHS[t.month - 1]}"
     cap = (f"The Freddie Mac House Price Index was {_signed(yv)} from a year earlier in {month} and "
            f"{_signed(cur(pchg(us), us), 2)} on the month (seasonally adjusted); {int(cnt['down'])} of {int(cnt['n'])} "
            f"metro areas were below their level a year earlier.")
-    src = "Source: Freddie Mac House Price Index, seasonally adjusted."
+    src = "Source: Freddie Mac House Price Index; Census population estimates."
     return rows, extra, 0, t, title, cap, src
 
 
@@ -1661,10 +1921,10 @@ def b_gdp():
     g, ri, rc = fred("A191RL1Q225SBEA"), fred("PRFIC1"), fred("A011RY2Q224SBEA")
     t = g.index[-1]
     rg = _ann(ri)
-    rows = [Row([Panel([Line(since(g, "2022-01"), BLUE, kind="bar")], "Real GDP", "change at an annual rate",
-                       ysuffix="%", zero=True, show_key=False)], 360),
-            Row([Panel([Line(since(rg, "2022-01"), BLUE, kind="bar")], "Real residential investment",
-                       "change at an annual rate", ysuffix="%", zero=True, show_key=False)], 340)]
+    rows = [Row([Panel([Line(since(g, "2022-01"), BLUE, kind="bar")], "Real GDP", "annual rate",
+                       ysuffix="%", zero=True, show_key=False),
+                 Panel([Line(since(rg, "2022-01"), BLUE, kind="bar")], "Residential investment",
+                       "annual rate", ysuffix="%", zero=True, show_key=False)], ROW_ONE)]
     v = float(g.iloc[-1])
     q = QNAMES[(t.month - 1) // 3]
     title = (f"The economy grew at a {v:.1f}% annual rate in the {q} quarter" if v >= 0 else
@@ -1681,8 +1941,8 @@ def b_vehicle_sales():
     s = fred("TOTALSA")
     t = s.index[-1]
     ch = cur(pchg(s), s)
-    rows = [Row([Panel([Line(since(s, "2016-01"), BLUE, 2.5, latest="dot")], "Total vehicle sales",
-                       "millions, annual rate", show_key=False)], 480)]
+    rows = [Row([Panel(_level(s, "2016-01"), "Total vehicle sales", "millions, annual rate", show_key=False)],
+                ROW_ONE)]
     title = f"Vehicle sales {_verb(ch)} {abs(ch):.1f}% in {MONTHS[t.month - 1]}"
     cap = (f"Total vehicle sales were a {s.iloc[-1]:.2f} million annual rate in {month_year(t)} ({_signed(ch)} on the "
            f"month, {_signed(cur(yoy(s), s))} on the year).")
@@ -1724,7 +1984,7 @@ REGISTRY = [
             "NAR via FRED (13-month window) + NAR overview PDF, accumulated in Data/NAR/existing_home_sales.parquet",
             sorted(set(EHS_FRED.values())), b_existing_home_sales, latest=latest_ehs),
     Release("case_shiller", "Case-Shiller", r"case[- ]shiller", "FRED (S&P Cotality Case-Shiller)",
-            ["CSUSHPINSA", "SPCS20RNSA"] + [s for _, s in CS_METROS], b_case_shiller,
+            ["CSUSHPINSA", "SPCS20RNSA"] + [s for _, s, _ in CS_METROS], b_case_shiller,
             intro="The {period} Case-Shiller release, charted:"),
     Release("cotality_hpi", "Cotality home price index", r"\bcotality\b|\bcorelogic\b", "Cotality HPI (wave 2)"),
     Release("fhfa_hpi", "FHFA house price index", r"\bFHFA\b.{0,60}(price|HPI|index)|federal housing finance agency.{0,60}price",
