@@ -100,6 +100,13 @@ def ingest(date: str | None = None, replace: bool = False) -> dict | None:
     if not any(p.get("platform") == "linkedin" for p in draft.get("_own_posts") or []):
         # Owner, 2026-09-17: include his LinkedIn posts alongside the X posts.
         draft["_own_posts"] = list(draft.get("_own_posts") or []) + fetch_own_linkedin_posts()
+    try:
+        # Owner, 2026-10-21: a theme about a data release gets a chart of the fresh data.
+        import release_charts
+        for r in release_charts.apply(draft, date):
+            logger.info(f"release chart {r['key']}: {r.get('action')} {r.get('url') or r.get('note') or r.get('error') or ''}")
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"release charts skipped: {e}")
     row = drafts.create(date, rid, draft, replace=replace)
     logger.info(f"draft {date} created from briefing #{rid} ({len(draft['entries'])} entries)")
     return row

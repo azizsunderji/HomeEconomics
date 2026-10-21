@@ -1489,3 +1489,61 @@ track.home-economics.us, CNAME at Bluehost, domain Verified).
   privacy protection; clicks are the reliable signal.
 - **Not built yet (owner's ideas, pending the data):** the courtesy email with the clicked links and a time-limited
   discount; a source-specific upgrade page; funnel steps between the wall and Stripe checkout.
+
+
+## Status update — 21 Oct 2026: release charts (fresh-data charts for data-release themes), wave 1
+
+Owner (21 Oct 2026): "One thing we should do is have you be able to generate new charts. For example pending home
+sales, that's easily generatable as a chart. I would want to see, for example, the number, the rolling average, and
+maybe a breakdown by region or whatever. That kind of thinking applies to all new data." Scope: every release
+Calculated Risk covers, the monthly Zillow release with a map, nonfarm payrolls, Apartment List rents, Cotality home
+prices. A theme about a data release gets a chart of the fresh data rather than an old callback chart.
+
+- **Stage.** `pulse/editor/release_charts.py`, called from `ingest.ingest()` on every new draft (after link cleaning
+  and own posts, before `drafts.create`; wrapped so a failure only logs "release charts skipped"). For each release,
+  the highest entry whose title matches (else whose `trigger` matches) gets, appended to its summary,
+  `\n\nThe September housing starts release, charted:\n\n![<title. caption>](<hosted url>)`. One release chart per
+  entry and one entry per release (on 21 Oct the Erdmann theme also triggers on "residential construction" and is
+  skipped because the starts theme has the chart). An existing callback chart in the entry does not block it; the
+  owner deletes what he does not want. Skipped when the trigger names months and none is the data's latest month
+  (FRED not updated yet); logged as `data-not-updated`.
+- **Registry.** `REGISTRY` in the module: key, name, trigger regex (case-insensitive, entry `trigger` + `title`),
+  source, FRED series, builder, intro template, frequency. First match in registry order wins, so specific patterns
+  sit before general ones (pending before existing home sales, Case-Shiller before Cotality, mortgage rates last).
+  Wave-1 keys with builders: `housing_starts`, `new_home_sales`, `existing_home_sales`, `case_shiller`, `fhfa_hpi`,
+  `construction_spending`, `hvs`, `payrolls`, `jolts`, `jobless_claims`, `cpi_shelter`, `mortgage_rates`.
+- **Charts.** Python-built SVG rendered with headless Playwright at 1.25x (1200 px wide PNG). Oracle font, title Bold
+  700 with -0.7 tracking and written from the data ("Housing starts fell 5.2% in September"), no subtitle, panel
+  headings with grey units, monthly series in blue with the 3-month average in black (13-week for mortgage rates,
+  4-week for claims, 4-quarter for HVS), the latest point labelled to its right with period and value, y range padded
+  7% (bars include zero), source line at the bottom, nothing under 20 px. Splits: starts by single-family / 5+ /
+  permits and by region; Case-Shiller national vs 20-city plus a bar panel of 13 metros; CPI rent vs OER vs all items
+  with monthly-change bars; payroll monthly-change bars plus unemployment and construction jobs. Review set:
+  `OVH/2026_10_21_ReleaseCharts/outputs/<key>_v1.png`, contact sheet `contact_sheet_v1.png`.
+- **Data.** FRED through the lake: `fred(SID)` reads `OVH/Data/FRED/<SID>.parquet` and refreshes it from the API when
+  FRED's `last_updated` differs from the sidecar's (so revisions are picked up), writing ZSTD parquet sorted by date
+  with ROW_GROUP_SIZE 100000 and a `.source.json` sidecar (`refreshed_by: pulse/editor/release_charts.py`). Existing
+  single-series files keep their column name (UNRATE stays `UNRATE`). The daily `lakerefresh` job does not cover
+  these single-series files; the stage refreshes them at use time. Changes are computed on a regular calendar, so the
+  missing October 2025 CPI/household-survey month is a gap rather than a skipped row; a latest change with no
+  comparison month prints "n/a".
+- **State and hosting.** `OVH/Data/OwnPublications/release_chart_state.json`: per key `period`, `url`, `png`,
+  `built_at`, `draft_date`, title, caption. A key is rebuilt only when the newest period is later than the stored one
+  (a second theme on the next day about the same release gets nothing, logged `not-new`); a rerun for the same draft
+  date reuses the hosted chart. PNGs at `~/work/noon/images/releases/<key>/<YYYYMM>_<YYYYMMDD>.png` (weekly keys use
+  the week's date), public at https://noon.homeeconomics.us/images/releases/..., never overwritten. Log:
+  `~/work/noon/logs/release_charts.jsonl` (added, no-builder, not-new, data-not-updated, already-present, error).
+- **CLI.** `python release_charts.py --date 2026-10-21 [--dry] [--force KEY] [--out-dir DIR]` applies to the stored
+  draft with the Conflict retry loop; `--dry` prints the plan and writes PNGs to the project outputs folder only.
+- **First use.** 21 Oct draft, version 79: "Housing starts slump as multifamily drops 25% from a year ago" got
+  `images/releases/housing_starts/202609_20261021.png`; "Pending home sales fall to a record low" was recognised
+  and logged `no-builder`.
+- **Environment fix.** `~/work/pulse-venv` had a stub `pandas/` folder (1 Sep, no `compat`, no dist-info) that could
+  not be imported; nothing else in the editor imports pandas. Installed pandas 3.0.5 there with `--no-deps`
+  (numpy 2.5.2 unchanged).
+- **Data caveats.** FRED carries only the latest 13 months of NAR existing-home-sales series (licensing), so that
+  chart covers 13 months and says so. Case-Shiller indices are already 3-month moving averages, so that chart shows
+  year-over-year change (NSA, as S&P reports it) without a further average.
+- **Wave 2 (registered, no builder yet; logged `no-builder`):** pending home sales by region (NAR release page),
+  Zillow ZHVI with a map, Zillow ZORI, Apartment List rents, Cotality HPI, NAHB HMI, ICE Mortgage Monitor
+  delinquencies, vehicle sales, GDP, ISM.
