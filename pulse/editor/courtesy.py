@@ -420,11 +420,15 @@ def ensure_code(pct: int = 20, days: int = 7, now: datetime | None = None) -> di
     except StripeError as e:
         if "No such coupon" not in str(e):
             raise
-        price = _stripe("GET", f"/prices/{os.environ.get('STRIPE_PRICE_PULSE_MONTHLY', '')}")
+        # The price ids are "sensitive" in Vercel and cannot be pulled, so find the Housing at Noon product by name.
+        prods = [p["product"] for p in _stripe("GET", "/prices", {"active": "true", "limit": 100, "expand[]": "data.product"})["data"]
+                 if "noon" in (p["product"].get("name") or "").lower()]
+        if not prods:
+            raise StripeError("no active Stripe price whose product name contains 'Noon'")
         coupon = _stripe("POST", "/coupons", {
             "id": coupon_id, "name": COUPON_NAME if pct == 20 else f"Housing at Noon courtesy {pct}%",
             "percent_off": pct, "duration": "repeating", "duration_in_months": 12,
-            "applies_to[products][]": [price["product"]]})   # Housing at Noon only, not the Pro Map
+            "applies_to[products][]": sorted({p["id"] for p in prods})})   # Housing at Noon only, not the Pro Map
     code = f"NOON{now.strftime('%m%d')}"
     existing = _stripe("GET", "/promotion_codes", {"code": code, "limit": 10}).get("data") or []
     for pc in existing:
