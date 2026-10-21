@@ -1423,7 +1423,7 @@ def render_lunch_html(briefing: dict, tier: str = "premium") -> tuple[str, str, 
 
 <!-- MASTHEAD: logo (top-left), title, date. No small-caps publisher line. -->
 <!-- Oracle (the brand typeface) cannot be embedded in email; system stack used. -->
-<table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 {SECTION_GAP}px 0;"><tr><td valign="top" style="padding:0;"><img src="{LOGO_URL}" alt="{_esc(PUBLISHER)}" width="{LOGO_WIDTH}" style="display:block; width:{LOGO_WIDTH}px; max-width:100%; height:auto;"></td><td valign="top" align="right" style="padding:0; font-family:{FONT}; font-size:13px; line-height:1.4; white-space:nowrap;"><a href="{_web_url(briefing, tier)}" style="{BODY_LINK_STYLE}">Read on the web</a><br><a href="{FORWARD_SIGNUP_URL}" style="{BODY_LINK_STYLE}">Forwarded? Sign up</a></td></tr></table>
+<table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 {SECTION_GAP}px 0;"><tr><td valign="top" style="padding:0;"><img src="{LOGO_URL}" alt="{_esc(PUBLISHER)}" width="{LOGO_WIDTH}" style="display:block; width:{LOGO_WIDTH}px; max-width:100%; height:auto;"></td><td valign="top" align="right" style="padding:0; font-family:{FONT}; font-size:13px; line-height:1.4; white-space:nowrap;"><a href="{_web_url(briefing, tier)}" style="{BODY_LINK_STYLE}">Read on the web</a><div style="height:8px; line-height:8px; font-size:8px;">&nbsp;</div><a href="{FORWARD_SIGNUP_URL}" style="{BODY_LINK_STYLE}">Forwarded? Sign up</a></td></tr></table>
 <!-- WORDMARK SLOT: set WORDMARK_URL (module constant) and the text <h1> is
      replaced by <img src=WORDMARK_URL alt=TITLE width=WORDMARK_WIDTH>. -->
 {title_html}
