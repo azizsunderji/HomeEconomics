@@ -109,6 +109,9 @@ UPGRADE_URL = "https://homeeconomics.us/noon/premium"  # the deliberate upgrade 
 # entries and withheld list as the free tier, but the two boxes ask the
 # reader to sign up for the free email rather than to upgrade.
 SIGNUP_URL = "https://homeeconomics.us/noon?src=pdf"
+# Header link beside "Read on the web" in every edition, for readers who were forwarded the
+# email (owner, 21 Oct 2026). src=forward separates these sign-ups in the portal's source field.
+FORWARD_SIGNUP_URL = "https://homeeconomics.us/noon?src=forward"
 
 # Pro Map page. HEAD-checked 2026-09-02: /promap -> 200; /pro-map, /tools,
 # /pro, /map -> 404 on homeeconomics.us.
@@ -1420,7 +1423,7 @@ def render_lunch_html(briefing: dict, tier: str = "premium") -> tuple[str, str, 
 
 <!-- MASTHEAD: logo (top-left), title, date. No small-caps publisher line. -->
 <!-- Oracle (the brand typeface) cannot be embedded in email; system stack used. -->
-<table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 {SECTION_GAP}px 0;"><tr><td valign="top" style="padding:0;"><img src="{LOGO_URL}" alt="{_esc(PUBLISHER)}" width="{LOGO_WIDTH}" style="display:block; width:{LOGO_WIDTH}px; max-width:100%; height:auto;"></td><td valign="top" align="right" style="padding:0; font-family:{FONT}; font-size:13px; line-height:1.4; white-space:nowrap;"><a href="{_web_url(briefing, tier)}" style="{BODY_LINK_STYLE}">Read on the web</a></td></tr></table>
+<table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 {SECTION_GAP}px 0;"><tr><td valign="top" style="padding:0;"><img src="{LOGO_URL}" alt="{_esc(PUBLISHER)}" width="{LOGO_WIDTH}" style="display:block; width:{LOGO_WIDTH}px; max-width:100%; height:auto;"></td><td valign="top" align="right" style="padding:0; font-family:{FONT}; font-size:13px; line-height:1.4; white-space:nowrap;"><a href="{FORWARD_SIGNUP_URL}" style="{BODY_LINK_STYLE}">Forwarded? Sign up</a><span style="color:{MUTED};">&nbsp;&nbsp;&middot;&nbsp;&nbsp;</span><a href="{_web_url(briefing, tier)}" style="{BODY_LINK_STYLE}">Read on the web</a></td></tr></table>
 <!-- WORDMARK SLOT: set WORDMARK_URL (module constant) and the text <h1> is
      replaced by <img src=WORDMARK_URL alt=TITLE width=WORDMARK_WIDTH>. -->
 {title_html}
