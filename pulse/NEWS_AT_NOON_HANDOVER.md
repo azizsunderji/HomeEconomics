@@ -1485,7 +1485,7 @@ track.home-economics.us, CNAME at Bluehost, domain Verified).
   (people, clicks, 1/2/3+ distribution), most-wanted sources behind the wall (resolved to theme titles), other free
   clicks, premium top sources, bounces/complaints, and repeat wall-hitters over 14 days (the courtesy-email
   candidates). Telegram summary; per-person CSV at `~/work/noon/clicks/wall_hitters_<edition>.csv`.
-- **First data** arrives with the 22 Oct edition (the first sent with tags and ids). Opens are inflated by Apple Mail
+- **First data** arrives with the 21 Oct edition itself: the noon send (15:59 UTC) runs as a fresh process, so it already carries tags and ids. Opens are inflated by Apple Mail
   privacy protection; clicks are the reliable signal.
 - **Not built yet (owner's ideas, pending the data):** the courtesy email with the clicked links and a time-limited
   discount; a source-specific upgrade page; funnel steps between the wall and Stripe checkout.
