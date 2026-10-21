@@ -54,6 +54,7 @@ from fastapi.staticfiles import StaticFiles
 
 import paths
 import auth
+import clicks
 import ingest
 import render
 import sender
@@ -709,3 +710,17 @@ def sources_publish(request: Request):
         return sources.publish()
     except RuntimeError as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ── Resend webhook (owner, 21 Oct 2026: click tracking for premium marketing) ─────────
+# Public endpoint; authenticity comes from the Svix signature, not the editor cookie.
+@app.post("/hooks/resend", include_in_schema=False)
+async def resend_hook(request: Request):
+    body = await request.body()
+    if not clicks.verify(body, request.headers):
+        raise HTTPException(status_code=401, detail="bad signature")
+    try:
+        fresh = clicks.store(body, request.headers.get("svix-id", ""))
+    except ValueError:
+        raise HTTPException(status_code=400, detail="bad json")
+    return {"ok": True, "stored": fresh}

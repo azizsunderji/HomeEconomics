@@ -1459,3 +1459,33 @@ Owner's ask (Aziz, 21 Oct 2026): "the article body enrichment 2.2 on Browserbase
 - **Checked.** Both files compile; a `--dry-run` of the health report against a copy of pulse.db
   rendered stage 2.2 OK with the new rows. The enrichment change itself runs first in the 22 Oct
   11:00 UTC synth run; look for `OK-READER ... wsj.com` lines and no "has been closed" failures.
+
+## Status update — 21 Oct 2026: click tracking plumbing (step one of premium marketing)
+
+Owner (21 Oct 2026): "take advantage of link click tracking to be smarter about marketing ... push people to upgrade
+... build the plumbing." Open and click tracking were switched on in Resend the same day (tracking subdomain
+track.home-economics.us, CNAME at Bluehost, domain Verified).
+
+- **Walled links now identify their source.** `variants.wall_link()` appends `&l=<8-char sha1 of the original URL>` to
+  every walled link in the free edition (and the social PDF). `variants.wall_map(premium_html)` rebuilds
+  `{id: {url, text}}` from the premium email, so a click on the wall can be traced to the source the reader wanted.
+  Checked on the 21 Oct draft through `render.render_variants`: 36 walled anchors, 36 with ids, all 30 distinct ids
+  resolved. The portal's upgrade page ignores the extra parameter.
+- **Sender tags.** `sender._send_subscribers` adds Resend tags `edition=<date>` and `tier=free|premium` to every
+  message; Resend echoes the tags on every webhook event.
+- **Webhook.** Resend webhook `75757288-8545-47ed-a5c4-565421171a19` posts email.clicked / opened / delivered /
+  bounced / complained to `POST https://noon.homeeconomics.us/hooks/resend` (editor app.py, public route; Svix
+  signature verified in `editor/clicks.py` with `RESEND_WEBHOOK_SECRET` from `~/.noon_env`). Events land in
+  `~/work/noon/clicks.db`, table `events` (recipient, edition, tier, link, link_id, wall flag, raw JSON; svix-id is
+  the primary key so redeliveries are ignored). Tested with a signed sample: bad signature 401, good 200, duplicate
+  ignored. Registering the webhook over the API needs a non-default User-Agent (Cloudflare error 1010 otherwise;
+  `OVH/2026_10_21_ClickPlumbing/scripts/01_register_webhook.py`).
+- **Daily report.** `editor/click_report.py` (unit `noon-clickreport.timer`, Mon-Fri 17:00 ET, log
+  `~/work/noon/logs/clickreport.log`): per edition, delivered and clickers by tier, free readers who hit the wall
+  (people, clicks, 1/2/3+ distribution), most-wanted sources behind the wall (resolved to theme titles), other free
+  clicks, premium top sources, bounces/complaints, and repeat wall-hitters over 14 days (the courtesy-email
+  candidates). Telegram summary; per-person CSV at `~/work/noon/clicks/wall_hitters_<edition>.csv`.
+- **First data** arrives with the 22 Oct edition (the first sent with tags and ids). Opens are inflated by Apple Mail
+  privacy protection; clicks are the reliable signal.
+- **Not built yet (owner's ideas, pending the data):** the courtesy email with the clicked links and a time-limited
+  discount; a source-specific upgrade page; funnel steps between the wall and Stripe checkout.

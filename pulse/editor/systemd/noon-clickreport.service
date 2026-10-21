@@ -1,0 +1,10 @@
+[Unit]
+Description=Housing at Noon click report (Resend webhook events -> Telegram + CSV)
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/aziz/work/HomeEconomics/pulse/editor
+EnvironmentFile=/home/aziz/.noon_env
+ExecStart=/home/aziz/work/pulse-venv/bin/python click_report.py --telegram
+StandardOutput=append:/home/aziz/work/noon/logs/clickreport.log
+StandardError=append:/home/aziz/work/noon/logs/clickreport.log

@@ -1,0 +1,9 @@
+[Unit]
+Description=Housing at Noon click report, weekdays 17:00 ET
+
+[Timer]
+OnCalendar=Mon..Fri *-*-* 17:00:00 America/New_York
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -47,6 +47,37 @@ ALLOWED_DOMAINS = (
 
 UPGRADE_WALL_URL = "https://homeeconomics.us/pulse/upgrade?src=email"
 
+import hashlib as _hashlib
+import html as _html
+
+
+def link_id(href: str) -> str:
+    """8-char id of an original (premium) URL, carried on its walled replacement as ?l=…"""
+    return _hashlib.sha1(href.strip().encode("utf-8")).hexdigest()[:8]
+
+
+def wall_link(wall_url: str, href: str) -> str:
+    """The wall URL for one walled link. The id lets click tracking tell which source a free reader
+    tried to open (owner, 21 Oct 2026: use click data to market the premium tier)."""
+    return f"{wall_url}{'&' if '?' in wall_url else '?'}l={link_id(href)}"
+
+
+_ANCHOR_RE = re.compile(r'<a\s[^>]*?href=(["\'])(.*?)\1[^>]*>(.*?)</a>', re.I | re.S)
+
+
+def wall_map(premium_html: str) -> dict[str, dict]:
+    """{link_id: {"url": original href (unescaped), "text": anchor text}} for every external link in a
+    premium email, i.e. every link the free edition walls. Built from the same href strings the walling
+    pass hashes, so ids match the ?l= values in clicks.db."""
+    out: dict[str, dict] = {}
+    for m in _ANCHOR_RE.finditer(premium_html):
+        href = m.group(2)
+        if not _is_external_link(href):
+            continue
+        text = re.sub(r"\s+", " ", _html.unescape(re.sub(r"<[^>]+>", "", m.group(3)))).strip()
+        out.setdefault(link_id(href), {"url": _html.unescape(href), "text": text})
+    return out
+
 # Schemes that are never rewritten (not external content links).
 _SAFE_SCHEMES = ("mailto:", "tel:", "sms:", "cid:", "data:")
 
@@ -133,7 +164,7 @@ def make_free_variant(html: str, wall_url: str = UPGRADE_WALL_URL) -> str:
                     continue
                 # Anchor tag: wall external hrefs.
                 seg = _HREF_RE.sub(
-                    lambda m: (m.group(1) + m.group(2) + wall_url
+                    lambda m: (m.group(1) + m.group(2) + wall_link(wall_url, m.group(3))
                                + m.group(2))
                     if _is_external_link(m.group(3)) else m.group(0),
                     seg,
@@ -153,7 +184,7 @@ def make_free_variant(html: str, wall_url: str = UPGRADE_WALL_URL) -> str:
         else:
             # Text node: replace bare external URLs with the wall URL.
             out.append(_TEXT_URL_RE.sub(
-                lambda u: wall_url
+                lambda u: wall_link(wall_url, u.group(0))
                 if _is_external_link(u.group(0)) else u.group(0),
                 seg,
             ))
@@ -169,7 +200,7 @@ def make_free_text(text: str, wall_url: str = UPGRADE_WALL_URL) -> str:
     def _sub(u: re.Match) -> str:
         if not _is_external_link(u.group(0)) or _MD_FREE_TAIL_RE.match(text, u.end()):
             return u.group(0)
-        return wall_url
+        return wall_link(wall_url, u.group(0))
 
     if _DATA_FREE_RE.search(text):
         # The text carries flagged anchors: use the tag-aware pass so a
