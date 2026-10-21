@@ -520,7 +520,7 @@ def hbar_panel(o: list, items: list, x0, x1, top, heading, sub, vfmt, highlight=
         bh, stepy = (28.0, 33.0) if n > 6 else (60.0, 70.0)
     for i, (name, v) in enumerate(items):
         y = top + i * stepy
-        col = INK if name in highlight else BLUE
+        col = BLUE  # owner, 21 Oct 2026: benchmark bar blue like the rest; the bold name marks it
         w = abs(v) * scale
         o.append(f'<rect x="{(ax - w) if v < 0 else ax:.1f}" y="{y:.1f}" width="{max(w, 1):.1f}" height="{bh:.1f}" '
                  f'fill="{col}"/>')
