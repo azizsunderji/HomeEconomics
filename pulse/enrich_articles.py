@@ -405,8 +405,10 @@ def _create_browserbase_session():
             # `api_timeout` is the SESSION lifetime in seconds (not to be
             # confused with `timeout` which is the HTTP request timeout for
             # the create call). Default session is ~5 min — too short for a
-            # 150-article batch. Bump to 30 min.
-            "api_timeout": 1800,
+            # 150-article batch. 30 min was too short for 300 items at ~10 s each
+            # (the session ended at 30:12 on 21 Oct 2026 with 21 items unfetched);
+            # 60 min, and _enrich_batch reconnects if the session still ends early.
+            "api_timeout": 3600,
             "keep_alive": True,
             # residential proxy: WSJ/NYT block the datacenter IP outright (16 Oct 2026)
             "proxies": os.environ.get("BROWSERBASE_PROXIES", "1") != "0",
@@ -582,13 +584,16 @@ async def _enrich_batch(items: list[dict], dry_run: bool = False
             except Exception as e:
                 logger.warning(f"paywall auth probe failed: {e}")
 
+        reconnects = 0
         for item in items:
             url = item["url"]
             item_id = item["id"]
             title = item.get("title", "")[:60]
 
             parsed = urlparse(url)
-            domain = parsed.netloc.lower().lstrip("www.")
+            # removeprefix, not lstrip: lstrip("www.") strips any leading w or dot, so
+            # www.wsj.com became "sj.com" and WSJ never matched READER_HOSTS (16-21 Oct 2026)
+            domain = parsed.netloc.lower().removeprefix("www.")
             if any(domain == skip or domain.endswith("." + skip) for skip in SKIP_DOMAINS):
                 logger.info(f"  SKIP {domain}: {title}")
                 continue
@@ -599,9 +604,23 @@ async def _enrich_batch(items: list[dict], dry_run: bool = False
                 if text:
                     results[item_id] = {"body": text[:8000], "links": [], "mode": "server-chrome"}
                     logger.info(f"  OK-READER ({len(text)}c) {domain}: {title}")
-                else:
-                    logger.info(f"  THIN-READER {domain}: {title}")
-                continue
+                    continue
+                # thin or failed Reader read: fall through to Browserbase (+ archive.ph) below
+                logger.info(f"  THIN-READER {domain}: {title} — trying Browserbase")
+
+            if mode == "browserbase" and (not browser.is_connected() or not browser.contexts):
+                # The Browserbase session ended (lifetime reached or closed remotely). Open a
+                # new one instead of failing every remaining item (21 of 300 on 21 Oct 2026).
+                if reconnects >= 2:
+                    logger.warning(f"  FAIL {url[:60]}: Browserbase session gone, reconnect limit reached")
+                    continue
+                reconnects += 1
+                logger.warning(f"Browserbase session gone after {len(results)} results; reconnecting ({reconnects}/2)")
+                try:
+                    await browser.close()
+                except Exception:
+                    pass
+                browser, mode = await _connect_browser(p)
 
             page = None
             context = None

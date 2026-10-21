@@ -1422,3 +1422,40 @@ server Chrome (fanniemae.com refuses plain downloads).
 - Gap: Substack does not email on unsubscribes, so a Substack unsubscribe does not remove anyone from Noon. They
   have the Noon unsubscribe link in every edition.
 - First run (20 Oct, by hand) added the 4 people who subscribed after the 13:26 UTC export.
+
+## Status update — 21 Oct 2026: health stage 2.2 (article enrichment) — WSJ never reached the Reader; Browserbase session ended at 30 min
+
+Owner's ask (Aziz, 21 Oct 2026): "the article body enrichment 2.2 on Browserbase is broken. Can we fix this?"
+
+- **What the stage showed.** DEGRADED, "subscribed sites returning teasers only (login or bot block at
+  Browserbase): wsj.com (9/75), economist.com (0/13)". Logins were fine (stage 2.0 all logged in).
+- **Three causes found in the 21 Oct run log (`pulse-synth.yml` run 39588694842).**
+  1. `enrich_articles.py` derived the host with `netloc.lstrip("www.")`, which strips any leading `w`
+     or dot, so `www.wsj.com` became `sj.com` (the run log shows "OK ... sj.com"). WSJ therefore never
+     matched `READER_HOSTS` and went to Browserbase instead of the server Reader
+     (queue.homeeconomics.us/read, logged-in server Chrome), where 13 of 20 reads came back thin and fell
+     to archive.ph, which returned ~860-char stubs for 9 of them. The Reader itself still returns full WSJ
+     bodies in ~6 s (tested on three of the day's teaser-only WSJ items: 2,832 / 7,740 / 1,830 chars).
+     Bug present since commit 3019d8d (16 Oct 2026); the Reader log shows no requests after 16 Oct.
+  2. The Browserbase session lifetime (`api_timeout`) was 1,800 s. At ~10 s per article a 300-item run
+     needs about 35 min; the session ended at 30:12, and the last 21 items failed ("Target page, context
+     or browser has been closed", then `browser.contexts[0]` → "list index out of range" for the rest).
+     Synth runs have taken 47-62 min every day since 14 Oct, so this was probably daily.
+  3. The probe's denominator was every WSJ/Economist item of the last 24 h. The enricher takes the 300
+     highest-relevance items, which cuts at relevance ~10, so 54 of the 75 WSJ items (markets, tech,
+     politics) were never meant to be fetched. Among WSJ items with relevance ≥ 60, 3 of 4 had full
+     bodies (6 of 7 over 72 h).
+- **Changes (`pulse/enrich_articles.py`).** `removeprefix("www.")`; a thin or failed Reader read now
+  falls through to Browserbase + archive.ph instead of giving up; `api_timeout` 3,600 s; before each
+  Browserbase fetch the loop checks `browser.is_connected()` and `browser.contexts`, and if the
+  session is gone it opens a new one (at most twice per run) instead of failing the rest.
+- **Changes (`pipeline_health_report.py`, stage 2.2).** The per-host full-body rows and the
+  "teasers only" WARN count items with relevance ≥ 20 only, and each row also states how many items
+  sat below the relevance cut and were not fetched. On the 21 Oct data the stage renders OK.
+- **Not changed (follow-ups for the owner).** The 300-item cap leaves relevance 10-19 items unfetched
+  (502 candidates in the 36 h window on 21 Oct); the per-article pace (~10 s: 4 s settle + 1.5 s pause
+  + navigation) could be halved with two or three concurrent pages; Browserbase cost rises with the
+  longer session (one run per weekday; `pulse-daily.yml` does not enrich).
+- **Checked.** Both files compile; a `--dry-run` of the health report against a copy of pulse.db
+  rendered stage 2.2 OK with the new rows. The enrichment change itself runs first in the 22 Oct
+  11:00 UTC synth run; look for `OK-READER ... wsj.com` lines and no "has been closed" failures.

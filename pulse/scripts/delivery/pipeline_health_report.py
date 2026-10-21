@@ -1127,33 +1127,44 @@ def probe_article_enrichment(stage: Stage, conn: sqlite3.Connection) -> None:
                 drifted.append(f"{dom} ({arch}/{tot})")
 
     # Full-body rate per subscribed host (24h): the direct measure of whether the
-    # Browserbase login for that site still works. A teaser-only host means the
-    # writer sees 100-200 chars of each of its stories (WSJ 5 of 76 on 16 Oct 2026).
+    # login for that site still works. A teaser-only host means the writer sees
+    # 100-200 chars of each of its stories (WSJ 5 of 76 on 16 Oct 2026).
+    # Counted over items with relevance >= 20 only: the enricher takes the 300
+    # highest-relevance items, which in practice cuts at relevance ~10, so most
+    # WSJ/Economist stories (markets, tech, politics) are never meant to be fetched.
+    # Counting them made the stage warn "wsj.com (9/75)" on 21 Oct 2026 when
+    # every WSJ story the writer could use had a body.
     weak_hosts: list[str] = []
     blocked = 0
     try:
         host_rows = conn.execute(
-            f"SELECT url, length(body) AS n, body LIKE 'Bloomberg - Are you a robot?%' AS robot "
+            f"SELECT url, length(body) AS n, COALESCE(relevance_score, 0) AS rel, "
+            f"body LIKE 'Bloomberg - Are you a robot?%' AS robot "
             f"FROM items WHERE source IN {src_in} AND collected_at >= ?", (_last_24h_iso(24),)).fetchall()
     except sqlite3.OperationalError:
         host_rows = []
     if host_rows:
         from urllib.parse import urlparse as _up2
-        per_host: dict[str, list[int]] = {}
+        per_host: dict[str, list[int]] = {}   # dom -> [relevant, relevant & full, below cut]
         for r in host_rows:
             dom = (_up2(r["url"] or "").netloc or "").lower().removeprefix("www.")
-            cnt = per_host.setdefault(dom, [0, 0])
-            cnt[0] += 1
-            if (r["n"] or 0) >= 1500:
-                cnt[1] += 1
+            cnt = per_host.setdefault(dom, [0, 0, 0])
+            if r["rel"] >= 20:
+                cnt[0] += 1
+                if (r["n"] or 0) >= 1500:
+                    cnt[1] += 1
+            else:
+                cnt[2] += 1
             if r["robot"]:
                 blocked += 1
         for dom in ("wsj.com", "nytimes.com", "ft.com", "bloomberg.com", "economist.com"):
-            tot, full = per_host.get(dom, [0, 0])
-            if tot:
-                stage.row(f"full bodies (≥1,500 chars) — {dom}", f"{full}/{tot} ({100 * full / tot:.0f}%)")
+            tot, full, below = per_host.get(dom, [0, 0, 0])
+            if tot or below:
+                stage.row(f"full bodies (≥1,500 chars), relevance ≥ 20 — {dom}",
+                          (f"{full}/{tot} ({100 * full / tot:.0f}%)" if tot else "no relevant items")
+                          + f" · {below} below the relevance cut, not fetched")
             if tot >= 10 and full / tot < 0.25:
-                weak_hosts.append(f"{dom} ({full}/{tot})")
+                weak_hosts.append(f"{dom} ({full}/{tot} with relevance ≥ 20)")
         if blocked:
             stage.row("bot-check pages stored as bodies (24h)", _fmt_int(blocked))
     _bloomberg_mac_row(stage)
