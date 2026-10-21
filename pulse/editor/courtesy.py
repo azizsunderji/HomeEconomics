@@ -83,6 +83,8 @@ CONSUMER_MAILBOXES = frozenset({
     "comcast.net", "att.net", "verizon.net", "sbcglobal.net", "cox.net", "charter.net", "earthlink.net", "mail.com",
     "gmx.*", "fastmail.com", "fastmail.fm", "hey.com", "zoho.com", "zohomail.com",
 })
+# Personal vanity domains that would otherwise look corporate (owner confirmed each one; add as they turn up).
+PERSONAL_DOMAINS = {"aeckinger.com", "jakobschnitzer.de"}
 
 STRIPE_API = "https://api.stripe.com/v1"
 STRIPE_VERSION = "2024-06-20"   # pinned so coupon/promotion-code parameters keep this shape
@@ -95,7 +97,7 @@ COUPON_NAME = "Housing at Noon courtesy 20%"
 def classify(email: str) -> str:
     """'personal' for consumer mailboxes and academic addresses, otherwise 'corporate'."""
     domain = email.rsplit("@", 1)[-1].lower().strip()
-    if domain.endswith(".edu") or re.search(r"\.ac\.[a-z]{2}$", domain):
+    if domain in PERSONAL_DOMAINS or domain.endswith(".edu") or re.search(r"\.ac\.[a-z]{2}$", domain):
         return "personal"
     first = domain.split(".", 1)[0]
     if domain in CONSUMER_MAILBOXES or f"{first}.*" in CONSUMER_MAILBOXES:
@@ -198,7 +200,10 @@ def candidates(days: int = 7, min_clicks: int = 2, today: str | None = None) -> 
             stats["no_sources"] += 1; continue
         out.append({"email": email, "kind": classify(email), "user_id": (sub or {}).get("user_id"),
                     "wall_clicks": len(hs), "pieces": pieces})
-    out.sort(key=lambda p: (-p["wall_clicks"], p["email"]))
+    # Corporate readers first (owner, 21 Oct 2026: "prioritize corporate readers because our gift links run out ...
+    # their conversion rate is likely to be much higher"). Gift links are minted in this order, so when an FT
+    # article's three views or Bloomberg's five a month run out, corporate readers got them.
+    out.sort(key=lambda p: (p["kind"] != "corporate", -p["wall_clicks"], p["email"]))
     return out, stats
 
 
