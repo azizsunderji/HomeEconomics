@@ -1547,3 +1547,76 @@ prices. A theme about a data release gets a chart of the fresh data rather than 
 - **Wave 2 (registered, no builder yet; logged `no-builder`):** pending home sales by region (NAR release page),
   Zillow ZHVI with a map, Zillow ZORI, Apartment List rents, Cotality HPI, NAHB HMI, ICE Mortgage Monitor
   delinquencies, vehicle sales, GDP, ISM.
+
+## Status update — 21 Oct 2026 (later): release charts, wave 2 (non-FRED sources, grid layout, map plugin)
+
+Owner (21 Oct 2026): "Go ahead with the Zillow map and whatever else you need to complete this task of being able to
+put in updated charts when new releases come out." Two modules: `release_charts.py` (stage, engine, non-map builders)
+and `release_maps.py` (map builders, loaded as a plugin).
+
+- **Owner's chart rules (21 Oct 2026), now in the engine for every builder.** On the first pending-sales chart: "ugly
+  ... crowded and gross and overlabeled"; then "pay more attention to the charts ... taking care to align typography,
+  alignment"; on starts: "what's really hard to read is the regional charts. Just take out their regional charts"; on
+  the footer: "the source lines should not be below the logo. They should be at the same horizontal level, making
+  sure not to let the two overlap". Reference design: `OVH/2026_10_21_ReleaseCharts/scripts/90_phsi_chart_grid.py`
+  (`outputs/pending_home_sales_v10.png`). Engine values: title 34 px Bold at x=36 (right margin 16); every panel has
+  one 20 px muted label 36 px above its top, left-aligned with the panel; y numbers left-aligned at the panel's left
+  edge, plot after them; gridlines #DADFCE; side-by-side panels equal width and height, 20 px apart; no x tick
+  marks, year labels chosen so none collide; line stroke 3.4; bars brand blue whatever the sign; horizontal bar
+  panels: thick bars that almost touch, from an axis line, one bold value each, names in a column right of the axis;
+  ~60 px to a one-line source (muted 20 px) with the logo on the same band at the right. Text widths are measured
+  with PIL on the Oracle font files (`_tw`). New builders: a dot on the latest point and no value callouts
+  (`Line(latest="dot")`), no moving averages or legends unless they carry the point, no cramped small multiples, short
+  source lines. Starts lost its regional row. Wave-1 builders keep their content (3-month averages, latest labels)
+  under the new layout.
+- **Engine additions.** `Line.latest="dot"`, `Panel.ref` (a dark reference line, e.g. 50 on the HMI), `Prebuilt(svg,
+  H)` for an owner-approved hand layout (pending sales), `Release.latest` (callable -> Timestamp of the newest period,
+  runs the source's updater; `latest_period()` also honours a `latest_period` attribute returning a period string,
+  which `release_maps` sets). FRED circuit breaker: after one failed call in a run the rest try once (on 21 Oct the
+  FRED API served a "Site Maintenance" HTML page for hours; without this each series waited through three retries).
+- **Plugin.** At the end of the module, `_load_plugins()` imports `release_maps` (with `sys.modules["release_charts"]`
+  pointed at the running module so the CLI does not load a second copy) and swaps its `REGISTRY` entries in for the
+  placeholders of the same key; unknown keys go before `mortgage_rates`. Absent module: logged at info; broken
+  module: logged with traceback; either way the placeholders stay and the stage runs.
+- **New builders and lake files** (each updater runs once per process, writes ZSTD parquet, ROW_GROUP_SIZE 100000,
+  with a `<stem>.source.json` sidecar, and falls back to the lake copy with a warning when the source is down):
+  - `pending_home_sales`: scrapes NAR's pending-sales page for the newest `phs-*.pdf` (fallback: HEAD the predictable
+    URL for each day of the release month), `pdftotext -layout`, parses US + 4 regions SA/NSA, upserts
+    `Data/NAR/pending_home_sales.parquet` (now with a `released` date; the latest release wins per month and region;
+    PDFs cached in `Data/NAR/pdfs/`). Chart = the owner's grid design: index since 2010 with a dot, region bars of the
+    latest month's change; months before NAR's first PDF month (Sep 2023) come from Mortgage News Daily
+    (`2026_10_01_MortgageRates/data/pending_home_sales.parquet`), said in the source line. Title "Pending home sales
+    fall to a record low" when the latest value is the series low since 2001, else "... fall/rise X% in <Month>".
+    State: September 2026 recorded as charted (`.../pending_home_sales/202609_20261021_v5.png`, hosted by hand; script
+    99), so tomorrow logs `not-new`.
+  - `existing_home_sales`: every run upserts FRED's 13-month window (national + four regions, sales SAAR and median
+    price; inventory, months' supply) plus the current NAR overview PDF into `Data/NAR/existing_home_sales.parquet`
+    (month, region, measure, value, flag, source, vintage; latest vintage wins, FRED on a tie). Seeded with the
+    archived September 2024 and 2025 overview PDFs, so it runs Sep 2023 to Sep 2026 (37 months, no gaps); it grows a
+    month per release. The 2023 PDF was not at the predictable URL. Chart: sales, inventory, median price, dots only.
+  - `apartment_list`: scrapes the data page with cookie `geofence_bypass=true` (the server is geo-blocked without
+    it), downloads the Rent Estimates and Vacancy Index CSVs when the `_YYYY_MM` vintage is new, stores them long in
+    `Data/ApartmentList/rent_estimates.parquet` (427,518 rows, 1,236 places, 2017-01..2026-09) and
+    `vacancy_index.parquet` (64,280 rows). Chart: national median rent, its year-over-year change, vacancy index, bars
+    for the 12 largest metros' year-over-year change with National highlighted.
+  - `nahb_hmi`: scrapes NAHB's HMI page for this month's t2 (HMI) and t3 (components) `.xls` (URLs carry
+    `?rev=&hash=`), parses with xlrd (installed into `~/work/pulse-venv` today, `--no-deps`), stores
+    `Data/NAHB/hmi.parquet` (series hmi, present_sales, next_6_months, traffic; 1985-01..2026-10; raw files in
+    `Data/NAHB/xls/`). Chart: HMI since 2000 with the 50 line; components since 2019 in one panel.
+  - `freddie_mac_hpi` (new key; trigger "Freddie Mac house/home price", "FMHPI"; sits before `mortgage_rates`):
+    master CSV refreshed on Last-Modified into `Data/Price/FreddieMac/fmhpi_master_file.parquet` (US, 51 states, 387
+    CBSAs, 1975..2026-08). Chart: US year-over-year (SA) since 2016 and bars for 12 large metros; caption counts metros
+    below a year earlier (64 of 387 in August).
+  - `gdp` (A191RL1Q225SBEA bars since 2022, real residential investment PRFIC1 at an annual rate; caption gives
+    residential investment's contribution, A011RY2Q224SBEA) and `vehicle_sales` (TOTALSA since 2016): FRED builders.
+  - Not built, placeholder notes in the source field: `ice_mortgage_monitor` (page reachable, one national rate per
+    month in prose, no table or history), `ism` (reCAPTCHA page to this server; PR Newswire copies are prose),
+    `mba_applications` (new placeholder key; Cloudflare 403, index levels are subscription data).
+- **Review renders:** `OVH/2026_10_21_ReleaseCharts/outputs/<key>_vN.png` (script 97 renders every builder; nothing
+  hosted). Scripts 90-100 in that folder are the probes, seeders and checks for this wave.
+- **Map module (`release_maps.py`, second agent).** A reusable US metro bubble-map engine (contiguous US, Census state outlines and metro centroids pre-built into `editor/geo/us_metro_map_geo.json` with `release_maps.py --build-geo`; 100 largest metros, bubble area by 2024 population, colour by year-over-year change in five bins, at most eight labels) and three builders exported through `REGISTRY`: `zillow_zhvi` (metro ZHVI map + US figure and national line), `zillow_zori` (same for rents) and `cotality_hpi` (national line from releases accumulated in `Data/Cotality/hpi_releases.parquet`, plus one bar panel of the ten fastest-rising and ten fastest-falling metros; Cotality publishes no download, the data is read from the chart JSON embedded in its monthly article page and the fetcher raises rather than draw a wrong chart when the format changes). Known data quirks: a sign error in Cotality's September 2025 edition (text trusted over chart), 16 of 25 Cotality editions machine-readable (national figures from May 2025), Alaska and Hawaii metros omitted from the maps.
+  zillow_zhvi, zillow_zori, cotality_hpi; geometry JSON; Cotality lake file; anything fragile.
+- **Fragile points.** NAR PDF layouts (the parser needs 10 numbers per PHS row, 12/5 per EHS row; a change logs
+  "parsed 0 rows" and the lake copy is used); the Apartment List cookie; NAHB link pattern `t2-national-hmi-history-
+  YYYYMM.xls`; the Mortgage News Daily seed lives in a project folder, not the lake; FRED outages make GDP and
+  vehicle sales fail (they have no lake copy until the first successful run).
