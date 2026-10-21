@@ -42,6 +42,7 @@ same calls with fetch() inside one article tab, so no clicking and no cookie cop
                   -> {"articlesRemaining":4,"url":"<article url>?accessToken=<JWT>"}
              QUOTA: 5 gift articles per month ("As a subscriber, you can gift up to 5 articles each month").
              Re-gifting an article already in "articles" spends no credit (articlesRemaining unchanged).
+             VERIFIED: Aziz opened a minted link in a private window on 21 Oct 2026 and the full article loaded.
              The JWT expires 7 days after minting (exp - iat = 604800 s), so cached links are re-minted after that.
              Bloomberg sometimes robot-checks the server Chrome; then this returns None and pauses Bloomberg for
              BLOCK_BACKOFF (Aziz clears the check by ticking the box at https://browser.homeeconomics.us).
