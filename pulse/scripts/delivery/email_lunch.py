@@ -1118,8 +1118,10 @@ def _entry_body(summary: str, body_text: str) -> str:
             out.append(_context_block(b[1], body_text, f"{top}px 0 {CONTEXT_GAP if gap else 0}px 0"))
         elif b[0] == "quote":
             # a little more air around a pull quote than around a context box (owner, 20 Oct 2026)
-            top = QUOTE_GAP - ENTRY_PARA_GAP if i else 0
-            out.append(_quote_block(b[1], b[2], f"{top}px 0 {QUOTE_GAP if gap else 0}px 0"))
+            # measured glyph-to-glyph (21 Oct 2026): the serif line box and the 13px attribution line make the
+            # rendered gap 19px above and 31px below with equal margins, so the margins are offset to even them out
+            top = QUOTE_GAP - ENTRY_PARA_GAP + 5 if i else 0
+            out.append(_quote_block(b[1], b[2], f"{top}px 0 {QUOTE_GAP - 7 if gap else 0}px 0"))
         else:
             out.append(_image_block(b[1], b[2], f"0 0 {gap}px 0"))
     return "".join(out)
