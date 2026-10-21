@@ -76,7 +76,14 @@ def make_pdf(draft: dict, out: Path, tier: str = PDF_TIER) -> Path:
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         page = browser.new_page(viewport={"width": 816, "height": 1056})
-        page.set_content(html, wait_until="networkidle")
+        # "load" first (never blocked by one slow image), then a bounded wait for the network to go quiet.
+        # On 21 Oct 2026 a single slow resource right after the send kept "networkidle" from arriving within
+        # 30 s and the whole PDF step failed; now a slow straggler costs at most 20 s and the PDF still gets made.
+        page.set_content(html, wait_until="load", timeout=60000)
+        try:
+            page.wait_for_load_state("networkidle", timeout=20000)
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"pdf: network not idle after 20 s, rendering anyway ({str(e).splitlines()[0]})")
         page.emulate_media(media="print")
         page.pdf(path=str(out), format="Letter", print_background=True, prefer_css_page_size=True,
                  display_header_footer=False)
