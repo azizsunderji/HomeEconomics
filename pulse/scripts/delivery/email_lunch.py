@@ -65,7 +65,7 @@ PUBLISHER = "Home Economics"
 
 # Masthead logo: black PNG on transparent, ~14 KB, deployed 2026-09-02
 # (HEAD -> 200, image/png, 14,596 bytes). Rendered ~140px wide, top-left.
-LOGO_URL = "https://homeeconomics.us/logo-email.png"
+LOGO_URL = "https://noon.homeeconomics.us/images/logo-email-gray.png"  # #8A8580 gray version of homeeconomics.us/logo-email.png (owner, 21 Oct 2026: match the date line)
 LOGO_WIDTH = 100
 # "Read on the web" (masthead, top right). Always the latest edition; the
 # premium email appends ?k=<key> (briefing["_web_key"], set by the editor)
