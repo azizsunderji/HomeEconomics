@@ -53,9 +53,53 @@ def _edition_sources(date: str) -> dict[str, dict]:
     return wm
 
 
+SCANNER_UA = re.compile(r"python-requests|curl/|go-http|java/|okhttp|libwww|wget|bot|crawler|spider|scanner|urlscan|"
+                        r"proofpoint|mimecast|barracuda|forcepoint|symantec|trendmicro|sophos|paloalto|fortinet|zscaler",
+                        re.I)
+SCANNER_MAX_LINKS = 6      # a person reads one or two sources; a link checker opens every URL in the email
+SCANNER_FAST_SECS = 120    # ...and does it within a couple of minutes of delivery
+
+
+def _ts(s: str) -> float:
+    try:
+        return datetime.fromisoformat((s or "").replace("Z", "+00:00")).timestamp()
+    except ValueError:
+        return 0.0
+
+
+def scanner_emails(ev) -> set[str]:
+    """Recipients whose clicks are a mail-security link scanner, not a reader (owner, 21 Oct 2026: 616 of the first
+    day's 720 "clickers" had opened ten or more links each). Flagged when any click comes from a non-browser user
+    agent, when the address clicked SCANNER_MAX_LINKS or more distinct links in the edition, or when it clicked
+    three or more distinct links within SCANNER_FAST_SECS of delivery. Their events are dropped from every count."""
+    delivered = {}
+    for r in ev:
+        if r["type"] == "email.delivered":
+            delivered[r["email"]] = min(delivered.get(r["email"], 1e18), _ts(r["created_at"]))
+    links: dict[str, set] = defaultdict(set)
+    fast: dict[str, set] = defaultdict(set)
+    flagged: set[str] = set()
+    for r in ev:
+        if r["type"] != "email.clicked":
+            continue
+        e = r["email"]
+        if SCANNER_UA.search(r["user_agent"] or ""):
+            flagged.add(e)
+        links[e].add(r["link"])
+        if e in delivered and _ts(r["created_at"]) - delivered[e] <= SCANNER_FAST_SECS:
+            fast[e].add(r["link"])
+    flagged |= {e for e, s in links.items() if len(s) >= SCANNER_MAX_LINKS}
+    flagged |= {e for e, s in fast.items() if len(s) >= 3}
+    return flagged
+
+
 def build(edition: str, days: int) -> tuple[str, list[dict]]:
     conn = clicks.connect()
-    ev = conn.execute("SELECT * FROM events WHERE edition = ?", (edition,)).fetchall()
+    ev_all = conn.execute("SELECT * FROM events WHERE edition = ?", (edition,)).fetchall()
+    scanners = scanner_emails(ev_all)
+    # Scanner addresses keep their delivered/opened rows (they are real subscribers); only their clicks are dropped.
+    ev = [r for r in ev_all if not (r["type"] == "email.clicked" and r["email"] in scanners)]
+    scanner_clicks = len(ev_all) - len(ev)
     delivered = {t: {r["email"] for r in ev if r["type"] == "email.delivered" and r["tier"] == t} for t in ("free", "premium")}
     clickers = {t: {r["email"] for r in ev if r["type"] == "email.clicked" and r["tier"] == t} for t in ("free", "premium")}
     wall = [r for r in ev if r["type"] == "email.clicked" and r["wall"] and (r["tier"] or "free") == "free"]
@@ -69,10 +113,20 @@ def build(edition: str, days: int) -> tuple[str, list[dict]]:
 
     # repeat wall-hitters over the last `days` editions
     since = (datetime.strptime(edition, "%Y-%m-%d") - timedelta(days=days)).date().isoformat()
-    rep = conn.execute(
-        "SELECT email, COUNT(DISTINCT edition) AS editions, COUNT(*) AS hits FROM events "
-        "WHERE type = 'email.clicked' AND wall = 1 AND COALESCE(tier,'free') = 'free' AND edition BETWEEN ? AND ? "
-        "GROUP BY email HAVING editions >= 2 ORDER BY editions DESC, hits DESC", (since, edition)).fetchall()
+    win = conn.execute("SELECT * FROM events WHERE edition BETWEEN ? AND ?", (since, edition)).fetchall()
+    by_ed: dict[str, list] = defaultdict(list)
+    for r in win:
+        by_ed[r["edition"]].append(r)
+    rep_eds: dict[str, set] = defaultdict(set)
+    rep_hits: Counter = Counter()
+    for ed, rows_ in by_ed.items():
+        sc = scanner_emails(rows_)
+        for r in rows_:
+            if r["type"] == "email.clicked" and r["wall"] and (r["tier"] or "free") == "free" and r["email"] not in sc:
+                rep_eds[r["email"]].add(ed)
+                rep_hits[r["email"]] += 1
+    rep = sorted(({"email": e, "editions": len(s), "hits": rep_hits[e]} for e, s in rep_eds.items() if len(s) >= 2),
+                 key=lambda d: (-d["editions"], -d["hits"]))
 
     def pct(a: int, b: int) -> str:
         return f"{100 * a / b:.1f}%" if b else "n/a"
@@ -83,6 +137,8 @@ def build(edition: str, days: int) -> tuple[str, list[dict]]:
         return "\n".join(lines), []
     for t in ("free", "premium"):
         lines.append(f"{t}: delivered {len(delivered[t]):,} · clicked {len(clickers[t]):,} ({pct(len(clickers[t]), len(delivered[t]))})")
+    if scanners:
+        lines.append(f"excluded {len(scanners):,} addresses whose clicks look like mail-security link scanners ({scanner_clicks:,} clicks)")
     lines.append(f"free readers who hit the upgrade wall: {len(per_person):,} people, {len(wall):,} clicks "
                  f"({pct(len(per_person), len(delivered['free']))} of delivered free)")
     if per_person:
