@@ -303,14 +303,18 @@ jobs:
           PULSE_DB: ${{ github.workspace }}/pulse/data/pulse.db
           # Kept after stage 2.2b was removed (29 Sep 2026); no stage reads it now.
           NOON_PRIVATE_BASE: https://noon.homeeconomics.us/private/${{ secrets.NOON_PRIVATE_TOKEN }}
-        run: python delivery/pipeline_health_report.py --variant v3 --to aziz@home-economics.us || echo "Health report (v3.1) failed — continuing without"
+        # Owner, 22 Oct 2026: no separate email any more. The report is written to pulse/data/pipeline_health_latest.html,
+        # pushed to Dropbox with the database (next step), and summarised in the single morning email from the OVH server
+        # (OVH/2026_10_22_ProMapLeads/scripts/healthsrc.py). To restore the email: replace --dry-run --out ... with
+        # --to aziz@home-economics.us.
+        run: python delivery/pipeline_health_report.py --variant v3 --dry-run --out "${{ github.workspace }}/pulse/data/pipeline_health_latest.html" || echo "Health report (v3.1) failed — continuing without"
 
       - name: Push DB back to Dropbox
         # Run even on failure, but only if the guard let us proceed past the check.
         if: always() && steps.guard.outputs.should_run == 'true'
         run: |
           rclone copy pulse/data/ "dropbox:Home Economics/Data/Pulse/" \
-            --include "pulse.db" --include "*.json" \
+            --include "pulse.db" --include "*.json" --include "pipeline_health_latest.html" \
             --verbose --stats-one-line
 
       - name: "Shadow test: the brief written by Claude Opus 5.5 (30 Sep - 2 Oct 2026; email to Aziz only)"
