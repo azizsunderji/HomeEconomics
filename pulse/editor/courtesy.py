@@ -441,8 +441,39 @@ def subject_for(pieces: list[dict], today: str) -> str:
     return f"The {_noun(pieces)} you clicked in {_when(pieces, today)}"
 
 
-PREMIUM_LINE = ("If you'd like every source every day, the premium edition has every theme of the day, a direct link "
-                "to every source and the daily chart. I'd love to offer you 20% off your first year.")
+# Owner, 22 Oct 2026: "I'd encourage you to sign up for the premium edition, which has [you only got X of X themes]
+# every theme of the day, and then a direct link to every source." No "daily chart". Then the 20% offer.
+_WORDS = {2: "two", 3: "three", 4: "four", 5: "five", 6: "six", 7: "seven", 8: "eight", 9: "nine", 10: "ten",
+          11: "eleven", 12: "twelve"}
+
+
+def _theme_counts(edition: str) -> tuple[int, int] | None:
+    """(themes in the free edition, themes in the premium edition) for that day's draft, or None."""
+    try:
+        from delivery import email_lunch as el
+        d = drafts.get(edition)
+        obj = (d or {}).get("json") if isinstance((d or {}).get("json"), dict) else (d or {})
+        entries = [e for e in (obj.get("entries") or []) if isinstance(e, dict)]
+        entries.sort(key=lambda e: (e.get("rank") is None, e.get("rank", 10**6)))
+        shown, withheld = el._split_entries(entries, "free")
+        if shown and withheld:
+            return len(shown), len(shown) + len(withheld)
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"theme counts for {edition}: {e}")
+    return None
+
+
+def premium_line(pieces: list[dict], today: str) -> str:
+    eds = sorted({p["edition"] for p in pieces})
+    counts = _theme_counts(eds[-1]) if eds else None
+    if counts:
+        free_n, all_n = counts
+        day = "today's" if eds[-1] == today else datetime.strptime(eds[-1], "%Y-%m-%d").strftime("%A's")
+        got = f" ({day} free edition carried {free_n} of the {all_n})"   # digits for both, so "5 of the 14" reads evenly
+    else:
+        got = ""
+    return (f"I'd encourage you to sign up for the premium edition, which has every theme of the day{got} and a direct "
+            f"link to every source. I'd love to offer you 20% off your first year.")
 
 
 def _discount(code: str, end: str) -> tuple[str, str]:
@@ -509,8 +540,9 @@ def personal_email(person: dict, code: str, end: str, unsub: str | None, gift_ca
     lh, lt, n_gift, no_gift = _piece_lines(person["pieces"], gift_cache)
     dh, dt = _discount(code, end)
     ih, it = _intro(person, today, plain=no_gift)
-    body_h = f"{ih}{lh}{P}{_esc(PREMIUM_LINE)}</p>{dh}{P}{_esc(CLOSING)}</p>{SIGNATURE}"
-    text = f"{it}\n\n{lt}\n\n{PREMIUM_LINE}\n\n{dt}\n\n{CLOSING}\n\n{SIGNATURE_TEXT}\n"
+    pl = premium_line(person["pieces"], today)
+    body_h = f"{ih}{lh}{P}{_esc(pl)}</p>{dh}{P}{_esc(CLOSING)}</p>{SIGNATURE}"
+    text = f"{it}\n\n{lt}\n\n{pl}\n\n{dt}\n\n{CLOSING}\n\n{SIGNATURE_TEXT}\n"
     return {"subject": subject_for(person["pieces"], today), "html": _wrap(body_h, unsub),
             "text": text + _text_footer(unsub), "gift_links_used": n_gift}
 
@@ -540,7 +572,7 @@ def _manager_note() -> tuple[str, str]:
         "research into themes, with a direct link to every source. It'd replace the time I now spend scanning a dozen "
         "sources each day.",
         "",
-        f"It costs ${MONTHLY_USD} a month or ${ANNUAL_USD} a year, and it can be cancelled at any time. There's a "
+        f"It costs ${MONTHLY_USD} a month or ${ANNUAL_USD} a year, and the monthly plan can be cancelled at any time. There's a "
         "team rate for three or more people, if others here would find it useful.",
         "",
         "Would it be OK for me to expense it?",
@@ -570,9 +602,10 @@ def corporate_email(person: dict, code: str, end: str, unsub: str | None, gift_c
     dh, dt = _discount(code, end)
     ih, it = _intro(person, today, plain=no_gift)
     nh, nt = _manager_note()
-    body_h = (f"{ih}{lh}{P}{_esc(PREMIUM_LINE)}</p>{dh}{P}{_esc(EXPENSE)}</p>{P}{_esc(TEAM)}</p>"
+    pl = premium_line(person["pieces"], today)
+    body_h = (f"{ih}{lh}{P}{_esc(pl)}</p>{dh}{P}{_esc(EXPENSE)}</p>{P}{_esc(TEAM)}</p>"
               f"{P}{_esc(FORWARD)}</p>{nh}{P}{_esc(CLOSING)}</p>{SIGNATURE}")
-    text = (f"{it}\n\n{lt}\n\n{PREMIUM_LINE}\n\n{dt}\n\n{EXPENSE}\n\n{TEAM}\n\n{FORWARD}\n\n{nt}\n\n"
+    text = (f"{it}\n\n{lt}\n\n{pl}\n\n{dt}\n\n{EXPENSE}\n\n{TEAM}\n\n{FORWARD}\n\n{nt}\n\n"
             f"{CLOSING}\n\n{SIGNATURE_TEXT}\n")
     return {"subject": subject_for(person["pieces"], today), "html": _wrap(body_h, unsub),
             "text": text + _text_footer(unsub), "gift_links_used": n_gift}
