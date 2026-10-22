@@ -282,6 +282,22 @@ def own_chart_refresh_api(request: Request, body: dict[str, Any] = Body(...)):
     return JSONResponse(res)
 
 
+# Recency rule for callbacks (owner, 22 Oct 2026: "You've put in the mortgage payments versus higher home prices driving
+# higher affordability costs repeatedly in every edition this week."). The callback stage on GitHub Actions has no copy of
+# the sent editions, so it asks here which of his pieces ran in the last n sent editions. Same token as the updater.
+@app.get("/api/own-recent-usage")
+def own_recent_usage_api(request: Request, before: str = "", n: int = 10):
+    import hmac
+    want = _refresh_token()
+    if not ((want and hmac.compare_digest(request.headers.get("x-refresh-token", ""), want)) or _authed(request)):
+        raise HTTPException(status_code=401, detail="not authorised")
+    before = before[:10] or drafts.today_et()
+    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", before):
+        raise HTTPException(status_code=400, detail="before")
+    from analysis.own_callbacks import usage_from_drafts_db
+    return JSONResponse({"before": before, "editions": usage_from_drafts_db(drafts.NOON_DB, before, max(1, min(n, 30)))})
+
+
 @app.get("/health")
 def health():
     return {"ok": True, "send_mode": paths.SEND_MODE, "today": drafts.today_et()}

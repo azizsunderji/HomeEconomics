@@ -114,13 +114,16 @@ def candidates(entries: list[dict], pubs: list[dict], openai_client) -> tuple[li
 
 def find_callbacks(entries: list[dict], openai_client, as_of: str, anthropic_client=None,
                    judge_model: str = JUDGE_MODEL, pubs: list[dict] | None = None,
-                   min_strength: int | None = None) -> tuple[dict[int, dict], list[dict]]:
+                   min_strength: int | None = None,
+                   recent_slugs: set[str] | None = None) -> tuple[dict[int, dict], list[dict]]:
     """entries: dicts with title and summary; as_of: the edition date (YYYY-MM-DD). Stage 1
     (embeddings) proposes up to CANDIDATES_K pieces per entry; stage 2 (judge) picks at most one and
     rates it; a pick with strength >= JUDGE_MIN_STRENGTH is a match. Returns ({entry index: match},
     log). A match carries score (cosine), strength, reason, slug, url, title, date, summary and the
-    piece's chart closest to the entry {hosted_url, caption}."""
+    piece's chart closest to the entry {hosted_url, caption}. recent_slugs: pieces whose chart or callback ran in
+    one of the last RECENT_EDITIONS sent editions (see recent_callback_slugs); used only when nothing else fits."""
     min_strength = JUDGE_MIN_STRENGTH if min_strength is None else min_strength
+    recent = set(recent_slugs or ())
     pubs = eligible_pubs(load_own_publications() if pubs is None else pubs, as_of)
     log: list[dict] = []
     if not pubs or not entries:
@@ -138,7 +141,17 @@ def find_callbacks(entries: list[dict], openai_client, as_of: str, anthropic_cli
             log.append(rec)
             continue
         try:
-            v = judge_entry(e, [pubs[j] for j, _ in cand[i]], anthropic_client, judge_model)
+            v = judge_entry(e, [pubs[j] for j, _ in cand[i]], anthropic_client, judge_model, recent=recent)
+            # recency rule (owner, 22 Oct 2026), enforced in code as well as in the judge's prompt: a recently used
+            # pick stands only if the judge, shown the other candidates alone, finds none of them relevant enough
+            fresh = [pubs[j] for j, _ in cand[i] if pubs[j]["slug"] not in recent]
+            if v["pick"] in recent and v["strength"] >= min_strength:
+                v2 = judge_entry(e, fresh, anthropic_client, judge_model) if fresh else {"pick": None, "strength": 0}
+                if v2["pick"] and v2["strength"] >= min_strength:
+                    rec["recency"] = f"{v['pick']} ran in a recent edition; replaced by {v2['pick']}"
+                    v = v2
+                else:
+                    rec["recency"] = f"{v['pick']} ran in a recent edition; kept, no other relevant candidate"
         except Exception as ex:  # noqa: BLE001
             v = {"pick": None, "strength": 0, "reason": f"judge failed: {ex}"[:200]}
         rec["verdict"] = v
@@ -198,11 +211,18 @@ def _model_kwargs(model: str) -> dict:
     return {}
 
 
-def judge_entry(entry: dict, cands: list[dict], anthropic_client, model: str) -> dict:
-    lines = [f"[{c['slug']}] {c['title']} ({c['date']}): {c.get('summary') or ''} CHARTS: "
+def judge_entry(entry: dict, cands: list[dict], anthropic_client, model: str, recent: set[str] | None = None) -> dict:
+    recent = recent or set()
+    lines = [f"[{c['slug']}]{' (RECENTLY USED)' if c['slug'] in recent else ''} {c['title']} ({c['date']}): "
+             f"{c.get('summary') or ''} CHARTS: "
              + "; ".join(ch.get("caption") or "" for ch in (c.get("charts") or [])[:4]) for c in cands]
+    note = ""
+    if any(c["slug"] in recent for c in cands):
+        note = (f"\n\nArticles marked (RECENTLY USED) already had a callback or chart in one of the last {RECENT_EDITIONS} "
+                "editions, and Aziz does not want the same chart repeated. Pick one of them only if no other article "
+                "here would rate 3 or more; otherwise pick the most relevant article that is not marked.")
     user = (f"NEWS ENTRY\nTitle: {entry.get('title') or ''}\n{_plain(entry.get('summary'))[:2500]}\n\n"
-            f"EARLIER ARTICLES (slug in brackets)\n" + "\n".join(lines) +
+            f"EARLIER ARTICLES (slug in brackets)\n" + "\n".join(lines) + note +
             "\n\nWhich one article, if any, would make the best callback? JSON only.")
     resp = anthropic_client.messages.create(model=model, max_tokens=1500, system=JUDGE_SYSTEM,
                                             messages=[{"role": "user", "content": user}], **_model_kwargs(model))
@@ -220,6 +240,104 @@ def judge_entry(entry: dict, cands: list[dict], anthropic_client, model: str) ->
     slugs = {c["slug"] for c in cands}
     pick = d.get("pick") if d.get("pick") in slugs else None
     return {"pick": pick, "strength": int(d.get("strength") or 0) if pick else 0, "reason": str(d.get("reason") or "")[:300]}
+
+
+# ── recency rule (owner, 22 Oct 2026) ──────────────────────────────────
+# Owner: "You've put in the mortgage payments versus higher home prices driving higher affordability costs
+# repeatedly in every edition this week." (the payment-decomposition chart of expensive-housing-is-a-secular-trend
+# ran on 19, 20 and, in the first draft, 22 Oct; the-housing-hangover-has-cleared on 15, 20 and 22 Oct). Rule: a piece
+# whose chart or callback ran in any of the last RECENT_EDITIONS sent editions is chosen again only when no other
+# candidate is relevant (strength >= JUDGE_MIN_STRENGTH); otherwise the most relevant piece not used recently wins.
+# "Used" = an /images/own/<slug>/ chart or a "free"-titled link to /p/<slug> in the sent text, whoever put it there
+# (pipeline or the owner's edits). Source of the sent editions, first that answers: the drafts DB (on the server),
+# the editor's /api/own-recent-usage (from GitHub Actions), the pipeline's own briefings in pulse.db (fallback;
+# misses the owner's edits).
+RECENT_EDITIONS = 10
+RECENT_USAGE_URL = "https://noon.homeeconomics.us/api/own-recent-usage"
+_OWN_IMG_SLUG_RE = re.compile(r"/images/own/([a-z0-9-]+)/")
+_FREE_LINK_SLUG_RE = re.compile(
+    r"\]\(https?://(?:www\.)?(?:homeeconomics\.substack\.com|home-economics\.us|homeeconomics\.us)/p/([a-z0-9-]+)[^)\s]*\s+\"free\"\)")
+
+
+def own_slugs_in_edition(obj: dict) -> set[str]:
+    """Own pieces whose chart or callback link is in an edition's intro or entries (not its logs or deleted entries)."""
+    parts = [str(obj.get("intro") or "")] + [str(e.get("summary") or "") for e in obj.get("entries") or []
+                                             if isinstance(e, dict)]
+    text = "\n".join(parts)
+    return set(_OWN_IMG_SLUG_RE.findall(text)) | set(_FREE_LINK_SLUG_RE.findall(text))
+
+
+def usage_from_drafts_db(db_path: str | Path, before: str, n: int = RECENT_EDITIONS) -> list[dict]:
+    """[{date, slugs}] for the last n editions with status 'sent' dated before `before`, newest first."""
+    import sqlite3
+    con = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+    try:
+        rows = con.execute("SELECT date, json FROM drafts WHERE status = 'sent' AND date < ? ORDER BY date DESC LIMIT ?",
+                           (before, n)).fetchall()
+    finally:
+        con.close()
+    out = []
+    for date, js in rows:
+        try:
+            out.append({"date": date, "slugs": sorted(own_slugs_in_edition(json.loads(js)))})
+        except ValueError:
+            continue
+    return out
+
+
+def _usage_from_pulse_db(before: str, n: int) -> list[dict]:
+    import os
+    import sqlite3
+    db = os.environ.get("PULSE_DB")
+    if not db or not Path(db).exists():
+        return []
+    con = sqlite3.connect(db)
+    try:
+        rows = con.execute("SELECT content_json FROM briefings WHERE briefing_type = 'daily_v4b_attach' "
+                           "ORDER BY id DESC LIMIT ?", (n * 4,)).fetchall()
+    finally:
+        con.close()
+    by_date: dict[str, set[str]] = {}
+    for (js,) in rows:
+        try:
+            obj = json.loads(js)
+        except ValueError:
+            continue
+        d = str(obj.get("date") or "")[:10]
+        if d and d < before and d not in by_date:      # newest run of each date
+            by_date[d] = own_slugs_in_edition(obj)
+    return [{"date": d, "slugs": sorted(by_date[d])} for d in sorted(by_date, reverse=True)[:n]]
+
+
+def recent_callback_slugs(as_of: str, n: int = RECENT_EDITIONS) -> tuple[set[str], dict]:
+    """(slugs used in the last n sent editions before as_of, log {source, editions})."""
+    import os
+    drafts_db = Path(os.environ.get("NOON_DB") or Path.home() / "work" / "noon" / "noon_drafts.db")
+    errors = []
+    eds: list[dict] | None = None
+    source = None
+    if drafts_db.exists():
+        try:
+            eds, source = usage_from_drafts_db(drafts_db, as_of, n), "drafts db"
+        except Exception as e:  # noqa: BLE001
+            errors.append(f"drafts db: {e}"[:200])
+    if eds is None and _refresh_token():
+        try:
+            import httpx
+            r = httpx.get(os.environ.get("OWN_RECENT_USAGE_URL", RECENT_USAGE_URL), params={"before": as_of, "n": n},
+                          headers={"x-refresh-token": _refresh_token()}, timeout=20)
+            r.raise_for_status()
+            eds, source = r.json().get("editions") or [], "editor api"
+        except Exception as e:  # noqa: BLE001
+            errors.append(f"editor api: {e}"[:200])
+    if eds is None:
+        try:
+            eds, source = _usage_from_pulse_db(as_of, n), "pulse.db briefings (pipeline output only)"
+        except Exception as e:  # noqa: BLE001
+            errors.append(f"pulse.db: {e}"[:200])
+            eds = []
+    slugs = {s for ed in eds for s in ed.get("slugs") or []}
+    return slugs, {"source": source, "editions": eds, "errors": errors}
 
 
 # ── chart staleness (owner, 16 Oct 2026) ───────────────────────────────

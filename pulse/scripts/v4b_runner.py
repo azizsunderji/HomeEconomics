@@ -923,10 +923,16 @@ def add_callbacks_and_context(entries: list[dict], as_of: str, oai, anthropic_cl
     (::: quote ... -- attribution ... :::) to the entries' summaries in place. `item_text(id)` returns
     {"author", "title", "body"} for a corpus item; without it no pull quotes are offered.
     Non-fatal: any failure leaves the entries as they were. Returns a log for _v4b_meta."""
-    from analysis.own_callbacks import find_callbacks, resolve_callback_chart
+    from analysis.own_callbacks import find_callbacks, recent_callback_slugs, resolve_callback_chart
     log: dict = {"as_of": as_of, "retrieval": [], "applied_callbacks": [], "applied_context": [],
                  "applied_quotes": [], "rejected": []}
-    matches, rlog = find_callbacks(entries, oai, as_of, anthropic_client)
+    # owner, 22 Oct 2026: "You've put in the mortgage payments versus higher home prices driving higher affordability
+    # costs repeatedly in every edition this week." Pieces used in the last 10 sent editions only when nothing else fits.
+    try:
+        recent, log["recent_usage"] = recent_callback_slugs(as_of)
+    except Exception as ex:  # noqa: BLE001
+        recent, log["recent_usage"] = set(), {"error": str(ex)[:300]}
+    matches, rlog = find_callbacks(entries, oai, as_of, anthropic_client, recent_slugs=recent)
     log["retrieval"] = rlog
     try:
         qsources = _quote_sources(entries, item_text)
