@@ -226,7 +226,7 @@ def candidates(days: int = 7, min_clicks: int = 2, today: str | None = None) -> 
 INK, MUTED, LINK, LIGHT, CREAM, WHITE = "#3D3733", "#8A8580", "#0BB4FF", "#F6F7F3", "#DADFCE", "#FFFFFF"
 FONT = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
 MONO = "'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace"
-LOGO_URL = "https://noon.homeeconomics.us/images/logo-email-gray.png"
+LOGO_URL = "https://noon.homeeconomics.us/images/logo-email-black.png"   # full-strength #3D3733 (owner, 22 Oct 2026)
 LOGO_WIDTH = 120
 P = f'<p style="margin:0 0 18px 0;font-family:{FONT};font-size:16px;line-height:1.5;color:{INK};">'
 A = f'style="color:{LINK};text-decoration:none;"'
@@ -421,18 +421,19 @@ def _when(pieces: list[dict], today: str) -> str:
     return "Housing at Noon this past week"
 
 
-THANKS = "Thank you for reading Housing at Noon."
-REMINDER = ("It is my weekday email on the housing market: at noon Eastern, it sorts the day's housing news, data "
-            "releases and research into themes.")
+# Owner, 22 Oct 2026: conversational, "thanks" not "thank you", contractions, the reminder in parentheses.
+THANKS = "I wanted to say thanks for reading Housing at Noon"
+REMINDER = ("(my weekday email about the housing market, which sorts the day's housing news, data releases and "
+            "research into themes).")
 
 
 def _opening(pieces: list[dict], today: str, plain: bool = False) -> str:
     n = len(pieces)
     what = ("a link that is reserved for premium readers" if n == 1
             else f"{_NUM.get(n, str(n))} links that are reserved for premium readers")
-    here = "here is the" if n == 1 else "here are the"
+    here = "here's the" if n == 1 else "here are the"
     if plain:   # a gift link ran out: ordinary link, no "courtesy" claim (Aziz, 22 Oct 2026)
-        return f"In {_when(pieces, today)}, you clicked {what}. {here.capitalize()} {_noun(pieces)} you clicked:"
+        return f"In {_when(pieces, today)}, you clicked {what}. {here[0].upper() + here[1:]} {_noun(pieces)} you clicked:"
     return f"In {_when(pieces, today)}, you clicked {what}. As a courtesy, {here} {_noun(pieces)} you clicked:"
 
 
@@ -441,7 +442,7 @@ def subject_for(pieces: list[dict], today: str) -> str:
 
 
 PREMIUM_LINE = ("If you'd like every source every day, the premium edition has every theme of the day, a direct link "
-                "to every source and the daily chart. I'd like to offer you 20% off your first year.")
+                "to every source and the daily chart. I'd love to offer you 20% off your first year.")
 
 
 def _discount(code: str, end: str) -> tuple[str, str]:
@@ -475,7 +476,7 @@ def _discount(code: str, end: str) -> tuple[str, str]:
     return h, t
 
 
-CLOSING = "Thanks again for reading. If you have a question or a suggestion, reply any time. It comes straight to me."
+CLOSING = "Thanks again for reading. If you have a question or a suggestion, just reply. It comes straight to me."
 
 MOBILE_CSS = ("<style>@media only screen and (max-width:480px){.hn-col{padding:20px 16px 8px 16px !important;}"
               ".hn-col img{width:110px !important;}.hn-box{padding:18px 14px 16px 14px !important;}"
@@ -499,7 +500,7 @@ def _wrap(body_h: str, unsub: str | None) -> str:
 
 def _intro(person: dict, today: str, plain: bool = False) -> tuple[str, str]:
     opening = _opening(person["pieces"], today, plain)
-    h = f"{P}Hi there,</p>{P}{_esc(THANKS)} {_esc(REMINDER)}</p>{P}{_esc(opening)}</p>"
+    h = f"{P}Hi there,</p>{P}{_esc(THANKS)} {_esc(REMINDER)}</p>{P}{_esc(opening)}</p>"   # one sentence
     t = f"Hi there,\n\n{THANKS} {REMINDER}\n\n{opening}"
     return h, t
 
@@ -534,15 +535,15 @@ def _manager_note() -> tuple[str, str]:
         "",
         "Hi [name],",
         "",
-        "I would like to expense a subscription to Housing at Noon, a daily email on the US housing market from Aziz "
+        "I'd like to expense a subscription to Housing at Noon, a daily email on the US housing market from Aziz "
         "Sunderji at Home Economics. Each weekday at noon Eastern it sorts the day's housing news, data releases and "
-        "research into themes, with a direct link to every source. It replaces the time I now spend scanning a dozen "
+        "research into themes, with a direct link to every source. It'd replace the time I now spend scanning a dozen "
         "sources each day.",
         "",
-        f"It costs ${MONTHLY_USD} a month or ${ANNUAL_USD} a year, and it can be cancelled at any time. There is a "
+        f"It costs ${MONTHLY_USD} a month or ${ANNUAL_USD} a year, and it can be cancelled at any time. There's a "
         "team rate for three or more people, if others here would find it useful.",
         "",
-        "Would it be all right for me to expense it?",
+        "Would it be OK for me to expense it?",
         "",
         "[Your name]",
     ]
@@ -555,13 +556,13 @@ def _manager_note() -> tuple[str, str]:
     return h, text
 
 
-EXPENSE = ("If you read Housing at Noon for work, your employer may be able to pay for it. Subscriptions to research "
-           "services are often reimbursable as a business expense. Every payment comes with a Stripe receipt you can "
-           "attach to an expense report, and if your finance team needs a formal invoice with your company's name and "
+EXPENSE = ("If you read Housing at Noon for work, your employer may well pay for it. Subscriptions to research "
+           "services are usually reimbursable as a business expense. Every payment comes with a Stripe receipt you can "
+           "attach to an expense report, and if your finance team needs a proper invoice with your company's name and "
            "address, I'm happy to send one.")
 TEAM = ("If three or more people on your team would read it, I offer team pricing with a single invoice for the group. "
         "Reply with the number of people and I'll send you a quote.")
-FORWARD = "If it would help, here is a short note you could send to your manager:"
+FORWARD = "If it helps, here's a short note you could send to your manager:"
 
 
 def corporate_email(person: dict, code: str, end: str, unsub: str | None, gift_cache: dict, today: str) -> dict:
