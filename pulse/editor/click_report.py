@@ -143,7 +143,7 @@ def build(edition: str, days: int) -> tuple[str, list[dict]]:
                  f"({pct(len(per_person), len(delivered['free']))} of delivered free)")
     if per_person:
         dist = Counter(min(n, 3) for n in per_person.values())
-        lines.append(f"  1 wall click: {dist.get(1, 0)} · 2: {dist.get(2, 0)} · 3+: {dist.get(3, 0)}")
+        lines.append(f"  of whom {dist.get(1, 0)} clicked one walled link, {dist.get(2, 0)} clicked two, {dist.get(3, 0)} clicked three or more")
     if by_link:
         lines.append("most-wanted sources behind the wall:")
         for lid, n in by_link.most_common(6):
@@ -159,7 +159,7 @@ def build(edition: str, days: int) -> tuple[str, list[dict]]:
         for u, n in premium_links.most_common(4):
             lines.append(f"  {n:3d}  {(urlparse(u).netloc or '').removeprefix('www.')} {urlparse(u).path[:50]}")
     if bounced or complained:
-        lines.append(f"bounced {bounced} · complained {complained}")
+        lines.append(f"{bounced} addresses bounced · {complained} marked the email as spam")
     lines.append(f"repeat wall-hitters (2+ editions in {days} days): {len(rep):,}")
     for r in rep[:5]:
         lines.append(f"  {r['email']}  {r['editions']} editions, {r['hits']} clicks")
