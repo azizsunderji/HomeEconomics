@@ -367,11 +367,22 @@ def _table(inner: str, td_style: str, margin: str = "0", bg: str | None = None, 
             f'</td></tr></table>')
 
 
-def _piece_lines(pieces: list[dict], gift_cache: dict) -> tuple[str, str, int]:
-    """Card list (HTML), plain-text list, and how many gift links were used."""
-    cards, items_t, n_gift = [], [], 0
+def _gift_wanted(url: str) -> bool:
+    """True when this URL is one we would normally gift (FT, WSJ, Bloomberg)."""
+    try:
+        return bool(_gift_eligible and _gift_eligible(url))
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def _piece_lines(pieces: list[dict], gift_cache: dict) -> tuple[str, str, int, bool]:
+    """Card list (HTML), plain-text list, how many gift links were used, and whether any article that should
+    have had a gift link went out without one (then the email drops the courtesy wording: Aziz, 22 Oct 2026)."""
+    cards, items_t, n_gift, missing = [], [], 0, False
     for p in pieces:
         g = _gift(p["url"], gift_cache)
+        if not g and _gift_wanted(p["url"]):
+            missing = True
         href = g or p["url"]
         label = _label(p)
         note_h = note_t = ""
@@ -384,7 +395,7 @@ def _piece_lines(pieces: list[dict], gift_cache: dict) -> tuple[str, str, int]:
                  f'font-size:17px;line-height:1.4;">{_esc(label)}</a>{note_h}')
         cards.append(_table(inner, "border-radius:6px;padding:14px 16px;", "0 0 10px 0", LIGHT))
         items_t.append(f"  {label}\n  {href}{note_t}")
-    return (f'<div style="margin:0 0 26px 0;">{"".join(cards)}</div>', "\n\n".join(items_t), n_gift)
+    return (f'<div style="margin:0 0 26px 0;">{"".join(cards)}</div>', "\n\n".join(items_t), n_gift, missing)
 
 
 def _noun(pieces: list[dict]) -> str:
@@ -415,11 +426,13 @@ REMINDER = ("It is my weekday email on the housing market: at noon Eastern, it s
             "releases and research into themes.")
 
 
-def _opening(pieces: list[dict], today: str) -> str:
+def _opening(pieces: list[dict], today: str, plain: bool = False) -> str:
     n = len(pieces)
     what = ("a link that is reserved for premium readers" if n == 1
             else f"{_NUM.get(n, str(n))} links that are reserved for premium readers")
     here = "here is the" if n == 1 else "here are the"
+    if plain:   # a gift link ran out: ordinary link, no "courtesy" claim (Aziz, 22 Oct 2026)
+        return f"In {_when(pieces, today)}, you clicked {what}. {here.capitalize()} {_noun(pieces)} you clicked:"
     return f"In {_when(pieces, today)}, you clicked {what}. As a courtesy, {here} {_noun(pieces)} you clicked:"
 
 
@@ -484,17 +497,17 @@ def _wrap(body_h: str, unsub: str | None) -> str:
     return render.with_footer(doc, unsub)
 
 
-def _intro(person: dict, today: str) -> tuple[str, str]:
-    opening = _opening(person["pieces"], today)
+def _intro(person: dict, today: str, plain: bool = False) -> tuple[str, str]:
+    opening = _opening(person["pieces"], today, plain)
     h = f"{P}Hi there,</p>{P}{_esc(THANKS)} {_esc(REMINDER)}</p>{P}{_esc(opening)}</p>"
     t = f"Hi there,\n\n{THANKS} {REMINDER}\n\n{opening}"
     return h, t
 
 
 def personal_email(person: dict, code: str, end: str, unsub: str | None, gift_cache: dict, today: str) -> dict:
-    lh, lt, n_gift = _piece_lines(person["pieces"], gift_cache)
+    lh, lt, n_gift, no_gift = _piece_lines(person["pieces"], gift_cache)
     dh, dt = _discount(code, end)
-    ih, it = _intro(person, today)
+    ih, it = _intro(person, today, plain=no_gift)
     body_h = f"{ih}{lh}{P}{_esc(PREMIUM_LINE)}</p>{dh}{P}{_esc(CLOSING)}</p>{SIGNATURE}"
     text = f"{it}\n\n{lt}\n\n{PREMIUM_LINE}\n\n{dt}\n\n{CLOSING}\n\n{SIGNATURE_TEXT}\n"
     return {"subject": subject_for(person["pieces"], today), "html": _wrap(body_h, unsub),
@@ -552,9 +565,9 @@ FORWARD = "If it would help, here is a short note you could send to your manager
 
 
 def corporate_email(person: dict, code: str, end: str, unsub: str | None, gift_cache: dict, today: str) -> dict:
-    lh, lt, n_gift = _piece_lines(person["pieces"], gift_cache)
+    lh, lt, n_gift, no_gift = _piece_lines(person["pieces"], gift_cache)
     dh, dt = _discount(code, end)
-    ih, it = _intro(person, today)
+    ih, it = _intro(person, today, plain=no_gift)
     nh, nt = _manager_note()
     body_h = (f"{ih}{lh}{P}{_esc(PREMIUM_LINE)}</p>{dh}{P}{_esc(EXPENSE)}</p>{P}{_esc(TEAM)}</p>"
               f"{P}{_esc(FORWARD)}</p>{nh}{P}{_esc(CLOSING)}</p>{SIGNATURE}")
