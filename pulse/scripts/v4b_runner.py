@@ -927,7 +927,7 @@ def add_callbacks_and_context(entries: list[dict], as_of: str, oai, anthropic_cl
     log: dict = {"as_of": as_of, "retrieval": [], "applied_callbacks": [], "applied_context": [],
                  "applied_quotes": [], "rejected": []}
     # owner, 22 Oct 2026: "You've put in the mortgage payments versus higher home prices driving higher affordability
-    # costs repeatedly in every edition this week." Pieces used in the last 10 sent editions only when nothing else fits.
+    # costs repeatedly in every edition this week." Pieces used in the last 10 sent editions are never picked.
     try:
         recent, log["recent_usage"] = recent_callback_slugs(as_of)
     except Exception as ex:  # noqa: BLE001

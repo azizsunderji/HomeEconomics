@@ -121,7 +121,7 @@ def find_callbacks(entries: list[dict], openai_client, as_of: str, anthropic_cli
     rates it; a pick with strength >= JUDGE_MIN_STRENGTH is a match. Returns ({entry index: match},
     log). A match carries score (cosine), strength, reason, slug, url, title, date, summary and the
     piece's chart closest to the entry {hosted_url, caption}. recent_slugs: pieces whose chart or callback ran in
-    one of the last RECENT_EDITIONS sent editions (see recent_callback_slugs); used only when nothing else fits."""
+    one of the last RECENT_EDITIONS sent editions (see recent_callback_slugs); never picked."""
     min_strength = JUDGE_MIN_STRENGTH if min_strength is None else min_strength
     recent = set(recent_slugs or ())
     pubs = eligible_pubs(load_own_publications() if pubs is None else pubs, as_of)
@@ -142,16 +142,18 @@ def find_callbacks(entries: list[dict], openai_client, as_of: str, anthropic_cli
             continue
         try:
             v = judge_entry(e, [pubs[j] for j, _ in cand[i]], anthropic_client, judge_model, recent=recent)
-            # recency rule (owner, 22 Oct 2026), enforced in code as well as in the judge's prompt: a recently used
-            # pick stands only if the judge, shown the other candidates alone, finds none of them relevant enough
-            fresh = [pubs[j] for j, _ in cand[i] if pubs[j]["slug"] not in recent]
-            if v["pick"] in recent and v["strength"] >= min_strength:
-                v2 = judge_entry(e, fresh, anthropic_client, judge_model) if fresh else {"pick": None, "strength": 0}
+            # recency rule (owner, 22 Oct 2026; made hard the same day), enforced in code as well as in the judge's
+            # prompt: a recently used piece is never picked. If the judge picks one anyway, it is asked again with the
+            # other candidates alone; if none of them is relevant enough, the entry gets no callback that day.
+            if v["pick"] in recent:
+                fresh = [pubs[j] for j, _ in cand[i] if pubs[j]["slug"] not in recent]
+                v2 = judge_entry(e, fresh, anthropic_client, judge_model) if fresh else \
+                    {"pick": None, "strength": 0, "reason": "every candidate ran in a recent edition"}
                 if v2["pick"] and v2["strength"] >= min_strength:
                     rec["recency"] = f"{v['pick']} ran in a recent edition; replaced by {v2['pick']}"
-                    v = v2
                 else:
-                    rec["recency"] = f"{v['pick']} ran in a recent edition; kept, no other relevant candidate"
+                    rec["recency"] = f"{v['pick']} ran in a recent edition; dropped, no other relevant candidate"
+                v = v2
         except Exception as ex:  # noqa: BLE001
             v = {"pick": None, "strength": 0, "reason": f"judge failed: {ex}"[:200]}
         rec["verdict"] = v
@@ -219,8 +221,8 @@ def judge_entry(entry: dict, cands: list[dict], anthropic_client, model: str, re
     note = ""
     if any(c["slug"] in recent for c in cands):
         note = (f"\n\nArticles marked (RECENTLY USED) already had a callback or chart in one of the last {RECENT_EDITIONS} "
-                "editions, and Aziz does not want the same chart repeated. Pick one of them only if no other article "
-                "here would rate 3 or more; otherwise pick the most relevant article that is not marked.")
+                "editions, and Aziz does not want the same chart repeated. Never pick a marked article, however well it "
+                "fits. Pick the most relevant article that is not marked, or null if none of them qualifies.")
     user = (f"NEWS ENTRY\nTitle: {entry.get('title') or ''}\n{_plain(entry.get('summary'))[:2500]}\n\n"
             f"EARLIER ARTICLES (slug in brackets)\n" + "\n".join(lines) + note +
             "\n\nWhich one article, if any, would make the best callback? JSON only.")
@@ -245,9 +247,9 @@ def judge_entry(entry: dict, cands: list[dict], anthropic_client, model: str, re
 # ── recency rule (owner, 22 Oct 2026) ──────────────────────────────────
 # Owner: "You've put in the mortgage payments versus higher home prices driving higher affordability costs
 # repeatedly in every edition this week." (the payment-decomposition chart of expensive-housing-is-a-secular-trend
-# ran on 19, 20 and, in the first draft, 22 Oct; the-housing-hangover-has-cleared on 15, 20 and 22 Oct). Rule: a piece
-# whose chart or callback ran in any of the last RECENT_EDITIONS sent editions is chosen again only when no other
-# candidate is relevant (strength >= JUDGE_MIN_STRENGTH); otherwise the most relevant piece not used recently wins.
+# ran on 19, 20 and, in the first draft, 22 Oct; the-housing-hangover-has-cleared on 15, 20 and 22 Oct). Hard rule: a
+# piece whose chart or callback ran in any of the last RECENT_EDITIONS sent editions is never picked, even when no other
+# candidate is relevant; the most relevant piece not used recently wins, and if there is none the entry gets no callback.
 # "Used" = an /images/own/<slug>/ chart or a "free"-titled link to /p/<slug> in the sent text, whoever put it there
 # (pipeline or the owner's edits). Source of the sent editions, first that answers: the drafts DB (on the server),
 # the editor's /api/own-recent-usage (from GitHub Actions), the pipeline's own briefings in pulse.db (fallback;
