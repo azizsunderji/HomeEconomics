@@ -156,6 +156,31 @@ def set_status(date: str, status: str, send_log: str | None = None) -> dict:
     return get(date)  # type: ignore[return-value]
 
 
+def claim_send(date: str, who: str) -> bool:
+    """Atomically take the right to send `date`. True for exactly one caller: the row flips to status 'sent' with
+    send_log 'sending (who)' in a single UPDATE guarded by status != 'sent', so a second button press, or the 11:59
+    timer during a manual send, cannot send again (owner, 22 Oct 2026). Call release_send() if the send then fails."""
+    ts = now_iso()
+    with connect() as conn:
+        cur = conn.execute(
+            "UPDATE drafts SET status = 'sent', sent_at = ?, send_log = ?, updated_at = ? "
+            "WHERE date = ? AND status != 'sent'",
+            (ts, f"sending ({who}) since {ts}", ts, date),
+        )
+        return cur.rowcount == 1
+
+
+def release_send(date: str, reason: str) -> None:
+    """Undo claim_send() after a failed send so the draft can be sent again."""
+    ts = now_iso()
+    with connect() as conn:
+        conn.execute(
+            "UPDATE drafts SET status = 'draft', sent_at = NULL, send_log = ?, updated_at = ? "
+            "WHERE date = ? AND send_log LIKE 'sending (%'",
+            (f"send failed: {reason}"[:500], ts, date),
+        )
+
+
 def mark_notified(date: str) -> None:
     with connect() as conn:
         conn.execute("UPDATE drafts SET notified_at = ? WHERE date = ?", (now_iso(), date))

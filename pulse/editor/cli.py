@@ -76,11 +76,19 @@ def cmd_send(args) -> int:
     if row["status"] == "held" and not args.force:
         logger.info(f"{date}: held by the owner — not sending")
         return 0
-    ok, line = sender.send_final(row["json"])
+    if not drafts.claim_send(date, "timer"):     # the owner's Send now may be mid-flight (22 Oct 2026)
+        logger.info(f"{date}: already sent or a manual send is in progress — not sending")
+        return 0
+    try:
+        ok, line = sender.send_final(row["json"])
+    except Exception as e:  # noqa: BLE001
+        drafts.release_send(date, repr(e))
+        raise
     if ok:
         drafts.set_status(date, "sent", send_log=f"timer: {line}")
         _pdf_after_send(row["json"])
         return 0
+    drafts.release_send(date, line)
     logger.error(f"{date}: send failed — {line}")
     sender.send_alert(f"Send FAILED for {date}", line)
     return 1

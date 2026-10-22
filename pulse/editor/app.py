@@ -387,8 +387,16 @@ def send_now(request: Request, date: str, body: dict[str, Any] = Body(default={}
         raise HTTPException(status_code=404, detail="no such draft")
     if row["status"] == "sent":
         raise HTTPException(status_code=400, detail="already sent")
-    ok, line = sender.send_final(row["json"])
+    # Claim first (atomic), send second: a second click or the noon timer cannot send twice (owner, 22 Oct 2026).
+    if not drafts.claim_send(date, "manual"):
+        raise HTTPException(status_code=409, detail="already sent or a send is in progress")
+    try:
+        ok, line = sender.send_final(row["json"])
+    except Exception as e:  # noqa: BLE001
+        drafts.release_send(date, repr(e))
+        raise
     if not ok:
+        drafts.release_send(date, line)
         raise HTTPException(status_code=502, detail=line)
     payload = _payload(drafts.set_status(date, "sent", send_log=f"manual: {line}"))
     # Same PDF step the timer path runs (cli._pdf_after_send); in a thread so
