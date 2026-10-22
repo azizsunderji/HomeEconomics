@@ -1,0 +1,14 @@
+[Unit]
+Description=Housing at Noon courtesy emails to free readers who clicked a walled link in today's edition
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/aziz/work/HomeEconomics/pulse/editor
+EnvironmentFile=/home/aziz/.noon_env
+# today's clicks only (courtesy.py defaults: --days 0 --min-clicks 1), one email per person ever, corporate first,
+# BCC to the owner; creates or reuses today's NOON<MMDD> code; Telegram summary via ~/.local/bin/tgnotify
+ExecStart=/home/aziz/work/pulse-venv/bin/python courtesy.py --send --create-code --telegram
+# gift links are minted 20 s apart in the server Chrome, so a busy day can take several minutes
+TimeoutStartSec=45min
+StandardOutput=append:/home/aziz/work/noon/logs/courtesy.log
+StandardError=append:/home/aziz/work/noon/logs/courtesy.log

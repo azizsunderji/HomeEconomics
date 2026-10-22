@@ -5,24 +5,34 @@ Remember let's include a gift link there." and "If the people hitting the wall a
 a different email. It is focused on all the things for corporate readers: the expensing language, group discounts, a
 prewritten email they can forward, and anything else you can think of that would sell a corporate reader."
 
-Who gets it: free-tier subscribers with --min-clicks (default 2) or more walled clicks in the last --days (default 7)
-editions, after dropping mail-security link scanners (click_report.scanner_emails, per edition), premium subscribers,
-anyone no longer subscribed, the owner's own addresses, and anyone already in courtesy_sent (once per person). Each
-email lists up to five of the sources the person tried to open, most recent first, with a gift link for FT, WSJ and
-Bloomberg when gift_links.py can make one, and a 20%-off-the-first-year Stripe promotion code valid for 7 days.
+Revised the same evening (owner, 21 Oct 2026): "Those emails are mostly fine, but they're pretty impersonal and curt. I
+want them to be much warmer and friendlier. Instead of 'Hi' it could be 'Hi there' and then thank them for reading. We
+should send this on the same day that they clicked so we should be doing this every day. We can say, 'In today's Housing
+at Noon.' You should remind them what Housing at Noon is and you can say, 'As a courtesy here's the article you
+clicked.' You don't need to say the piece from ft.com. Just give them the link to the piece. Make it look nice."
+
+Who gets it: by default, free-tier subscribers with one or more walled clicks in TODAY's edition (--days 0,
+--min-clicks 1; the noon-courtesy.timer runs it Mon-Fri at 5:20 pm ET), after dropping mail-security link scanners
+(click_report.scanner_emails, per edition), premium subscribers, anyone no longer subscribed, the owner's own addresses,
+and anyone already in courtesy_sent (one email per person, ever). Corporate readers come first, so they get the scarce
+gift links. Each email lists up to five of the articles the person clicked, most recent first, with the article's own
+headline as the link text (pulse.db title, else the page's og:title, else the theme), a gift link for FT, WSJ and
+Bloomberg when gift_links.py can make one, and a 20%-off-the-first-year Stripe promotion code NOON<MMDD> valid 7 days.
+Every real send is BCC'd to the owner (paths.OWNER_EMAIL), because Resend sends do not appear in his Gmail Sent folder;
+--test-to goes to him directly and carries no BCC. Every test and send is logged to ~/work/noon/logs/courtesy_sends.jsonl.
 
 Two kinds, chosen by the address (classify): personal mailboxes (Gmail, iCloud, university addresses and so on) get the
 short note; every other domain gets the corporate note (expensing, invoice on request, team pricing, a note to forward
-to a manager).
+to a manager). Both are styled like the edition: logo masthead, article cards, a discount callout with a button.
 
-    courtesy.py                                  # preview (default) into ~/work/noon/clicks/courtesy_preview
-    courtesy.py --days 7 --preview DIR           # preview into DIR: one HTML per recipient + previews.json
-    courtesy.py --min-clicks 1 --preview DIR     # lower threshold, to see the copy on more real data
-    courtesy.py --test-to aziz@home-economics.us # one sample of each kind to the owner, subject [TEST]
+    courtesy.py                                  # preview (default) of today's clicks into ~/work/noon/clicks/courtesy_preview
+    courtesy.py --days 7 --preview DIR           # preview the last 7 days into DIR: one HTML per recipient + previews.json
+    courtesy.py --test-to aziz@home-economics.us --days 7  # one sample of each kind to the owner, subject [TEST]
     courtesy.py --create-code                    # create (idempotently) today's Stripe promotion code, print it
-    courtesy.py --send --create-code             # real send; or --send --code NOON1021 with an existing active code
+    courtesy.py --send --create-code --telegram  # the daily job: real send, then a Telegram summary via tgnotify
 
-Nothing is sent without --test-to or --send, and --send refuses to run without a verified active code.
+Nothing is sent without --test-to or --send, and --send refuses to run without a verified active code. With no one to
+write to, --send creates no code and only reports.
 """
 from __future__ import annotations
 
@@ -128,7 +138,9 @@ def _conn():
 def _gift(url: str, cache: dict) -> str | None:
     """Gift URL, or None. Every gift_link() call counts as a hand-out (an FT link allows three views) and a new
     link spends a monthly credit, so previews (cache["_preview"]) never call it: an eligible URL comes back as
-    itself, and the preview shows the gift wording over the plain link."""
+    itself, and the preview shows the gift wording over the plain link. On a real send it is called once per
+    reader and article, never reused from an earlier reader in the same run, so FT's three-view limit is counted
+    per reader (gift_links reuses its own cached link without opening the browser)."""
     if _gift_link is None:
         return None
     if cache.get("_preview"):
@@ -136,13 +148,13 @@ def _gift(url: str, cache: dict) -> str | None:
             return url if _gift_eligible and _gift_eligible(url) else None
         except Exception:  # noqa: BLE001
             return None
-    if url not in cache:
-        try:
-            cache[url] = _gift_link(url) or None
-        except Exception as e:  # noqa: BLE001
-            logger.warning(f"gift link failed for {url}: {e}")
-            cache[url] = None
-    return cache[url]
+    try:
+        g = _gift_link(url) or None
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"gift link failed for {url}: {e}")
+        g = None
+    cache.setdefault("_used", []).append((url, g))
+    return g
 
 
 def candidates(days: int = 7, min_clicks: int = 2, today: str | None = None) -> tuple[list[dict], dict]:
@@ -209,11 +221,18 @@ def candidates(days: int = 7, min_clicks: int = 2, today: str | None = None) -> 
 
 # ---------------------------------------------------------------- copy
 
-INK, GREY, LINK = "#3D3733", "#7F7570", "#1a73e8"
-P = f'<p style="margin:0 0 16px 0;">'
-SIGNATURE = ('<div>Aziz Sunderji<br><a href="https://www.homeeconomics.us" style="color:' + LINK + ';">'
-             'www.homeeconomics.us</a><br><a href="https://fantastical.app/azizsunderji/my-template" style="color:'
-             + LINK + ';">Schedule meeting</a></div>')
+# Look of the edition (pulse/scripts/delivery/email_lunch.py): white page, 600px column, gray logo top left, system
+# sans stack, ink #3D3733, links #0BB4FF, #F6F7F3 boxes, cream #DADFCE as the only rule colour. No bold anywhere.
+INK, MUTED, LINK, LIGHT, CREAM, WHITE = "#3D3733", "#8A8580", "#0BB4FF", "#F6F7F3", "#DADFCE", "#FFFFFF"
+FONT = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
+MONO = "'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace"
+LOGO_URL = "https://noon.homeeconomics.us/images/logo-email-gray.png"
+LOGO_WIDTH = 120
+P = f'<p style="margin:0 0 18px 0;font-family:{FONT};font-size:16px;line-height:1.5;color:{INK};">'
+A = f'style="color:{LINK};text-decoration:none;"'
+SIGNATURE = (f'<div style="margin:28px 0 0 0;font-family:{FONT};font-size:15px;line-height:1.55;color:{INK};">'
+             f'Aziz Sunderji<br><a href="https://www.homeeconomics.us" {A}>www.homeeconomics.us</a><br>'
+             f'<a href="https://fantastical.app/azizsunderji/my-template" {A}>Schedule meeting</a></div>')
 SIGNATURE_TEXT = "Aziz Sunderji\nwww.homeeconomics.us\nSchedule meeting: https://fantastical.app/azizsunderji/my-template"
 
 
@@ -238,78 +257,247 @@ FRONT_PAGES = {"WSJ": "The Wall Street Journal", "NYT": "The New York Times", "W
 _NUM = {1: "one", 2: "two", 3: "three", 4: "four", 5: "five"}
 
 
+# The article's own headline is the link text (owner, 21 Oct 2026: "Just give them the link to the piece"). The edition
+# keeps no source titles (its anchor texts are verbs such as "reported"), so the headline comes from, in order: the
+# collector's title for the same URL in pulse.db (RSS and newsletter items carry the publisher's headline), the page's
+# og:title / <title> fetched at build time with a short timeout, and finally the theme title from the edition.
+TITLE_TIMEOUT_S = 5
+_UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) "
+       "Chrome/124.0 Safari/537.36")
+_JUNK_TITLE = re.compile(r"subscribe|just a moment|access denied|are you a robot|attention required|not found|"
+                         r"log ?in|sign ?in|sign up|error|verify|captcha|^\W*$|^(x|twitter|home)$", re.I)
+_SITE_NAMES = {"financial times", "ft", "wsj", "the wall street journal", "wall street journal", "bloomberg",
+               "bloomberg.com", "reuters", "the new york times", "nytimes.com", "the washington post", "cnbc",
+               "axios", "politico", "the economist", "marketwatch", "barron's", "yahoo finance", "fortune",
+               "business insider", "substack", "realtor.com", "redfin", "zillow", "nar", "census.gov"}
+_title_cache: dict[str, str | None] = {}
+
+
+def _clean_title(t: str, host: str) -> str | None:
+    t = re.sub(r"\s+", " ", _html.unescape(t or "")).strip()
+    # drop a trailing " | Site" / " - Site" when the last segment is the publication's name
+    m = re.match(r"^(.*\S)\s+[|\-–—:]\s+([^|\-–—:]{2,40})$", t)
+    if m:
+        tail = m.group(2).strip().lower()
+        site = re.sub(r"[^a-z]", "", host.split(".")[-2] if host.count(".") >= 1 else host)
+        if tail in _SITE_NAMES or (site and site in re.sub(r"[^a-z]", "", tail)):
+            t = m.group(1).strip()
+    if len(t) < 12 or len(t) > 200 or _JUNK_TITLE.search(t):
+        return None
+    return t
+
+
+def _db_title(url: str, host: str) -> str | None:
+    path = os.environ.get("PULSE_DB")
+    if not path or not os.path.exists(path):
+        return None
+    base = url.split("#")[0].split("?")[0]
+    try:
+        import sqlite3
+        con = sqlite3.connect(f"file:{path}?mode=ro", uri=True, timeout=5)
+        rows = con.execute("SELECT title FROM items WHERE url IN (?,?,?,?) ORDER BY id DESC LIMIT 5",
+                           (url, base, base.rstrip("/"), base.rstrip("/") + "/")).fetchall()
+        con.close()
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"pulse.db title lookup failed for {url}: {e}")
+        return None
+    for (t,) in rows:
+        c = _clean_title(t, host)
+        if c:
+            return c
+    return None
+
+
+def _fetch_title(url: str, host: str = "") -> str | None:
+    """og:title (else twitter:title, else <title>) of the page, or None on any error or a paywall/robot title."""
+    host = host or (urllib.parse.urlsplit(url).hostname or "").removeprefix("www.")
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": _UA, "Accept": "text/html,*/*;q=0.5",
+                                                   "Accept-Language": "en-US,en;q=0.9"})
+        with urllib.request.urlopen(req, timeout=TITLE_TIMEOUT_S) as r:
+            if "html" not in (r.headers.get("Content-Type") or "").lower():
+                return None
+            page = r.read(400_000).decode(r.headers.get_content_charset() or "utf-8", "replace")
+    except Exception:  # noqa: BLE001
+        return None
+    for pat in (r'<meta[^>]+(?:property|name)=["\']og:title["\'][^>]+content=["\']([^"\']+)',
+                r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+(?:property|name)=["\']og:title["\']',
+                r'<meta[^>]+name=["\']twitter:title["\'][^>]+content=["\']([^"\']+)',
+                r"<title[^>]*>([^<]+)</title>"):
+        m = re.search(pat, page, re.I)
+        if m:
+            c = _clean_title(m.group(1), host)
+            if c:
+                return c
+    return None
+
+
+def _headline(p: dict) -> str | None:
+    url = p["url"]
+    if url not in _title_cache:
+        host = p.get("host") or (urllib.parse.urlsplit(url).hostname or "").removeprefix("www.")
+        _title_cache[url] = _db_title(url, host) or _fetch_title(url, host)
+    return _title_cache[url]
+
+
 def _label(p: dict) -> str:
     m = re.search(r"freedomforum\.org/dfp/pdf\d+/[A-Z]{2}_([A-Z]+)\.pdf", p["url"])
     if m:
         day = datetime.strptime(p["edition"], "%Y-%m-%d").strftime("%B %-d")
         return f"The front page of {FRONT_PAGES.get(m.group(1), 'a newspaper')} for {day} (a PDF)"
-    # anchor texts in the edition are usually a verb ("reported", "framed"), so the theme is the better label
-    if len(p["text"]) >= 25:
-        return p["text"]
-    return p["theme"] or p["text"] or p["host"]
+    m = re.match(r"https?://(?:www\.)?(?:x|twitter)\.com/([A-Za-z0-9_]+)/status/", p["url"])
+    if m:   # X's page title is "Name (@handle) on X"
+        t = _fetch_title(p["url"], "x.com")
+        who = t[:-5] if t and t.endswith(" on X") else f"@{m.group(1)}"
+        return f"A post by {who} on X"
+    # anchor texts in the edition are usually a verb ("reported", "framed"), so they are a last resort
+    return _headline(p) or p["theme"] or (p["text"] if len(p["text"]) >= 25 else "") or p["host"]
+
+
+GIFT_NOTE = "This is a gift link, so it opens without a subscription."
+
+
+def _table(inner: str, td_style: str, margin: str = "0", bg: str | None = None, cls: str = "") -> str:
+    """One-cell layout table (tables survive Outlook and Gmail where div padding and radius do not)."""
+    bga = f' bgcolor="{bg}"' if bg else ""
+    bgs = f"background-color:{bg};" if bg else ""
+    ca = f' class="{cls}"' if cls else ""
+    return (f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" '
+            f'style="border-collapse:separate;margin:{margin};"><tr><td{bga}{ca} style="{bgs}{td_style}">{inner}'
+            f'</td></tr></table>')
 
 
 def _piece_lines(pieces: list[dict], gift_cache: dict) -> tuple[str, str, int]:
-    """HTML list, plain-text list, and how many gift links were used."""
-    items_h, items_t, n_gift = [], [], 0
+    """Card list (HTML), plain-text list, and how many gift links were used."""
+    cards, items_t, n_gift = [], [], 0
     for p in pieces:
         g = _gift(p["url"], gift_cache)
         href = g or p["url"]
         label = _label(p)
-        where = f", the piece from {p['host']}" if p["host"] and "freedomforum" not in p["host"] else ""
-        gift_t = ""
+        note_h = note_t = ""
         if g:
             n_gift += 1
-            gift_t = " This one is a gift link, so it opens without a subscription."
-        items_h.append(f'<div style="margin:0 0 12px 0;">&bull; <a href="{_esc(href)}" style="color:{LINK};">'
-                       f'{_esc(label)}</a>{_esc(where)}.{_esc(gift_t)}</div>')
-        items_t.append(f"• {label}{where}.{gift_t}\n  {href}")
-    return "".join(items_h) + '<div style="height:4px;"></div>', "\n\n".join(items_t), n_gift
+            note_h = (f'<div style="margin:6px 0 0 0;font-family:{FONT};font-size:13px;line-height:1.4;'
+                      f'color:{MUTED};">{_esc(GIFT_NOTE)}</div>')
+            note_t = f"\n  {GIFT_NOTE}"
+        inner = (f'<a href="{_esc(href)}" style="color:{LINK};text-decoration:none;font-family:{FONT};'
+                 f'font-size:17px;line-height:1.4;">{_esc(label)}</a>{note_h}')
+        cards.append(_table(inner, "border-radius:6px;padding:14px 16px;", "0 0 10px 0", LIGHT))
+        items_t.append(f"  {label}\n  {href}{note_t}")
+    return (f'<div style="margin:0 0 26px 0;">{"".join(cards)}</div>', "\n\n".join(items_t), n_gift)
 
 
-def _opening(pieces: list[dict]) -> str:
+def _noun(pieces: list[dict]) -> str:
     n = len(pieces)
+    fronts = sum(1 for p in pieces if "freedomforum" in p["url"])
+    posts = sum(1 for p in pieces if re.match(r"https?://(?:www\.)?(?:x\.com|twitter\.com|bsky\.app)/", p["url"]))
+    if fronts == n:
+        return "front page" if n == 1 else "front pages"
+    if posts == n:
+        return "post" if n == 1 else "posts"
+    if fronts or posts:
+        return "link" if n == 1 else "links"
+    return "article" if n == 1 else "articles"
+
+
+def _when(pieces: list[dict], today: str) -> str:
+    """"today's Housing at Noon" for today's edition, the weekday for another single edition, else the past week."""
     eds = sorted({p["edition"] for p in pieces})
-    when = (f"In {datetime.strptime(eds[0], '%Y-%m-%d').strftime('%A')}'s Housing at Noon"
-            if len(eds) == 1 else "In Housing at Noon this past week")
-    what = "one of the sources" if n == 1 else f"{_NUM.get(n, str(n))} of the sources"
-    here = "Here it is, so you can read it." if n == 1 else "Here they are, so you can read them."
-    return f"{when}, you tried to open {what}, and the free edition sent you to the upgrade page instead. {here}"
+    if eds == [today]:
+        return "today's Housing at Noon"
+    if len(eds) == 1:
+        return f"{datetime.strptime(eds[0], '%Y-%m-%d').strftime('%A')}'s Housing at Noon"
+    return "Housing at Noon this past week"
+
+
+THANKS = "Thank you for reading Housing at Noon."
+REMINDER = ("It is my weekday email on the housing market: at noon Eastern, it sorts the day's housing news, data "
+            "releases and research into themes.")
+
+
+def _opening(pieces: list[dict], today: str) -> str:
+    n = len(pieces)
+    what = ("a link that is reserved for premium readers" if n == 1
+            else f"{_NUM.get(n, str(n))} links that are reserved for premium readers")
+    here = "here is the" if n == 1 else "here are the"
+    return f"In {_when(pieces, today)}, you clicked {what}. As a courtesy, {here} {_noun(pieces)} you clicked:"
+
+
+def subject_for(pieces: list[dict], today: str) -> str:
+    return f"The {_noun(pieces)} you clicked in {_when(pieces, today)}"
+
+
+PREMIUM_LINE = ("If you'd like every source every day, the premium edition has every theme of the day, a direct link "
+                "to every source and the daily chart. I'd like to offer you 20% off your first year.")
 
 
 def _discount(code: str, end: str) -> tuple[str, str]:
-    m = MONTHLY_USD * 0.8
-    a = ANNUAL_USD * 0.8
-    t = (f"If you would like to try it, the code {code} takes 20% off your first year: ${m:.2f} a month instead of "
-         f"${MONTHLY_USD} for twelve months, or ${a:,.0f} instead of ${ANNUAL_USD} for a year on the annual plan. "
-         f"The code works through {end}, and you can enter it at checkout here: {UPGRADE_URL}")
-    h = (f"If you would like to try it, the code {_esc(code)} takes 20% off your first year: ${m:.2f} a month instead "
-         f"of ${MONTHLY_USD} for twelve months, or ${a:,.0f} instead of ${ANNUAL_USD} for a year on the annual plan. "
-         f"The code works through {_esc(end)}, and you can enter it at checkout here: "
-         f'<a href="{UPGRADE_URL}" style="color:{LINK};">{UPGRADE_URL}</a>')
+    """Soft callout: the offer, the code (monospace, letter-spaced, not bold), the prices, a button and the plain URL."""
+    m, a = MONTHLY_USD * 0.8, ANNUAL_USD * 0.8
+    prices = (f"That makes it ${m:.2f} a month instead of ${MONTHLY_USD} for twelve months, or ${a:,.0f} instead of "
+              f"${ANNUAL_USD} on the annual plan. The code works through {end}.")
+    t = (f"20% off your first year\n"
+         f"Enter this code at checkout: {code}\n"
+         f"{prices}\n"
+         f"Upgrade: {UPGRADE_URL}")
+    code_span = (f'<span style="display:inline-block;font-family:{MONO};font-size:19px;letter-spacing:0.14em;'
+                 f'color:{INK};background-color:{LIGHT};padding:4px 10px;border-radius:4px;white-space:nowrap;">'
+                 f'{_esc(code)}</span>')
+    button = (f'<table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>'
+              f'<td bgcolor="{LINK}" style="background-color:{LINK};border-radius:6px;">'
+              f'<a href="{UPGRADE_URL}" target="_blank" style="display:inline-block;padding:12px 24px;'
+              f'font-family:{FONT};font-size:16px;line-height:1.2;color:{WHITE};text-decoration:none;'
+              f'border-radius:6px;">Upgrade with 20% off</a></td></tr></table>')
+    inner = (f'<div style="margin:0 0 12px 0;font-family:{FONT};font-size:18px;line-height:1.35;color:{INK};">'
+             f'20% off your first year</div>'
+             f'<div style="margin:0 0 6px 0;font-family:{FONT};font-size:15px;line-height:1.5;color:{INK};">'
+             f'Enter this code at checkout:</div>'
+             f'<div style="margin:0 0 16px 0;">{code_span}</div>'
+             f'<div style="margin:0 0 18px 0;font-family:{FONT};font-size:15px;line-height:1.5;color:{INK};">'
+             f'{_esc(prices)}</div>'
+             f'{button}'
+             f'<div class="hn-url" style="margin:10px 0 0 0;font-family:{FONT};font-size:13px;line-height:1.4;word-break:break-all;">'
+             f'<a href="{UPGRADE_URL}" style="color:{MUTED};text-decoration:none;">{UPGRADE_URL}</a></div>')
+    h = _table(inner, f"border:1px solid {CREAM};border-radius:8px;padding:20px 20px 18px 20px;", "0 0 26px 0", cls="hn-box")
     return h, t
 
 
-PREMIUM_LINE = ("The premium edition has every theme of the day, a direct link to every source, and the daily chart.")
+CLOSING = "Thanks again for reading. If you have a question or a suggestion, reply any time. It comes straight to me."
+
+MOBILE_CSS = ("<style>@media only screen and (max-width:480px){.hn-col{padding:20px 16px 8px 16px !important;}"
+              ".hn-col img{width:110px !important;}.hn-box{padding:18px 14px 16px 14px !important;}"
+              ".hn-url{font-size:12px !important;}}</style>")
 
 
 def _wrap(body_h: str, unsub: str | None) -> str:
-    doc = (f'<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width">'
-           f'</head><body style="margin:0;padding:0;background:#ffffff;">'
-           f'<div style="max-width:600px;margin:0 auto;padding:24px 20px;font-family:-apple-system,Helvetica,Arial,'
-           f'sans-serif;font-size:16px;line-height:1.5;color:{INK};">{body_h}</div></body></html>')
+    logo = (f'<img src="{LOGO_URL}" alt="Home Economics" width="{LOGO_WIDTH}" style="display:block;width:{LOGO_WIDTH}px;'
+            f'max-width:100%;height:auto;border:0;margin:0 0 30px 0;">')
+    doc = (f'<!doctype html><html><head><meta charset="utf-8">'
+           f'<meta name="viewport" content="width=device-width, initial-scale=1">{MOBILE_CSS}</head>'
+           f'<body style="margin:0;padding:0;background-color:{WHITE};font-family:{FONT};">'
+           f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="{WHITE}" '
+           f'style="background-color:{WHITE};"><tr><td align="center" style="padding:0;">'
+           f'<table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" '
+           f'style="width:100%;max-width:600px;"><tr><td class="hn-col" align="left" '
+           f'style="padding:32px 24px 8px 24px;font-family:{FONT};font-size:16px;line-height:1.5;color:{INK};">'
+           f'{logo}{body_h}</td></tr></table></td></tr></table></body></html>')
     return render.with_footer(doc, unsub)
 
 
-def personal_email(person: dict, code: str, end: str, unsub: str | None, gift_cache: dict) -> dict:
+def _intro(person: dict, today: str) -> tuple[str, str]:
+    opening = _opening(person["pieces"], today)
+    h = f"{P}Hi there,</p>{P}{_esc(THANKS)} {_esc(REMINDER)}</p>{P}{_esc(opening)}</p>"
+    t = f"Hi there,\n\n{THANKS} {REMINDER}\n\n{opening}"
+    return h, t
+
+
+def personal_email(person: dict, code: str, end: str, unsub: str | None, gift_cache: dict, today: str) -> dict:
     lh, lt, n_gift = _piece_lines(person["pieces"], gift_cache)
     dh, dt = _discount(code, end)
-    opening = _opening(person["pieces"])
-    body_h = (f"{P}Hi,</p>{P}{_esc(opening)}</p>{lh}{P}{_esc(PREMIUM_LINE)}</p>{P}{dh}</p>"
-              f"{P}If you have a question, reply to this email. It comes straight to me.</p>{SIGNATURE}")
-    text = (f"Hi,\n\n{opening}\n\n{lt}\n\n{PREMIUM_LINE}\n\n{dt}\n\n"
-            f"If you have a question, reply to this email. It comes straight to me.\n\n{SIGNATURE_TEXT}\n")
-    return {"subject": "The articles you tried to open in Housing at Noon", "html": _wrap(body_h, unsub),
+    ih, it = _intro(person, today)
+    body_h = f"{ih}{lh}{P}{_esc(PREMIUM_LINE)}</p>{dh}{P}{_esc(CLOSING)}</p>{SIGNATURE}"
+    text = f"{it}\n\n{lt}\n\n{PREMIUM_LINE}\n\n{dt}\n\n{CLOSING}\n\n{SIGNATURE_TEXT}\n"
+    return {"subject": subject_for(person["pieces"], today), "html": _wrap(body_h, unsub),
             "text": text + _text_footer(unsub), "gift_links_used": n_gift}
 
 
@@ -346,30 +534,33 @@ def _manager_note() -> tuple[str, str]:
         "[Your name]",
     ]
     text = "\n".join("> " + l if l else ">" for l in lines)
-    inner = "".join(f'<div style="margin:0 0 12px 0;">{_esc(l)}</div>' for l in lines if l)
-    h = (f'<div style="margin:0 0 18px 0;padding:4px 0 4px 16px;border-left:3px solid #DADFCE;color:{INK};">'
-         f'{inner}</div>')
+    body = [l for l in lines if l]
+    inner = "".join(f'<div style="margin:0 0 {0 if i == len(body) - 1 else 10}px 0;">{_esc(l)}</div>'
+                    for i, l in enumerate(body))
+    h = (f'<div style="margin:0 0 26px 0;padding:2px 0 2px 16px;border-left:3px solid {CREAM};font-family:{FONT};'
+         f'font-size:15px;line-height:1.5;color:{INK};">{inner}</div>')
     return h, text
 
 
-def corporate_email(person: dict, code: str, end: str, unsub: str | None, gift_cache: dict) -> dict:
+EXPENSE = ("If you read Housing at Noon for work, your employer may be able to pay for it. Subscriptions to research "
+           "services are often reimbursable as a business expense. Every payment comes with a Stripe receipt you can "
+           "attach to an expense report, and if your finance team needs a formal invoice with your company's name and "
+           "address, I'm happy to send one.")
+TEAM = ("If three or more people on your team would read it, I offer team pricing with a single invoice for the group. "
+        "Reply with the number of people and I'll send you a quote.")
+FORWARD = "If it would help, here is a short note you could send to your manager:"
+
+
+def corporate_email(person: dict, code: str, end: str, unsub: str | None, gift_cache: dict, today: str) -> dict:
     lh, lt, n_gift = _piece_lines(person["pieces"], gift_cache)
     dh, dt = _discount(code, end)
-    opening = _opening(person["pieces"])
-    expense = ("If you read Housing at Noon for work, your employer may pay for it. Subscriptions to research services "
-               "are often reimbursable as a business expense. Every payment comes with a receipt from Stripe that you "
-               "can attach to an expense report, and if your finance team needs a formal invoice with your company's "
-               "name and address, reply to this email and I will send one.")
-    team = ("If three or more people on your team would read it, I offer team pricing with a single invoice for the "
-            "group. Reply with the number of people and I will send you a quote.")
-    forward = "If it helps, here is a short note you can copy and send to your manager:"
+    ih, it = _intro(person, today)
     nh, nt = _manager_note()
-    body_h = (f"{P}Hi,</p>{P}{_esc(opening)}</p>{lh}{P}{_esc(PREMIUM_LINE)}</p>{P}{_esc(expense)}</p>"
-              f"{P}{_esc(team)}</p>{P}{dh}</p>{P}{_esc(forward)}</p>{nh}"
-              f"{P}If you have a question, reply to this email. It comes straight to me.</p>{SIGNATURE}")
-    text = (f"Hi,\n\n{opening}\n\n{lt}\n\n{PREMIUM_LINE}\n\n{expense}\n\n{team}\n\n{dt}\n\n{forward}\n\n{nt}\n\n"
-            f"If you have a question, reply to this email. It comes straight to me.\n\n{SIGNATURE_TEXT}\n")
-    return {"subject": "The articles you tried to open in Housing at Noon", "html": _wrap(body_h, unsub),
+    body_h = (f"{ih}{lh}{P}{_esc(PREMIUM_LINE)}</p>{dh}{P}{_esc(EXPENSE)}</p>{P}{_esc(TEAM)}</p>"
+              f"{P}{_esc(FORWARD)}</p>{nh}{P}{_esc(CLOSING)}</p>{SIGNATURE}")
+    text = (f"{it}\n\n{lt}\n\n{PREMIUM_LINE}\n\n{dt}\n\n{EXPENSE}\n\n{TEAM}\n\n{FORWARD}\n\n{nt}\n\n"
+            f"{CLOSING}\n\n{SIGNATURE_TEXT}\n")
+    return {"subject": subject_for(person["pieces"], today), "html": _wrap(body_h, unsub),
             "text": text + _text_footer(unsub), "gift_links_used": n_gift}
 
 
@@ -378,9 +569,9 @@ def _text_footer(unsub: str | None) -> str:
     return "\n--\nYou're receiving this because you subscribe to Housing at Noon.\n" + "\n".join(parts) + "\n"
 
 
-def build(person: dict, code: str, end: str, unsub: str | None, gift_cache: dict) -> dict:
+def build(person: dict, code: str, end: str, unsub: str | None, gift_cache: dict, today: str | None = None) -> dict:
     fn = corporate_email if person["kind"] == "corporate" else personal_email
-    return fn(person, code, end, unsub, gift_cache)
+    return fn(person, code, end, unsub, gift_cache, today or drafts.today_et())
 
 
 # ---------------------------------------------------------------- Stripe promotion code
@@ -491,9 +682,13 @@ def _message(person: dict, mail: dict, to: str, subject: str, edition: str, unsu
 
 # ---------------------------------------------------------------- CLI
 
+def _window(days: int) -> str:
+    return "today's edition" if days == 0 else f"the last {days} days"
+
+
 def _summary(people: list[dict], stats: dict, min_clicks: int, days: int) -> str:
     n_p = sum(1 for p in people if p["kind"] == "personal")
-    lines = [f"courtesy candidates ({min_clicks}+ walled clicks in {days} days): {len(people)} "
+    lines = [f"courtesy candidates ({min_clicks}+ walled clicks in {_window(days)}): {len(people)} "
              f"({n_p} personal, {len(people) - n_p} corporate)",
              f"  free readers who hit the wall at all: {stats['wall_people']}; dropped: below threshold "
              f"{stats['below_threshold']}, owner {stats['owner']}, premium {stats['premium']}, no longer subscribed "
@@ -507,11 +702,55 @@ def _summary(people: list[dict], stats: dict, min_clicks: int, days: int) -> str
     return "\n".join(lines)
 
 
+SEND_LOG = Path(os.environ.get("NOON_LOG_DIR", str(Path.home() / "work" / "noon" / "logs"))) / "courtesy_sends.jsonl"
+
+
+def _log(record: dict) -> None:
+    """One JSON line per test or real send, so tests are on record next to the real sends."""
+    try:
+        SEND_LOG.parent.mkdir(parents=True, exist_ok=True)
+        with SEND_LOG.open("a") as f:
+            f.write(json.dumps({"at": datetime.now(ET).isoformat(timespec="seconds"), **record}) + "\n")
+    except OSError as e:
+        logger.warning(f"could not write {SEND_LOG}: {e}")
+
+
+def _quota_line() -> str:
+    """Gift-link credits left per host, as last seen by gift_links.py (FT 20 and Bloomberg 5 a month; WSJ unknown)."""
+    try:
+        import gift_links
+        con = gift_links._db()
+        rows = {r["host"]: dict(r) for r in con.execute("SELECT * FROM gift_state")}
+        con.close()
+    except Exception as e:  # noqa: BLE001
+        return f"gift quota unreadable ({type(e).__name__})"
+    parts = []
+    for host, name in (("ft", "FT"), ("bloomberg", "Bloomberg"), ("wsj", "WSJ")):
+        r = rows.get(host) or {}
+        if r.get("remaining") is not None:
+            s = f"{name} {r['remaining']}" + (f"/{r['allowance']}" if r.get("allowance") else "") + " left"
+        else:
+            s = f"{name} quota not shown"
+        if r.get("paused_until"):
+            s += f" (paused: {r.get('pause_reason') or 'unknown'})"
+        parts.append(s)
+    return "; ".join(parts)
+
+
+def _telegram(text: str) -> None:
+    import subprocess
+    try:
+        subprocess.run([str(Path.home() / ".local" / "bin" / "tgnotify"), text], timeout=60, check=False,
+                       capture_output=True)
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"tgnotify failed: {e}")
+
+
 def main() -> int:
     logging.basicConfig(level=logging.WARNING, format="%(levelname)s %(message)s")
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--days", type=int, default=7)
-    ap.add_argument("--min-clicks", type=int, default=2)
+    ap.add_argument("--days", type=int, default=0, help="0 = today's edition only (the daily send)")
+    ap.add_argument("--min-clicks", type=int, default=1)
     ap.add_argument("--preview", metavar="DIR", default=None)
     ap.add_argument("--test-to", metavar="EMAIL", default=None)
     ap.add_argument("--send", action="store_true")
@@ -519,13 +758,22 @@ def main() -> int:
     ap.add_argument("--code", default=None, help="an existing active promotion code to use instead of creating one")
     ap.add_argument("--pct", type=int, default=20)
     ap.add_argument("--valid-days", type=int, default=7)
+    ap.add_argument("--telegram", action="store_true", help="post a short summary to Aziz via ~/.local/bin/tgnotify")
     a = ap.parse_args()
     if a.send and a.test_to:
         print("choose one of --send or --test-to"); return 2
 
     today = drafts.today_et()
+    tg = (lambda s: _telegram(s)) if a.telegram else (lambda s: None)
     people, stats = candidates(a.days, a.min_clicks, today)
     print(_summary(people, stats, a.min_clicks, a.days))
+
+    if a.send and not people:
+        msg = (f"Courtesy emails {today}: none to send. {stats['wall_people']} free readers hit the wall in "
+               f"{_window(a.days)}; already sent {stats['already_sent']}, premium {stats['premium']}, owner "
+               f"{stats['owner']}. No promotion code created.")
+        print(msg); tg(msg)
+        return 0
 
     promo = None
     if a.create_code:
@@ -538,17 +786,21 @@ def main() -> int:
             if "permission" in str(e).lower() or "403" in str(e):
                 print("  The restricted key needs write access to Coupons and Promotion codes "
                       "(Stripe dashboard > Developers > API keys > edit the restricted key).")
+            tg(f"Courtesy emails {today}: NOT SENT, the Stripe code failed: {str(e)[:300]}")
             return 1
     elif a.code:
         try:
             promo = verify_code(a.code)
         except StripeError as e:
-            print(f"CODE CHECK FAILED: {e}"); return 1
+            print(f"CODE CHECK FAILED: {e}"); tg(f"Courtesy emails {today}: NOT SENT, code check failed: {e}")
+            return 1
 
     if a.send and not promo:
         print("refusing to send: run with --create-code, or pass an existing active code with --code"); return 2
     if a.send and stats["subscriber_list_fallback"]:
-        print("refusing to send: the subscriber list could not be read from Clerk"); return 2
+        msg = "refusing to send: the subscriber list could not be read from Clerk"
+        print(msg); tg(f"Courtesy emails {today}: NOT SENT, {msg}")
+        return 2
 
     code = promo["code"] if promo else PLACEHOLDER_CODE
     expires = (promo["expires_at"] if promo and promo.get("expires_at") else _code_expiry(a.valid_days))
@@ -563,42 +815,55 @@ def main() -> int:
             p = next((x for x in people if x["kind"] == kind), None)
             if not p:
                 print(f"no eligible {kind} reader to use as the sample"); continue
-            mail = build(p, code, end, None, gift_cache)
+            mail = build(p, code, end, None, gift_cache, today)
             res = _resend("https://api.resend.com/emails",
                           _message(p, mail, a.test_to, f"[TEST {kind}] {mail['subject']}", today, None))
             sent += 1
+            _log({"mode": "test", "kind": kind, "to": a.test_to, "data_from": p["email"], "code": code,
+                  "pieces": len(p["pieces"]), "gift_links": mail["gift_links_used"], "resend_id": res.get("id")})
             print(f"test {kind} (data from {p['email']}) sent to {a.test_to}: {res.get('id')}")
         return 0 if sent else 1
 
     if a.send:
         conn = _conn()
-        msgs, built = [], []
+        msgs, built, gifts = [], [], []
         for p in people:
             unsub = make_unsubscribe_url(p["user_id"]) if p.get("user_id") else None
             if not unsub:
                 print(f"skipping {p['email']}: no unsubscribe link (no Clerk user id or PULSE_UNSUB_SECRET)"); continue
-            mail = build(p, code, end, unsub, gift_cache)
-            msgs.append(_message(p, mail, p["email"], mail["subject"], today, unsub))
+            mail = build(p, code, end, unsub, gift_cache, today)
+            m = _message(p, mail, p["email"], mail["subject"], today, unsub)
+            m["bcc"] = [paths.OWNER_EMAIL]   # owner, 21 Oct 2026: a copy of every real courtesy email in his inbox
+            msgs.append(m)
             built.append(p)
+            gifts.append(mail["gift_links_used"])
+        n_sent = 0
         for i in range(0, len(msgs), 100):
-            chunk, ppl = msgs[i:i + 100], built[i:i + 100]
+            chunk, ppl, gl = msgs[i:i + 100], built[i:i + 100], gifts[i:i + 100]
             idem = "courtesy-" + hashlib.sha1("|".join(p["email"] for p in ppl).encode()).hexdigest()[:24]
             res = _resend("https://api.resend.com/emails/batch", chunk, idem)
             ids = [d.get("id") for d in (res.get("data") or [])]
             now = datetime.now(timezone.utc).isoformat(timespec="seconds")
             with conn:
-                for p, rid in zip(ppl, ids + [None] * (len(ppl) - len(ids))):
+                for p, rid, g in zip(ppl, ids + [None] * (len(ppl) - len(ids)), gl):
                     conn.execute("INSERT OR REPLACE INTO courtesy_sent VALUES (?,?,?,?,?,?)",
                                  (p["email"], p["kind"], today, now, code, rid))
+                    _log({"mode": "send", "kind": p["kind"], "to": p["email"], "code": code,
+                          "pieces": len(p["pieces"]), "gift_links": g, "resend_id": rid})
                     print(f"sent {p['kind']:<9} {p['email']}  {len(p['pieces'])} pieces  resend {rid}")
-        print(f"sent {len(built)} courtesy emails with code {code}")
+                    n_sent += 1
+        n_corp = sum(1 for p in built if p["kind"] == "corporate")
+        print(f"sent {n_sent} courtesy emails with code {code}")
+        tg(f"Courtesy emails {today}: sent {n_sent} ({n_sent - n_corp} personal, {n_corp} corporate), "
+           f"{sum(gifts)} gift links used, code {code} through {end}. Gift quota: {_quota_line()}. "
+           f"Copies are BCC'd to {paths.OWNER_EMAIL}.")
         return 0
 
     out = Path(a.preview) if a.preview else DEFAULT_PREVIEW_DIR
     out.mkdir(parents=True, exist_ok=True)
     meta = []
     for i, p in enumerate(people, 1):
-        mail = build(p, code, end, PREVIEW_UNSUB, gift_cache)
+        mail = build(p, code, end, PREVIEW_UNSUB, gift_cache, today)
         stem = f"{i:02d}_{p['kind']}_{re.sub(r'[^a-z0-9]+', '_', p['email'].lower())}"
         (out / f"{stem}.html").write_text(mail["html"])
         (out / f"{stem}.txt").write_text(f"Subject: {mail['subject']}\n\n{mail['text']}")

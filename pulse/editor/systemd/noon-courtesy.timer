@@ -1,0 +1,10 @@
+[Unit]
+Description=Housing at Noon courtesy emails, weekdays 17:20 ET (after the 17:00 click report)
+
+[Timer]
+OnCalendar=Mon..Fri *-*-* 17:20:00 America/New_York
+# no catch-up run after downtime: a late run would mail people at an odd hour or pick up the wrong day
+Persistent=false
+
+[Install]
+WantedBy=timers.target
