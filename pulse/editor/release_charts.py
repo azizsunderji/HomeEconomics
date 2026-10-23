@@ -595,6 +595,7 @@ class Strip:
     n_ext: int = 1                # ... and the n highest and n lowest values
     max_labels: int = 10
     rmax: float = 30.0
+    gap: float = 1.5              # clearance between bubbles in the dodge (owner, 23 Oct 2026: raise to let a strip breathe)
 
 
 def _arc_geom(px, py, cx, cy, r, sweep_deg=40.0):
@@ -672,7 +673,7 @@ def bubble_strip(o: list, st: Strip, x0: float, x1: float, ytop: float, ybot: fl
         for k in range(0, int(lim) + 1):
             for dy in ((k, -k) if k else (0,)):
                 cy = yc + dy
-                ov = max([0.0] + [(r + q[2] + 1.5) - math.hypot(cx - q[0], cy - q[1]) for q in placed])
+                ov = max([0.0] + [(r + q[2] + st.gap) - math.hypot(cx - q[0], cy - q[1]) for q in placed])
                 if best is None or ov < best[0] - 1e-6:
                     best = (ov, cy)
                 if ov <= 0:

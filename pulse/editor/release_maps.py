@@ -860,7 +860,7 @@ def b_cotality_hpi():
     codes = cotality_cbsa(names)
     vals = [(n.split(",")[0], x, codes.get(n)) for n, x in zip(names, yoys)]
     rows.append(Row([rc.Strip(rc._strip_items("cotality_hpi", vals), "Top and bottom 10 metros", "sized by population",
-                              bench=(f"US {_signed(v)}", v), rmax=22)], rc.STRIP_H))
+                              bench=(f"US {_signed(v)}", v), rmax=17, max_labels=8, gap=7)], 340))   # owner, 23 Oct 2026: "let it breathe"
     lists, extra_h = None, 0
     cap = (f"Cotality's US home price index was {_signed(v)} from a year earlier in {my} "
            f"({_signed(float(mom))} on the month).{fc_s} Strongest metro: {top.iloc[0]['name']} "
