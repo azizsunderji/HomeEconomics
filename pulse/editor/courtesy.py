@@ -92,6 +92,9 @@ CONSUMER_MAILBOXES = frozenset({
     "msn.com", "icloud.com", "me.com", "mac.com", "aol.com", "proton.me", "protonmail.com", "protonmail.ch", "pm.me",
     "comcast.net", "att.net", "verizon.net", "sbcglobal.net", "cox.net", "charter.net", "earthlink.net", "mail.com",
     "gmx.*", "fastmail.com", "fastmail.fm", "hey.com", "zoho.com", "zohomail.com",
+    # mail relays / aliases are personal (25 Oct 2026: a duck.com reader got the corporate pitch on 23 Oct)
+    "duck.com", "privaterelay.appleid.com", "mozmail.com", "anonaddy.com", "anonaddy.me", "simplelogin.com",
+    "simplelogin.co", "aleeas.com", "passmail.net", "passinbox.com", "tutanota.com", "tuta.io", "tuta.com",
 })
 # Personal vanity domains that would otherwise look corporate (owner confirmed each one; add as they turn up).
 PERSONAL_DOMAINS = {"aeckinger.com", "jakobschnitzer.de"}

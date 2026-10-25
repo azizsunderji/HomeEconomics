@@ -747,4 +747,9 @@ async def resend_hook(request: Request):
         fresh = clicks.store(body, request.headers.get("svix-id", ""))
     except ValueError:
         raise HTTPException(status_code=400, detail="bad json")
+    if fresh:
+        # Owner, 25 Oct 2026: a spam complaint unsubscribes the reader at once (complaints.py); in a thread so the
+        # webhook answers Resend quickly.
+        import complaints
+        threading.Thread(target=complaints.handle_webhook_event, args=(body,), daemon=True).start()
     return {"ok": True, "stored": fresh}
