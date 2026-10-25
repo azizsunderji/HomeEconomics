@@ -1,7 +1,66 @@
 {
- "generated_at": "2026-10-18T09:00:56+00:00",
+ "generated_at": "2026-10-25T09:00:59+00:00",
  "note": "Owner's own publications for callbacks (pulse/editor/own_publications.py). Charts are hosted on noon.homeeconomics.us.",
  "posts": [
+  {
+   "slug": "what-do-your-local-stores-say-about",
+   "url": "https://homeeconomics.substack.com/p/what-do-your-local-stores-say-about",
+   "title": "What Do Your Local Stores Say About Your Neighborhood?",
+   "date": "2026-10-21",
+   "audience": "free",
+   "summary": "What physical neighborhood features best predict home prices? Retail chains are far more predictive than house size or trees: nearby Starbucks and UPS Stores explain 45% of home value variation. Homes are most expensive near Club Pilates (+64%), Whole Foods (+56%), and Trader Joe's (+54%), while dollar stores correlate with 21-32% lower values.",
+   "text": "One of the things that makes any neighborhood more expensive than another is what housing economists call “amenities”—school quality, crime and commute times, for example. But none of these can be observed in the physical world. You can’t see school test scores driving around a neighborhood.\n\nI wanted to know which features you can actually see that give away how expensive a place is—the correlates of fanciness, if you will. Is it the trees? Cobblestone streets? A vaguely bougie feeling? Of course, you could also look at the houses themselves, but size is a weaker clue than you’d think: where land is cheap, big houses are cheap, too.\n\nSo I ran the numbers. Of all the physical, tangible characteristics of a neighborhood I tested, nothing tracks home prices as closely as the nearby retail stores. Once density and region are accounted for, the retail chains near a ZIP code explain 45% of the variation in home values. That’s a lot—for context, big houses explain only 27%, and tree cover almost nothing.\n\nThe maps below show the pattern. Places where Starbucks and The UPS Store make up a bigger share of the local shops tend to be the places where homes cost the most. Homes tend to be cheapest in neighborhoods full of dollar stores (Dollar General, Family Dollar and Dollar Tree). I picked those chains because, of all the ones I tested, their maps match home prices most closely.\n\nWhy Starbucks and The UPS Store? After all, when we think about fancy neighborhoods, we don't really thin",
+   "charts": [
+    {
+     "hosted_url": "https://noon.homeeconomics.us/images/own/what-do-your-local-stores-say-about/1.png",
+     "caption": "Pricier places have more upscale chains, fewer dollar stores",
+     "context": "The maps below show the pattern. Places where Starbucks and The UPS Store make up a bigger share of the local shops tend to be the places where homes cost the most. Homes tend to be cheapest in neighborhoods full of dollar stores (Dollar Ge",
+     "chart_kind": "static",
+     "last_period": null,
+     "last_period_date": null,
+     "update_frequency": "none",
+     "sources": [
+      "Zillow",
+      "Census",
+      "Overture Maps"
+     ],
+     "description": "Three US maps comparing home values, share of upscale chains (UPS Store, Starbucks), and dollar store density by county, showing pricier areas have more upscale chains.",
+     "current_url": null,
+     "refreshed_at": null,
+     "refresh_status": null,
+     "replica_status": null
+    },
+    {
+     "hosted_url": "https://noon.homeeconomics.us/images/own/what-do-your-local-stores-say-about/2.png",
+     "caption": "Which chains go with pricier homes: home values within 3 miles compared with similar places",
+     "context": "The chart below ranks the chains, from most fancy to least.",
+     "chart_kind": "static",
+     "last_period": null,
+     "last_period_date": null,
+     "update_frequency": "none",
+     "sources": [
+      "Zillow",
+      "Overture Maps",
+      "Census"
+     ],
+     "description": "Bubble chart ranking retail and restaurant chains by the home-value premium or discount of ZIP codes within 3 miles versus similar-density ZIPs.",
+     "current_url": null,
+     "refreshed_at": null,
+     "refresh_status": null,
+     "replica_status": null
+    }
+   ]
+  },
+  {
+   "slug": "yimbys-nimbys-and-the-housing-cold",
+   "url": "https://homeeconomics.substack.com/p/yimbys-nimbys-and-the-housing-cold",
+   "title": "YIMBYs, NIMBYs, and the Housing Cold War",
+   "date": "2026-10-19",
+   "audience": "free",
+   "summary": "Sunderji questions whether zoning is the primary cause of the housing crisis, interviewing economist Salim Furth who argues it is. They agree on most points but disagree sharply on New York—Sunderji believes demand is so high that more building won't lower prices much, while Furth thinks it would significantly. They also debate whether high housing costs constitute a true crisis and whether politics explains the failure to build.",
+   "text": "I am skeptical that zoning explains as much of the housing crisis as most YIMBYs think. So I wanted to put my doubts to someone who knows the research better than almost anyone, and who thinks zoning really is the main problem.\n\nSalim Furth has a PhD in economics, runs the housing program at the Mercatus Center at George Mason University, and has published in peer-reviewed journals, including Housing Policy Debate. He has also written a critique of the much-debated Louie, Mondragon and Wieland paper, which argues that supply constraints do not explain why prices grew faster in some US cities than others. He calls himself “the most median normal YIMBY.”\n\nWe agree on a lot, and disagree on just enough to make it a good conversation. Our sharpest disagreement is about New York. I think so many people want to live here that building more would barely move prices; he thinks it would move them a lot. We also debate whether today’s high housing costs constitute a “crisis,” why the most desirable cities in the world are all expensive, and whether Ezra Klein and Derek Thompson are right that the failure to build comes down to politics.\n\nChapters\n\n0:00 Cold open0:24 Introduction1:07 How he got into housing14:50 Is it really a crisis?30:19 The global picture37:55 What explains home prices44:09 LMW and the demand curve50:24 Is it politics?\n\nSalim writes at Market Urbanism and publishes his research at mercatus.org. His response to the Louie, Mondragon and Wieland paper is on SSRN.",
+   "charts": []
+  },
   {
    "slug": "owning-beats-renting-only-about-half",
    "url": "https://homeeconomics.substack.com/p/owning-beats-renting-only-about-half",
@@ -268,7 +327,7 @@
      "description": "Heatmap of US metros ranking rent change since 2023 alongside factors: new construction, affordability, migration inflows, warm winters, remote work, tech jobs.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null,
+     "refresh_status": "stale-unrefreshable",
      "replica_status": null
     }
    ]
@@ -480,7 +539,7 @@
      "description": "Map of Bay Area showing counts of luxury home sales by location over the trailing 12 months, concentrated in San Francisco and Silicon Valley.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null,
+     "refresh_status": "stale-unrefreshable",
      "replica_status": null
     }
    ]
@@ -1495,9 +1554,9 @@
       "ACS 1-Year WFH estimates"
      ],
      "description": "Scatter plot of US metros showing cumulative rent growth since 2019 versus share of workers working from home, with a negative trendline (r²=0.30).",
-     "current_url": null,
-     "refreshed_at": null,
-     "refresh_status": null,
+     "current_url": "https://noon.homeeconomics.us/images/own/why-did-rents-soar-in-miami-and-stall/1_20261024.png",
+     "refreshed_at": "2026-10-24T11:56:06+00:00",
+     "refresh_status": "refreshed",
      "replica_status": "approved"
     }
    ]
@@ -6369,7 +6428,7 @@
      "description": "Normalized monthly architect billings index versus multifamily housing starts, 2004 to early 2024, showing billings leading starts by about 10 months.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null,
+     "refresh_status": "stale-unrefreshable",
      "replica_status": "unreplicable"
     }
    ]
@@ -7310,7 +7369,7 @@
      "description": "Annualized US multifamily housing starts (line) versus completions (bars), 2015 to late 2023, showing a pandemic-era gap from construction bottlenecks.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null,
+     "refresh_status": "stale-unrefreshable",
      "replica_status": null
     },
     {
@@ -7354,9 +7413,9 @@
       "Census Bureau"
      ],
      "description": "Rebased 2-bedroom home prices vs rents since 2000, and median home price to median income ratio from 1984 to 2022.",
-     "current_url": null,
-     "refreshed_at": null,
-     "refresh_status": null,
+     "current_url": "https://noon.homeeconomics.us/images/own/growing-pains-for-home-prices/1_20261020.png",
+     "refreshed_at": "2026-10-20T14:39:41+00:00",
+     "refresh_status": "refreshed",
      "replica_status": null
     },
     {
@@ -8496,9 +8555,9 @@
       "Freddie Mac"
      ],
      "description": "Stacked bars show change in monthly mortgage payment versus 10 years earlier, split into home price and interest rate effects, June 2014 to June 2023.",
-     "current_url": null,
-     "refreshed_at": null,
-     "refresh_status": null,
+     "current_url": "https://noon.homeeconomics.us/images/own/expensive-housing-is-a-secular-trend/1_20261019_7.png",
+     "refreshed_at": "2026-10-19T14:40:28+00:00",
+     "refresh_status": "refreshed",
      "replica_status": null
     }
    ]
