@@ -58,6 +58,12 @@ SCANNER_UA = re.compile(r"python-requests|curl/|go-http|java/|okhttp|libwww|wget
                         re.I)
 SCANNER_MAX_LINKS = 6      # a person reads one or two sources; a link checker opens every URL in the email
 SCANNER_FAST_SECS = 120    # ...and does it within a couple of minutes of delivery
+# Headless Chrome on a cloud server (owner, 26 Oct 2026: Eliot Brown's courtesy email was set off by ONE click on the
+# upgrade link from AWS 3.229.6.145, 79 s after delivery, UA "Mozilla/5.0 (X11; Linux x86_64) ... Chrome/124").
+# clicks.db stores the IP and user agent but no ASN or network owner, so a cloud address is recognised by the user
+# agent: desktop Linux (not Android, not ChromeOS) or HeadlessChrome. Combined with the timing rule below, a real
+# Linux reader is only affected if every click they make that day lands within two minutes of delivery.
+CLOUD_UA = re.compile(r"\(X11; Linux x86_64\)|HeadlessChrome", re.I)
 
 
 def _ts(s: str) -> float:
@@ -71,13 +77,21 @@ def scanner_emails(ev) -> set[str]:
     """Recipients whose clicks are a mail-security link scanner, not a reader (owner, 21 Oct 2026: 616 of the first
     day's 720 "clickers" had opened ten or more links each). Flagged when any click comes from a non-browser user
     agent, when the address clicked SCANNER_MAX_LINKS or more distinct links in the edition, or when it clicked
-    three or more distinct links within SCANNER_FAST_SECS of delivery. Their events are dropped from every count."""
+    three or more distinct links within SCANNER_FAST_SECS of delivery. Also flagged (26 Oct 2026) when EVERY click the
+    address made came within SCANNER_FAST_SECS of the delivery of that same email (matched on email_id) from a cloud
+    user agent (CLOUD_UA): a single scanner click on the upgrade link no longer looks like a reader.
+    Their events are dropped from every count."""
     delivered = {}
+    delivered_id = {}   # (email, email_id) -> delivery time of that message
     for r in ev:
         if r["type"] == "email.delivered":
-            delivered[r["email"]] = min(delivered.get(r["email"], 1e18), _ts(r["created_at"]))
+            t = _ts(r["created_at"])
+            delivered[r["email"]] = min(delivered.get(r["email"], 1e18), t)
+            k = (r["email"], r["email_id"])
+            delivered_id[k] = min(delivered_id.get(k, 1e18), t)
     links: dict[str, set] = defaultdict(set)
     fast: dict[str, set] = defaultdict(set)
+    early_cloud: dict[str, bool] = {}   # email -> every click so far was early and from a cloud user agent
     flagged: set[str] = set()
     for r in ev:
         if r["type"] != "email.clicked":
@@ -88,8 +102,12 @@ def scanner_emails(ev) -> set[str]:
         links[e].add(r["link"])
         if e in delivered and _ts(r["created_at"]) - delivered[e] <= SCANNER_FAST_SECS:
             fast[e].add(r["link"])
+        d = delivered_id.get((e, r["email_id"]), delivered.get(e))
+        early = d is not None and _ts(r["created_at"]) - d <= SCANNER_FAST_SECS
+        early_cloud[e] = early_cloud.get(e, True) and early and bool(CLOUD_UA.search(r["user_agent"] or ""))
     flagged |= {e for e, s in links.items() if len(s) >= SCANNER_MAX_LINKS}
     flagged |= {e for e, s in fast.items() if len(s) >= 3}
+    flagged |= {e for e, v in early_cloud.items() if v}
     return flagged
 
 

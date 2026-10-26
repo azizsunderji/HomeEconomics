@@ -13,7 +13,9 @@ clicked.' You don't need to say the piece from ft.com. Just give them the link t
 
 Who gets it: by default, free-tier subscribers with one or more walled clicks in TODAY's edition (--days 0,
 --min-clicks 1; the noon-courtesy.timer runs it Mon-Fri at 5:20 pm ET), after dropping mail-security link scanners
-(click_report.scanner_emails, per edition), premium subscribers, anyone no longer subscribed, the owner's own addresses,
+(click_report.scanner_emails, per edition; since 26 Oct 2026 this also drops anyone whose only clicks that day came
+within two minutes of delivery from a cloud user agent, the case that set off Eliot Brown's), premium subscribers,
+anyone no longer subscribed, the owner's own addresses,
 and anyone already in courtesy_sent (one email per person, ever). Corporate readers come first, so they get the scarce
 gift links. Each email lists up to five of the articles the person clicked, most recent first, with the article's own
 headline as the link text (pulse.db title, else the page's og:title, else the theme), a gift link for FT, WSJ and

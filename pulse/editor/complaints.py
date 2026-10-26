@@ -23,6 +23,7 @@ logger = logging.getLogger("noon.complaints")
 CLERK = "https://api.clerk.com/v1"
 CLICKS_DB = Path(os.environ.get("NOON_CLICKS_DB", str(Path.home() / "work" / "noon" / "clicks.db")))
 LOG = Path.home() / "work" / "noon" / "logs" / "complaints.jsonl"
+DEAD_LOG = Path.home() / "work" / "noon" / "logs" / "dead_addresses.jsonl"
 
 
 def _hdr() -> dict:
@@ -32,10 +33,12 @@ def _hdr() -> dict:
     return {"Authorization": f"Bearer {key}", "Content-Type": "application/json"}
 
 
-def unsubscribe_complainer(email: str, dry_run: bool = False) -> dict:
-    """Mark the Clerk user with this email unsubscribed. Returns a small result dict (also appended to LOG)."""
+def unsubscribe_complainer(email: str, dry_run: bool = False, reason: str = "spam-complaint", log: Path | None = None) -> dict:
+    """Mark the Clerk user with this email unsubscribed. Returns a small result dict (also appended to `log`, default LOG).
+    `reason` is stored as pulseNewsletter.unsubReason ("spam-complaint" from the webhook, "dead-address" for bounces)."""
     email = (email or "").strip().lower()
-    res = {"email": email, "at": datetime.now(timezone.utc).isoformat(timespec="seconds"), "reason": "spam-complaint"}
+    log = log or LOG
+    res = {"email": email, "at": datetime.now(timezone.utc).isoformat(timespec="seconds"), "reason": reason}
     try:
         with httpx.Client(timeout=20) as hc:
             r = hc.get(f"{CLERK}/users", headers=_hdr(), params={"email_address": [email], "limit": 5})
@@ -51,7 +54,7 @@ def unsubscribe_complainer(email: str, dry_run: bool = False) -> dict:
                 elif dry_run:
                     res["result"] = "dry-run would unsubscribe"
                 else:
-                    pn.update({"subscribed": False, "unsubscribedAt": res["at"], "unsubReason": "spam-complaint"})
+                    pn.update({"subscribed": False, "unsubscribedAt": res["at"], "unsubReason": reason})
                     r2 = hc.patch(f"{CLERK}/users/{u['id']}/metadata", headers=_hdr(),
                                   json={"public_metadata": {"pulseNewsletter": pn}})
                     r2.raise_for_status()
@@ -59,12 +62,17 @@ def unsubscribe_complainer(email: str, dry_run: bool = False) -> dict:
                 res["user_id"] = u["id"]
     except Exception as e:  # noqa: BLE001
         res["result"] = f"error: {type(e).__name__}: {str(e)[:160]}"
-    logger.info(f"complaint {email}: {res['result']}")
+    logger.info(f"{reason} {email}: {res['result']}")
     if not dry_run:
-        LOG.parent.mkdir(parents=True, exist_ok=True)
-        with LOG.open("a") as f:
+        log.parent.mkdir(parents=True, exist_ok=True)
+        with log.open("a") as f:
             f.write(json.dumps(res) + "\n")
     return res
+
+
+def unsubscribe_dead_address(email: str, dry_run: bool = False) -> dict:
+    """Unsubscribe an address that cannot receive mail (mailbox full, no MX, permanent refusal); logs to DEAD_LOG."""
+    return unsubscribe_complainer(email, dry_run=dry_run, reason="dead-address", log=DEAD_LOG)
 
 
 def handle_webhook_event(body: bytes) -> dict | None:
