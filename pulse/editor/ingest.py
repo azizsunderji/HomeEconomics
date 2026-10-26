@@ -24,6 +24,7 @@ logger = logging.getLogger("noon.ingest")
 KEEP_KEYS = {
     "date", "intro", "entries", "paper_of_the_day", "conversation_pulse", "pulse",
     "_press_mentions", "_own_posts", "_briefing_id", "_v4b_meta", "_url_audit",
+    "_rate_warnings", "_rate_check",  # live-rate check (owner, 26 Oct 2026)
 }
 
 
@@ -109,4 +110,22 @@ def ingest(date: str | None = None, replace: bool = False) -> dict | None:
         logger.warning(f"release charts skipped: {e}")
     row = drafts.create(date, rid, draft, replace=replace)
     logger.info(f"draft {date} created from briefing #{rid} ({len(draft['entries'])} entries)")
+    _relay_rate_warnings(draft, date)
     return row
+
+
+def _relay_rate_warnings(draft: dict, date: str) -> None:
+    """Owner, 26 Oct 2026: stale mortgage-rate / 10-year figures found by the
+    v4b post-write check go to Telegram. The v4b run sends it itself only when
+    its machine has tgnotify; the GitHub runner does not, so it is sent here."""
+    warnings = draft.get("_rate_warnings") or []
+    if not warnings or (draft.get("_rate_check") or {}).get("telegram_sent"):
+        return
+    try:
+        from analysis.market_rates import notify_rate_warnings
+        ok = notify_rate_warnings(
+            warnings, f"Housing at Noon draft {date}: {len(warnings)} rate figure(s) differ "
+                      f"from the live numbers. Not auto-fixed; check before sending.")
+        logger.info(f"rate warnings ({len(warnings)}) telegram {'sent' if ok else 'NOT sent'}")
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"rate warnings not relayed: {e}")

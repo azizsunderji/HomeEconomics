@@ -88,6 +88,9 @@ from analysis.synthesize import (  # noqa: E402
     writer_request_kwargs, check_writer_refusal,
 )
 from analysis.anthropic_spend import record_usage as _record_usage, get_spend_cents  # noqa: E402
+from analysis.market_rates import (  # noqa: E402  (owner, 26 Oct 2026: live rates)
+    rates_prompt_block, fetch_live_rates, check_rate_mentions, notify_rate_warnings,
+)
 
 # v4 pieces reused verbatim (v4_runner.py is not modified).
 from delivery.email_lunch import render_lunch_html  # noqa: E402
@@ -493,7 +496,8 @@ def rewrite_theme_with_clusters(theme: dict, clusters: list[Cluster],
     opus_calls."""
     if anthropic_client is None:
         anthropic_client = anthropic.Anthropic()
-    system_prompt = V4B_REWRITE_PREFIX + V1_SYSTEM_PROMPT
+    # Live 30-year / 10-year numbers + the quoting rule (owner, 26 Oct 2026).
+    system_prompt = V4B_REWRITE_PREFIX + V1_SYSTEM_PROMPT + rates_prompt_block()
     historical = historical or []
     orig_summary = theme.get("summary") or ""
     orig_len = len(orig_summary)
@@ -954,7 +958,7 @@ def add_callbacks_and_context(entries: list[dict], as_of: str, oai, anthropic_cl
     user = (f"Today is {as_of}. The edition's entries, in rank order (paragraphs numbered):\n\n"
             + json.dumps(blocks, indent=1, ensure_ascii=False)
             + "\n\nReturn the JSON object with your callbacks, context boxes and pull quotes.")
-    text = _opus_stream_text(anthropic_client, V4B_CALLBACK_CONTEXT_PROMPT,
+    text = _opus_stream_text(anthropic_client, V4B_CALLBACK_CONTEXT_PROMPT + rates_prompt_block(),
                              [{"role": "user", "content": user}], tracker)
     obj = _parse_json_object(text) or {}
     by_rank = {e.get("rank", i + 1): (i, e) for i, e in enumerate(entries)}
@@ -1962,6 +1966,39 @@ def main() -> None:
 
     from config import monday_week_phrasing
     v4b = monday_week_phrasing(v4b)  # Monday: "earlier this week" -> "last week"
+
+    # 10. Live-rate check (owner, 26 Oct 2026). The entries are final here.
+    # Any mortgage-rate / 10-year figure that is 0.05 points or more off the
+    # live number and is not attributed to an article is reported: printed,
+    # stored on the brief as _rate_warnings (noon ingest copies it into the
+    # draft and sends the Telegram when this run had no tgnotify, as on the
+    # GitHub runner), and sent via tgnotify here when this machine has it.
+    # The prose is never rewritten here; the writer prompt handles that.
+    rate_warnings, tg_sent = [], False
+    try:
+        live_rates = fetch_live_rates()
+        extra = {k: v4b.get(k) for k in ("intro", "conversation_pulse")
+                 if isinstance(v4b.get(k), str)}
+        rate_warnings = check_rate_mentions(v4b.get("entries") or [], live_rates,
+                                            extra_texts=extra)
+    except Exception as ex:  # noqa: BLE001  (never lose the edition over this check)
+        logger.warning(f"live-rate check failed: {ex}")
+        live_rates = {"error": str(ex)[:300]}
+    print(f"\nlive-rate check: {len(rate_warnings)} warning(s); live 30-yr "
+          f"{(live_rates.get('mortgage_30y') or {}).get('value')}%, 10-yr "
+          f"{(live_rates.get('treasury_10y') or {}).get('value')}%")
+    for w in rate_warnings:
+        print(f"  RATE #{w['entry_rank']} {str(w['entry_title'])[:60]!r}: {w['figure']}% "
+              f"({w['kind']}) vs live {w['live']}% -- {w['sentence'][:160]!r}")
+    if rate_warnings and not args.no_store and args.briefing_type == BRIEFING_TYPE:
+        tg_sent = notify_rate_warnings(
+            rate_warnings,
+            f"Housing at Noon draft ({_noon_date_str()}): {len(rate_warnings)} rate figure(s) "
+            f"differ from the live numbers. Not auto-fixed; check before sending.")
+    v4b["_rate_warnings"] = rate_warnings
+    v4b["_rate_check"] = {"checked_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                          "live": live_rates, "n_warnings": len(rate_warnings),
+                          "telegram_sent": tg_sent}
 
     if args.dump_json:
         with open(args.dump_json, "w") as f:

@@ -3090,13 +3090,20 @@ Generate the daily briefing JSON. LEAD WITH CONVERSATION — what are people deb
         # / incomplete chunked read) — without retry, that single transient
         # failure kills the whole pipeline and the morning email never lands.
         import httpx as _httpx
+        # Live 30-year / 10-year numbers + the quoting rule (owner, 26 Oct 2026).
+        try:
+            from analysis.market_rates import rates_prompt_block
+            _live_rates_block = rates_prompt_block()
+        except Exception as _e:  # noqa: BLE001
+            logger.warning(f"live rates block unavailable: {_e}")
+            _live_rates_block = ""
         last_err = None
         for attempt in range(3):
             try:
                 response_text = ""
                 with client.messages.stream(
                     **writer_request_kwargs(MODEL, 32768),
-                    system=SYSTEM_PROMPT,
+                    system=SYSTEM_PROMPT + _live_rates_block,
                     messages=[{"role": "user", "content": user_content}],
                 ) as stream:
                     for text in stream.text_stream:

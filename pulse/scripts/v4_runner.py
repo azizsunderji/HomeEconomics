@@ -80,6 +80,7 @@ from analysis.roundup_clustering import (  # noqa: E402
     OPENAI_EMBED_MODEL,
 )
 from analysis.synthesize import SYSTEM_PROMPT as V1_SYSTEM_PROMPT  # noqa: E402
+from analysis.market_rates import rates_prompt_block  # noqa: E402  (owner, 26 Oct 2026: live rates)
 from analysis.synthesize import (  # noqa: E402
     _compute_cited_sources, _strip_refusal_meta, _strip_forbidden_bridges,
     _enforce_paragraph_breaks, _autolink_bare_handles, _validate_briefing_urls,
@@ -424,7 +425,8 @@ def write_entry_for_cluster(cluster: Cluster,
     (None, skip_reason) on skip/failure."""
     if anthropic_client is None:
         anthropic_client = anthropic.Anthropic()
-    system_prompt = V4_ENTRY_WRITER_PREFIX + V1_SYSTEM_PROMPT
+    # Live 30-year / 10-year numbers + the quoting rule (owner, 26 Oct 2026).
+    system_prompt = V4_ENTRY_WRITER_PREFIX + V1_SYSTEM_PROMPT + rates_prompt_block()
     historical = historical or []
     hist_block = (
         f"\n\nPAST 6 DAYS CONTEXT (topically related items from earlier in "
