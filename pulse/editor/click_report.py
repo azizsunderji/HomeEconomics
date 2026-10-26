@@ -104,7 +104,10 @@ def scanner_emails(ev) -> set[str]:
             fast[e].add(r["link"])
         d = delivered_id.get((e, r["email_id"]), delivered.get(e))
         early = d is not None and _ts(r["created_at"]) - d <= SCANNER_FAST_SECS
-        early_cloud[e] = early_cloud.get(e, True) and early and bool(CLOUD_UA.search(r["user_agent"] or ""))
+        # 26 Oct 2026: timing alone. A proxy fleet (AWS first click, then Windows Chrome from 38.20x/212.103/23.8x)
+        # hit ~30 of 49 wall-hitters with every click inside two minutes of delivery; the user-agent condition
+        # missed it. Anyone whose every click that day landed within SCANNER_FAST_SECS of delivery is a scanner.
+        early_cloud[e] = early_cloud.get(e, True) and early
     flagged |= {e for e, s in links.items() if len(s) >= SCANNER_MAX_LINKS}
     flagged |= {e for e, s in fast.items() if len(s) >= 3}
     flagged |= {e for e, v in early_cloud.items() if v}
