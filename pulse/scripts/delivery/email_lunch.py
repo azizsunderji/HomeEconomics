@@ -1003,7 +1003,11 @@ def _narrow_link_anchors(text: str) -> str:
         #     same sentence, if any
         cap_words = [w for w in words if _bare(w)[:1].isupper()]
         if len(words) >= 3 and len(cap_words) >= 0.6 * len(words):
-            rest = re.split(r"[.!?](?:\s|$)", tail, maxsplit=1)[0]
+            # the sentence may end in a closing quote ("sell for less.\"") or a
+            # paragraph break, and the search never enters a later link: missing
+            # both nested one link inside the next (27 Oct 2026)
+            rest = re.split(r"[.!?][\"'\u2019\u201d)\]]*(?:\s|$)|\n", tail, maxsplit=1)[0]
+            rest = rest.split("[", 1)[0]
             fv = next((mm for mm in re.finditer(r"[A-Za-z-]+", rest)
                        if _is_verb(mm.group(0)) and "[" not in rest[max(0, mm.start() - 1):mm.start()]), None)
             if fv:
