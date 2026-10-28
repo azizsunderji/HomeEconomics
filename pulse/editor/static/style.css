@@ -212,3 +212,5 @@ body.cardspage .wrap, body.cardspage .topbar .inner { max-width: 1120px; }
 @media (max-width: 760px) {
   .crow { grid-template-columns: minmax(0, 1fr); gap: 14px; }
 }
+/* spell check marks (spell.js) */
+::highlight(noon-misspell) { text-decoration: underline wavy #F4743B; text-decoration-thickness: 1.5px; text-underline-offset: 4px; text-decoration-skip-ink: none; background-color: rgba(244, 116, 59, 0.12); }
