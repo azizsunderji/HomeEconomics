@@ -1262,8 +1262,9 @@ def _replace_welder_with_paragraph_break(text: str) -> tuple[str, int]:
 
     out = masked
     count = 0
+    pos = 0
     while count < 20:
-        m = FORBIDDEN_BRIDGE_PATTERN.search(out)
+        m = FORBIDDEN_BRIDGE_PATTERN.search(out, pos)
         if not m:
             break
         match_start = m.start()
@@ -1273,12 +1274,21 @@ def _replace_welder_with_paragraph_break(text: str) -> tuple[str, int]:
         # Walk BACKWARD: find the most recent sentence terminator (. ! ?)
         # before the match. If none, the welder is at the start of the text.
         clause_start = 0
-        for term in (". ", ".\n", "? ", "?\n", "! ", "!\n"):
+        for term in (". ", ".\n", "? ", "?\n", "! ", "!\n", "\n"):
             idx = out.rfind(term, 0, match_start)
             if idx >= 0:
                 end_of_term = idx + len(term)
                 if end_of_term > clause_start:
                     clause_start = end_of_term
+
+        # Only a phrase that OPENS its sentence is a welder ("Separately, ...", "Beyond that, ...").
+        # Used inside a sentence ("carrying costs are climbing beyond the note rate.") it is ordinary
+        # prose: cutting from the sentence start through the phrase left the fragment "note rate."
+        # in the 28 Oct 2026 brief. Leave such text alone.
+        if out[clause_start:match_start].strip(" \t\n\"'\u201c\u2018"):
+            logger.info(f"welder phrase {matched_text!r} inside a sentence; left as written")
+            pos = match_end
+            continue
 
         # Walk FORWARD to find the end of the welder clause.
         # Two cases:
@@ -1308,9 +1318,12 @@ def _replace_welder_with_paragraph_break(text: str) -> tuple[str, int]:
                 if idx >= 0 and (clause_end < 0 or idx < clause_end):
                     clause_end = idx + 1
             if clause_end < 0:
-                # No clause terminator found within window — drop only the
-                # welder match itself, leave the downstream prose alone.
-                clause_end = match_end
+                # No clause terminator within the window: the phrase is part of
+                # a real sentence ("Beyond the 7% note rate lies ..."). Deleting
+                # it would leave a fragment, so leave the text alone.
+                logger.info(f"welder phrase {matched_text!r} has no clause end; left as written")
+                pos = match_end
+                continue
         # Skip trailing whitespace so the next paragraph starts cleanly.
         while clause_end < len(out) and out[clause_end] in " \t\n":
             clause_end += 1
