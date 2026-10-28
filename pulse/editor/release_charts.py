@@ -322,6 +322,8 @@ class Panel:
     end_room: int = 0             # px reserved right of the data for end labels
     show_key: bool = True
     ref: float | None = None      # a reference level drawn as a dark line (e.g. 50 on a diffusion index)
+    clip: tuple | None = None     # (lo, hi): cut y axis. Values beyond are drawn to the cut and an Economist-style
+                                  # squiggle marks each cut end of the axis (owner, 28 Oct 2026)
 
     @property
     def label(self) -> str:
@@ -350,6 +352,10 @@ def draw_panel(o: list, p: Panel, x0: float, x1: float, top: float, bot: float) 
     """Label baseline LABEL_GAP above `top`; y numbers start at x0; gridlines and data run from after them to x1."""
     import pandas as pd
     allv = [v for ln in p.lines for v in ln.s.values] + ([p.ref] if p.ref is not None else [])
+    cut_lo = cut_hi = False
+    if p.clip:
+        cut_lo, cut_hi = min(allv) < p.clip[0], max(allv) > p.clip[1]
+        allv = [min(max(v, p.clip[0]), p.clip[1]) for v in allv]
     # y domain = data range + 7% padding (as in the pending-sales reference, whose axis runs 55..135 with gridlines
     # 60..120), not stretched to the next whole tick: a tick band with no data in it (e.g. -10% under a line that
     # bottoms at -0.3%) is dropped. Gridlines are the nice ticks inside the domain (at least 4 where possible).
@@ -416,6 +422,13 @@ def draw_panel(o: list, p: Panel, x0: float, x1: float, top: float, bot: float) 
     for v, lb in zip(ticks, labels):
         o.append(f'<line x1="{px0:.1f}" y1="{Y(v):.1f}" x2="{x1:.1f}" y2="{Y(v):.1f}" stroke="{GRID}" stroke-width="1"/>')
         o.append(_T(x0, Y(v) + 7, lb, 20, 400, GREY))
+    # cut axis: a squiggle at the start of the gridline band at each cut end
+    for is_cut, yv in ((cut_hi, Y(p.clip[1]) if p.clip else 0), (cut_lo, Y(p.clip[0]) if p.clip else 0)):
+        if is_cut:
+            a = px0 - 9
+            o.append(f'<rect x="{a - 1:.1f}" y="{yv - 7:.1f}" width="18" height="14" fill="{BG}"/>')
+            o.append(f'<path d="M{a:.1f},{yv + 4:.1f} q2.5,-9 5,-4 t5,0 t5,0" fill="none" stroke="{INK}" '
+                     f'stroke-width="1.6" stroke-linecap="round"/>')
     if p.zero and lo < 0 < hi:
         o.append(f'<line x1="{px0:.1f}" y1="{Y(0):.1f}" x2="{x1:.1f}" y2="{Y(0):.1f}" stroke="{INK}" stroke-width="1"/>')
     if p.ref is not None:
@@ -457,6 +470,8 @@ def draw_panel(o: list, p: Panel, x0: float, x1: float, top: float, bot: float) 
             bw = max(1.5, (X(t0 + freq_step) - X(t0)) * 0.72)
             for t, v in s.items():
                 xv = X(_xdec(t))
+                if p.clip:
+                    v = min(max(v, p.clip[0]), p.clip[1])
                 y_a, y_b = sorted((Y(0), Y(v)))
                 o.append(f'<rect x="{xv - bw / 2:.1f}" y="{y_a:.1f}" width="{bw:.1f}" height="{max(y_b - y_a, 0.8):.1f}" '
                          f'fill="{ln.color}"/>')
@@ -979,8 +994,10 @@ def b_new_home_sales():
     rows = [
         # owner, 28 Oct 2026: the change quoted in the title gets its own panel beside the level (a 2x2 grid)
         Row([Panel(_level(s, "2016-01"), "Homes sold", "thousands, annual rate", show_key=False),
-             Panel(_bars(yoy(s), "2023-01"), "Change from a year earlier", ysuffix="%", zero=True,
-                   show_key=False)], ROW_TOP),
+             # owner, 28 Oct 2026: same start as the other panels; the axis is cut so the 2020-21 swings
+             # (-33% to +51%) do not flatten recent changes
+             Panel(_bars(yoy(s), "2016-01"), "Change from a year earlier", ysuffix="%", zero=True,
+                   show_key=False, clip=(-25, 25))], ROW_TOP),
         Row([Panel(_level(sup, "2016-01"), "Months’ supply", show_key=False),
              Panel(_level(px / 1000, "2016-01"), "Median price", yprefix="$", ysuffix="k", show_key=False)], ROW_BOT),
     ]
