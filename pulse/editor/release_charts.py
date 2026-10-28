@@ -977,8 +977,10 @@ def b_new_home_sales():
     t = s.index[-1]
     ch = cur(pchg(s), s)
     rows = [
-        Row([Panel(_level(s, "2016-01"), "New single-family homes sold", "thousands, annual rate", show_key=False)],
-            ROW_TOP),
+        # owner, 28 Oct 2026: the title's monthly change gets its own panel beside the level (a 2x2 grid)
+        Row([Panel(_level(s, "2016-01"), "Homes sold", "thousands, annual rate", show_key=False),
+             Panel(_bars(pchg(s), "2023-01"), "Change from the previous month", ysuffix="%", zero=True,
+                   show_key=False)], ROW_TOP),
         Row([Panel(_level(sup, "2016-01"), "Months’ supply", show_key=False),
              Panel(_level(px / 1000, "2016-01"), "Median price", yprefix="$", ysuffix="k", show_key=False)], ROW_BOT),
     ]
