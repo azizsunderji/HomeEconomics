@@ -495,7 +495,7 @@ def _tint(color: str, alpha: float) -> str:
     return "#%02X%02X%02X" % tuple(round(c * alpha + b * (1 - alpha)) for c, b in zip(rgb, bg))
 
 
-_CAPTION_URL_RE = re.compile(r"(https?://[^\s<>]+|www\.[^\s<>]+)")
+_CAPTION_URL_RE = re.compile(r"(https?://[^\s<>–—‘’“”]+|www\.[^\s<>–—‘’“”]+)")
 
 
 def _caption_html(caption: str) -> str:
@@ -1167,7 +1167,7 @@ def _paper_body(summary: str, body_text: str) -> str:
     return f'<div style="{body_text} margin:0 0 16px 0;">{"".join(inner)}</div>'
 
 
-_BARE_URL_RE = re.compile(r"(?<![\"'=/@.\w])(https?://[^\s<>\"']+|www\.[^\s<>\"']+)")
+_BARE_URL_RE = re.compile(r"(?<![\"'=/@.\w])(https?://[^\s<>\"'–—‘’“”]+|www\.[^\s<>\"'–—‘’“”]+)")
 
 
 def _autolink_bare_urls(html: str) -> str:

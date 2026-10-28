@@ -95,7 +95,7 @@ _HREF_RE = re.compile(r"""(\bhref\s*=\s*)(["'])(.*?)\2""",
                       re.IGNORECASE | re.DOTALL)
 _TITLE_ALT_RE = re.compile(r"""(\b(?:title|alt)\s*=\s*)(["'])(.*?)\2""",
                            re.IGNORECASE | re.DOTALL)
-_TEXT_URL_RE = re.compile(r"""https?://[^\s<>"']+""", re.IGNORECASE)
+_TEXT_URL_RE = re.compile(r"""https?://[^\s<>"'–—‘’“”]+""", re.IGNORECASE)
 # Owner-flagged anchor that stays live in the free edition.
 _DATA_FREE_RE = re.compile(r"""\bdata-free\s*=\s*["']1["']""", re.IGNORECASE)
 # Plain-text (markdown) form of the same flag: the URL is followed by the
