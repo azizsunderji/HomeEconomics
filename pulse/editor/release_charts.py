@@ -322,6 +322,8 @@ class Panel:
     end_room: int = 0             # px reserved right of the data for end labels
     show_key: bool = True
     ref: float | None = None      # a reference level drawn as a dark line (e.g. 50 on a diffusion index)
+    sparse: bool = False          # label every other gridline when there are 5+ (owner, 28 Oct 2026: fewer labels,
+                                  # same gridlines)
     clip: tuple | None = None     # (lo, hi): cut y axis. Values beyond are drawn to the cut and an Economist-style
                                   # squiggle marks each cut end of the axis (owner, 28 Oct 2026)
 
@@ -381,8 +383,13 @@ def draw_panel(o: list, p: Panel, x0: float, x1: float, top: float, bot: float) 
         ticks = cands[0][0]
         lo, hi = ticks[0], ticks[-1]
     step = ticks[1] - ticks[0]
-    labels = [p.yprefix + fmt_num(v, step) + (p.ysuffix if i == len(ticks) - 1 else "") for i, v in enumerate(ticks)]
-    px0 = x0 + max(_tw(lb, 20) for lb in labels) + 16
+    show = [True] * len(ticks)
+    if p.sparse and len(ticks) >= 5:
+        show = [round(v / step) % 2 == 0 for v in ticks]
+    top_i = max(i for i, sh in enumerate(show) if sh)
+    labels = [(p.yprefix + fmt_num(v, step) + (p.ysuffix if i == top_i else "")) if show[i] else ""
+              for i, v in enumerate(ticks)]
+    px0 = x0 + max(_tw(lb, 20) for lb in labels if lb) + 16
     idx = sorted({t for ln in p.lines for t in ln.s.index})
     t0, t1 = _xdec(idx[0]), _xdec(idx[-1])
     freq_step = (t1 - t0) / max(len(idx) - 1, 1)
@@ -421,14 +428,12 @@ def draw_panel(o: list, p: Panel, x0: float, x1: float, top: float, bot: float) 
     # grid + y labels (numbers left-aligned at x0, vertically centred on their gridline)
     for v, lb in zip(ticks, labels):
         o.append(f'<line x1="{px0:.1f}" y1="{Y(v):.1f}" x2="{x1:.1f}" y2="{Y(v):.1f}" stroke="{GRID}" stroke-width="1"/>')
-        o.append(_T(x0, Y(v) + 7, lb, 20, 400, GREY))
-    # cut axis: a squiggle at the start of the gridline band at each cut end
-    for is_cut, yv in ((cut_hi, Y(p.clip[1]) if p.clip else 0), (cut_lo, Y(p.clip[0]) if p.clip else 0)):
-        if is_cut:
-            a = px0 - 9
-            o.append(f'<rect x="{a - 1:.1f}" y="{yv - 7:.1f}" width="18" height="14" fill="{BG}"/>')
-            o.append(f'<path d="M{a:.1f},{yv + 4:.1f} q2.5,-9 5,-4 t5,0 t5,0" fill="none" stroke="{INK}" '
-                     f'stroke-width="1.6" stroke-linecap="round"/>')
+        if lb:
+            o.append(_T(x0, Y(v) + 7, lb, 20, 400, GREY))
+    # cut axis: the standard break mark, two short parallel slashes across the cut gridline at the plot's left
+    # edge (drawn after the data, below, so it sits on top of the bars)
+    breaks = [Y(c) for is_cut, c in ((cut_hi, p.clip[1] if p.clip else 0), (cut_lo, p.clip[0] if p.clip else 0))
+              if is_cut]
     if p.zero and lo < 0 < hi:
         o.append(f'<line x1="{px0:.1f}" y1="{Y(0):.1f}" x2="{x1:.1f}" y2="{Y(0):.1f}" stroke="{INK}" stroke-width="1"/>')
     if p.ref is not None:
@@ -468,13 +473,16 @@ def draw_panel(o: list, p: Panel, x0: float, x1: float, top: float, bot: float) 
         s = ln.s
         if ln.kind == "bar":
             bw = max(1.5, (X(t0 + freq_step) - X(t0)) * 0.72)
-            for t, v in s.items():
+            for t, v0 in s.items():
                 xv = X(_xdec(t))
-                if p.clip:
-                    v = min(max(v, p.clip[0]), p.clip[1])
+                v = min(max(v0, p.clip[0]), p.clip[1]) if p.clip else v0
                 y_a, y_b = sorted((Y(0), Y(v)))
                 o.append(f'<rect x="{xv - bw / 2:.1f}" y="{y_a:.1f}" width="{bw:.1f}" height="{max(y_b - y_a, 0.8):.1f}" '
                          f'fill="{ln.color}"/>')
+                if v != v0:   # bar runs past the cut: a gap across it just inside the cut
+                    yg = Y(v) + (9 if v > 0 else -9)
+                    o.append(f'<line x1="{xv - bw / 2 - 1:.1f}" y1="{yg + 2.5:.1f}" x2="{xv + bw / 2 + 1:.1f}" '
+                             f'y2="{yg - 2.5:.1f}" stroke="{BG}" stroke-width="2.5"/>')
         else:
             d = " ".join(("M" if i == 0 else "L") + f"{X(_xdec(t)):.1f},{Y(v):.1f}" for i, (t, v) in enumerate(s.items()))
             if ln.shade:
@@ -483,6 +491,11 @@ def draw_panel(o: list, p: Panel, x0: float, x1: float, top: float, bot: float) 
                          f'fill-opacity="{SHADE_OPACITY}" stroke="none"/>')
             o.append(f'<path d="{d}" fill="none" stroke="{ln.color}" stroke-width="{ln.width * LINE_SCALE:.2f}" '
                      f'stroke-linejoin="round" stroke-linecap="round" style="mix-blend-mode:multiply"/>')
+    for yv in (breaks if p.clip else []):
+        o.append(f'<rect x="{px0 - 2:.1f}" y="{yv - 4:.1f}" width="14" height="8" fill="{BG}"/>')
+        for dx in (0.0, 6.0):
+            o.append(f'<line x1="{px0 + dx - 1:.1f}" y1="{yv + 6:.1f}" x2="{px0 + dx + 5:.1f}" y2="{yv - 6:.1f}" '
+                     f'stroke="{INK}" stroke-width="1.5" stroke-linecap="round"/>')
     # end labels (de-overlapped)
     ends = sorted(((Y(ln.s.iloc[-1]), ln) for ln in p.lines if ln.end_label), key=lambda e: e[0])
     placed = []
@@ -993,19 +1006,22 @@ def b_new_home_sales():
     ch = cur(pchg(s), s)
     rows = [
         # owner, 28 Oct 2026: the change quoted in the title gets its own panel beside the level (a 2x2 grid)
-        Row([Panel(_level(s, "2016-01"), "Homes sold", "thousands, annual rate", show_key=False),
+        Row([Panel(_level(s, "2016-01"), "Homes sold", "thousands, annual rate", show_key=False, sparse=True),
              # owner, 28 Oct 2026: same start as the other panels; the axis is cut so the 2020-21 swings
              # (-33% to +51%) do not flatten recent changes
-             Panel(_bars(yoy(s), "2016-01"), "Change from a year earlier", ysuffix="%", zero=True,
-                   show_key=False, clip=(-25, 25))], ROW_TOP),
-        Row([Panel(_level(sup, "2016-01"), "Months’ supply", show_key=False),
-             Panel(_level(px / 1000, "2016-01"), "Median price", yprefix="$", ysuffix="k", show_key=False)], ROW_BOT),
+             # owner, 28 Oct 2026: single-month changes are too noisy; three-month average, year over year
+             Panel(_bars(yoy(ma(s, 3)), "2016-01"), "Year-over-year change, three-month average", ysuffix="%",
+                   zero=True, show_key=False, clip=(-20, 20), sparse=True)], ROW_TOP),
+        Row([Panel(_level(sup, "2016-01"), "Months’ supply", show_key=False, sparse=True),
+             Panel(_level(px / 1000, "2016-01"), "Median price", yprefix="$", ysuffix="k", show_key=False,
+                   sparse=True)], ROW_BOT),
     ]
     # owner, 28 Oct 2026: the month-over-month change is too volatile to headline; use year over year
-    yy = cur(yoy(s), s)
+    yy = cur(yoy(ma(s, 3)), s)    # three-month average vs the same three months a year earlier
     title = f"New home sales {_verb(yy)} {abs(yy):.1f}% from a year earlier"
     cap = (f"New single-family home sales were {s.iloc[-1]:,.0f}k at an annual rate in {month_year(t)} "
-           f"({_signed(cur(yoy(s), s))} from a year earlier), with {sup.iloc[-1]:.1f} months' supply and a median "
+           f"({_signed(cur(yoy(s), s))} from a year earlier; {_signed(yy)} for the three-month average), with "
+           f"{sup.iloc[-1]:.1f} months' supply and a median "
            f"price of ${px.iloc[-1]:,.0f}.")
     src = "Source: Census Bureau and HUD, via FRED. Price not seasonally adjusted."
     return rows, None, 0, t, title, cap, src
