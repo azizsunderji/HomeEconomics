@@ -1620,3 +1620,8 @@ and `release_maps.py` (map builders, loaded as a plugin).
   "parsed 0 rows" and the lake copy is used); the Apartment List cookie; NAHB link pattern `t2-national-hmi-history-
   YYYYMM.xls`; the Mortgage News Daily seed lives in a project folder, not the lake; FRED outages make GDP and
   vehicle sales fail (they have no lake copy until the first successful run).
+
+## Status 28 Oct 2026
+- Synthesis bridge-phrase stripper (`_replace_welder_with_paragraph_break`, synthesize.py) cut from a sentence's start through a mid-sentence "beyond the", leaving fragments: "note rate." (28 Oct, ARM theme) and very likely "case at hand." (26 Oct, ADU theme; same log line). Now strips only phrases that open a sentence and end in a comma/colon; otherwise leaves the text and logs it (commit 3362d51).
+- Release charts: `Panel.clip=(lo, hi)` cuts the y axis and draws an Economist-style squiggle at each cut end. New home sales chart is a 2x2 grid with a year-over-year bar panel from 2016 (axis cut at ±25%); title headlines the y/y change, not m/m (commits bce3fca, c488828, d1caf74).
+- Renderer fix 27 Oct: a moved link no longer nests inside the next link (email_lunch._narrow_link_anchors, commit 8070e23).
