@@ -977,14 +977,16 @@ def b_new_home_sales():
     t = s.index[-1]
     ch = cur(pchg(s), s)
     rows = [
-        # owner, 28 Oct 2026: the title's monthly change gets its own panel beside the level (a 2x2 grid)
+        # owner, 28 Oct 2026: the change quoted in the title gets its own panel beside the level (a 2x2 grid)
         Row([Panel(_level(s, "2016-01"), "Homes sold", "thousands, annual rate", show_key=False),
-             Panel(_bars(pchg(s), "2023-01"), "Change from the previous month", ysuffix="%", zero=True,
+             Panel(_bars(yoy(s), "2023-01"), "Change from a year earlier", ysuffix="%", zero=True,
                    show_key=False)], ROW_TOP),
         Row([Panel(_level(sup, "2016-01"), "Months’ supply", show_key=False),
              Panel(_level(px / 1000, "2016-01"), "Median price", yprefix="$", ysuffix="k", show_key=False)], ROW_BOT),
     ]
-    title = f"New home sales {_verb(ch)} {abs(ch):.1f}% in {MONTHS[t.month - 1]}"
+    # owner, 28 Oct 2026: the month-over-month change is too volatile to headline; use year over year
+    yy = cur(yoy(s), s)
+    title = f"New home sales {_verb(yy)} {abs(yy):.1f}% from a year earlier"
     cap = (f"New single-family home sales were {s.iloc[-1]:,.0f}k at an annual rate in {month_year(t)} "
            f"({_signed(cur(yoy(s), s))} from a year earlier), with {sup.iloc[-1]:.1f} months' supply and a median "
            f"price of ${px.iloc[-1]:,.0f}.")
