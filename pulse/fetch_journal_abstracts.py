@@ -189,6 +189,59 @@ def _extract_doi(url: str) -> str | None:
     return None
 
 
+# Paper of the Day authors (owner, 30 Oct 2026: "fix the code"). Taylor & Francis feeds (Journal of
+# Housing Research, Journal of Real Estate Research, Housing Policy Debate, JAPA) send one dc:creator
+# string holding every name, the affiliations and the authors' contact details, with no separators, so
+# the names cannot be split out of it. When the string looks like that, take the names from the DOI.
+_AFFIL_RE = re.compile(
+    r"\b(?:Universit\w*|Department|School|College|Institute|Cent(?:er|re)|Faculty|Contact)\b|@|\bUSA\b"
+)
+
+
+def looks_like_affiliation_dump(authors: str) -> bool:
+    a = " ".join((authors or "").split())
+    return len(a) > 150 or bool(_AFFIL_RE.search(a))
+
+
+def _format_author_names(names: list) -> str:
+    names = [" ".join(n.split()) for n in names if n and n.strip()]
+    if not names:
+        return ""
+    return f"{names[0]} et al." if len(names) > 4 else ", ".join(names)
+
+
+def fetch_authors_by_doi(doi: str, http_client: "httpx.Client") -> str:
+    """Author names for a DOI from Crossref, then OpenAlex. Empty string if neither has them."""
+    try:
+        r = http_client.get(f"https://api.crossref.org/works/{doi}", timeout=15)
+        if r.status_code == 200:
+            names = [a.get("name") or f"{a.get('given', '')} {a.get('family', '')}".strip()
+                     for a in r.json().get("message", {}).get("author", []) or []]
+            got = _format_author_names(names)
+            if got:
+                return got
+    except Exception:
+        pass
+    try:
+        r = http_client.get(f"https://api.openalex.org/works/https://doi.org/{doi}", timeout=15)
+        if r.status_code == 200:
+            names = [(a.get("author") or {}).get("display_name") for a in r.json().get("authorships", []) or []]
+            return _format_author_names(names)
+    except Exception:
+        pass
+    return ""
+
+
+def clean_paper_authors(authors: str, url: str, http_client: "httpx.Client") -> str:
+    """The feed's author string when it is a plain list of names; otherwise the names from the DOI,
+    or an empty string (the email shows no author line) when there is no DOI or no lookup answers."""
+    a = " ".join((authors or "").split())
+    if not looks_like_affiliation_dump(a):
+        return a
+    doi = _extract_doi(url or "")
+    return fetch_authors_by_doi(doi, http_client) if doi else ""
+
+
 def _rebuild_inverted_index(ai: dict) -> str:
     """OpenAlex serves abstracts as a position→word inverted index. Reconstruct."""
     if not ai:

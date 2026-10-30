@@ -847,6 +847,24 @@ def cmd_synthesize(args):
         except Exception as _swap_e:
             logger.warning(f"Paper-of-the-day repeat post-check failed: {_swap_e}")
 
+        # Paper of the Day authors: Taylor & Francis feeds put names, affiliations and contact details in
+        # one string (owner, 30 Oct 2026: "fix the code"); swap in the DOI's author list when that happens.
+        try:
+            potd = briefing.get("paper_of_the_day")
+            if isinstance(potd, dict) and potd.get("authors"):
+                import httpx as _httpx_au
+                import sys as _sys_au
+                _sys_au.path.insert(0, str(Path(__file__).parent.parent))
+                from fetch_journal_abstracts import clean_paper_authors as _clean_authors
+                with _httpx_au.Client(headers={"User-Agent": "Pulse Briefing <aziz@home-economics.us>"},
+                                      timeout=15) as _au_client:
+                    cleaned = _clean_authors(potd["authors"], potd.get("url", ""), _au_client)
+                if cleaned != potd["authors"]:
+                    logger.info(f"Paper of the Day authors cleaned: {potd['authors'][:80]!r} -> {cleaned!r}")
+                    potd["authors"] = cleaned
+        except Exception as _au_e:
+            logger.warning(f"Paper-of-the-day author cleanup failed: {_au_e}")
+
         # Stable ordering so rotation is deterministic
         pool.sort(key=lambda x: (x.get("title") or "").lower())
 
