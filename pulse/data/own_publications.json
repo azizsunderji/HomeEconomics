@@ -1,7 +1,17 @@
 {
- "generated_at": "2026-10-25T09:00:59+00:00",
+ "generated_at": "2026-11-01T09:00:46+00:00",
  "note": "Owner's own publications for callbacks (pulse/editor/own_publications.py). Charts are hosted on noon.homeeconomics.us.",
  "posts": [
+  {
+   "slug": "i-joined-scott-galloway-on-the-prof",
+   "url": "https://homeeconomics.substack.com/p/i-joined-scott-galloway-on-the-prof",
+   "title": "I joined Scott Galloway on the Prof G Pod",
+   "date": "2026-10-29",
+   "audience": "free",
+   "summary": "Aziz Sunderji appeared on Scott Galloway's Prof G Pod podcast discussing housing policy with economist Kyla Scanlon, reaching 175,000 YouTube views. They explored tensions between homeowners wanting higher prices and buyers needing affordability, zoning challenges in major cities, and whether policies like rent control help younger people. Sunderji emphasized translating housing data insights into accessible explanations for broader audiences.",
+   "text": "I was recently on The Prof G Pod—the podcast hosted by NYU professor Scott Galloway—talking about housing, along with with Kyla Scanlon. We recorded the episode earlier this month; it came out on Tuesday and has already racked up a respectable 175,000 views on YouTube.\n\nWatch on YouTube · Listen on Apple Podcasts · Listen on Spotify\n\nThis was a big one for me! Scott’s recent interviewees include Mark Carney, the Prime Minister of Canada, geopolitical analyst Fareed Zakaria, and California Governor Gavin Newsom.\n\nIf you don’t know Kyla, she’s an economic commentator who writes for the New York Times opinion pages. Her book, In This Economy? How Money and Markets Really Work, was a New York Times bestseller, and she’s the person who coined the term “vibecession.” She just launched a new podcast, too: Best of Luck with Kyla Scanlon.\n\nHere’s some of what we got into:\n\nOwners want prices up. Buyers need them down. Whose side should policy take?\n\nWhy building in big cities is so hard?\n\nIs Austin, TX a model for boosting affordability?\n\nWhere are things going wrong for young people?\n\nIs rent control a good policy?\n\nWhy do NY and CA build little housing—is it blue-state regulation?\n\nIs this a zoning-induced crisis, or something bigger?\n\nIt was my first big podcast, and I loved doing it. It was also something new for me. I spend most of my time figuring out what the data say. Lately I’ve been thinking more about what to say about the data: how can I explain this stuff in a way that ke",
+   "charts": []
+  },
   {
    "slug": "what-do-your-local-stores-say-about",
    "url": "https://homeeconomics.substack.com/p/what-do-your-local-stores-say-about",
@@ -2192,7 +2202,7 @@
      "description": "Map of US ZIP codes with dots colored by year-over-year home price gains (blue) or losses (gray), sized by population.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null,
+     "refresh_status": "stale-unrefreshable",
      "replica_status": "deferred"
     }
    ]
@@ -2922,7 +2932,7 @@
      "description": "Months' supply of new homes plotted against inverted year-over-year home price growth, 1975 to 2025, showing that supply changes lead price changes.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null,
+     "refresh_status": "stale-unrefreshable",
      "replica_status": null
     },
     {
@@ -3093,7 +3103,7 @@
      "description": "Area chart of the gap between current mortgage rate and sales-weighted average rate on existing mortgages, 1970 to 2025, showing lock-in at highest since early 1980s.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null,
+     "refresh_status": "stale-unrefreshable",
      "replica_status": "replicated"
     },
     {
@@ -4990,7 +5000,7 @@
      "description": "Map of New York City neighborhoods showing the 6-month change in home prices minus the 6-month change in rents; Manhattan shows rents outpacing prices.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null,
+     "refresh_status": "stale-unrefreshable",
      "replica_status": "deferred"
     }
    ]
@@ -8418,7 +8428,7 @@
      "description": "Quarterly contribution of residential investment to US GDP growth from 2021 to 2023, with the latest Atlanta Fed nowcast showing a 0.3% boost.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null,
+     "refresh_status": "stale-unrefreshable",
      "replica_status": null
     }
    ]
@@ -8641,7 +8651,7 @@
      "description": "Peak-to-trough declines in existing home sales across US housing downturns, plotted by months of decline from peak, showing 2020-23 as the fastest fall.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null,
+     "refresh_status": "stale-unrefreshable",
      "replica_status": null
     }
    ]
@@ -8699,7 +8709,7 @@
      "description": "Stacked bars of quarterly US mortgage originations by borrower credit score band, 2003-2023, showing pandemic-era borrowers had higher scores than in 2003-06.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null,
+     "refresh_status": "stale-unrefreshable",
      "replica_status": null
     }
    ]
@@ -8841,7 +8851,7 @@
      "description": "Timeline by decade (1970s-2020s) showing years when US home prices fell in real versus nominal terms, with the 2020s decline only in inflation-adjusted terms.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null,
+     "refresh_status": "stale-unrefreshable",
      "replica_status": null
     }
    ]
