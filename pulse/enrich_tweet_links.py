@@ -117,6 +117,10 @@ def _should_enrich(resolved_url: str) -> bool:
 
 
 # ---- Browserbase setup (mirrors enrich_articles.py) ----
+# Cost controls shared with enrich_articles.py (owner-approved, 2 Nov 2026): proxy only NYT/WSJ, drop heavy
+# resources, release the session when done.
+from enrich_articles import (browserbase_proxies, block_heavy_requests, release_browserbase_sessions,
+                             _BB_SESSIONS)
 
 BROWSERBASE_API_KEY = os.environ.get("BROWSERBASE_API_KEY", "")
 BROWSERBASE_PROJECT_ID = os.environ.get("BROWSERBASE_PROJECT_ID", "")
@@ -130,10 +134,12 @@ def _create_browserbase_session():
         from browserbase import Browserbase
         bb = Browserbase(api_key=BROWSERBASE_API_KEY)
         kwargs = {"project_id": BROWSERBASE_PROJECT_ID, "api_timeout": 1800, "keep_alive": True}
-        kwargs["proxies"] = os.environ.get("BROWSERBASE_PROXIES", "1") != "0"  # see enrich_articles.py
+        kwargs["proxies"] = browserbase_proxies()  # NYT/WSJ only; see enrich_articles.py (2 Nov 2026)
         if BROWSERBASE_CONTEXT_ID:
             kwargs["browser_settings"] = {"context": {"id": BROWSERBASE_CONTEXT_ID, "persist": True}}
-        return bb.sessions.create(**kwargs)
+        session = bb.sessions.create(**kwargs)
+        _BB_SESSIONS.append(session.id)
+        return session
     except Exception as e:
         logger.warning(f"Browserbase session creation failed: {e}")
         return None
@@ -229,6 +235,7 @@ async def _run(hours: int, limit: int, min_relevance: int, dry_run: bool):
     async with async_playwright() as p:
         browser = await p.chromium.connect_over_cdp(bb_session.connect_url)
         context = browser.contexts[0]
+        await block_heavy_requests(context)
 
         for item in rows:
             tco_urls = _extract_tco_urls(item["body"])
@@ -286,7 +293,10 @@ def main():
     ap.add_argument("--min-relevance", type=int, default=50)
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
-    asyncio.run(_run(args.hours, args.limit, args.min_relevance, args.dry_run))
+    try:
+        asyncio.run(_run(args.hours, args.limit, args.min_relevance, args.dry_run))
+    finally:
+        release_browserbase_sessions()  # end the session now, not at its 30-minute limit (2 Nov 2026)
 
 
 if __name__ == "__main__":

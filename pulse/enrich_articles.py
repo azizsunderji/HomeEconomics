@@ -389,6 +389,78 @@ BROWSERBASE_PROJECT_ID = os.environ.get("BROWSERBASE_PROJECT_ID", "")
 BROWSERBASE_CONTEXT_ID = os.environ.get("BROWSERBASE_CONTEXT_ID", "")
 
 
+# ---- Browserbase cost controls (owner-approved, 2 Nov 2026) ----
+# Proxy data is billed per GB. From 16 Oct to 1 Nov 2026 every site went through the proxy (about 500 MB a
+# day, ~$84 in two weeks). Only NYT and WSJ block Browserbase's own address, so only they (and their asset and
+# bot-check hosts) use the proxy; everything else goes direct. BROWSERBASE_PROXIES: "0" = no proxy,
+# "all" or "1" = proxy every site (the old setting, for a quick rollback), unset = this routing.
+PROXY_DOMAINS_RE = (r"^([a-zA-Z0-9-]+\.)*(nytimes\.com|nyt\.com|wsj\.com|wsj\.net|dowjones\.com"
+                    r"|datadome\.co|captcha-delivery\.com)$")
+
+
+def browserbase_proxies():
+    mode = os.environ.get("BROWSERBASE_PROXIES", "").strip().lower()
+    if mode == "0":
+        return False
+    if mode in ("1", "all"):
+        return True
+    return [{"type": "browserbase", "domain_pattern": PROXY_DOMAINS_RE}, {"type": "none"}]
+
+
+# The job keeps article text only, so pictures, video, fonts, stylesheets and ad/tracker calls are dropped
+# before they load (about 1.7 MB per article went through the paid proxy before this).
+BLOCK_RESOURCE_TYPES = {"image", "media", "font", "stylesheet"}
+BLOCK_HOSTS_RE = re.compile(
+    r"(doubleclick|googlesyndication|googletagmanager|googletagservices|google-analytics|googleadservices|"
+    r"adservice\.google|amazon-adsystem|adnxs|criteo|taboola|outbrain|scorecardresearch|chartbeat|quantserve|"
+    r"moatads|pubmatic|rubiconproject|casalemedia|openx\.net|indexww|krxd|bluekai|facebook\.net|hotjar|"
+    r"newrelic|nr-data|optimizely|permutive|parsely|brightcove|jwplayer|connatix|teads|sharethrough|"
+    r"33across|lijit|yieldmo|smartadserver|adsrvr|doubleverify|adsafeprotected|bing\.com/bat|clarity\.ms)",
+    re.IGNORECASE)
+
+
+async def _block_heavy(route):
+    req = route.request
+    try:
+        if req.resource_type in BLOCK_RESOURCE_TYPES or BLOCK_HOSTS_RE.search(req.url.split("?", 1)[0]):
+            await route.abort()
+        else:
+            await route.continue_()
+    except Exception:
+        pass  # the page closed mid-request
+
+
+async def block_heavy_requests(context) -> None:
+    """Install the request filter on a Browserbase browser context (once per session)."""
+    try:
+        await context.route("**/*", _block_heavy)
+    except Exception as e:
+        logger.warning(f"could not install the request filter: {e}")
+
+
+_BB_SESSIONS: list[str] = []  # sessions this run opened, released when the run is done
+
+
+def release_browserbase_sessions() -> None:
+    """Ask Browserbase to end every session this run opened. With keep_alive a session otherwise stays up
+    (and billed) until its 30-60 minute lifetime runs out after the job has finished with it."""
+    if not _BB_SESSIONS:
+        return
+    try:
+        from browserbase import Browserbase
+        bb = Browserbase(api_key=BROWSERBASE_API_KEY)
+    except Exception as e:
+        logger.warning(f"Browserbase release skipped: {e}")
+        return
+    while _BB_SESSIONS:
+        sid = _BB_SESSIONS.pop()
+        try:
+            bb.sessions.update(sid, project_id=BROWSERBASE_PROJECT_ID, status="REQUEST_RELEASE")
+            logger.info(f"Released Browserbase session {sid}")
+        except Exception as e:
+            logger.warning(f"Browserbase session {sid} release failed: {e}")
+
+
 def _create_browserbase_session():
     """Create a new Browserbase session with the configured project + context.
 
@@ -410,8 +482,9 @@ def _create_browserbase_session():
             # 60 min, and _enrich_batch reconnects if the session still ends early.
             "api_timeout": 3600,
             "keep_alive": True,
-            # residential proxy: WSJ/NYT block the datacenter IP outright (16 Oct 2026)
-            "proxies": os.environ.get("BROWSERBASE_PROXIES", "1") != "0",
+            # residential proxy for NYT/WSJ only: they block the datacenter IP outright (16 Oct 2026);
+            # every other site goes direct (2 Nov 2026, see browserbase_proxies)
+            "proxies": browserbase_proxies(),
         }
         if BROWSERBASE_CONTEXT_ID:
             # Persist cookies/storage across sessions — enables paywall auth
@@ -419,6 +492,7 @@ def _create_browserbase_session():
                 "context": {"id": BROWSERBASE_CONTEXT_ID, "persist": True}
             }
         session = bb.sessions.create(**kwargs)
+        _BB_SESSIONS.append(session.id)
         return session
     except Exception as e:
         logger.warning(f"Browserbase session creation failed: {e}")
@@ -445,6 +519,8 @@ async def _connect_browser(p) -> tuple[object, str]:
             browser = await p.chromium.connect_over_cdp(session.connect_url)
             logger.info(f"Connected to Browserbase session {session.id} "
                         f"(context_id={'set' if BROWSERBASE_CONTEXT_ID else 'none'})")
+            if browser.contexts:
+                await block_heavy_requests(browser.contexts[0])
             return browser, "browserbase"
         except Exception as e:
             logger.warning(f"Browserbase CDP connect failed: {e}; falling back to local")
@@ -620,6 +696,7 @@ async def _enrich_batch(items: list[dict], dry_run: bool = False
                     await browser.close()
                 except Exception:
                     pass
+                release_browserbase_sessions()
                 browser, mode = await _connect_browser(p)
 
             page = None
@@ -794,7 +871,10 @@ def main():
         logger.info("Nothing to enrich.")
         return
 
-    enriched, auth_rows = asyncio.run(_enrich_batch(items, dry_run=args.dry_run))
+    try:
+        enriched, auth_rows = asyncio.run(_enrich_batch(items, dry_run=args.dry_run))
+    finally:
+        release_browserbase_sessions()
 
     if auth_rows:
         logger.info("Paywall auth: " + ", ".join(
