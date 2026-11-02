@@ -192,9 +192,35 @@
 
   // ── ui helpers ────────────────────────────────────────────────────
   const banner = $('#banner');
-  function say(msg, kind) {
+  // sticky: the message stays until tapped (used for the subscriber send). Tap any message to close it.
+  function say(msg, kind, sticky) {
     banner.textContent = msg; banner.className = 'banner' + (kind ? ' ' + kind : ''); banner.hidden = !msg;
-    if (kind === 'ok') setTimeout(() => { if (banner.textContent === msg) banner.hidden = true; }, 5000);
+    if (kind === 'ok' && !sticky) setTimeout(() => { if (banner.textContent === msg) banner.hidden = true; }, 6000);
+  }
+  banner.setAttribute('role', 'status');
+  banner.addEventListener('click', () => { if (!banner.classList.contains('busy')) banner.hidden = true; });
+  function placeToast() {
+    const bar = document.querySelector('.actions');
+    if (bar) document.documentElement.style.setProperty('--toast-bottom', (bar.offsetHeight + 12) + 'px');
+  }
+  window.addEventListener('resize', placeToast);
+  // Show a button as working while fn runs; put it back afterwards.
+  async function busy(btn, label, fn) {
+    const was = btn.textContent; btn.disabled = true; btn.classList.add('busy'); btn.textContent = label;
+    try { return await fn(); } finally { btn.classList.remove('busy'); btn.textContent = was; btn.disabled = false; }
+  }
+  // "Sent at 12:49 pm ET to 7,451 subscribers (4 premium, 7,447 free)."
+  function sentMessage(meta) {
+    let when = '';
+    if (meta.sent_at) {
+      const iso = /[zZ]|[+-]\d\d:?\d\d$/.test(meta.sent_at) ? meta.sent_at : meta.sent_at + 'Z';
+      when = ' at ' + new Date(iso).toLocaleTimeString('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: '2-digit' }).toLowerCase() + ' ET';
+    }
+    const n = v => Number(v).toLocaleString('en-US');
+    const m = /(\d+)\/(\d+) \((\d+) premium, (\d+) free\)/.exec(meta.send_log || '');
+    if (!m) return 'Sent' + when + '. ' + (meta.send_log || '');
+    const who = m[1] === m[2] ? n(m[2]) + ' subscribers' : n(m[1]) + ' of ' + n(m[2]) + ' subscribers';
+    return 'Sent' + when + ' to ' + who + ' (' + n(m[3]) + ' premium, ' + n(m[4]) + ' free). Inboxes can take a few minutes.';
   }
   function chip(text, cls) { const c = $('#saveChip'); c.textContent = text; c.className = 'chip' + (cls ? ' ' + cls : ''); }
   function statusChip() {
@@ -203,6 +229,7 @@
     $('#btnHold').textContent = state.status === 'held' ? 'Resume today’s send' : 'Hold today’s send';
     const locked = state.status === 'sent';
     ['#btnHold', '#btnSendNow', '#btnReset'].forEach(s => { $(s).disabled = locked; });
+    if (locked) $('#btnSendNow').textContent = 'Sent';
     // after the send: link to the cards page (four PNGs for X, carousel PDF for LinkedIn; 28 Sep 2026)
     $('#sentLine').hidden = !locked;
     if (state.date) $('#lnkCards').href = '/cards/' + state.date;
@@ -766,22 +793,29 @@
   }
 
   // ── actions ───────────────────────────────────────────────────────
-  function twoTap(btn, label, fn) {
+  // First tap turns the button yellow ("Tap again to confirm"); the second runs fn with the button shown as busy.
+  function twoTap(btn, label, fn, busyLabel) {
     let armed = null;
+    const disarm = () => { armed = null; btn.classList.remove('armed'); btn.textContent = label; };
     btn.addEventListener('click', async () => {
-      if (armed) { clearTimeout(armed); armed = null; btn.textContent = label; await fn(); return; }
-      btn.textContent = 'Tap again to confirm'; armed = setTimeout(() => { armed = null; btn.textContent = label; }, 4000);
+      if (btn.classList.contains('busy')) return;
+      if (armed) { clearTimeout(armed); disarm(); await busy(btn, busyLabel || 'Working…', fn); if (state.meta) statusChip(); return; }
+      // statusChip() (above) relabels Send now as 'Sent' and disables it after a successful send; busy() had put the old label back.
+      btn.classList.add('armed'); btn.textContent = 'Tap again to confirm'; armed = setTimeout(disarm, 4000);
     });
   }
   async function openPreview(tier) {
     if (!(await ensureSaved())) { say('Could not save before preview.', 'err'); return; }
     window.open('/preview/' + state.date + '?tier=' + tier, '_blank');
   }
-  async function sendTest(tier) {
-    if (!(await ensureSaved())) { say('Could not save before sending.', 'err'); return; }
-    say('Sending the ' + tier + ' edition to you…');
-    try { const r = await api('POST', '/api/draft/' + state.date + '/send-test', { tier }); say('Sent the ' + tier + ' edition to ' + r.to + '.', 'ok'); }
-    catch (e) { say('Test send failed: ' + e.message, 'err'); }
+  async function sendTest(tier, btn) {
+    if (btn && btn.classList.contains('busy')) return;
+    await busy(btn, 'Sending…', async () => {
+      if (!(await ensureSaved())) { say('Could not save before sending.', 'err'); return; }
+      say('Sending the ' + tier + ' edition to you…', 'busy');
+      try { const r = await api('POST', '/api/draft/' + state.date + '/send-test', { tier }); say('Sent the ' + tier + ' edition to ' + r.to + '.', 'ok'); }
+      catch (e) { say('Test send failed: ' + e.message, 'err'); }
+    });
   }
   function applyMeta(data) {
     state.meta = data; state.status = data.status; state.version = data.version; statusChip();
@@ -798,8 +832,8 @@
       say('Rendering cards… this takes about half a minute.');
       window.open('/cards/' + state.date, '_blank');
     });
-    $('#btnTestFree').addEventListener('click', () => sendTest('free'));
-    $('#btnTestPremium').addEventListener('click', () => sendTest('premium'));
+    $('#btnTestFree').addEventListener('click', e => sendTest('free', e.currentTarget));
+    $('#btnTestPremium').addEventListener('click', e => sendTest('premium', e.currentTarget));
     $('#btnHold').addEventListener('click', async () => {
       const next = state.status === 'held' ? 'draft' : 'held';
       try { applyMeta(await api('POST', '/api/draft/' + state.date + '/status', { status: next })); say(next === 'held' ? 'Held. Today’s edition will not send until you resume it.' : 'Resumed. It sends at noon ET.', 'ok'); }
@@ -807,13 +841,14 @@
     });
     twoTap($('#btnSendNow'), 'Send now', async () => {
       if (!(await ensureSaved())) { say('Could not save before sending.', 'err'); return; }
-      try { applyMeta(await api('POST', '/api/draft/' + state.date + '/send-now', { confirm: true })); say('Sent. ' + (state.meta.send_log || ''), 'ok'); }
+      say('Sending to all subscribers… this takes about a minute. Keep this page open.', 'busy');
+      try { applyMeta(await api('POST', '/api/draft/' + state.date + '/send-now', { confirm: true })); say(sentMessage(state.meta), 'ok', true); }
       catch (e) { say('Send failed: ' + e.message, 'err'); }
-    });
+    }, 'Sending to subscribers…');
     twoTap($('#btnReset'), 'Discard edits and rebuild', async () => {
       try { const d = await api('POST', '/api/draft/' + state.date + '/reset'); load(d); say('Rebuilt from the stored brief. Your edits were discarded.', 'ok'); }
       catch (e) { say(e.message, 'err'); }
-    });
+    }, 'Rebuilding…');
   }
 
   // ── load ──────────────────────────────────────────────────────────
@@ -826,6 +861,7 @@
     renderEntries(); renderPaper(); chip('Saved');
   }
   async function boot() {
+    placeToast();
     wireTools($('.standfirst'), $('#intro'));
     wireActions();
     try { load(await api('GET', '/api/draft?d=' + encodeURIComponent(wanted))); }

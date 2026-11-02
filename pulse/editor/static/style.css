@@ -23,7 +23,11 @@ button { font: inherit; color: inherit; }
 .chip.err { background: #FBCAB5; }
 
 /* messages */
-.banner { margin: 14px 0; padding: 12px 14px; background: var(--soft); font-size: 15px; }
+/* messages float just above the bottom bar so they are seen wherever the page is scrolled (2 Nov 2026) */
+.banner { position: fixed; left: 50%; transform: translateX(-50%); bottom: var(--toast-bottom, 120px); z-index: 6;
+  width: min(648px, calc(100% - 32px)); box-sizing: border-box; margin: 0; padding: 12px 14px; background: var(--soft);
+  font-size: 15px; border-radius: 8px; box-shadow: 0 4px 18px rgba(61,55,51,.18); cursor: pointer; }
+.banner.busy { background: var(--blue); color: #fff; cursor: default; }
 .banner.err { background: #FBCAB5; }
 .banner.ok { background: #C6DCCB; }
 .banner[hidden] { display: none; }
@@ -97,7 +101,12 @@ h2 { font-family: var(--serif); font-weight: normal; font-size: 22px; margin: 36
 /* up/down/delete wrap together as one unit, never one button alone on a line */
 .tools .move { display: inline-flex; gap: 6px; }
 .btn { border: 1px solid var(--line); background: var(--paper); padding: 8px 12px; font-size: 14px; cursor: pointer; border-radius: 6px; -webkit-tap-highlight-color: transparent; user-select: none; }
-.btn:active { background: var(--soft); }
+.btn:active { background: var(--line); transform: scale(.97); }
+/* first tap of a two-tap button: yellow until the second tap or 4 seconds */
+.btn.armed { background: var(--yellow); border-color: var(--yellow); color: var(--ink); font-weight: 600; }
+/* an action in progress: blue and pulsing, not dimmed like a disabled button */
+.btn.busy, .btn.busy[disabled] { background: var(--blue); border-color: var(--blue); color: #fff; opacity: 1; animation: btnpulse 1.2s ease-in-out infinite; }
+@keyframes btnpulse { 50% { opacity: .65; } }
 a.btn { text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
 .btn.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
 .btn.danger { color: var(--red); }
