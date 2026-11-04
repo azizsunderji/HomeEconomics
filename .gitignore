@@ -66,4 +66,5 @@ build/
 
 # Pulse runtime data
 pulse/data/
-pulse/*.db!metro-explorer/source/*.parquet
+pulse/*.db
+!metro-explorer/source/*.parquet
