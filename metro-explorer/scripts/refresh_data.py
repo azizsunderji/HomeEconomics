@@ -17,12 +17,12 @@ import numpy as np
 SCRIPT_DIR = Path(__file__).parent
 DATA_DIR = SCRIPT_DIR.parent / "data"
 DATA_LAKE = Path("/Users/azizsunderji/Dropbox/Home Economics/Data")
-REDFIN_PARQUET = DATA_LAKE / "Redfin" / "monthly_metro.parquet"
+REDFIN_FROZEN = SCRIPT_DIR.parent / "source" / "redfin_tracker_metro_frozen_2026-05.parquet"
 ZILLOW_ALL = DATA_LAKE / "Price" / "Zillow" / "Metro_zhvi_uc_sfrcondo_tier_0.33_0.67_sm_sa_month.parquet"
 ZILLOW_SFR_CSV = DATA_LAKE / "Price" / "Zillow" / "Metro_zhvi_uc_sfr_sm_sa_month.csv"
 ZILLOW_CONDO_CSV = DATA_LAKE / "Price" / "Zillow" / "Metro_zhvi_uc_condo_sm_sa_month.csv"
 
-REDFIN_URL = "https://redfin-public-data.s3.us-west-2.amazonaws.com/redfin_market_tracker/redfin_metro_market_tracker.tsv000.gz"
+# Legacy tracker URL (deleted by Redfin ~28 Oct 2026, now 403) is no longer used; see REDFIN_FROZEN.
 # Redfin froze the tracker file above on 2 Jun 2026 (last month: May 2026). Current
 # data is in the Data Center file below: seasonally adjusted for every metro, All
 # Residential only, no price-drops column, percentages instead of fractions.
@@ -41,48 +41,11 @@ def download_sources():
     TMP_DIR.mkdir(exist_ok=True)
     con = duckdb.connect()
 
-    # -- Redfin --
-    redfin_tsv = TMP_DIR / "redfin_metro.tsv"
-    redfin_pq = TMP_DIR / "redfin_metro.parquet"
-
-    # If data lake parquet exists, check if remote is newer
-    use_local_redfin = False
-    if REDFIN_PARQUET.exists():
-        req = urllib.request.Request(REDFIN_URL, method='HEAD')
-        resp = urllib.request.urlopen(req)
-        remote_modified = resp.headers['Last-Modified']
-        source_json = REDFIN_PARQUET.with_suffix('.source.json')
-        if source_json.exists():
-            with open(source_json) as f:
-                src = json.load(f)
-            if src.get('remote_last_modified') == remote_modified:
-                print(f"Redfin: local parquet is current ({remote_modified})")
-                use_local_redfin = True
-
-    if not use_local_redfin:
-        print("Downloading fresh Redfin metro data...")
-        resp = urllib.request.urlopen(REDFIN_URL)
-        raw = gzip.decompress(resp.read())
-        print(f"  Downloaded {len(raw) / 1e6:.1f} MB")
-        with open(redfin_tsv, 'wb') as f:
-            f.write(raw)
-        con.execute(f"""
-            COPY (SELECT * FROM read_csv_auto('{redfin_tsv}', delim='\t', header=true, quote='"'))
-            TO '{redfin_pq}' (FORMAT PARQUET)
-        """)
-        redfin_tsv.unlink()
-        # Also update data lake if available
-        if REDFIN_PARQUET.parent.exists():
-            import shutil
-            shutil.copy2(redfin_pq, REDFIN_PARQUET)
-            req2 = urllib.request.Request(REDFIN_URL, method='HEAD')
-            resp2 = urllib.request.urlopen(req2)
-            with open(REDFIN_PARQUET.with_suffix('.source.json'), 'w') as f:
-                json.dump({"type": "url", "url": REDFIN_URL, "format": "tsv.gz",
-                           "remote_last_modified": resp2.headers['Last-Modified']}, f, indent=2)
-            print(f"  Data lake parquet updated")
-
-    redfin_path = str(REDFIN_PARQUET) if use_local_redfin else str(redfin_pq)
+    # -- Redfin frozen tracker file (read from the repo copy; no download) --
+    # Redfin deleted the legacy tracker file (redfin_market_tracker/redfin_metro_market_tracker.tsv000.gz) around 28 Oct 2026, so it now
+    # returns HTTP 403. The copy below is frozen (last month May 2026) and holds metro rows
+    # only, with just the columns this script reads.
+    redfin_path = str(REDFIN_FROZEN)
     latest = con.execute(f"SELECT MAX(period_end) FROM '{redfin_path}'").fetchone()[0]
     print(f"  Redfin (frozen tracker file) latest date: {latest}")
 
