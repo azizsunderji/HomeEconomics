@@ -39,12 +39,15 @@
     }
     return out + esc(text.slice(i));
   }
-  // ![caption](url) on a line of its own: an image block. The caption is the alt text.
-  const IMG_RE = /^!\[([^\]]*)\]\((https?:\/\/[^\s)]+)\)$/;
+  // ![caption](url) on a line of its own: an image block. The caption is the alt text and may
+  // hold markdown links (owner, 4 Nov 2026): ![Rents, from [Apartment List](https://…) data](url).
+  // In the editor the caption is a one-line editable field (like a quote's attribution), so the
+  // Link / Unlink buttons work on it; capToMd() turns it back into the markdown caption.
+  const IMG_RE = /^!\[((?:[^\[\]\n]|\[[^\]\n]*\]\([^)\n]*\)|\[)*)\]\((https?:\/\/[^\s)]+)\)$/;
   function figureHtml(caption, url) {
     return '<figure class="img" contenteditable="false" data-url="' + escAttr(url) + '">' +
       '<img src="' + escAttr(url) + '" alt="">' +
-      '<div class="caprow"><input class="cap" type="text" placeholder="Caption (optional)" value="' + escAttr(caption) + '">' +
+      '<div class="caprow"><div class="cap" contenteditable="true" data-placeholder="Caption (optional)">' + inlineToHtml(caption) + '</div>' +
       '<button type="button" class="ctxmv" data-act="imgup" title="Move the image up one paragraph (Alt+↑ in the caption)">↑</button>' +
       '<button type="button" class="ctxmv" data-act="imgdown" title="Move the image down one paragraph (Alt+↓ in the caption)">↓</button>' +
       '<button type="button" class="btn icon rm" data-act="rmimg" title="Remove image">✕</button></div></figure>';
@@ -143,6 +146,26 @@
     if (!links) return '';
     return blocks.length === 1 ? blocks[0] : blocks.map(b => '<p>' + b + '</p>').join('');
   }
+  // The caption field as a markdown caption: one line, links as [text](url "free"), stray
+  // brackets in the text dropped (they would break the image line), ")" and spaces in a URL encoded.
+  function capToMd(el) {
+    let out = '';
+    (function walk(node) {
+      for (const n of node.childNodes) {
+        if (n.nodeType === 3) { out += n.nodeValue.replace(/[\[\]]/g, ''); continue; }
+        if (n.nodeType !== 1) continue;
+        if (n.tagName === 'A') {
+          const href = (n.getAttribute('href') || '').replace(/\)/g, '%29').replace(/\s/g, '%20');
+          const t = n.textContent.replace(/[\[\]]/g, '').replace(/\s+/g, ' ').trim();
+          out += href && t ? '[' + t + '](' + href + (n.hasAttribute('data-free') ? ' "' + FREE_TITLE + '"' : '') + ')' : t;
+          continue;
+        }
+        if (n.tagName === 'BR') { out += ' '; continue; }
+        walk(n);
+      }
+    })(el);
+    return out.replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
+  }
   function htmlToMd(root) {
     const paras = []; let cur = '';
     const flush = () => { const t = cur.replace(/ /g, ' ').replace(/[ \t]+\n/g, '\n').replace(/\n{2,}/g, '\n').trim(); if (t) paras.push(t); cur = ''; };
@@ -172,8 +195,8 @@
         }
         if (tag === 'FIGURE' && n.classList.contains('img')) {
           flush();
-          const capEl = n.querySelector('input.cap');
-          const cap = (capEl ? capEl.value : '').replace(/[\[\]]/g, '').replace(/\s+/g, ' ').trim();
+          const capEl = n.querySelector('.cap');
+          const cap = capEl ? capToMd(capEl) : '';
           const url = n.getAttribute('data-url') || '';
           if (url) paras.push('![' + cap + '](' + url + ')');
           continue;
@@ -311,9 +334,9 @@
     return el ? el.closest('a') : null;
   }
   function restoreRange(range, ed) {
-    // a range inside a quote's attribution focuses that field (its own editing host), else the editor
+    // a range inside a quote's attribution or an image caption focuses that field (its own editing host), else the editor
     const el = range.startContainer.nodeType === 1 ? range.startContainer : range.startContainer.parentElement;
-    const host = (el && el.closest('.pqwho')) || ed;
+    const host = (el && el.closest('.pqwho, figure.img .cap')) || ed;
     host.focus(); const sel = document.getSelection(); sel.removeAllRanges(); sel.addRange(range);
   }
   function unwrap(a) { const p = a.parentNode; while (a.firstChild) p.insertBefore(a.firstChild, a); p.removeChild(a); }
@@ -395,8 +418,10 @@
     ed.addEventListener('paste', ev => {
       // the quote's text is a plain form field: the browser's own paste (plain text) is right there.
       // The attribution takes a pasted link the way a paragraph does, kept on one line (20 Oct 2026).
-      const inPq = ev.target && ev.target.closest ? ev.target.closest('.pq') : null;
-      if (inPq && !ev.target.closest('.pqwho')) return;
+      // An image caption is a one-line field too (4 Nov 2026).
+      const inCap = !!(ev.target && ev.target.closest && ev.target.closest('figure.img .cap'));
+      const inPq = (ev.target && ev.target.closest ? ev.target.closest('.pq') : null) || inCap;
+      if (inPq && !inCap && !ev.target.closest('.pqwho')) return;
       ev.preventDefault(); const cd = ev.clipboardData || window.clipboardData;
       // Cut and paste inside the brief must not lose links: when the clipboard HTML has
       // http(s) links, insert its text with those links and nothing else.
@@ -570,9 +595,14 @@
       }
       return;
     }
-    if (!isMove && ev.key !== 'Backspace' && ev.key !== 'Delete') return;
+    if (!isMove && ev.key !== 'Backspace' && ev.key !== 'Delete' && ev.key !== 'Enter') return;
     // Alt+arrows typed in an image's caption field move the image (owner, 16 Oct 2026)
     const fig = ev.target && ev.target.closest ? ev.target.closest('figure.img') : null;
+    // Enter in a caption stays on one line: it leaves the caption for the paragraph after the image
+    if (fig && ed.contains(fig) && ev.key === 'Enter' && ev.target.closest('.cap')) {
+      ev.preventDefault(); const nx = fig.nextSibling; if (nx && nx.nodeType === 1) { ed.focus(); caretPlace(nx, false); } return;
+    }
+    if (ev.key === 'Enter') return;
     if (fig && ed.contains(fig)) { if (isMove) { ev.preventDefault(); moveContext(ed, fig, ev.key === 'ArrowUp' ? -1 : 1); } return; }
     const sel = document.getSelection(); if (!sel || !sel.rangeCount) return;
     const r = sel.getRangeAt(0);
@@ -626,7 +656,7 @@
     const sel = document.getSelection(); const nr = document.createRange(); nr.setStart(after, 0); nr.collapse(true);
     sel.removeAllRanges(); sel.addRange(nr); savedRange = nr.cloneRange(); activeEditor = ed;
     onRichInput(ed);
-    const cap = $('input.cap', figure); if (cap) cap.focus();
+    const cap = $('.cap', figure); if (cap) cap.focus();
     return figure;
   }
   async function uploadImage(file) {

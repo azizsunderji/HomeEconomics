@@ -223,3 +223,7 @@ body.cardspage .wrap, body.cardspage .topbar .inner { max-width: 1120px; }
 }
 /* spell check marks (spell.js) */
 ::highlight(noon-misspell) { text-decoration: underline wavy #F4743B; text-decoration-thickness: 1.5px; text-underline-offset: 4px; text-decoration-skip-ink: none; background-color: rgba(244, 116, 59, 0.12); }
+/* caption of an image: a one-line editable field so words in it can be linked (owner, 4 Nov 2026) */
+.rich figure.img div.cap { white-space: pre-wrap; overflow-wrap: anywhere; min-height: 1.4em; cursor: text; -webkit-user-select: text; user-select: text; }
+.rich figure.img div.cap:empty::before { content: attr(data-placeholder); color: #b8b3ae; }
+.rich figure.img div.cap a { color: var(--ink); }

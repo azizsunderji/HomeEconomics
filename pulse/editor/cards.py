@@ -124,7 +124,7 @@ NUM_WORDS = ["One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Ni
 _LINK_RE = re.compile(r"\[([^\]]+)\]\((?:[^)\s]+)(?:\s+(?:\"[^\"]*\"|'[^']*'))?\)")
 # An image dropped in from the editor (![caption](url) on its own line) is left
 # out of the cards.
-_IMG_LINE = re.compile(r"^[ \t]*!\[[^\]\n]*\]\(https?://[^\s)]+\)[ \t]*$", re.M)
+_IMG_LINE = re.compile(r"^[ \t]*!\[(?:[^\[\]\n]|\[[^\]\n]*\]\([^)\n]*\)|\[)*\]\(https?://[^\s)]+\)[ \t]*$", re.M)
 
 
 def _no_images(md: str) -> str:

@@ -313,7 +313,12 @@ _OWN_PILL_HOSTS = {"homeeconomics.substack.com", "home-economics.us", "homeecono
 # the column width, the caption beneath in 13px ink at 70%. No rules, no borders.
 # Anywhere in the text, not only on a line of its own: the editor can leave an image
 # glued to the sentence before it, and a link pass must never see it (2026-09-08).
-_MD_IMAGE_RE = re.compile(r"[ \t]*!\[([^\]\n]*)\]\((https?://[^\s)]+)\)[ \t]*")
+# Caption links (owner, 4 Nov 2026): the caption may hold markdown links, one level
+# deep: ![Rents, from [Apartment List](https://…) data](https://…/x.png). A lone "["
+# is still allowed so captions that matched before still match.
+_CAP_ALT = r"(?:[^\[\]\n]|\[[^\]\n]*\]\([^)\n]*\)|\[)*"
+_MD_IMAGE_RE = re.compile(rf"[ \t]*!\[({_CAP_ALT})\]\((https?://[^\s)]+)\)[ \t]*")
+_CAP_LINK_RE = re.compile(r"""\[([^\]\n]*)\]\(([^)\s]+)(?:\s+(?:"([^"]*)"|'([^']*)'))?\s*\)""")
 IMAGE_GAP = 16  # px between an image block and the text around it (standfirst, paper)
 
 
@@ -498,7 +503,28 @@ def _tint(color: str, alpha: float) -> str:
 _CAPTION_URL_RE = re.compile(r"(https?://[^\s<>–—‘’“”]+|www\.[^\s<>–—‘’“”]+)")
 
 
+def _caption_plain(caption: str) -> str:
+    """The caption as plain text: each markdown link replaced by its text (alt text)."""
+    return _CAP_LINK_RE.sub(lambda m: m.group(1), caption)
+
+
 def _caption_html(caption: str) -> str:
+    """A caption with markdown links ([text](url), optional "free" title) rendered as
+    body-style anchors; the text between links goes through _caption_text_html."""
+    if not _CAP_LINK_RE.search(caption):
+        return _caption_text_html(caption)
+    out, pos = [], 0
+    for m in _CAP_LINK_RE.finditer(caption):
+        out.append(_caption_text_html(caption[pos:m.start()]))
+        title = (m.group(3) if m.group(3) is not None else m.group(4) or "").strip().lower()
+        free = ' data-free="1"' if title == "free" else ""
+        out.append(f'<a href="{_esc(m.group(2))}"{free} target="_blank" style="{BODY_LINK_STYLE}">{_esc(m.group(1))}</a>')
+        pos = m.end()
+    out.append(_caption_text_html(caption[pos:]))
+    return "".join(out)
+
+
+def _caption_text_html(caption: str) -> str:
     """Escaped caption with bare URLs linked in the house style. Mail apps
     otherwise auto-link them and iOS Mail swallowed the space before the
     address ('Map fromwww.thepromap.com', 2026-09-08). Trailing punctuation
@@ -525,7 +551,7 @@ def _image_block(caption: str, url: str, margin: str) -> str:
         cap_html = (f'<div style="font-family:{FONT}; font-size:13px; line-height:1.5; '
                     f'color:{_tint(INK, 0.7)}; margin:6px 0 0 0;">{_caption_html(caption)}</div>')
     return (f'<div style="margin:{margin};">'
-            f'<img src="{_esc(url)}" alt="{_esc(caption)}" width="600" '
+            f'<img src="{_esc(url)}" alt="{_esc(_caption_plain(caption))}" width="600" '
             f'style="display:block;width:100%;max-width:600px;height:auto;border:0;">'
             f'{cap_html}</div>')
 

@@ -28,7 +28,7 @@ logger = logging.getLogger("noon.links")
 _URL_RE = re.compile(r"\]\((https?://[^\s)]+)\)")
 # An image the owner dropped in from the editor, ![caption](url) on its own line:
 # not a citation, so never resolved, never a pill.
-_IMG_RE = re.compile(r"!\[[^\]\n]*\]\(https?://[^\s)]+\)")
+_IMG_RE = re.compile(r"!\[(?:[^\[\]\n]|\[[^\]\n]*\]\([^)\n]*\)|\[)*\]\(https?://[^\s)]+\)")
 
 
 def _no_images(md: str) -> str:

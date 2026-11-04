@@ -35,7 +35,7 @@ JUDGE_MODEL = "claude-sonnet-5"  # Haiku rated 117 of 175 non-callback entries 4
 PUB_TEXT_CHARS = 1500
 
 _LINK_RE = re.compile(r"\[([^\]]*)\]\([^)]*\)")
-_IMG_RE = re.compile(r"!\[[^\]]*\]\([^)]*\)")
+_IMG_RE = re.compile(r"!\[(?:[^\[\]]|\[[^\]]*\]\([^)]*\)|\[)*\]\([^)]*\)")
 _SLUG_RE = re.compile(r"(?:homeeconomics\.substack\.com|home-economics\.us|homeeconomics\.us)/p/([a-z0-9-]+)")
 
 
