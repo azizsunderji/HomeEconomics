@@ -119,7 +119,10 @@ jobs:
 
       - name: Sync DB back to Dropbox
         if: always()
+        # Dropbox answers "too_many_write_operations" when other jobs are writing many files to the
+        # account at once. Keep retrying for about 10 minutes instead of giving up after three quick tries.
         run: |
           rclone copy pulse/data/ "dropbox:Home Economics/Data/Pulse/" \
             --include "pulse.db" --include "*.json" \
+            --retries 10 --retries-sleep 60s \
             --verbose --stats-one-line
