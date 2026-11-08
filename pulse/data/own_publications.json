@@ -1,7 +1,40 @@
 {
- "generated_at": "2026-11-01T09:00:46+00:00",
+ "generated_at": "2026-11-08T09:00:49+00:00",
  "note": "Owner's own publications for callbacks (pulse/editor/own_publications.py). Charts are hosted on noon.homeeconomics.us.",
  "posts": [
+  {
+   "slug": "housing-since-2020-a-visual-story",
+   "url": "https://homeeconomics.substack.com/p/housing-since-2020-a-visual-story",
+   "title": "Housing Since 2020: A Visual Story",
+   "date": "2026-11-04",
+   "audience": "free",
+   "summary": "The post asks how the U.S. housing market has evolved since 2020. Between December 2019 and August 2022, typical home values surged 41%—a decade of appreciation in three years—then reversed as mortgage rates doubled. The interactive map explores pandemic migration patterns, showing Florida's net migration collapsed from 311,000 people in 2022 to 23,000 in 2025, while Austin's home values remain 27% below their 2022 peak.",
+   "text": "Today I’m sharing a data-rich, visual story about the housing market: it’s an interactive map—built on my ProMap platform—preloaded with a narrative I’ve researched and written. Using data including migration patterns, population by race, commute times, average temperatures (and a dozen more variables), I explain the pandemic-era boom in home prices, the bust that followed, where we stand today, and what the future might hold. I think you’ll love it.\n\nOpen the story.\n\nBetween December 2019 and August 2022, the typical American home rose 41% in value—roughly ten years' worth of appreciation in under three. Then mortgage rates more than doubled, and many of the places that had soared started to slide. I’ve tried to make sense of it all in my new visual story: Housing since 2020: Booms, Busts, and Bystanders.\n\nThis story is a guided narrative inside ProMap, my mapping tool. Every time you press Next, the map takes over and builds the next view—picking the measure, setting the year, zooming in—so you can see exactly where each number comes from. You can grab the controls at any point, wander off, and press Next to rejoin the story.\n\nAlong the way you'll see:\n\nHow the move to the Sun Belt sped up in the pandemic, and how hard it reversed: Florida's net gain from other states fell from about 311,000 people in 2022 to 23,000 in 2025.\n\nThe \"donut\": in the three years to December 2023, home values near Lower Manhattan were roughly flat, while ZIP codes more than 35 miles out rose abou",
+   "charts": [
+    {
+     "hosted_url": "https://noon.homeeconomics.us/images/own/housing-since-2020-a-visual-story/1.png",
+     "caption": "Housing since 2020: Booms, Busts, and Bystanders - US migration and homebuilding patterns",
+     "context": "Open the story.",
+     "chart_kind": "time-series",
+     "last_period": "2026-08",
+     "last_period_date": "2026-08-31",
+     "update_frequency": "monthly",
+     "sources": [
+      "Census TIGER/Line",
+      "Zillow ZHVI",
+      "ACS",
+      "USFS",
+      "Mapbox",
+      "OpenStreetMap"
+     ],
+     "description": "Intro card of an interactive globe map story on US home value changes since 2020, with hexagon-shaded map of the US housing market.",
+     "current_url": null,
+     "refreshed_at": null,
+     "refresh_status": null,
+     "replica_status": null
+    }
+   ]
+  },
   {
    "slug": "i-joined-scott-galloway-on-the-prof",
    "url": "https://homeeconomics.substack.com/p/i-joined-scott-galloway-on-the-prof",
@@ -511,7 +544,7 @@
      "description": "Small multiples showing each major metro's share of luxury home sales, adjusted for general price gains, from 2019 to the last twelve months.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null,
+     "refresh_status": "stale-unrefreshable",
      "replica_status": null
     }
    ]
@@ -2001,9 +2034,9 @@
       "Zillow"
      ],
      "description": "Heatmap of annual home price changes by month for 30 US metros since 2020, ranked by cumulative percentage gain since January 2020.",
-     "current_url": null,
-     "refreshed_at": null,
-     "refresh_status": null,
+     "current_url": "https://noon.homeeconomics.us/images/own/home-prices-five-years-after-covid/1_20261103.png",
+     "refreshed_at": "2026-11-03T11:49:54+00:00",
+     "refresh_status": "refreshed",
      "replica_status": "replicated"
     }
    ]
@@ -2543,7 +2576,7 @@
      "description": "Stacked area charts showing the share of homeowners and renters by party identification, from strong Republican to strong Democrat, 1968-2020.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null,
+     "refresh_status": "stale-unrefreshable",
      "replica_status": null
     },
     {
@@ -2782,7 +2815,7 @@
      "description": "Monthly US residential building construction employment in thousands, 2006 to 2025, showing the housing-bust collapse, the long recovery, the 2020 dip and recent plateau near 950k.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null,
+     "refresh_status": "stale-unrefreshable",
      "replica_status": "replicated"
     }
    ]
@@ -4611,9 +4644,9 @@
       "Zillow"
      ],
      "description": "Scatter plot of median home price versus median income for US counties, bubbles sized by population, with a trend line and labeled outlier counties.",
-     "current_url": null,
-     "refreshed_at": null,
-     "refresh_status": null,
+     "current_url": "https://noon.homeeconomics.us/images/own/what-determines-home-prices/1_20261101.png",
+     "refreshed_at": "2026-11-01T11:59:18+00:00",
+     "refresh_status": "refreshed",
      "replica_status": "approved"
     },
     {
@@ -8217,7 +8250,7 @@
      "description": "Bars of August existing home sales (not seasonally adjusted) from 1999 to 2023, with 2023 highlighted as 24% below the historical August average.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null,
+     "refresh_status": "stale-unrefreshable",
      "replica_status": null
     },
     {
@@ -8765,7 +8798,7 @@
      "description": "Monthly active home listings by year, comparing 2016-21, 2022 and 2023, showing 2023 listings far below prior years' seasonal peaks.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null,
+     "refresh_status": "stale-unrefreshable",
      "replica_status": null
     }
    ]
@@ -8792,8 +8825,8 @@
       "sunderji.substack.com"
      ],
      "description": "Stacked area chart of US outstanding mortgage balances in $ trillions by interest rate bracket, 2013 to late 2022, showing pandemic-era low-rate surge.",
-     "current_url": "https://noon.homeeconomics.us/images/own/mortgage-lock-ins-move-it-and-lose/1_20261016.png",
-     "refreshed_at": "2026-10-16T14:36:46+00:00",
+     "current_url": "https://noon.homeeconomics.us/images/own/mortgage-lock-ins-move-it-and-lose/1_20261105.png",
+     "refreshed_at": "2026-11-05T11:50:04+00:00",
      "refresh_status": "refreshed",
      "replica_status": null
     }
@@ -8927,7 +8960,7 @@
      "description": "Quarterly net share of senior loan officers tightening lending standards since 1993, with recessions shaded, showing tightening typically precedes recessions.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null,
+     "refresh_status": "stale-unrefreshable",
      "replica_status": null
     },
     {
