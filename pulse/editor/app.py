@@ -743,13 +743,19 @@ async def resend_hook(request: Request):
     body = await request.body()
     if not clicks.verify(body, request.headers):
         raise HTTPException(status_code=401, detail="bad signature")
+    # Owner, 9 Nov 2026: queue and answer at once; clicks.py writes the queue in batches (see its background writer).
     try:
-        fresh = clicks.store(body, request.headers.get("svix-id", ""))
+        clicks.enqueue(body, request.headers.get("svix-id", ""), on_fresh=_resend_event_fresh)
     except ValueError:
         raise HTTPException(status_code=400, detail="bad json")
-    if fresh:
-        # Owner, 25 Oct 2026: a spam complaint unsubscribes the reader at once (complaints.py); in a thread so the
-        # webhook answers Resend quickly.
-        import complaints
-        threading.Thread(target=complaints.handle_webhook_event, args=(body,), daemon=True).start()
-    return {"ok": True, "stored": fresh}
+    return {"ok": True, "queued": True}
+
+
+def _resend_event_fresh(body: bytes) -> None:
+    """Runs in the clicks writer thread for each newly stored event."""
+    # Owner, 25 Oct 2026: a spam complaint unsubscribes the reader at once (complaints.py); in its own thread so
+    # the writer keeps going while Clerk and Telegram are called.
+    if b"email.complained" not in body:
+        return
+    import complaints
+    threading.Thread(target=complaints.handle_webhook_event, args=(body,), daemon=True).start()

@@ -90,8 +90,10 @@ def _edition_fallback(created_at: str | None) -> str | None:
         return None
 
 
-def store(body: bytes, svix_id: str) -> bool:
-    """Insert one event; returns False when it was a duplicate delivery (same svix-id)."""
+INSERT_SQL = "INSERT OR IGNORE INTO events VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+
+
+def _row(body: bytes, svix_id: str, received_at: str | None = None) -> tuple:
     event = json.loads(body)
     d = event.get("data") or {}
     tags = d.get("tags") or {}
@@ -101,13 +103,108 @@ def store(body: bytes, svix_id: str) -> bool:
     link = click.get("link")
     to = d.get("to") or []
     created = event.get("created_at") or d.get("created_at") or datetime.now(timezone.utc).isoformat()
-    row = (
-        svix_id, event.get("type") or "unknown", created, datetime.now(timezone.utc).isoformat(timespec="seconds"),
+    return (
+        svix_id, event.get("type") or "unknown", created,
+        received_at or datetime.now(timezone.utc).isoformat(timespec="seconds"),
         (to[0] if to else "").lower() or None, d.get("email_id"), d.get("subject"),
         tags.get("edition") or _edition_fallback(created), tags.get("tier"),
         link, _link_id(link), int(bool(link and any(m in link for m in WALL_MARKERS))),
         click.get("userAgent"), click.get("ipAddress"), body.decode("utf-8", "replace"),
     )
+
+
+def store(body: bytes, svix_id: str) -> bool:
+    """Insert one event; returns False when it was a duplicate delivery (same svix-id)."""
     with connect() as conn:
-        cur = conn.execute("INSERT OR IGNORE INTO events VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", row)
+        cur = conn.execute(INSERT_SQL, _row(body, svix_id))
         return cur.rowcount == 1
+
+
+# ── Background writer (owner, 9 Nov 2026) ─────────────────────────────────────────────────────────────
+# Right after a send Resend posts thousands of events within a few minutes. Writing each one to SQLite inside the
+# request handler stalled the single-process editor: on 9 Nov about 2,000 reader image loads failed and the edition
+# PDF timed out. The webhook now only checks the signature, queues the event and answers; one thread writes the
+# queue in batches over a single connection.
+import atexit  # noqa: E402
+import logging  # noqa: E402
+import queue  # noqa: E402
+import threading  # noqa: E402
+
+_log = logging.getLogger("noon.clicks")
+_Q: "queue.Queue[tuple[bytes, str, str, int]]" = queue.Queue()
+_writer_lock = threading.Lock()
+_writer: threading.Thread | None = None
+_on_fresh = None
+BATCH_MAX = 500
+MAX_ATTEMPTS = 5
+
+
+def enqueue(body: bytes, svix_id: str, on_fresh=None) -> None:
+    """Queue one verified event for the background writer. Raises ValueError on bad JSON, as store() did.
+    on_fresh(body) is called by the writer for each event that was not a duplicate delivery."""
+    json.loads(body)
+    global _writer, _on_fresh
+    with _writer_lock:
+        if on_fresh is not None:
+            _on_fresh = on_fresh
+        if _writer is None or not _writer.is_alive():
+            _writer = threading.Thread(target=_writer_loop, name="clicks-writer", daemon=True)
+            _writer.start()
+    _Q.put((body, svix_id, datetime.now(timezone.utc).isoformat(timespec="seconds"), 0))
+
+
+def _writer_loop() -> None:
+    conn = connect()
+    while True:
+        batch = [_Q.get()]
+        while len(batch) < BATCH_MAX:
+            try:
+                batch.append(_Q.get_nowait())
+            except queue.Empty:
+                break
+        fresh = []
+        try:
+            with conn:
+                for body, sid, received, _ in batch:
+                    try:
+                        row = _row(body, sid, received)
+                    except Exception as e:  # noqa: BLE001  (one bad event never blocks the rest)
+                        _log.warning(f"clicks: dropped unreadable event {sid}: {e}")
+                        continue
+                    if conn.execute(INSERT_SQL, row).rowcount == 1:
+                        fresh.append(body)
+        except Exception as e:  # noqa: BLE001  (e.g. database locked): put the batch back and try again shortly
+            _log.error(f"clicks: batch of {len(batch)} not written ({e}); retrying")
+            for body, sid, received, attempts in batch:
+                if attempts + 1 < MAX_ATTEMPTS:
+                    _Q.put((body, sid, received, attempts + 1))
+                else:
+                    _log.error(f"clicks: gave up on event {sid} after {MAX_ATTEMPTS} attempts")
+            for _ in batch:
+                _Q.task_done()
+            time.sleep(2)
+            try:
+                conn.close()
+            except Exception:  # noqa: BLE001
+                pass
+            conn = connect()
+            continue
+        for _ in batch:
+            _Q.task_done()
+        if _on_fresh is not None:
+            for body in fresh:
+                try:
+                    _on_fresh(body)
+                except Exception as e:  # noqa: BLE001
+                    _log.warning(f"clicks: on_fresh failed: {e}")
+
+
+def flush(timeout: float = 15.0) -> bool:
+    """Wait (bounded) until the queue is written; called at shutdown so a restart loses nothing queued."""
+    end = time.time() + timeout
+    while _Q.unfinished_tasks and time.time() < end:
+        time.sleep(0.1)
+    return not _Q.unfinished_tasks
+
+
+atexit.register(flush)

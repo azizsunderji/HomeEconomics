@@ -68,7 +68,27 @@ def edition_html(draft: dict, tier: str = PDF_TIER) -> str:
     return html[:idx] + PRINT_CSS + html[idx:] if idx != -1 else PRINT_CSS + html
 
 
+PDF_ATTEMPTS = 3
+PDF_RETRY_PAUSE = 60  # seconds
+
+
 def make_pdf(draft: dict, out: Path, tier: str = PDF_TIER) -> Path:
+    """Render one PDF. Owner, 9 Nov 2026: retry twice, a minute apart, because the images come from the Noon server,
+    which can be slow for a few minutes right after a send (the PDF timed out on 5 and 9 Nov)."""
+    import time
+
+    for attempt in range(1, PDF_ATTEMPTS + 1):
+        try:
+            return _make_pdf_once(draft, out, tier)
+        except Exception as e:  # noqa: BLE001
+            if attempt == PDF_ATTEMPTS:
+                raise
+            logger.warning(f"pdf attempt {attempt} failed ({str(e).splitlines()[0]}); retrying in {PDF_RETRY_PAUSE} s")
+            time.sleep(PDF_RETRY_PAUSE)
+    raise RuntimeError("unreachable")
+
+
+def _make_pdf_once(draft: dict, out: Path, tier: str = PDF_TIER) -> Path:
     from playwright.sync_api import sync_playwright
 
     html = edition_html(draft, tier)
