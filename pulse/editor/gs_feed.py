@@ -69,8 +69,39 @@ ROWS_JS = r"""JSON.stringify([...document.querySelectorAll('tr')].filter(t => t.
   const ts = t.querySelector('.SearchResults__hiddenEl');
   const meta = t.querySelector('.SearchResults__metaText');
   return {href: a.href.split('?')[0], title: a.innerText.trim().replace(/\s+/g, ' '),
-          ts: ts ? Number(ts.innerText.trim()) : 0, meta: meta ? meta.innerText.trim().replace(/\s+/g, ' ') : ''};
+          ts: ts ? Number(ts.innerText.trim()) : 0, meta: meta ? meta.innerText.trim().replace(/\s+/g, ' ') : '',
+          text: t.innerText};
 }))"""
+# Goldman dropped the SearchResults__hiddenEl / __metaText classes around 30 Oct 2026, so every row came
+# back with ts 0 and the feed silently found nothing for 12 days. fill_row() now reads the date and the
+# "Research | ... - authors" line from the row's own text, and falls back to the date in the report URL.
+ROW_DATE = re.compile(r"\b(\d{1,2} [A-Z][a-z]{2} \d{4})\s+(\d{1,2}:\d{2}\s*[ap]m)", re.I)
+URL_DATE = re.compile(r"/reports/(\d{4})/(\d{2})/(\d{2})/")
+
+
+def fill_row(r: dict) -> dict:
+    text = r.get("text") or ""
+    if not r.get("ts"):
+        m = ROW_DATE.search(text)
+        when = None
+        if m:
+            try:
+                when = datetime.strptime(f"{m.group(1)} {m.group(2).replace(' ', '').lower()}", "%d %b %Y %I:%M%p")
+            except ValueError:
+                when = None
+        if when is None:
+            u = URL_DATE.search(r.get("href", ""))
+            if u:
+                when = datetime(int(u.group(1)), int(u.group(2)), int(u.group(3)))
+        if when is not None:
+            r["ts"] = when.replace(tzinfo=timezone.utc).timestamp() * 1000
+    if not r.get("meta"):
+        for line in text.splitlines():
+            s = line.strip()
+            if " | " in s and " - " in s and s != r.get("title"):
+                r["meta"] = re.sub(r"\s+", " ", s)
+                break
+    return r
 SEARCH_READY = "/Search Results:/.test(document.body ? document.body.innerText : '') || !!document.querySelector('input[type=password]')"
 REPORT_READY = "/Investors should consider|All Tags/.test(document.body ? document.body.innerText : '') || !!document.querySelector('input[type=password]')"
 LOGIN_URL = re.compile(r"login|signin|sign-in|/sso|/auth|oauth|saml|marquee\.gs\.com/welcome", re.I)
@@ -199,7 +230,9 @@ async def collect(cache: dict) -> tuple[int, int]:
                 raise LoggedOut(f"search {term}: {why}")
             if "Search Results:" not in (info.get("text") or ""):
                 raise RuntimeError(f"search {term}: results page did not render ({info.get('url', '')[:80]})")
-            rows = json.loads(await tab.eval(ROWS_JS) or "[]")
+            rows = [fill_row(r) for r in json.loads(await tab.eval(ROWS_JS) or "[]")]
+            if rows and not any(r["ts"] for r in rows):
+                raise RuntimeError(f"search {term}: {len(rows)} rows but no dates could be read (page layout changed?)")
             hits = 0
             for r in rows:
                 if r["ts"] < cutoff_ms:
