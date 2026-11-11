@@ -502,7 +502,8 @@ def collect(
                     # For Substack emails, extract clean author name from "Name <email>" format
                     author_name = sender
                     if is_substack and sender:
-                        import re
+                        # No local "import re" here (removed 11 Nov 2026): it made "re" local to collect(), so every
+                        # email read before the run's first Substack email failed with UnboundLocalError and was lost.
                         match = re.match(r'"?([^"<]+)"?\s*<', sender)
                         if match:
                             author_name = match.group(1).strip()
