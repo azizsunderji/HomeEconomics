@@ -500,7 +500,26 @@ def _tint(color: str, alpha: float) -> str:
     return "#%02X%02X%02X" % tuple(round(c * alpha + b * (1 - alpha)) for c, b in zip(rgb, bg))
 
 
-_CAPTION_URL_RE = re.compile(r"(https?://[^\s<>–—‘’“”]+|www\.[^\s<>–—‘’“”]+)")
+# srcdirect1 (12 Nov 2026): a bare "thepromap.com" (or thepromap.com/<path>) is linked too, so it gets the Noon tags below.
+_CAPTION_URL_RE = re.compile(r"(https?://[^\s<>–—‘’“”]+|www\.[^\s<>–—‘’“”]+|(?<![\w./@-])thepromap\.com(?:/[^\s<>–—‘’“”]*)?)")
+
+# srcdirect1 (owner, 12 Nov 2026: "Can we get a better handle on what that direct category is?"): every ProMap link in the
+# premium and free emails carries these tags. Mail apps send no referrer, so without them a click from Noon counted as
+# "Direct" in ProMap's sign-up sources and in Plausible. A link that already has utm_source keeps its own tags.
+NOON_PROMAP_UTM = "utm_source=noon&amp;utm_medium=email&amp;utm_campaign=housing_at_noon"
+_PROMAP_HREF_RE = re.compile(r'href="(https?://(?:www\.)?(?:thepromap\.com|homeeconomics\.us/promap)(?:[/?#][^"]*)?)"')
+
+
+def _tag_promap_links(html: str) -> str:
+    """Add NOON_PROMAP_UTM to every href that points at ProMap (thepromap.com or homeeconomics.us/promap)."""
+    def add(m):
+        url = m.group(1)
+        if "utm_source=" in url:
+            return m.group(0)
+        base, _, frag = url.partition("#")
+        sep = "&amp;" if "?" in base else "?"
+        return 'href="' + base + sep + NOON_PROMAP_UTM + ("#" + frag if frag else "") + '"'
+    return _PROMAP_HREF_RE.sub(add, html)
 
 
 def _caption_plain(caption: str) -> str:
@@ -1754,6 +1773,8 @@ def render_lunch_html(briefing: dict, tier: str = "premium") -> tuple[str, str, 
 </html>""")
 
     html = "".join(parts)
+    if tier in ("premium", "free"):
+        html = _tag_promap_links(html)
     return html, top_title, len(shown)
 
 
