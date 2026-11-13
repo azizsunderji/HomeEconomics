@@ -23,6 +23,7 @@ import argparse
 import json
 import logging
 import os
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -59,8 +60,14 @@ def load_targets(path: Path = TARGETS_PATH) -> list[dict]:
 
 
 def _run_actor(api_key: str, target_urls: list[str], posted_limit: str, max_posts: int) -> list[dict]:
-    """Run the actor synchronously and return dataset items."""
-    url = f"{APIFY_BASE}/acts/{ACTOR_ID.replace('/', '~')}/run-sync-get-dataset-items"
+    """Run the actor and return its dataset items, keeping partial results if the run times out.
+
+    13 Nov 2026: the actor's own LinkedIn sessions ran short ("No available resource"), each
+    failing target stalled about a minute, and the run hit its 300 s timeout after 23 of 48
+    targets. The old run-sync endpoint then answered 400 and threw away the 8 posts already
+    scraped, which counted as a collection failure. Now the run is started, awaited, and its
+    dataset is read whatever the final status; only a failed run with no posts raises."""
+    act = ACTOR_ID.replace('/', '~')
     payload = {
         "targetUrls": target_urls,
         "maxPosts": max_posts,
@@ -70,12 +77,28 @@ def _run_actor(api_key: str, target_urls: list[str], posted_limit: str, max_post
         "scrapeReactions": False,
         "scrapeComments": False,
     }
-    with httpx.Client(timeout=RUN_TIMEOUT_S + 30) as client:
-        r = client.post(url, params={"timeout": RUN_TIMEOUT_S},
-                        headers={"Authorization": f"Bearer {api_key}"}, json=payload)
+    headers = {"Authorization": f"Bearer {api_key}"}
+    with httpx.Client(timeout=90, headers=headers) as client:
+        r = client.post(f"{APIFY_BASE}/acts/{act}/runs", params={"timeout": RUN_TIMEOUT_S}, json=payload)
+        r.raise_for_status()
+        run = r.json()["data"]
+        deadline = time.monotonic() + RUN_TIMEOUT_S + 90
+        while run.get("status") in ("READY", "RUNNING") and time.monotonic() < deadline:
+            r = client.get(f"{APIFY_BASE}/actor-runs/{run['id']}", params={"waitForFinish": 60})
+            r.raise_for_status()
+            run = r.json()["data"]
+        status = run.get("status")
+        r = client.get(f"{APIFY_BASE}/datasets/{run['defaultDatasetId']}/items",
+                       params={"format": "json", "clean": "true"})
         r.raise_for_status()
         data = r.json()
-    return data if isinstance(data, list) else []
+    data = data if isinstance(data, list) else []
+    if status != "SUCCEEDED":
+        msg = f"actor run {status} ({run.get('statusMessage') or 'no message'}); kept {len(data)} posts"
+        if not data:
+            raise RuntimeError(msg)
+        logger.warning(f"LinkedIn: {msg}")
+    return data
 
 
 def _to_item(post: dict) -> PulseItem | None:
