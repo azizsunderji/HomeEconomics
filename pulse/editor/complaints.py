@@ -75,6 +75,44 @@ def unsubscribe_dead_address(email: str, dry_run: bool = False) -> dict:
     return unsubscribe_complainer(email, dry_run=dry_run, reason="dead-address", log=DEAD_LOG)
 
 
+def is_promap_event(ev: dict) -> bool:
+    """promapcomplaint1: a ProMap email (sender @thepromap.com or a Resend tag kind promap_*), not a Housing at Noon edition"""
+    d = ev.get("data") or {}
+    tags = d.get("tags") or {}
+    if isinstance(tags, list):
+        tags = {t.get("name"): t.get("value") for t in tags if isinstance(t, dict)}
+    return str(tags.get("kind") or "").startswith("promap") or "thepromap.com" in str(d.get("from") or "").lower()
+
+
+def stop_promap_emails(email: str, dry_run: bool = False) -> dict:
+    """promapcomplaint1: stamp Clerk privateMetadata.promapEmailsOff (what the ProMap unsubscribe link writes); Housing at Noon untouched"""
+    email = (email or "").strip().lower()
+    res = {"email": email, "at": datetime.now(timezone.utc).isoformat(timespec="seconds"), "reason": "promap-spam-complaint"}
+    try:
+        with httpx.Client(timeout=20) as hc:
+            r = hc.get(f"{CLERK}/users", headers=_hdr(), params={"email_address": [email], "limit": 5})
+            r.raise_for_status()
+            users = [u for u in r.json() if any((e.get("email_address") or "").lower() == email for e in u.get("email_addresses", []))]
+            if not users:
+                res["result"] = "no Clerk user"
+            elif (users[0].get("private_metadata") or {}).get("promapEmailsOff"):
+                res["result"] = "already off ProMap emails"; res["user_id"] = users[0]["id"]
+            elif dry_run:
+                res["result"] = "dry-run would stop ProMap emails"; res["user_id"] = users[0]["id"]
+            else:
+                r2 = hc.patch(f"{CLERK}/users/{users[0]['id']}/metadata", headers=_hdr(), json={"private_metadata": {"promapEmailsOff": res["at"]}})
+                r2.raise_for_status()
+                res["result"] = "ProMap emails stopped"; res["user_id"] = users[0]["id"]
+    except Exception as e:  # noqa: BLE001
+        res["result"] = f"error: {type(e).__name__}: {str(e)[:160]}"
+    logger.info(f"promap spam complaint {email}: {res['result']}")
+    if not dry_run:
+        LOG.parent.mkdir(parents=True, exist_ok=True)
+        with LOG.open("a") as f:
+            f.write(json.dumps(res) + "\n")
+    return res
+
+
 def handle_webhook_event(body: bytes) -> dict | None:
     """Called by the Resend webhook after the event is stored: unsubscribe on a complaint, else nothing."""
     try:
@@ -87,12 +125,15 @@ def handle_webhook_event(body: bytes) -> dict | None:
     email = to[0] if isinstance(to, list) and to else (to if isinstance(to, str) else "")
     if not email:
         return None
-    res = unsubscribe_complainer(email)
+    promap = is_promap_event(ev)   # promapcomplaint1
+    res = stop_promap_emails(email) if promap else unsubscribe_complainer(email)
     try:
         import subprocess
         tg = Path.home() / ".local" / "bin" / "tgnotify"
         if tg.exists():
-            subprocess.run([str(tg), f"Housing at Noon: {email} marked the edition as spam → {res['result']}"], check=False, timeout=20)
+            msg = (f"ProMap: {email} marked a ProMap email as spam. They will get no more ProMap emails; their Housing at Noon subscription is unchanged."
+                   if promap else f"Housing at Noon: {email} marked the edition as spam → {res['result']}")
+            subprocess.run([str(tg), msg], check=False, timeout=20)
     except Exception:  # noqa: BLE001
         pass
     return res
@@ -114,8 +155,9 @@ def _handled() -> set:
 
 def backfill(days: int = 30, dry_run: bool = False) -> list[dict]:
     conn = sqlite3.connect(CLICKS_DB)
-    rows = conn.execute("SELECT DISTINCT lower(email) FROM events WHERE type='email.complained' AND email IS NOT NULL "
+    rows = conn.execute("SELECT lower(email), raw FROM events WHERE type='email.complained' AND email IS NOT NULL "
                         "AND created_at >= datetime('now', ?)", (f"-{days} days",)).fetchall()
+    rows = sorted({(e,) for e, raw in rows if not is_promap_event(json.loads(raw or "{}"))})   # promapcomplaint1: ProMap complaints are not Noon
     done = _handled()
     out = []
     for (email,) in rows:
