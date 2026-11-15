@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-11-08T09:00:49+00:00",
+ "generated_at": "2026-11-15T09:00:34+00:00",
  "note": "Owner's own publications for callbacks (pulse/editor/own_publications.py). Charts are hosted on noon.homeeconomics.us.",
  "posts": [
   {
@@ -1157,7 +1157,7 @@
      "description": "Stacked bars by year (1976-2023) showing median ages at which people leave parents, marry, and first own a home, all rising.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null,
+     "refresh_status": "stale-unrefreshable",
      "replica_status": null
     }
    ]
@@ -1597,8 +1597,8 @@
       "ACS 1-Year WFH estimates"
      ],
      "description": "Scatter plot of US metros showing cumulative rent growth since 2019 versus share of workers working from home, with a negative trendline (r²=0.30).",
-     "current_url": "https://noon.homeeconomics.us/images/own/why-did-rents-soar-in-miami-and-stall/1_20261024.png",
-     "refreshed_at": "2026-10-24T11:56:06+00:00",
+     "current_url": "https://noon.homeeconomics.us/images/own/why-did-rents-soar-in-miami-and-stall/1_20261110.png",
+     "refreshed_at": "2026-11-10T11:53:42+00:00",
      "refresh_status": "refreshed",
      "replica_status": "approved"
     }
@@ -1951,7 +1951,7 @@
      "description": "3D map of US metros showing units in 20+ apartment buildings in 2010 and units added through 2024, with top ten metros ranked.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null,
+     "refresh_status": "stale-unrefreshable",
      "replica_status": "deferred"
     }
    ]
@@ -2529,7 +2529,7 @@
      "description": "Monthly US housing transaction volume versus its 2012–2019 linear trend, with cumulative deviation showing the 2020–22 surge and the shortfall since 2023.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null,
+     "refresh_status": "stale-unrefreshable",
      "replica_status": null
     }
    ]
@@ -3240,7 +3240,7 @@
      "description": "Map of US metro areas colored by whether home prices are already falling, likely to fall within a year, or resilient, based on inventory growth.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null,
+     "refresh_status": "stale-unrefreshable",
      "replica_status": null
     }
    ]
@@ -4644,8 +4644,8 @@
       "Zillow"
      ],
      "description": "Scatter plot of median home price versus median income for US counties, bubbles sized by population, with a trend line and labeled outlier counties.",
-     "current_url": "https://noon.homeeconomics.us/images/own/what-determines-home-prices/1_20261101.png",
-     "refreshed_at": "2026-11-01T11:59:18+00:00",
+     "current_url": "https://noon.homeeconomics.us/images/own/what-determines-home-prices/1_20261110.png",
+     "refreshed_at": "2026-11-10T11:53:46+00:00",
      "refresh_status": "refreshed",
      "replica_status": "approved"
     },
@@ -7013,7 +7013,7 @@
      "description": "Choropleth map of annual property insurance cost by US state in 2022, with the top quintile of states labeled (above $1.5K).",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null,
+     "refresh_status": "stale-unrefreshable",
      "replica_status": null
     },
     {
@@ -7759,7 +7759,7 @@
      "description": "Treemap decomposing the roughly 5-point rise in 30-year mortgage rates since January 2021 into Fed policy rates, term premium, inflation, prepayment risk, OAS spread and lender fees.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null,
+     "refresh_status": "stale-unrefreshable",
      "replica_status": null
     },
     {
@@ -8600,7 +8600,7 @@
      "description": "Stacked bars show change in monthly mortgage payment versus 10 years earlier, split into home price and interest rate effects, June 2014 to June 2023.",
      "current_url": "https://noon.homeeconomics.us/images/own/expensive-housing-is-a-secular-trend/1_20261019_7.png",
      "refreshed_at": "2026-10-19T14:40:28+00:00",
-     "refresh_status": "refreshed",
+     "refresh_status": "stale-unrefreshable",
      "replica_status": null
     }
    ]
