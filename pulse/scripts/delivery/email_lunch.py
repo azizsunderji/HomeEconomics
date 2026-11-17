@@ -303,7 +303,7 @@ _MD_URL_RE = re.compile(rf"\]\((https?://[^)\s]+){_MD_TITLE}\)")
 _DATA_FREE_RE = re.compile(r"""\bdata-free\s*=\s*["']1["']""", re.IGNORECASE)
 
 
-_OWN_PILL_HOSTS = {"homeeconomics.substack.com", "home-economics.us", "homeeconomics.us", "noon.homeeconomics.us"}
+_OWN_PILL_HOSTS = {"homeeconomics.substack.com", "home-economics.us", "homeeconomics.us", "noon.homeeconomics.us", "thepromap.com"}
 
 # ── Inline images ──────────────────────────────────────────────────────
 # The editor drops a chart into a summary, the standfirst or the paper summary as

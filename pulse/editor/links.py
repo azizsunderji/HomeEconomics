@@ -110,7 +110,7 @@ def resolve_summary(md: str, cache: dict[str, str]) -> tuple[str, int]:
     return out, n
 
 
-OWN_HOSTS = ("homeeconomics.substack.com", "home-economics.us", "homeeconomics.us", "noon.homeeconomics.us")
+OWN_HOSTS = ("homeeconomics.substack.com", "home-economics.us", "homeeconomics.us", "noon.homeeconomics.us", "thepromap.com")
 
 
 def _host(url: str) -> str:
