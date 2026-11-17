@@ -174,10 +174,16 @@ jobs:
             --verbose --stats-one-line || true
           echo "=== Data lake size ===" && du -sh /tmp/data-lake/
 
-      - name: Re-collect Gmail, RSS and Substack (items published after the morning collection)
+      - name: Re-collect Gmail, RSS, Substack, X, Bluesky and LinkedIn (items published after the morning collection)
         # The morning collection runs about 09:30 UTC and the brief is written at 11:00; WSJ,
         # Bloomberg and most newsletters publish in between (a WSJ essay published at 09:30 on
         # 24 Sep 2026 missed that day's brief by two minutes). Owner approved this step 24 Sep 2026.
+        # X, Bluesky and LinkedIn added 17 Nov 2026 at the owner's request: GitHub's cron started the
+        # 6:30am ET collection 1.5-3 hours late every day for a week (11:38-13:40 UTC for the
+        # "30 10 * * *" slot), so the synthesis missed early-morning social posts. The collectors are the
+        # same default calls pulse-daily uses (same Twitter daily budget check, same Apify/Bluesky secrets,
+        # both already in this job's env). Each failure is caught and logged, so none blocks the brief.
+        # This runs inside the pulse-db concurrency group on the job's own DB copy, so no new overlap.
         if: steps.guard.outputs.should_run == 'true'
         working-directory: pulse/scripts
         env:
@@ -190,9 +196,9 @@ jobs:
           import sys
           sys.path.insert(0, '.')
           from store import get_db, bulk_upsert, log_collection_start, log_collection_end
-          from collectors import gmail, rss_feeds, rss_substacks
+          from collectors import gmail, rss_feeds, rss_substacks, twitter_apify, bluesky, linkedin_apify
           conn = get_db()
-          for name, fn in (('gmail', gmail.collect), ('rss', lambda: rss_feeds.collect(max_age_hours=24)), ('substack', lambda: rss_substacks.collect(max_age_hours=24))):
+          for name, fn in (('gmail', gmail.collect), ('rss', lambda: rss_feeds.collect(max_age_hours=24)), ('substack', lambda: rss_substacks.collect(max_age_hours=24)), ('twitter', twitter_apify.collect), ('bluesky', bluesky.collect), ('linkedin', linkedin_apify.collect)):
               run_id = log_collection_start(conn, name)
               try:
                   items = fn()
