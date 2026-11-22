@@ -1,7 +1,33 @@
 {
- "generated_at": "2026-11-15T09:00:34+00:00",
+ "generated_at": "2026-11-22T09:00:47+00:00",
  "note": "Owner's own publications for callbacks (pulse/editor/own_publications.py). Charts are hosted on noon.homeeconomics.us.",
  "posts": [
+  {
+   "slug": "pulling-apart",
+   "url": "https://homeeconomics.substack.com/p/pulling-apart",
+   "title": "Pulling Apart",
+   "date": "2026-11-17",
+   "audience": "free",
+   "summary": "The post asks how Americans are financially doing and reveals a stark divide: while national statistics show low unemployment and booming stock markets, the poorer half of households holds just 2% of national wealth and wages at the bottom have barely grown. Housing markets similarly split into two worlds—prices rising in wealthier, whiter neighborhoods with good schools, while falling in mostly Black and Hispanic neighborhoods with more modest homes.",
+   "text": "How are Americans doing, financially speaking? My new map story, Pulling Apart, starts with that question. To go by national statistics, Americans are doing just fine: unemployment is low and stock market wealth is booming. But these figures hide how many households are struggling. Wages at the bottom have barely grown, and the poorer half of American households holds just 2% of the nation’s wealth.\n\nIt’s the same in housing. National prices have been rising slowly and steadily. But there is no single national housing market. There are, in effect, two worlds within it. In richer, whiter neighborhoods with low crime and good schools, prices are rising and homes are selling. In neighborhoods that are mostly Black and Hispanic, with more modest homes, more crime and weaker schools, prices are falling and far fewer homes sell.\n\nThe story maps those two worlds pulling apart across five cities: Philadelphia, Detroit, Phoenix, Atlanta and Indianapolis. Every map in the story was made with ProMap, which you can use to explore the same data for any neighborhood in the country.\n\nRead Pulling Apart.",
+   "charts": [
+    {
+     "hosted_url": "https://noon.homeeconomics.us/images/own/pulling-apart/1.png",
+     "caption": "Pulling Apart: A map story by Aziz Sunderji showing US geographic division patterns.",
+     "context": "",
+     "chart_kind": "unclear",
+     "last_period": null,
+     "last_period_date": null,
+     "update_frequency": "none",
+     "sources": [],
+     "description": "Title graphic for a map story: a US county-level choropleth in blue and orange shading, with no legend or indicator shown.",
+     "current_url": null,
+     "refreshed_at": null,
+     "refresh_status": null,
+     "replica_status": null
+    }
+   ]
+  },
   {
    "slug": "housing-since-2020-a-visual-story",
    "url": "https://homeeconomics.substack.com/p/housing-since-2020-a-visual-story",
@@ -338,7 +364,7 @@
      "description": "Heatmap of annual average 10-year government bond yields for 18 OECD countries since 1990, colored by level and by position versus each country's history.",
      "current_url": "https://noon.homeeconomics.us/images/own/3-reasons-higher-rates-arent-an-imminent/1_20261016.png",
      "refreshed_at": "2026-10-16T14:37:44+00:00",
-     "refresh_status": "refreshed",
+     "refresh_status": "stale-unrefreshable",
      "replica_status": null
     }
    ]
@@ -1597,8 +1623,8 @@
       "ACS 1-Year WFH estimates"
      ],
      "description": "Scatter plot of US metros showing cumulative rent growth since 2019 versus share of workers working from home, with a negative trendline (r²=0.30).",
-     "current_url": "https://noon.homeeconomics.us/images/own/why-did-rents-soar-in-miami-and-stall/1_20261110.png",
-     "refreshed_at": "2026-11-10T11:53:42+00:00",
+     "current_url": "https://noon.homeeconomics.us/images/own/why-did-rents-soar-in-miami-and-stall/1_20261121.png",
+     "refreshed_at": "2026-11-21T11:57:58+00:00",
      "refresh_status": "refreshed",
      "replica_status": "approved"
     }
@@ -3100,7 +3126,7 @@
      "description": "Monthly 30-year mortgage rate against home sales, new listings and active inventory since 1982, with seven shaded prolonged rate-shift regimes.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null,
+     "refresh_status": "stale-unrefreshable",
      "replica_status": "unreplicable"
     },
     {
@@ -6416,9 +6442,9 @@
       "Census Bureau"
      ],
      "description": "Month-over-month percent change in permits, starts, units under construction, and completions for single-family and multifamily housing in March 2024.",
-     "current_url": null,
-     "refreshed_at": null,
-     "refresh_status": null,
+     "current_url": "https://noon.homeeconomics.us/images/own/home-starts-more-like-home-stops/1_20261119.png",
+     "refreshed_at": "2026-11-19T12:06:26+00:00",
+     "refresh_status": "refreshed",
      "replica_status": "approved"
     },
     {
@@ -7395,7 +7421,7 @@
      "description": "Year-over-year change in Zillow home prices (line) versus Apartment List rents (bars), 2018 to late 2023, showing recent divergence.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null,
+     "refresh_status": "stale-unrefreshable",
      "replica_status": null
     },
     {
@@ -7739,7 +7765,7 @@
      "description": "Stacked area chart splitting the 30-year mortgage rate into the 10-year Treasury yield and the mortgage-Treasury spread, 2017 to late 2023.",
      "current_url": null,
      "refreshed_at": null,
-     "refresh_status": null,
+     "refresh_status": "stale-unrefreshable",
      "replica_status": null
     },
     {
