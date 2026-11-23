@@ -60,6 +60,7 @@
       <outline xmlUrl="https://rss.app/feeds/4dmz615DEJwYIR67.xml" text="Real Estate Archives | amNewYork" title="Real Estate Archives | amNewYork" type="rss" htmlUrl="https://www.amny.com/real-estate/" />
       <outline xmlUrl="https://www.brownstoner.com/feed/rss" title="Brownstoner" type="rss" text="Brownstoner" htmlUrl="https://www.brownstoner.com" />
       <outline type="rss" text="NYT &gt; Real Estate" title="NYT &gt; Real Estate" xmlUrl="https://rss.nytimes.com/services/xml/rss/nyt/RealEstate.xml" htmlUrl="https://www.nytimes.com/section/realestate" />
+      <outline type="rss" text="NYT &gt; N.Y. / Region" title="NYT &gt; N.Y. / Region" xmlUrl="https://rss.nytimes.com/services/xml/rss/nyt/NYRegion.xml" htmlUrl="https://www.nytimes.com/section/nyregion" />
       <outline title="Matt Levine - Bloomberg Opinion Columnist" htmlUrl="https://www.bloomberg.com/authors/ARbTQlRLRjE/matthew-s-levine" type="rss" text="Matt Levine - Bloomberg Opinion Columnist" xmlUrl="https://www.bloomberg.com/authors/ARbTQlRLRjE/matthew-s-levine.rss" />
       <outline type="rss" htmlUrl="http://www.calculatedriskblog.com/" title="Calculated Risk" text="Calculated Risk" xmlUrl="https://calculatedrisk.substack.com/feed" />
       <outline xmlUrl="https://rss.app/feeds/dyOmestbKGqbPYfU.xml" text="Housing policy in America" type="rss" htmlUrl="https://www.vox.com/housing" title="Housing policy in America" />
