@@ -85,6 +85,13 @@ OPINION_FEED_NAMES = {
 }
 
 
+def _is_goldman_research(item: dict) -> bool:
+    """Goldman Sachs research, from the RSS mirror or the alerts.publishing.gs.com emails."""
+    if (item.get("feed_name") or "").strip() == "Goldman Sachs Research":
+        return True
+    return "alerts.publishing.gs.com" in (item.get("author") or "").lower()
+
+
 def _is_obvious_opinion_feed(item: dict) -> bool:
     feed = (item.get("feed_name") or "").strip()
     return feed in OPINION_FEED_NAMES
@@ -473,6 +480,14 @@ def apply_trigger_filter(
             })
             continue
         tt = (cls.get("trigger_type") or "").strip().lower()
+        # Owner, 23 Nov 2026: Goldman research was being rejected here as "analysis" (the 19 Nov
+        # housing-starts and mortgage-outlook notes, the 13 Nov existing-home-sales note), so the
+        # theme writer never saw it. Goldman's reading of a data release is the kind of source the
+        # owner wants cited, so an "analysis" label is not grounds to drop it. It is kept as
+        # `commentary`: it can be cited inside a theme but cannot anchor one. Other reject labels
+        # (opinion, recap, profile, ...) still apply. No slot is reserved; it still competes on relevance.
+        if tt == "analysis" and _is_goldman_research(it):
+            tt = "commentary"
         # Reconcile via the canonical sets — never trust the boolean alone
         if tt in REJECT_TRIGGER_TYPES:
             accept = False

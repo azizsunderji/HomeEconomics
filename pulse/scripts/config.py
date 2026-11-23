@@ -552,6 +552,11 @@ GMAIL_NEWSLETTER_SENDERS = [
     # newsletter. It was only on INSTITUTIONAL_SENDER_ALLOWLIST below, which
     # keeps an item out of the newsletter/columnist pool the synthesis reads.
     "resiclubanalytics",        # Lance Lambert (ResiClub); the site has no public RSS
+    # Owner, 23 Nov 2026: Goldman's economics notes (data-release reactions such as housing starts)
+    # arrive by email as well as in the "Goldman Sachs Research" RSS mirror. They were only on
+    # INSTITUTIONAL_SENDER_ALLOWLIST, which keeps them out of the pool the theme writer reads.
+    # This is eligibility only: they compete on relevance like every other item, no reserved slot.
+    "alerts.publishing.gs.com", # GS Macro Economics Research; David Mericle, Arun Manohar notes
 ]
 
 # Gmail senders that should route to Headlines section
