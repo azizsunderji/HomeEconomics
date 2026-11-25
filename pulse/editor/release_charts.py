@@ -58,7 +58,7 @@ PUBLIC_BASE = os.environ.get("NOON_BASE_URL", "https://noon.homeeconomics.us").r
 DRY_DIR = Path("/home/aziz/OVH/2026_10_21_ReleaseCharts/outputs")
 FONT_DIR = "/home/aziz/.local/share/fonts"
 LOGO = "/home/aziz/OVH/Brand assets/HomeEconomics-Logo-versions/HE-Large-Black.png"
-SCALE = 1.25                      # 960 px canvas -> 1200 px PNG (the email's retina width)
+SCALE = 2.0                       # 960 px canvas -> 1920 px PNG (owner, 25 Nov 2026: 1200 px looked blurry even on desktop; charts must always look sharp)
 
 MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October",
           "November", "December"]

@@ -15,7 +15,7 @@ This script builds and refreshes that corpus on the server:
             3. Discovery of new posts: the corpus items from the owner's own feed in pulse.db
                (read-only) and the Substack archive listing. Missing posts are fetched through the
                server's live Chrome (CDP 9223, cdp_tab.py), one same-origin fetch() every few seconds.
-  charts    Every chart-like image (not banners, not GIFs) is converted to PNG (max 1200 px wide)
+  charts    Every chart-like image (not banners, not GIFs) is converted to PNG (max 1920 px wide)
             and hosted at ~/work/noon/images/own/<slug>/<n>.png, public at
             https://noon.homeeconomics.us/images/own/<slug>/<n>.png (the editor's /images mount).
             Haiku looks at each image once: is it a chart, and a one-line caption.
@@ -65,7 +65,7 @@ REPO_JSON = REPO / "pulse" / "data" / "own_publications.json"
 PULSE_DB = os.environ.get("PULSE_DB", "/home/aziz/OVH/Data/Pulse/pulse.db")
 SITE = "https://homeeconomics.substack.com"
 HAIKU = "claude-haiku-4-5-20251001"
-MAX_CHART_WIDTH = 1200
+MAX_CHART_WIDTH = 1920                # owner, 25 Nov 2026: 1200 px looked blurry; keep charts sharp (no upscaling)
 JSON_TEXT_CHARS = 1500
 MAX_FETCH = 40          # live-Chrome fetches per run (shared proxy IP; never burst)
 FETCH_GAP = 4.0         # seconds between fetches

@@ -109,7 +109,7 @@ def _later(a: str | None, b: str | None) -> bool:
 
 
 def _host(png: Path, slug: str, n: int, today: str) -> str:
-    """Copy (at most 1200 px wide) to images/own/<slug>/<n>_YYYYMMDD.png; never overwrites the original."""
+    """Copy (at most 1920 px wide) to images/own/<slug>/<n>_YYYYMMDD.png; never overwrites the original."""
     from own_publications import _to_png
     dest_name = f"{n}_{today.replace('-', '')}.png"
     dest = meta_mod.OWN_IMAGES / slug / dest_name
