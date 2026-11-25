@@ -1555,14 +1555,17 @@ def render_lunch_html(briefing: dict, tier: str = "premium") -> tuple[str, str, 
                 parts.append(
                     f'<table width="100%" cellpadding="0" cellspacing="0"><tr>'
                     f'<td style="padding:0 0 {pad_bottom}px 0;">'
-                    f'<table cellpadding="0" cellspacing="0" style="margin:0 0 {LOCKED_GAP}px 0;"><tr>'
+                    f'<table cellpadding="0" cellspacing="0"><tr>'
                     f'<td style="font-family:{FONT}; font-size:19px; line-height:1.3; font-weight:700; '
                     f'color:{BLUE}; padding:0 12px 0 0; vertical-align:top; white-space:nowrap;">{num}</td>'
                     f'<td style="font-family:{FONT}; font-size:19px; line-height:1.3; font-weight:700; '
                     f'color:{INK}; padding:0; vertical-align:top;">{_esc(title)}</td>'
+                    # owner, 25 Nov 2026 ("fix the alignment"): the link sits in the title's column, under the
+                    # title text, not under the number
+                    f'</tr><tr><td></td>'
+                    f'<td style="font-family:{FONT}; font-size:15px; line-height:1.4; padding:{LOCKED_GAP}px 0 0 0;">'
+                    f'{_link("Upgrade to read →", UPGRADE_URL, weight="600")}</td>'
                     f'</tr></table>'
-                    f'<div style="font-family:{FONT}; font-size:15px; line-height:1.4;">'
-                    f'{_link("Upgrade to read →", UPGRADE_URL, weight="600")}</div>'
                     f'</td></tr></table>\n'
                 )
                 continue
