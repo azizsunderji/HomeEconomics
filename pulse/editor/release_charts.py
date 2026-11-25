@@ -229,7 +229,7 @@ BLUE, YELLOW, RED, GREEN = "#0BB4FF", "#FEC439", "#F4743B", "#67A275"
 W = 960
 GL, GR = 36, 944                  # left margin = the title's x; right margin 16 (reference design)
 LINE_SCALE = 3.4 / 2.5            # builders pass 2.5 (or 2) for a line; the owner's stroke is 3.4
-LABEL_GAP = 36                    # panel label baseline -> panel top
+LABEL_GAP = 50                    # panel label baseline -> panel top (owner, 25 Nov 2026: 36 left too little space)
 XLAB = 30                         # panel bottom -> x-axis label baseline
 COLGAP = 56                       # between panels side by side (owner, 25 Nov 2026: 20 was "too close")
 ROWGAP = 40                       # between rows
@@ -342,6 +342,10 @@ class Prebuilt:
 def _xlabel(o, xv, text, px0, x1, y):
     """An x-axis label centred on xv, kept inside the plot (start-anchored at the left end, end-anchored at the right)."""
     w = _tw(text, 20)
+    # owner, 25 Nov 2026: "there should always be tick marks for the years ... in warm black": a short ink tick
+    # under the plot at each labelled date
+    yb = y - XLAB
+    o.append(f'<line x1="{xv:.1f}" y1="{yb:.1f}" x2="{xv:.1f}" y2="{yb + 8:.1f}" stroke="{INK}" stroke-width="1.5"/>')
     if xv - w / 2 < px0 - 2:
         o.append(_T(xv, y, text, 20, 400, INK, "start"))
     elif xv + w / 2 > x1 + 2:
@@ -820,7 +824,7 @@ def compose(title: str, rows: list, source_lines: list, extra: Callable | None =
     o = [_T(GL, 54, title, size, 700, INK, extra=' letter-spacing="-0.7"')]
     y = 84
     for r in rows:
-        top, bot = y + 56, y + r.height - 40
+        top, bot = y + 20 + LABEL_GAP, y + r.height - 40
         n = len(r.panels)
         fr = r.widths or [1 / n] * n
         avail = (GR - GL) - COLGAP * (n - 1)
@@ -962,7 +966,7 @@ def _level(s, start):
 ROW_ONE = 436                     # one row of panels -> 600 px canvas (the pending-sales reference)
 ROW_TOP, ROW_BOT = 260, 240       # two rows (main panel over two small ones) -> 704 px
 STRIP_H = 250                     # a bubble-strip row under a 250 px panel row -> 704 px
-CS_ROW = 560                      # Case-Shiller: national columns beside ranked metro bars (owner, 25 Nov 2026)
+CS_TOP, CS_BARS = 290, 540         # Case-Shiller: national columns over ranked metro bars (owner, 25 Nov 2026)
 CS_SIDE = 7                       # metros shown at each end of the ranking (owner, 25 Nov 2026)
 
 
@@ -1126,10 +1130,11 @@ def b_case_shiller():
     bars.append(("National", vn, float(yn.get(t1, float("nan"))), INK, True))
     bars.sort(key=lambda b: -b[1])
     month = month_year(t)
-    rows = [Row([Panel(_bars(yn, "2016-01"), "National index", "year over year", ysuffix="%",
-                       zero=True, show_key=False),
-                 RankBars(bars, f"By metro; ticks show {MONTHS[t1.month - 1]} {t1.year}")],
-                CS_ROW)]                    # equal widths (owner, 25 Nov 2026)
+    # owner, 25 Nov 2026: "revert back to these stacked vertically ... make sure there's sufficient space between all
+    # the elements": national columns on top, the ranked metro bars full width below
+    rows = [Row([Panel(_bars(yn, "2016-01"), "National index", "change from a year earlier", ysuffix="%",
+                       zero=True, show_key=False)], CS_TOP),
+            Row([RankBars(bars, f"By metro, {month}; ticks show {MONTHS[t1.month - 1]} {t1.year}")], CS_BARS)]
     items = sorted([(n, v) for n, v, _ in vals], key=lambda kv: -kv[1])
     extra = None
     title = f"National home prices {_verb(cur(yn, nat), 'rose', 'fell', 'were flat')} {abs(cur(yn, nat)):.1f}% over the year to {MONTHS[t.month - 1]}"
