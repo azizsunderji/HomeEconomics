@@ -1062,17 +1062,24 @@ def rank_bars(o: list, p: RankBars, x0: float, x1: float, top: float, bot: float
     if label:
         o.append(_T(x0, top - LABEL_GAP, label, 20, 400, GREY))
     # legend: coloured squares for the regions, then the tick
+    # (wraps to a second line when the panel is too narrow for one)
     lx, ly = x0, top - 4
     for nm, col in p.legend:
+        w = 20 + _tw(nm, 20)
+        if lx > x0 and lx + w > x1:
+            lx, ly = x0, ly + 28
         o.append(f'<rect x="{lx:.1f}" y="{ly - 13:.1f}" width="14" height="14" fill="{col}"/>')
         o.append(_T(lx + 20, ly, nm, 20, 400, INK))
-        lx += 20 + _tw(nm, 20) + 16
-    o.append(f'<rect x="{lx + 5:.1f}" y="{ly - 17:.1f}" width="3" height="22" fill="{INK}"/>')
+        lx += w + 16
+    if lx + 16 + _tw(p.tick_label, 20) > x1:
+        lx, ly = x0 - 5, ly + 28
+    # owner, 25 Nov 2026: thinner bars and thinner year-ago ticks
+    o.append(f'<rect x="{lx + 6:.1f}" y="{ly - 17:.1f}" width="1.5" height="22" fill="{INK}"/>')
     o.append(_T(lx + 16, ly, p.tick_label, 20, 400, INK))
     n = len(p.items)
-    btop = top + 20
+    btop = ly + 24
     step = (bot - btop) / n
-    bh = step * 0.72
+    bh = step * 0.5
     vals = [v for _, v, _, _, _ in p.items] + [a for _, _, a, _, _ in p.items if a == a]
     lo, hi = min(0.0, min(vals)), max(0.0, max(vals))
     name_w = max(_tw(nm, 20, 700 if b else 400) for nm, _, _, _, b in p.items)
@@ -1085,7 +1092,7 @@ def rank_bars(o: list, p: RankBars, x0: float, x1: float, top: float, bot: float
         xa, xb = sorted((X(0), X(v)))
         o.append(f'<rect x="{xa:.1f}" y="{y:.1f}" width="{max(xb - xa, 1):.1f}" height="{bh:.1f}" fill="{col}"/>')
         if a == a:
-            o.append(f'<rect x="{X(a) - 1.5:.1f}" y="{y - 3:.1f}" width="3" height="{bh + 6:.1f}" fill="{INK}"/>')
+            o.append(f'<rect x="{X(a) - 0.75:.1f}" y="{y - 4:.1f}" width="1.5" height="{bh + 8:.1f}" fill="{INK}"/>')
         wt = 700 if bold else 400
         o.append(_T(x0, ty, nm, 20, wt, INK))
         o.append(_T(x1, ty, _signed(v, suffix=p.suffix), 20, wt, INK, "end"))
@@ -1121,7 +1128,7 @@ def b_case_shiller():
     rows = [Row([Panel(_bars(yn, "2016-01"), "National index", "year over year", ysuffix="%",
                        zero=True, show_key=False),
                  RankBars(bars, f"By metro, {month}", legend=leg, tick_label=MON3[t.month - 1] + f" {t1.year}")],
-                CS_ROW, widths=[0.36, 0.64])]
+                CS_ROW)]                    # equal widths (owner, 25 Nov 2026)
     items = sorted([(n, v) for n, v, _ in vals], key=lambda kv: -kv[1])
     extra = None
     title = f"National home prices {_verb(cur(yn, nat), 'rose', 'fell', 'were flat')} {abs(cur(yn, nat)):.1f}% over the year to {MONTHS[t.month - 1]}"
