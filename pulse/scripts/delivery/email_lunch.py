@@ -1128,6 +1128,20 @@ def _name_platforms(text: str) -> str:
 ENTRY_TITLE_GAP = 14   # px between an entry's number+title row and its first paragraph
 LOCKED_INLINE = True   # free/social: premium themes listed in place with "Upgrade to read" (owner, 25 Nov 2026)
 LOCKED_GAP = 6         # px between a locked theme's title and its "Upgrade to read" line
+LOCKED_TEASER_WORDS = 32   # owner, 25 Nov 2026: about three lines of the theme, cut mid-sentence
+
+
+def _locked_teaser(summary: str, n_words: int = LOCKED_TEASER_WORDS) -> str:
+    """The opening words of a premium theme as plain text (no images, context boxes, quotes or link targets),
+    cut mid-sentence and ended with an ellipsis (owner, 25 Nov 2026: premium themes were easy to skip over)."""
+    t = _strip_context(_strip_images(_QUOTE_RE.sub("", str(summary or ""))))
+    t = re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", t)         # markdown links -> their text
+    t = re.sub(r"[*_`]+", "", t)
+    words = " ".join(t.split()).split(" ")
+    if len(words) <= n_words:
+        return " ".join(words).rstrip(" .,;:") + "…"
+    cut = words[:n_words]
+    return " ".join(cut).rstrip(" .,;:—–-") + "…"
 ENTRY_PARA_GAP = 12    # px between paragraphs inside an entry (was a <br><br>, ~27px)
 CONTEXT_GAP = 16       # px above and below a context box inside an entry
 QUOTE_GAP = 24         # px above and below a pull quote (owner, 20 Oct 2026: slightly more air than a context box)
@@ -1560,12 +1574,13 @@ def render_lunch_html(briefing: dict, tier: str = "premium") -> tuple[str, str, 
                     f'color:{BLUE}; padding:0 12px 0 0; vertical-align:top; white-space:nowrap;">{num}</td>'
                     f'<td style="font-family:{FONT}; font-size:19px; line-height:1.3; font-weight:700; '
                     f'color:{INK}; padding:0; vertical-align:top;">{_esc(title)}</td>'
-                    # owner, 25 Nov 2026 ("fix the alignment"): the link sits in the title's column, under the
-                    # title text, not under the number
-                    f'</tr><tr><td></td>'
-                    f'<td style="font-family:{FONT}; font-size:15px; line-height:1.4; padding:{LOCKED_GAP}px 0 0 0;">'
-                    f'{_link("Upgrade to read →", UPGRADE_URL, weight="600")}</td>'
                     f'</tr></table>'
+                    # owner, 25 Nov 2026: "it's easy to skip over those premium themes because they're so small ...
+                    # just do a '...' mid-sentence with 'Upgrade to read'": about three lines of the theme in body
+                    # text, cut mid-sentence, then the link on the same line
+                    f'<div style="{body_text} margin:{ENTRY_TITLE_GAP}px 0 0 0;">'
+                    f'{_esc(_locked_teaser(e.get("summary") or ""))}&nbsp; '
+                    f'<span style="white-space:nowrap;">{_link("Upgrade to read →", UPGRADE_URL, weight="600")}</span></div>'
                     f'</td></tr></table>\n'
                 )
                 continue
