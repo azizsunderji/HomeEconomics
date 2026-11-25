@@ -960,7 +960,8 @@ def _level(s, start):
 ROW_ONE = 436                     # one row of panels -> 600 px canvas (the pending-sales reference)
 ROW_TOP, ROW_BOT = 260, 240       # two rows (main panel over two small ones) -> 704 px
 STRIP_H = 250                     # a bubble-strip row under a 250 px panel row -> 704 px
-CS_ROW = 560                      # Case-Shiller: national columns beside 21 ranked bars (owner, 25 Nov 2026)
+CS_ROW = 560                      # Case-Shiller: national columns beside ranked metro bars (owner, 25 Nov 2026)
+CS_SIDE = 7                       # metros shown at each end of the ranking (owner, 25 Nov 2026)
 
 
 def _strip_items(chart: str, rows: list) -> list:
@@ -1071,11 +1072,11 @@ def rank_bars(o: list, p: RankBars, x0: float, x1: float, top: float, bot: float
         o.append(f'<rect x="{lx:.1f}" y="{ly - 13:.1f}" width="14" height="14" fill="{col}"/>')
         o.append(_T(lx + 20, ly, nm, 20, 400, INK))
         lx += w + 16
-    if lx + 16 + _tw(p.tick_label, 20) > x1:
-        lx, ly = x0 - 5, ly + 28
-    # owner, 25 Nov 2026: thinner bars and thinner year-ago ticks
-    o.append(f'<rect x="{lx + 6:.1f}" y="{ly - 17:.1f}" width="1.5" height="22" fill="{INK}"/>')
-    o.append(_T(lx + 16, ly, p.tick_label, 20, 400, INK))
+    if p.tick_label:              # None: the heading explains the tick (owner, 25 Nov 2026: legend was "a real mess")
+        if lx + 16 + _tw(p.tick_label, 20) > x1:
+            lx, ly = x0 - 5, ly + 28
+        o.append(f'<rect x="{lx + 6:.1f}" y="{ly - 17:.1f}" width="1.5" height="22" fill="{INK}"/>')
+        o.append(_T(lx + 16, ly, p.tick_label, 20, 400, INK))
     n = len(p.items)
     btop = ly + 24
     step = (bot - btop) / n
@@ -1092,7 +1093,9 @@ def rank_bars(o: list, p: RankBars, x0: float, x1: float, top: float, bot: float
         xa, xb = sorted((X(0), X(v)))
         o.append(f'<rect x="{xa:.1f}" y="{y:.1f}" width="{max(xb - xa, 1):.1f}" height="{bh:.1f}" fill="{col}"/>')
         if a == a:
-            o.append(f'<rect x="{X(a) - 0.75:.1f}" y="{y - 4:.1f}" width="1.5" height="{bh + 8:.1f}" fill="{INK}"/>')
+            # owner, 25 Nov 2026: thin, and exactly as tall as the bar
+            tc = BG if col == INK and xa <= X(a) <= xb else INK     # visible on the black national bar
+            o.append(f'<rect x="{X(a) - 0.75:.1f}" y="{y:.1f}" width="1.5" height="{bh:.1f}" fill="{tc}"/>')
         wt = 700 if bold else 400
         o.append(_T(x0, ty, nm, 20, wt, INK))
         o.append(_T(x1, ty, _signed(v, suffix=p.suffix), 20, wt, INK, "end"))
@@ -1121,13 +1124,20 @@ def b_case_shiller():
         else:
             missing.append(name)      # e.g. Detroit, a month behind in Sept 2026: named in the source line
     vn = cur(yn, nat)
+    # owner, 25 Nov 2026: "too many cities there ... remove, say, 5 cities and make the spacing proper": the
+    # CS_SIDE strongest and CS_SIDE weakest metros, plus the national bar
+    bars.sort(key=lambda b: -b[1])
+    n_metros = len(bars)
+    if n_metros > 2 * CS_SIDE:
+        bars = bars[:CS_SIDE] + bars[-CS_SIDE:]
     bars.append(("National", vn, float(yn.get(t1, float("nan"))), INK, True))
     bars.sort(key=lambda b: -b[1])
     month = month_year(t)
     leg = [(r, REGION_COL[r]) for r in ("Northeast", "Midwest", "South", "West")]
     rows = [Row([Panel(_bars(yn, "2016-01"), "National index", "year over year", ysuffix="%",
                        zero=True, show_key=False),
-                 RankBars(bars, f"By metro, {month}", legend=leg, tick_label=MON3[t.month - 1] + f" {t1.year}")],
+                 RankBars(bars, f"By metro; ticks show {MONTHS[t1.month - 1]} {t1.year}", legend=leg,
+                          tick_label=None)],
                 CS_ROW)]                    # equal widths (owner, 25 Nov 2026)
     items = sorted([(n, v) for n, v, _ in vals], key=lambda kv: -kv[1])
     extra = None
@@ -1139,6 +1149,8 @@ def b_case_shiller():
            f"20-city composite {_signed(cur(y20, c20))}; among the metros shown, {best[0]} was strongest ({_signed(best[1])}) "
            f"and {worst[0]} weakest ({_signed(worst[1])}).")
     src = "Source: S&P Cotality Case-Shiller indices via FRED; Census regions."
+    if n_metros > 2 * CS_SIDE:
+        src += f" The {CS_SIDE} strongest and {CS_SIDE} weakest of {n_metros} metros."
     if missing:
         src += f" {' and '.join(missing)}: no {MONTHS[t.month - 1]} figure yet."
     return rows, extra, 0, t, title, cap, src
