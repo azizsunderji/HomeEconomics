@@ -966,8 +966,8 @@ def _level(s, start):
 ROW_ONE = 436                     # one row of panels -> 600 px canvas (the pending-sales reference)
 ROW_TOP, ROW_BOT = 260, 240       # two rows (main panel over two small ones) -> 704 px
 STRIP_H = 250                     # a bubble-strip row under a 250 px panel row -> 704 px
-CS_TOP, CS_BARS = 290, 540         # Case-Shiller: national columns over ranked metro bars (owner, 25 Nov 2026)
-CS_SIDE = 7                       # metros shown at each end of the ranking (owner, 25 Nov 2026)
+CS_TOP = CS_BARS = 360               # Case-Shiller: national columns over ranked metro bars (owner, 25 Nov 2026)
+CS_SIDE = 4                       # metros shown at each end of the ranking (owner, 25 Nov 2026)
 
 
 def _strip_items(chart: str, rows: list) -> list:
