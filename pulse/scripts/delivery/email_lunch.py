@@ -1126,6 +1126,8 @@ def _name_platforms(text: str) -> str:
 
 
 ENTRY_TITLE_GAP = 14   # px between an entry's number+title row and its first paragraph
+LOCKED_INLINE = True   # free/social: premium themes listed in place with "Upgrade to read" (owner, 25 Nov 2026)
+LOCKED_GAP = 6         # px between a locked theme's title and its "Upgrade to read" line
 ENTRY_PARA_GAP = 12    # px between paragraphs inside an entry (was a <br><br>, ~27px)
 CONTEXT_GAP = 16       # px above and below a context box inside an entry
 QUOTE_GAP = 24         # px above and below a pull quote (owner, 20 Oct 2026: slightly more air than a context box)
@@ -1535,12 +1537,35 @@ def render_lunch_html(briefing: dict, tier: str = "premium") -> tuple[str, str, 
         parts.append(banner_html)
 
     # ── Entries ──
-    if shown:
+    # Owner, 25 Nov 2026: "be more clear to show people what they're missing. For all the themes that are premium
+    # only, show the number and the title of that theme as we normally do, but instead of showing the text and all
+    # the charts, etc., have a little writing that says 'Upgrade to read.'" In the free and social tiers every
+    # theme appears in rank order; a premium theme is its number and title plus an "Upgrade to read" link
+    # (replaces the "More in the premium edition" title box).
+    listed = entries if (walled and LOCKED_INLINE) else shown
+    locked_ids = {id(w) for w in withheld} if walled else set()
+    if listed:
         parts.append(_spacer(SECTION_GAP))
-        for i, e in enumerate(shown, start=1):
+        for i, e in enumerate(listed, start=1):
             num = e.get("rank") if isinstance(e.get("rank"), int) else i
             title = (e.get("title") or "").strip()
             title = title[:1].upper() + title[1:]
+            if id(e) in locked_ids:
+                pad_bottom = 0 if i == len(listed) else 40
+                parts.append(
+                    f'<table width="100%" cellpadding="0" cellspacing="0"><tr>'
+                    f'<td style="padding:0 0 {pad_bottom}px 0;">'
+                    f'<table cellpadding="0" cellspacing="0" style="margin:0 0 {LOCKED_GAP}px 0;"><tr>'
+                    f'<td style="font-family:{FONT}; font-size:19px; line-height:1.3; font-weight:700; '
+                    f'color:{BLUE}; padding:0 12px 0 0; vertical-align:top; white-space:nowrap;">{num}</td>'
+                    f'<td style="font-family:{FONT}; font-size:19px; line-height:1.3; font-weight:700; '
+                    f'color:{INK}; padding:0; vertical-align:top;">{_esc(title)}</td>'
+                    f'</tr></table>'
+                    f'<div style="font-family:{FONT}; font-size:15px; line-height:1.4;">'
+                    f'{_link("Upgrade to read →", UPGRADE_URL, weight="600")}</div>'
+                    f'</td></tr></table>\n'
+                )
+                continue
             summary = _fix_sentence_starts((e.get("summary") or "").strip())
             pills = _entry_pills(e)
             pills_html = ""
@@ -1549,7 +1574,7 @@ def render_lunch_html(briefing: dict, tier: str = "premium") -> tuple[str, str, 
                               f'{"".join(_pill(p) for p in pills)}</div>')
             # Last entry carries no bottom padding so the following section
             # gap is exactly SECTION_GAP (or WALL_GAP) and nothing more.
-            pad_bottom = 0 if i == len(shown) else 40
+            pad_bottom = 0 if i == len(listed) else 40
             parts.append(
                 f'<table width="100%" cellpadding="0" cellspacing="0"><tr>'
                 f'<td style="padding:0 0 {pad_bottom}px 0;">'
@@ -1564,8 +1589,8 @@ def render_lunch_html(briefing: dict, tier: str = "premium") -> tuple[str, str, 
                 f'</td></tr></table>\n'
             )
 
-    # ── Withheld entries (free / social tiers) ──
-    if walled and withheld:
+    # ── Withheld entries (free / social tiers): the old title box, off while LOCKED_INLINE ──
+    if walled and withheld and not LOCKED_INLINE:
         n = len(withheld)
         upgrade_link = _link("Upgrade →", UPGRADE_URL, weight="600")
         if tier == "social":
