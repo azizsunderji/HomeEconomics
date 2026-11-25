@@ -231,7 +231,7 @@ GL, GR = 36, 944                  # left margin = the title's x; right margin 16
 LINE_SCALE = 3.4 / 2.5            # builders pass 2.5 (or 2) for a line; the owner's stroke is 3.4
 LABEL_GAP = 36                    # panel label baseline -> panel top
 XLAB = 30                         # panel bottom -> x-axis label baseline
-COLGAP = 20                       # between panels side by side
+COLGAP = 56                       # between panels side by side (owner, 25 Nov 2026: 20 was "too close")
 ROWGAP = 40                       # between rows
 SRC_GAP = 50                      # last x-axis label row (+10) -> source baseline (about 60 px of space)
 
@@ -343,11 +343,11 @@ def _xlabel(o, xv, text, px0, x1, y):
     """An x-axis label centred on xv, kept inside the plot (start-anchored at the left end, end-anchored at the right)."""
     w = _tw(text, 20)
     if xv - w / 2 < px0 - 2:
-        o.append(_T(xv, y, text, 20, 400, GREY, "start"))
+        o.append(_T(xv, y, text, 20, 400, INK, "start"))
     elif xv + w / 2 > x1 + 2:
-        o.append(_T(xv, y, text, 20, 400, GREY, "end"))
+        o.append(_T(xv, y, text, 20, 400, INK, "end"))
     else:
-        o.append(_T(xv, y, text, 20, 400, GREY, "middle"))
+        o.append(_T(xv, y, text, 20, 400, INK, "middle"))
 
 
 def draw_panel(o: list, p: Panel, x0: float, x1: float, top: float, bot: float) -> None:
@@ -425,11 +425,13 @@ def draw_panel(o: list, p: Panel, x0: float, x1: float, top: float, bot: float) 
     for ln in reversed(keyed):
         o.append(_T(xk, top - LABEL_GAP, ln.key, 20, 500, ln.color if ln.color != YELLOW else "#C9961A", "end"))
         xk -= _tw(ln.key, 20, 500) + 22
-    # grid + y labels (numbers left-aligned at x0, vertically centred on their gridline)
+    # grid + y labels (owner, 25 Nov 2026: "the horizontal grid lines should extend to the left and sit just under the
+    # y-axis labels, like we normally do"; axis labels warm black, never grey): gridlines run from x0, each number
+    # left-aligned at x0 just above its line; the data still start at px0, clear of the numbers
     for v, lb in zip(ticks, labels):
-        o.append(f'<line x1="{px0:.1f}" y1="{Y(v):.1f}" x2="{x1:.1f}" y2="{Y(v):.1f}" stroke="{GRID}" stroke-width="1"/>')
+        o.append(f'<line x1="{x0:.1f}" y1="{Y(v):.1f}" x2="{x1:.1f}" y2="{Y(v):.1f}" stroke="{GRID}" stroke-width="1"/>')
         if lb:
-            o.append(_T(x0, Y(v) + 7, lb, 20, 400, GREY))
+            o.append(_T(x0, Y(v) - 8, lb, 20, 400, INK))
     # cut axis: the standard break mark, two short parallel slashes across the cut gridline at the plot's left
     # edge (drawn after the data, below, so it sits on top of the bars)
     breaks = [Y(c) for is_cut, c in ((cut_hi, p.clip[1] if p.clip else 0), (cut_lo, p.clip[0] if p.clip else 0))
@@ -1045,16 +1047,14 @@ CS_METROS = [("New York", "NYXRNSA", "35620"), ("Los Angeles", "LXXRNSA", "31080
 
 @dataclass
 class RankBars:
-    """Horizontal bars ranked high to low, coloured by Census region, with a tick on each bar for the value a year
-    earlier (owner, 25 Nov 2026, Case-Shiller: "a bar chart, as in horizontal bars from highest to lowest ... color
-    them by region and have one bar for the national number ... put a tick mark for the value a year ago").
-    items: (name, value, value a year earlier, colour, bold). Names in a column at the left, values right-aligned at
-    the right edge, a one-line legend (regions + tick) under the panel label."""
+    """Horizontal bars ranked high to low with a tick on each bar for the value a year earlier (owner, 25 Nov 2026,
+    Case-Shiller: "horizontal bars from highest to lowest ... one bar for the national number ... put a tick mark for
+    the value a year ago"; later the same day: no region colours, no value labels, a value axis along the top).
+    items: (name, value, value a year earlier, colour, bold). Names in a column at the left; value axis numbers along
+    the top (warm black), light vertical gridlines, an ink line at zero."""
     items: list
     heading: str = ""
     sub: str = ""
-    legend: list = field(default_factory=list)    # (label, colour)
-    tick_label: str = "A year earlier"
     suffix: str = "%"
 
 
@@ -1062,31 +1062,29 @@ def rank_bars(o: list, p: RankBars, x0: float, x1: float, top: float, bot: float
     label = p.heading + (f", {p.sub}" if p.heading and p.sub else p.sub)
     if label:
         o.append(_T(x0, top - LABEL_GAP, label, 20, 400, GREY))
-    # legend: coloured squares for the regions, then the tick
-    # (wraps to a second line when the panel is too narrow for one)
-    lx, ly = x0, top - 4
-    for nm, col in p.legend:
-        w = 20 + _tw(nm, 20)
-        if lx > x0 and lx + w > x1:
-            lx, ly = x0, ly + 28
-        o.append(f'<rect x="{lx:.1f}" y="{ly - 13:.1f}" width="14" height="14" fill="{col}"/>')
-        o.append(_T(lx + 20, ly, nm, 20, 400, INK))
-        lx += w + 16
-    if p.tick_label:              # None: the heading explains the tick (owner, 25 Nov 2026: legend was "a real mess")
-        if lx + 16 + _tw(p.tick_label, 20) > x1:
-            lx, ly = x0 - 5, ly + 28
-        o.append(f'<rect x="{lx + 6:.1f}" y="{ly - 17:.1f}" width="1.5" height="22" fill="{INK}"/>')
-        o.append(_T(lx + 16, ly, p.tick_label, 20, 400, INK))
     n = len(p.items)
-    btop = ly + 24
+    axis_y = top - 4                        # baseline of the value-axis numbers
+    btop = top + 16
     step = (bot - btop) / n
     bh = step * 0.5
     vals = [v for _, v, _, _, _ in p.items] + [a for _, _, a, _, _ in p.items if a == a]
-    lo, hi = min(0.0, min(vals)), max(0.0, max(vals))
+    dlo, dhi = min(0.0, min(vals)), max(0.0, max(vals))
+    pad = (dhi - dlo) * 0.04
+    lo, hi = dlo - (pad if dlo < 0 else 0), dhi + pad
+    ticks = []
+    for stp in [m * 10 ** k for k in range(-2, 6) for m in (1, 2, 5)]:      # 1, 2 or 5 x 10^k (no 2.5 steps)
+        ticks = [i * stp for i in range(math.ceil(lo / stp - 1e-9), math.floor(hi / stp + 1e-9) + 1)]
+        if len(ticks) <= 6:
+            break
     name_w = max(_tw(nm, 20, 700 if b else 400) for nm, _, _, _, b in p.items)
-    val_w = max(_tw(_signed(v, suffix=p.suffix), 20, 700 if b else 400) for _, v, _, _, b in p.items)
-    b0, b1 = x0 + name_w + 14, x1 - val_w - 14
+    b0, b1 = x0 + name_w + 24, x1 - 14
     X = lambda v: b0 + (v - lo) / ((hi - lo) or 1) * (b1 - b0)
+    stp = ticks[1] - ticks[0]
+    for i, v in enumerate(ticks):
+        o.append(f'<line x1="{X(v):.1f}" y1="{btop - 8:.1f}" x2="{X(v):.1f}" y2="{bot:.1f}" stroke="{GRID}" stroke-width="1"/>')
+        lb = fmt_num(v, stp).replace("-", "\u2212") + (p.suffix if i == len(ticks) - 1 else "")
+        anchor = "end" if i == len(ticks) - 1 and X(v) + _tw(lb, 20) / 2 > x1 else "middle"
+        o.append(_T(X(v), axis_y, lb, 20, 400, INK, anchor))
     for i, (nm, v, a, col, bold) in enumerate(p.items):
         y = btop + i * step + (step - bh) / 2
         ty = y + bh / 2 + 7
@@ -1096,10 +1094,8 @@ def rank_bars(o: list, p: RankBars, x0: float, x1: float, top: float, bot: float
             # owner, 25 Nov 2026: thin, and exactly as tall as the bar
             tc = BG if col == INK and xa <= X(a) <= xb else INK     # visible on the black national bar
             o.append(f'<rect x="{X(a) - 0.75:.1f}" y="{y:.1f}" width="1.5" height="{bh:.1f}" fill="{tc}"/>')
-        wt = 700 if bold else 400
-        o.append(_T(x0, ty, nm, 20, wt, INK))
-        o.append(_T(x1, ty, _signed(v, suffix=p.suffix), 20, wt, INK, "end"))
-    o.append(f'<line x1="{X(0):.1f}" y1="{btop:.1f}" x2="{X(0):.1f}" y2="{bot:.1f}" stroke="{INK}" stroke-width="1.2"/>')
+        o.append(_T(x0, ty, nm, 20, 700 if bold else 400, INK))
+    o.append(f'<line x1="{X(0):.1f}" y1="{btop - 8:.1f}" x2="{X(0):.1f}" y2="{bot:.1f}" stroke="{INK}" stroke-width="1.2"/>')
 
 
 def b_case_shiller():
@@ -1116,11 +1112,8 @@ def b_case_shiller():
         y = yoy(fred(sid))
         if y.index[-1] == t:
             vals.append((name, float(y.iloc[-1]), cb))
-            info = cbsa_info(cb)
-            col = REGION_COL.get(info["region"]) if info and info.get("region") else GREY
-            if col == GREY:
-                STRIP_DROPPED.append(("case_shiller", name, f"no region for CBSA {cb}; drawn grey"))
-            bars.append((name, float(y.iloc[-1]), float(y.get(t1, float("nan"))), col, False))
+            # owner, 25 Nov 2026: "Remove the coloring for the regions" -- every metro blue, national black
+            bars.append((name, float(y.iloc[-1]), float(y.get(t1, float("nan"))), BLUE, False))
         else:
             missing.append(name)      # e.g. Detroit, a month behind in Sept 2026: named in the source line
     vn = cur(yn, nat)
@@ -1133,11 +1126,9 @@ def b_case_shiller():
     bars.append(("National", vn, float(yn.get(t1, float("nan"))), INK, True))
     bars.sort(key=lambda b: -b[1])
     month = month_year(t)
-    leg = [(r, REGION_COL[r]) for r in ("Northeast", "Midwest", "South", "West")]
     rows = [Row([Panel(_bars(yn, "2016-01"), "National index", "year over year", ysuffix="%",
                        zero=True, show_key=False),
-                 RankBars(bars, f"By metro; ticks show {MONTHS[t1.month - 1]} {t1.year}", legend=leg,
-                          tick_label=None)],
+                 RankBars(bars, f"By metro; ticks show {MONTHS[t1.month - 1]} {t1.year}")],
                 CS_ROW)]                    # equal widths (owner, 25 Nov 2026)
     items = sorted([(n, v) for n, v, _ in vals], key=lambda kv: -kv[1])
     extra = None
@@ -1148,7 +1139,7 @@ def b_case_shiller():
     cap = (f"The S&P Cotality Case-Shiller national index was {_signed(cur(yn, nat))} from a year earlier in {month} and the "
            f"20-city composite {_signed(cur(y20, c20))}; among the metros shown, {best[0]} was strongest ({_signed(best[1])}) "
            f"and {worst[0]} weakest ({_signed(worst[1])}).")
-    src = "Source: S&P Cotality Case-Shiller indices via FRED; Census regions."
+    src = "Source: S&P Cotality Case-Shiller indices via FRED."
     if n_metros > 2 * CS_SIDE:
         src += f" The {CS_SIDE} strongest and {CS_SIDE} weakest of {n_metros} metros."
     if missing:
@@ -1582,7 +1573,7 @@ def b_pending_home_sales():
          _T(LX0, TOP - LABEL_GAP, "NAR pending home sales, seasonally adjusted", 20, 400, GREY)]
     for g in ticks:
         o.append(f'<line x1="{px0:.1f}" y1="{Y(g):.1f}" x2="{px1:.1f}" y2="{Y(g):.1f}" stroke="{GRID}" stroke-width="1"/>')
-        o.append(_T(LX0, Y(g) + 7, str(g), 20, 400, GREY))
+        o.append(_T(LX0, Y(g) + 7, str(g), 20, 400, INK))
     first_yr = series.index[0].year + (0 if series.index[0].month == 1 else 1)
     for yr in range(first_yr, t.year + 1):
         if (yr - first_yr) % 4 == 0:
