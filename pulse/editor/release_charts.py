@@ -830,6 +830,8 @@ def compose(title: str, rows: list, source_lines: list, extra: Callable | None =
                            height=bot + XLAB - top)
             elif isinstance(p, Strip):
                 bubble_strip(o, p, x, x + w, y, y + r.height)
+            elif isinstance(p, RankBars):
+                rank_bars(o, p, x, x + w, top, bot + XLAB)
             else:
                 draw_panel(o, p, x, x + w, top, bot)
             x += w + COLGAP
@@ -958,6 +960,7 @@ def _level(s, start):
 ROW_ONE = 436                     # one row of panels -> 600 px canvas (the pending-sales reference)
 ROW_TOP, ROW_BOT = 260, 240       # two rows (main panel over two small ones) -> 704 px
 STRIP_H = 250                     # a bubble-strip row under a 250 px panel row -> 704 px
+CS_ROW = 560                      # Case-Shiller: national columns beside 21 ranked bars (owner, 25 Nov 2026)
 
 
 def _strip_items(chart: str, rows: list) -> list:
@@ -1029,31 +1032,96 @@ def b_new_home_sales():
 
 # (name, FRED series, CBSA code for the bubble size and region; the Case-Shiller metro areas are close to, not
 # identical with, the CBSA of the same name)
+# all 20 metros of the 20-city composite (owner, 25 Nov 2026: bars for "the top 20 cities")
 CS_METROS = [("New York", "NYXRNSA", "35620"), ("Los Angeles", "LXXRNSA", "31080"), ("Chicago", "CHXRNSA", "16980"),
              ("Dallas", "DAXRNSA", "19100"), ("Miami", "MIXRNSA", "33100"), ("Atlanta", "ATXRNSA", "12060"),
              ("Washington", "WDXRNSA", "47900"), ("Boston", "BOXRNSA", "14460"), ("Phoenix", "PHXRNSA", "38060"),
              ("Seattle", "SEXRNSA", "42660"), ("San Francisco", "SFXRNSA", "41860"), ("Denver", "DNXRNSA", "19740"),
-             ("Tampa", "TPXRNSA", "45300")]
+             ("Tampa", "TPXRNSA", "45300"), ("Charlotte", "CRXRNSA", "16740"), ("Cleveland", "CEXRNSA", "17410"),
+             ("Detroit", "DEXRNSA", "19820"), ("Las Vegas", "LVXRNSA", "29820"), ("Minneapolis", "MNXRNSA", "33460"),
+             ("Portland", "POXRNSA", "38900"), ("San Diego", "SDXRNSA", "41740")]
+
+
+@dataclass
+class RankBars:
+    """Horizontal bars ranked high to low, coloured by Census region, with a tick on each bar for the value a year
+    earlier (owner, 25 Nov 2026, Case-Shiller: "a bar chart, as in horizontal bars from highest to lowest ... color
+    them by region and have one bar for the national number ... put a tick mark for the value a year ago").
+    items: (name, value, value a year earlier, colour, bold). Names in a column at the left, values right-aligned at
+    the right edge, a one-line legend (regions + tick) under the panel label."""
+    items: list
+    heading: str = ""
+    sub: str = ""
+    legend: list = field(default_factory=list)    # (label, colour)
+    tick_label: str = "A year earlier"
+    suffix: str = "%"
+
+
+def rank_bars(o: list, p: RankBars, x0: float, x1: float, top: float, bot: float) -> None:
+    label = p.heading + (f", {p.sub}" if p.heading and p.sub else p.sub)
+    if label:
+        o.append(_T(x0, top - LABEL_GAP, label, 20, 400, GREY))
+    # legend: coloured squares for the regions, then the tick
+    lx, ly = x0, top - 4
+    for nm, col in p.legend:
+        o.append(f'<rect x="{lx:.1f}" y="{ly - 13:.1f}" width="14" height="14" fill="{col}"/>')
+        o.append(_T(lx + 20, ly, nm, 20, 400, INK))
+        lx += 20 + _tw(nm, 20) + 16
+    o.append(f'<rect x="{lx + 5:.1f}" y="{ly - 17:.1f}" width="3" height="22" fill="{INK}"/>')
+    o.append(_T(lx + 16, ly, p.tick_label, 20, 400, INK))
+    n = len(p.items)
+    btop = top + 20
+    step = (bot - btop) / n
+    bh = step * 0.72
+    vals = [v for _, v, _, _, _ in p.items] + [a for _, _, a, _, _ in p.items if a == a]
+    lo, hi = min(0.0, min(vals)), max(0.0, max(vals))
+    name_w = max(_tw(nm, 20, 700 if b else 400) for nm, _, _, _, b in p.items)
+    val_w = max(_tw(_signed(v, suffix=p.suffix), 20, 700 if b else 400) for _, v, _, _, b in p.items)
+    b0, b1 = x0 + name_w + 14, x1 - val_w - 14
+    X = lambda v: b0 + (v - lo) / ((hi - lo) or 1) * (b1 - b0)
+    for i, (nm, v, a, col, bold) in enumerate(p.items):
+        y = btop + i * step + (step - bh) / 2
+        ty = y + bh / 2 + 7
+        xa, xb = sorted((X(0), X(v)))
+        o.append(f'<rect x="{xa:.1f}" y="{y:.1f}" width="{max(xb - xa, 1):.1f}" height="{bh:.1f}" fill="{col}"/>')
+        if a == a:
+            o.append(f'<rect x="{X(a) - 1.5:.1f}" y="{y - 3:.1f}" width="3" height="{bh + 6:.1f}" fill="{INK}"/>')
+        wt = 700 if bold else 400
+        o.append(_T(x0, ty, nm, 20, wt, INK))
+        o.append(_T(x1, ty, _signed(v, suffix=p.suffix), 20, wt, INK, "end"))
+    o.append(f'<line x1="{X(0):.1f}" y1="{btop:.1f}" x2="{X(0):.1f}" y2="{bot:.1f}" stroke="{INK}" stroke-width="1.2"/>')
 
 
 def b_case_shiller():
-    """Owner, 21 Oct 2026: "it takes up way too much space ... make them bubbles on a left-to-right axis where the
-    bubble size is population ... color them regionally ... I think a column chart would look a lot nicer there."
-    Top: the national change from a year earlier as columns; below: the metros as a bubble strip."""
+    """Owner, 25 Nov 2026 (replaces the 21 Oct column-over-bubble-strip layout: "the chart ... just looks bad, let's
+    make it two side-by-side charts"): left, the national index's change from a year earlier as columns; right, the
+    20 metros and the national index as horizontal bars ranked high to low, coloured by region (national in black),
+    with a tick at each one's change a year earlier."""
     nat, c20 = fred("CSUSHPINSA"), fred("SPCS20RNSA")
     t = nat.index[-1]
     yn, y20 = yoy(nat), yoy(c20)
-    vals = []
+    t1 = t - __import__("pandas").DateOffset(years=1)
+    vals, bars, missing = [], [], []
     for name, sid, cb in CS_METROS:
         y = yoy(fred(sid))
         if y.index[-1] == t:
             vals.append((name, float(y.iloc[-1]), cb))
+            info = cbsa_info(cb)
+            col = REGION_COL.get(info["region"]) if info and info.get("region") else GREY
+            if col == GREY:
+                STRIP_DROPPED.append(("case_shiller", name, f"no region for CBSA {cb}; drawn grey"))
+            bars.append((name, float(y.iloc[-1]), float(y.get(t1, float("nan"))), col, False))
+        else:
+            missing.append(name)      # e.g. Detroit, a month behind in Sept 2026: named in the source line
     vn = cur(yn, nat)
+    bars.append(("National", vn, float(yn.get(t1, float("nan"))), INK, True))
+    bars.sort(key=lambda b: -b[1])
     month = month_year(t)
-    rows = [Row([Panel(_bars(yn, "2016-01"), "National index, change from a year earlier", ysuffix="%", zero=True,
-                       show_key=False)], STRIP_H),
-            Row([Strip(_strip_items("case_shiller", vals), f"{month} by metro", "sized by population",
-                       bench=(f"National {_signed(vn)}", vn))], STRIP_H)]
+    leg = [(r, REGION_COL[r]) for r in ("Northeast", "Midwest", "South", "West")]
+    rows = [Row([Panel(_bars(yn, "2016-01"), "National index", "year over year", ysuffix="%",
+                       zero=True, show_key=False),
+                 RankBars(bars, f"By metro, {month}", legend=leg, tick_label=MON3[t.month - 1] + f" {t1.year}")],
+                CS_ROW, widths=[0.36, 0.64])]
     items = sorted([(n, v) for n, v, _ in vals], key=lambda kv: -kv[1])
     extra = None
     title = f"National home prices {_verb(cur(yn, nat), 'rose', 'fell', 'were flat')} {abs(cur(yn, nat)):.1f}% over the year to {MONTHS[t.month - 1]}"
@@ -1063,7 +1131,9 @@ def b_case_shiller():
     cap = (f"The S&P Cotality Case-Shiller national index was {_signed(cur(yn, nat))} from a year earlier in {month} and the "
            f"20-city composite {_signed(cur(y20, c20))}; among the metros shown, {best[0]} was strongest ({_signed(best[1])}) "
            f"and {worst[0]} weakest ({_signed(worst[1])}).")
-    src = "Source: S&P Cotality Case-Shiller indices via FRED; Census population."
+    src = "Source: S&P Cotality Case-Shiller indices via FRED; Census regions."
+    if missing:
+        src += f" {' and '.join(missing)}: no {MONTHS[t.month - 1]} figure yet."
     return rows, extra, 0, t, title, cap, src
 
 
