@@ -416,7 +416,7 @@ def resolve_callback_chart(match: dict, as_of: str) -> tuple[dict | None, str]:
                         "updated": ch["current_url"] != orig["url"]}, f"refreshed {age.days} days ago"
         except ValueError:
             pass
-    m = re.search(r"/images/own/([a-z0-9-]+)/(\d+)\.png$", ch.get("hosted_url") or "")
+    m = re.search(r"/images/own/([a-z0-9-]+)/(\d+)(?:_hd)?\.png$", ch.get("hosted_url") or "")
     if not m:
         return None, "stale time series, chart URL not recognised"
     tok = _refresh_token()

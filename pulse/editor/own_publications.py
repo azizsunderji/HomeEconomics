@@ -424,7 +424,7 @@ def build(limit: int | None = None) -> list[dict]:
             charts.append({"n": n, "image_url": src_clean, "caption": cap.get("caption") or "",
                            "alt": f.get("alt") or "", "figcaption": f.get("caption") or "",
                            "context": f.get("context") or "",
-                           "hosted_url": f"{PUBLIC_BASE}/{slug}/{n}.png"})
+                           "hosted_url": f"{PUBLIC_BASE}/{slug}/{n}{'_hd' if (OWN_IMAGES / slug / f'{n}_hd.png').exists() else ''}.png"})
         skey = f"{slug}:{hashlib.sha1(text[:6000].encode()).hexdigest()[:10]}"
         summary = cache["summaries"].get(skey)
         if summary is None:
